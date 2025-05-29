@@ -5,7 +5,6 @@ import re
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
@@ -21,7 +20,7 @@ if TYPE_CHECKING:
 class Video(NamedTuple):
     id: str
     title: str
-    url: URL
+    url: AbsoluteHttpURL
     res: str
 
 
@@ -88,7 +87,7 @@ class PorntrexCrawler(Crawler):
         if "This album is a private album" in soup.text:
             raise ScrapeError(401, "Private album")
 
-        title = soup.select_one(_SELECTORS.ALBUM_TITLE).text
+        title = soup.select_one(_SELECTORS.ALBUM_TITLE).get_text(strip=True)
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title)
 
@@ -235,5 +234,7 @@ def get_video_info(soup: BeautifulSoup) -> Video:
             resolutions.append((video_info["video_url"], "Unknown"))
 
         best = max(resolutions, key=lambda x: extract_resolution(x[0]))
-        return Video(video_info["video_id"], video_info["video_title"], URL(best[1].strip("/")), best[0].split()[0])
+        return Video(
+            video_info["video_id"], video_info["video_title"], AbsoluteHttpURL(best[1].strip("/")), best[0].split()[0]
+        )
     raise ScrapeError(404)

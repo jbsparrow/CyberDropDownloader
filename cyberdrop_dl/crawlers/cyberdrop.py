@@ -54,7 +54,7 @@ class CyberdropCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         try:
-            title: str = soup.select_one(_SELECTORS.ALBUM_TITLE).text
+            title: str = soup.select_one(_SELECTORS.ALBUM_TITLE).get_text(strip=True)
             title = self.create_title(title, album_id)
             scrape_item.setup_as_album(title, album_id=album_id)
         except AttributeError:

@@ -20,7 +20,7 @@ class CelebForumCrawler(XenforoCrawler):
     DOMAIN: ClassVar[str] = "celebforum"
     FOLDER_DOMAIN: ClassVar[str] = "CelebForum"
 
-    def filter_link(self, link: URL) -> URL | None:
+    def filter_link(self, link: AbsoluteHttpURL) -> URL | None:
         if link.host == self.PRIMARY_URL.host:
             if all(part in link.parts for part in ["data", "attachments"]):  # Thumbnails
                 return None

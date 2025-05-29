@@ -66,7 +66,7 @@ class BoxDotComCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        js_text: str = soup.select_one(JS_SELECTOR).text
+        js_text: str = soup.select_one(JS_SELECTOR).get_text(strip=True)
         _, _, data = js_text.removesuffix(";").partition("=")
 
         if not data:

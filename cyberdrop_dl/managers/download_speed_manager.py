@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from aiolimiter import AsyncLimiter
 
-if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
+from cyberdrop_dl import config
 
 
 class DownloadSpeedLimiter(AsyncLimiter):
-    def __init__(self, manager: Manager) -> None:
-        self.download_speed_limit = (
-            manager.config_manager.global_settings_data.rate_limiting_options.download_speed_limit
-        )
+    def __init__(self, _=None) -> None:
+        self.download_speed_limit = config.global_settings.rate_limiting_options.download_speed_limit
         self.chunk_size = 1024 * 1024 * 10  # 10MB
         if self.download_speed_limit:
             self.chunk_size = min(self.chunk_size, self.download_speed_limit)

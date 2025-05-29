@@ -38,7 +38,7 @@ FILE_HOST_ALBUM = ScrapeItemType.FILE_HOST_ALBUM
 class HlsSegment(NamedTuple):
     part: str
     name: str
-    url: URL
+    url: AbsoluteHttpURL
 
 
 @dataclass(unsafe_hash=True, slots=True)
@@ -62,7 +62,7 @@ class MediaItem:
     download_filename: str | None = field(default=None, init=False)
     filesize: int | None = field(default=None, init=False)
     current_attempt: int = field(default=0, init=False, hash=False, compare=False)
-    partial_file: Path | None = field(default=None, init=False)
+    partial_file: Path = field(default=None, init=False)  # type: ignore
     complete_file: Path = field(default=None, init=False)  # type: ignore
     hash: str | None = field(default=None, init=False, hash=False, compare=False)
     downloaded: bool = field(default=False, init=False, hash=False, compare=False)

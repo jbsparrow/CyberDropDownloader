@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl.database.backends.sqlite.tables.definitions import create_temp_referer
 from cyberdrop_dl.database.base import TempRefererTable
-from cyberdrop_dl.utils.database.table_definitions import create_temp_referer
 
 if TYPE_CHECKING:
     from cyberdrop_dl.database.backends.sqlite import SQLiteDatabase

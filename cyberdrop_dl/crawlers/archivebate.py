@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
+from cyberdrop_dl import database
 from cyberdrop_dl.crawlers.mixdrop import MixDropCrawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
@@ -65,7 +66,7 @@ class ArchiveBateCrawler(MixDropCrawler):
 
         url = scrape_item.url
         # Can't use check_complete_by_referer. We need the mixdrop url for that
-        check_complete = await self.manager.db_manager.history_table.check_complete(self.DOMAIN, url, url)
+        check_complete = await database.history_table.check_complete(self.DOMAIN, url, url)
         if check_complete:
             self.log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
             self.manager.progress_manager.download_progress.add_previously_completed()

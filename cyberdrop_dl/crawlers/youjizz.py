@@ -15,7 +15,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -81,7 +80,7 @@ class YouJizzCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
-def get_video_id(url: URL) -> str:
+def get_video_id(url: AbsoluteHttpURL) -> str:
     if "embed" in url.parts:
         embed_index = url.parts.index("embed")
         return url.parts[embed_index + 1]

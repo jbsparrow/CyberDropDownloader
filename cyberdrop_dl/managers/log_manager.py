@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 
+from cyberdrop_dl import config
 from cyberdrop_dl.constants import CSV_DELIMITER
 from cyberdrop_dl.exceptions import get_origin
 from cyberdrop_dl.utils.logger import log, log_spacer
@@ -22,18 +23,13 @@ if TYPE_CHECKING:
 class LogManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.main_log: Path = manager.path_manager.main_log
-        self.last_post_log: Path = manager.path_manager.last_forum_post_log
-        self.unsupported_urls_log: Path = manager.path_manager.unsupported_urls_log
-        self.download_error_log: Path = manager.path_manager.download_error_urls_log
-        self.scrape_error_log: Path = manager.path_manager.scrape_error_urls_log
-        self.dedupe_log: Path = manager.path_manager.dedupe_log
         self._csv_locks = {}
 
     def startup(self) -> None:
         """Startup process for the file manager."""
-        for var in vars(self).values():
-            if isinstance(var, Path):
+
+        for var in vars(config.settings.logs).values():
+            if isinstance(var, Path) and var.suffix in (".csv", ".log"):
                 var.unlink(missing_ok=True)
 
     async def write_to_csv(self, file: Path, **kwargs) -> None:
@@ -51,35 +47,40 @@ class LogManager:
 
     async def write_last_post_log(self, url: URL) -> None:
         """Writes to the last post log."""
-        await self.write_to_csv(self.last_post_log, url=url)
+        await self.write_to_csv(config.settings.logs.last_forum_post, url=url)
 
     async def write_unsupported_urls_log(self, url: URL, origin: URL | None = None) -> None:
         """Writes to the unsupported urls log."""
-        await self.write_to_csv(self.unsupported_urls_log, url=url, origin=origin)
+        await self.write_to_csv(config.settings.logs.unsupported_urls, url=url, origin=origin)
 
     async def write_download_error_log(self, media_item: MediaItem, error_message: str) -> None:
         """Writes to the download error log."""
         origin = get_origin(media_item)
         await self.write_to_csv(
-            self.download_error_log, url=media_item.url, error=error_message, referer=media_item.referer, origin=origin
+            config.settings.logs.download_error_urls,
+            url=media_item.url,
+            error=error_message,
+            referer=media_item.referer,
+            origin=origin,
         )
 
     async def write_scrape_error_log(
         self, url: URL | str, error_message: str, origin: URL | Path | None = None
     ) -> None:
         """Writes to the scrape error log."""
-        await self.write_to_csv(self.scrape_error_log, url=url, error=error_message, origin=origin)
+        await self.write_to_csv(config.settings.logs.scrape_error_urls, url=url, error=error_message, origin=origin)
 
     async def write_dedupe_log(self, og_file: Path, hash: str, removed_file: Path) -> None:
         """Writes to the dedupe log."""
-        await self.write_to_csv(self.scrape_error_log, original_file=og_file, hash=hash, removed_file=removed_file)
+        await self.write_to_csv(
+            config.settings.logs.dedupe_log, original_file=og_file, hash=hash, removed_file=removed_file
+        )
 
     async def update_last_forum_post(self) -> None:
         """Updates the last forum post."""
-        input_file = self.manager.path_manager.input_file
 
-        def proceed():
-            return input_file.is_file() and self.last_post_log.is_file()
+        def proceed() -> bool:
+            return config.settings.files.input_file.is_file() and config.settings.logs.last_forum_post.is_file()
 
         if not await asyncio.to_thread(proceed):
             return
@@ -89,7 +90,7 @@ class LogManager:
 
         current_urls, current_base_urls, new_urls, new_base_urls = [], [], [], []
         try:
-            async with aiofiles.open(input_file, encoding="utf8") as f:
+            async with aiofiles.open(config.settings.files.input_file, encoding="utf8") as f:
                 async for line in f:
                     url = base_url = line.strip().removesuffix("/")
 
@@ -104,7 +105,7 @@ class LogManager:
             log("Unable to read input file, skipping update_last_forum_post", 40)
             return
 
-        async with aiofiles.open(self.last_post_log, encoding="utf8") as f:
+        async with aiofiles.open(config.settings.logs.last_forum_post, encoding="utf8") as f:
             reader = csv.DictReader(await f.readlines())
             for row in reader:
                 new_url = base_url = row.get("url").strip().removesuffix("/")  # type: ignore
@@ -131,5 +132,5 @@ class LogManager:
             log("No URLs updated", 20)
             return
 
-        async with aiofiles.open(input_file, "w", encoding="utf8") as f:
+        async with aiofiles.open(config.settings.files.input_file, "w", encoding="utf8") as f:
             await f.write("\n".join(updated_urls))

@@ -6,6 +6,7 @@ from dataclasses import field
 from re import Pattern
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl import config
 from cyberdrop_dl.exceptions import RealDebridError
 from cyberdrop_dl.managers.real_debrid.api import RealDebridApi
 from cyberdrop_dl.utils.logger import log
@@ -13,9 +14,8 @@ from cyberdrop_dl.utils.logger import log
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 if TYPE_CHECKING:
-    from yarl import URL
-
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 FOLDER_AS_PART = {"folder", "folders", "dir"}
 FOLDER_AS_QUERY = {"sharekey"}
@@ -24,7 +24,7 @@ FOLDER_AS_QUERY = {"sharekey"}
 class RealDebridManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.__api_token = self.manager.config_manager.authentication_data.realdebrid.api_key
+        self.__api_token = config.auth.realdebrid.api_key
         self.enabled = bool(self.__api_token)
         self.file_regex: Pattern = field(init=False)
         self.folder_regex: Pattern = field(init=False)
@@ -47,29 +47,29 @@ class RealDebridManager:
             self.file_regex = re.compile(file_regex)
             self.folder_regex = re.compile(folder_regex)
         except RealDebridError as e:
-            log(f"Failed RealDebrid setup: {e.error}", 40)
+            log(f"Failed RealDebrid setup: {e}", 40)
             self.enabled = False
 
-    def is_supported_folder(self, url: URL) -> bool:
+    def is_supported_folder(self, url: AbsoluteHttpURL) -> bool:
         match = self.folder_regex.search(str(url))
         return bool(match)
 
-    def is_supported_file(self, url: URL) -> bool:
+    def is_supported_file(self, url: AbsoluteHttpURL) -> bool:
         match = self.file_regex.search(str(url))
         return bool(match)
 
-    def is_supported(self, url: URL) -> bool:
+    def is_supported(self, url: AbsoluteHttpURL) -> bool:
         match = self.supported_regex.search(str(url))
         return bool(match) or "real-debrid" in url.host.lower()
 
-    def unrestrict_link(self, url: URL, password: str | None = None) -> URL:
-        return self.api.unrestrict.link(url, password).get("download")
+    def unrestrict_link(self, url: AbsoluteHttpURL, password: str | None = None) -> AbsoluteHttpURL:
+        return self.api.unrestrict.link(url, password).get("download")  # type: ignore
 
-    def unrestrict_folder(self, url: URL) -> list[URL]:
+    def unrestrict_folder(self, url: AbsoluteHttpURL) -> list[AbsoluteHttpURL]:
         return self.api.unrestrict.folder(url)
 
     @staticmethod
-    def _guess_folder_by_part(url: URL):
+    def _guess_folder_by_part(url: AbsoluteHttpURL) -> str | None:
         for word in FOLDER_AS_PART:
             if word in url.parts:
                 index = url.parts.index(word)
@@ -78,14 +78,14 @@ class RealDebridManager:
         return None
 
     @staticmethod
-    def _guess_folder_by_query(url: URL):
+    def _guess_folder_by_query(url: AbsoluteHttpURL) -> str | None:
         for word in FOLDER_AS_QUERY:
             folder = url.query.get(word)
             if folder:
                 return folder
         return None
 
-    def guess_folder(self, url: URL) -> str:
+    def guess_folder(self, url: AbsoluteHttpURL) -> str:
         for guess_function in self._folder_guess_functions:
             folder = guess_function(url)
             if folder:

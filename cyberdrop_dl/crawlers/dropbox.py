@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING, ClassVar
 
+from cyberdrop_dl import config
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
@@ -11,8 +12,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_fr
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -29,7 +28,7 @@ class DropboxCrawler(Crawler):
     DOMAIN: ClassVar[str] = "dropbox"
 
     def __post_init__(self) -> None:
-        self.download_folders = self.manager.parsed_args.cli_only_args.download_dropbox_folders_as_zip
+        self.download_folders = config.cli.cli_only_args.download_dropbox_folders_as_zip
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         url = await self.get_share_url(scrape_item)
@@ -66,7 +65,7 @@ class DropboxCrawler(Crawler):
             return scrape_item.url
         return await self.get_redict_url(scrape_item.url)
 
-    async def get_folder_name(self, url: URL) -> str | None:
+    async def get_folder_name(self, url: AbsoluteHttpURL) -> str | None:
         url = await self.get_redict_url(url)
         async with self.request_limiter:
             headers = await self.client.get_head(self.DOMAIN, url)
@@ -74,7 +73,7 @@ class DropboxCrawler(Crawler):
             raise ScrapeError(422)
         return get_filename_from_headers(headers)
 
-    async def get_redict_url(self, url: URL) -> AbsoluteHttpURL:
+    async def get_redict_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         async with self.request_limiter:
             headers = await self.client.get_head(self.DOMAIN, url)
         location = headers.get("location")
@@ -87,7 +86,7 @@ class DropboxCrawler(Crawler):
 class DropboxItem:
     file_id: str | None
     folder_tokens: tuple[str, str] | None
-    url: URL
+    url: AbsoluteHttpURL
     rlkey: str
     filename: str
 
@@ -104,7 +103,7 @@ class DropboxItem:
         return AbsoluteHttpURL(f"https://www.dropbox.com/scl/fi/{self.file_id}")
 
     @cached_property
-    def download_url(self) -> URL:
+    def download_url(self) -> AbsoluteHttpURL:
         return self.canonical_url.update_query(dl=1, rlkey=self.rlkey)
 
     @cached_property
@@ -119,7 +118,7 @@ class DropboxItem:
         return f"https://www.dropbox.com/scl/fo/{path}"
 
 
-def get_item_info(url: URL) -> DropboxItem:
+def get_item_info(url: AbsoluteHttpURL) -> DropboxItem:
     """Parses item information from the url.
 
     See https://www.dropboxforum.com/discussions/101001012/shared-link--scl-to-s/689070

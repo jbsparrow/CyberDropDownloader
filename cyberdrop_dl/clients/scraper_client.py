@@ -103,8 +103,8 @@ class ScraperClient:
         self._timeouts = aiohttp.ClientTimeout(*self._timeout_tuple)
         self._global_limiter = self.client_manager.global_rate_limiter
         self._trace_configs = []
-        self._save_pages_html = client_manager.manager.config_manager.settings_data.files.save_pages_html
-        self._pages_folder = self.client_manager.manager.path_manager.pages_folder
+        self._save_pages_html = client_manager.config.settings.files.save_pages_html
+        self._pages_folder = self.client_manager.config.appdata.pages_folder
         # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
         min_html_file_path_len = len(str(self._pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
         self._max_html_stem_len = 245 - min_html_file_path_len

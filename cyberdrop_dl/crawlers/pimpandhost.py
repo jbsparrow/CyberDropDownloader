@@ -39,7 +39,7 @@ class PimpAndHostCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url):
             if not title:
                 album_id = scrape_item.url.parts[2]
-                title_portion = css.select_one(soup, ALBUM_TITLE_SELECTOR).text
+                title_portion = css.select_one(soup, ALBUM_TITLE_SELECTOR).get_text(strip=True)
                 title = self.create_title(title_portion, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
 

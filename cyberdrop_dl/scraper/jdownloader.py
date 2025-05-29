@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from myjdapi import myjdapi
 
+from cyberdrop_dl import config
 from cyberdrop_dl.exceptions import JDownloaderError
 from cyberdrop_dl.utils.logger import log
 
@@ -13,7 +14,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.types import AbsoluteHttpURL
 
 P = ParamSpec("P")
@@ -47,15 +47,16 @@ def error_wrapper(func: Callable[P, R]) -> Callable[P, R | None]:
 class JDownloader:
     """Class that handles connecting and passing links to JDownloader."""
 
-    def __init__(self, manager: Manager) -> None:
-        self.enabled = manager.config_manager.settings_data.runtime_options.send_unsupported_to_jdownloader
-        self.jdownloader_device = manager.config_manager.authentication_data.jdownloader.device
-        self.jdownloader_username = manager.config_manager.authentication_data.jdownloader.username
-        self.jdownloader_password = manager.config_manager.authentication_data.jdownloader.password
-        self.jdownloader_download_dir = manager.config_manager.settings_data.runtime_options.jdownloader_download_dir
-        self.jdownloader_autostart = manager.config_manager.settings_data.runtime_options.jdownloader_autostart
-        if not self.jdownloader_download_dir:
-            self.jdownloader_download_dir = manager.path_manager.download_folder
+    def __init__(self) -> None:
+        self.enabled = config.settings.runtime_options.send_unsupported_to_jdownloader
+        self.jdownloader_device = config.auth.jdownloader.device
+        self.jdownloader_username = config.auth.jdownloader.username
+        self.jdownloader_password = config.auth.jdownloader.password
+        self.jdownloader_download_dir = (
+            config.settings.runtime_options.jdownloader_download_dir or config.settings.files.download_folder
+        )
+        assert self.jdownloader_download_dir
+        self.jdownloader_autostart = config.settings.runtime_options.jdownloader_autostart
         self.jdownloader_download_dir = self.jdownloader_download_dir.resolve()
         self.jdownloader_agent = field(init=False)
 
@@ -94,4 +95,4 @@ class JDownloader:
                 ],
             )
         except (AssertionError, myjdapi.MYJDException) as e:
-            raise JDownloaderError(e) from e
+            raise JDownloaderError(str(e)) from e

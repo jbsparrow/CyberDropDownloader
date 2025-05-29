@@ -153,8 +153,8 @@ class PkmncardsCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        name = soup.select_one(_SELECTORS.CARD_NAME).text
-        number = soup.select_one(_SELECTORS.CARD_NUMBER).text
+        name = soup.select_one(_SELECTORS.CARD_NAME).get_text(strip=True)
+        number = soup.select_one(_SELECTORS.CARD_NUMBER).get_text(strip=True)
         link_str: str = soup.select_one(_SELECTORS.CARD_DOWNLOAD)["href"]
         link = self.parse_url(link_str)
         card_set = create_set(soup)
@@ -223,15 +223,15 @@ def create_set(soup: Tag) -> CardSet:
     tag = soup.select_one(_SELECTORS.SET_SERIES_CODE)
     # Some sets do not have series code
     set_series_code: str | None = tag.get_text(strip=True) if tag else None
-    set_info: dict[str, list[dict]] = json.loads(css.select_one(soup, _SELECTORS.SET_INFO).text)
+    set_info: dict[str, list[dict]] = json.loads(css.select_one(soup, _SELECTORS.SET_INFO).get_text(strip=True))
     release_date: int | None = None
     for item in set_info["@graph"]:
         if iso_date := item.get("datePublished"):
             release_date = calendar.timegm(datetime.fromisoformat(iso_date).timetuple())
             break
 
-    set_abbr = css.select_one(soup, _SELECTORS.SET_ABBR).text
-    set_name = css.select_one(soup, _SELECTORS.SET_NAME).text
+    set_abbr = css.select_one(soup, _SELECTORS.SET_ABBR).get_text(strip=True)
+    set_name = css.select_one(soup, _SELECTORS.SET_NAME).get_text(strip=True)
 
     if not release_date:
         raise ScrapeError(422)

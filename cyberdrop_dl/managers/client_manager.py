@@ -16,6 +16,7 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
+from cyberdrop_dl import config
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError
@@ -26,6 +27,8 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from aiohttp_client_cache.response import CachedResponse
     from curl_cffi.requests.models import Response as CurlResponse
 
@@ -61,19 +64,20 @@ class ClientManager:
 
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        global_settings_data = manager.config_manager.global_settings_data
-        self.connection_timeout = global_settings_data.rate_limiting_options.connection_timeout
-        self.read_timeout = global_settings_data.rate_limiting_options.read_timeout
-        self.rate_limit = global_settings_data.rate_limiting_options.rate_limit
+        self.connection_timeout = config.global_settings.rate_limiting_options.connection_timeout
+        self.read_timeout = config.global_settings.rate_limiting_options.read_timeout
+        self.rate_limit = config.global_settings.rate_limiting_options.rate_limit
 
-        self.download_delay = global_settings_data.rate_limiting_options.download_delay
-        self.user_agent = global_settings_data.general.user_agent
-        self.simultaneous_per_domain = global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
+        self.download_delay = config.global_settings.rate_limiting_options.download_delay
+        self.user_agent = config.global_settings.general.user_agent
+        self.simultaneous_per_domain = (
+            config.global_settings.rate_limiting_options.max_simultaneous_downloads_per_domain
+        )
 
-        verify_ssl = not global_settings_data.general.allow_insecure_connections
+        verify_ssl = not config.global_settings.general.allow_insecure_connections
         self.ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT) if verify_ssl else False
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
+        self.proxy: URL | None = config.global_settings.general.proxy  # type: ignore
 
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
@@ -99,7 +103,7 @@ class ClientManager:
         self.global_rate_limiter = AsyncLimiter(self.rate_limit, 1)
         self.session_limit = asyncio.Semaphore(50)
         self.download_session_limit = asyncio.Semaphore(
-            self.manager.config_manager.global_settings_data.rate_limiting_options.max_simultaneous_downloads,
+            config.global_settings.rate_limiting_options.max_simultaneous_downloads,
         )
 
         self.scraper_session = ScraperClient(self)
@@ -108,9 +112,9 @@ class ClientManager:
         self.flaresolverr = Flaresolverr(self)
 
     def load_cookie_files(self) -> None:
-        if self.manager.config_manager.settings_data.browser_cookies.auto_import:
+        if config.settings.browser_cookies.auto_import:
             get_cookies_from_browsers(self.manager)
-        cookie_files = sorted(self.manager.path_manager.cookies_dir.glob("*.txt"))
+        cookie_files = sorted(config.appdata.cookies_dir.glob("*.txt"))
         if not cookie_files:
             return
 
@@ -209,7 +213,7 @@ class ClientManager:
         raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
-    def check_bunkr_maint(headers: dict) -> None:
+    def check_bunkr_maint(headers: Mapping[str, str]) -> None:
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
 
@@ -278,7 +282,7 @@ class Flaresolverr:
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
-        self.flaresolverr_host: URL = client_manager.manager.config_manager.global_settings_data.general.flaresolverr  # type: ignore
+        self.flaresolverr_host: URL = client_manager.config.config.global_settings.general.flaresolverr  # type: ignore
         self.enabled = bool(self.flaresolverr_host)
         self.session_id: str = ""
         self.session_create_timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session

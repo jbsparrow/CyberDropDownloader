@@ -23,7 +23,7 @@ from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl import constants
+from cyberdrop_dl import config, constants
 from cyberdrop_dl.exceptions import (
     CDLBaseError,
     ErrorLogMessage,
@@ -197,7 +197,7 @@ def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
 
 def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) -> Path:
     """Returns the path to the download folder."""
-    download_dir = manager.path_manager.download_folder
+    download_dir = config.settings.files.download_folder
 
     if scrape_item.retry:
         return scrape_item.retry_path  # type: ignore
@@ -211,7 +211,7 @@ def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) ->
 def remove_file_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]:
     """Removes the additional string some websites adds to the end of every filename."""
     original_filename = filename
-    if not manager.config_manager.settings_data.download_options.remove_generated_id_from_filenames:
+    if not config.settings.download_options.remove_generated_id_from_filenames:
         return original_filename, filename
 
     filename = filename.rsplit(ext, 1)[0]
@@ -281,7 +281,7 @@ def purge_dir_tree(dirname: Path) -> None:
 
 def check_partials_and_empty_folders(manager: Manager):
     """Checks for partial downloads, deletes partial files and empty folders."""
-    settings = manager.config_manager.settings_data.runtime_options
+    settings = config.settings.runtime_options
     if settings.delete_partial_files:
         delete_partial_files(manager)
     if not settings.skip_check_for_partial_files:
@@ -290,49 +290,47 @@ def check_partials_and_empty_folders(manager: Manager):
         delete_empty_folders(manager)
 
 
-def delete_partial_files(manager: Manager):
+def delete_partial_files(manager: Manager) -> None:
     """Deletes partial download files recursively."""
     log_red("Deleting partial downloads...")
-    for file in manager.path_manager.download_folder.rglob("*.part"):
+    for file in config.settings.files.download_folder.rglob("*.part"):
         file.unlink(missing_ok=True)
 
 
-def check_for_partial_files(manager: Manager):
+def check_for_partial_files(manager: Manager) -> None:
     """Checks if there are partial downloads in any subdirectory and logs if found."""
     log_yellow("Checking for partial downloads...")
-    if next(manager.path_manager.download_folder.rglob("*.part"), None) is not None:
+    if next(config.settings.files.download_folder.rglob("*.part"), None) is not None:
         log_yellow("There are partial downloads in the downloads folder")
 
 
 def delete_empty_folders(manager: Manager):
     """Deletes empty folders efficiently."""
     log_yellow("Checking for empty folders...")
-    purge_dir_tree(manager.path_manager.download_folder)
+    purge_dir_tree(config.settings.files.download_folder)
 
-    sorted_folder = manager.path_manager.sorted_folder
-    if sorted_folder and manager.config_manager.settings_data.sorting.sort_downloads:
-        purge_dir_tree(sorted_folder)
+    if config.settings.sorting.sort_folder and config.settings.sorting.sort_downloads:
+        purge_dir_tree(config.settings.sorting.sort_folder)
 
 
 async def send_webhook_message(manager: Manager) -> None:
     """Outputs the stats to a code block for webhook messages."""
-    webhook = manager.config_manager.settings_data.logs.webhook
-
-    if not webhook:
+    if not config.settings.logs.webhook:
         return
 
     rich.print("\nSending Webhook Notifications.. ")
-    url: AbsoluteHttpURL = webhook.url.get_secret_value()  # type: ignore
+    url: AbsoluteHttpURL = config.settings.logs.webhook.url.get_secret_value()  # type: ignore
     text: Text = constants.LOG_OUTPUT_TEXT
     diff_text = convert_text_by_diff(text)
-    main_log = manager.path_manager.main_log
 
     form = FormData()
 
-    if "attach_logs" in webhook.tags and (size := await asyncio.to_thread(get_size_or_none, main_log)):
+    if "attach_logs" in config.settings.logs.webhook.tags and (
+        size := await asyncio.to_thread(get_size_or_none, config.settings.logs.main_log)
+    ):
         if size <= 25 * 1024 * 1024:  # 25MB
-            async with aiofiles.open(main_log, "rb") as f:
-                form.add_field("file", await f.read(), filename=main_log.name)
+            async with aiofiles.open(config.settings.logs.main_log, "rb") as f:
+                form.add_field("file", await f.read(), filename=config.settings.logs.main_log.name)
 
         else:
             diff_text += "\n\nWARNING: log file too large to send as attachment\n"

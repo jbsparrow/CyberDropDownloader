@@ -10,6 +10,7 @@ from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.widgets import Footer, RichLog, Static, TabbedContent, TabPane
 
+from cyberdrop_dl import config
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
@@ -76,7 +77,7 @@ class TextualUI(App[int]):
         """Sets a refresh rate according to the config
 
         This is only for the main UI progress. Textual will compute the required refresh for its native stuff"""
-        refresh_rate = self.manager.live_manager.refresh_rate
+        refresh_rate = config.global_settings.ui_options.refresh_rate
         self.set_interval(1 / refresh_rate, self.update_live)
 
     def update_live(self) -> None:
@@ -195,7 +196,7 @@ class PortraitTextualUI(TextualUI):
 async def textual_ui(manager: Manager):
     if manager.live_manager.use_textual:
         UI = TextualUI
-        if manager.parsed_args.cli_only_args.portrait:
+        if config.cli.cli_only_args.portrait:
             UI = PortraitTextualUI
         textual_ui = UI(manager)
         ui_task = asyncio.create_task(textual_ui.run_async())

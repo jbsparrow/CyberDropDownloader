@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
+from cyberdrop_dl import cache
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
@@ -103,8 +104,8 @@ class OneDriveCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "OneDrive"
 
     def __post_init__(self) -> None:
-        badger_token: str = self.manager.cache_manager.get("onedrive_badger_token") or ""
-        badger_token_expires: str = self.manager.cache_manager.get("onedrive_badger_token_expires") or ""
+        badger_token: str = cache.get("onedrive_badger_token") or ""
+        badger_token_expires: str = cache.get("onedrive_badger_token_expires") or ""
         self.auth_headers = {}
         expired = True
         if badger_token_expires:
@@ -230,8 +231,8 @@ class OneDriveCrawler(Crawler):
         badger_token: str = json_resp["token"]
         badger_token_expires: str = json_resp["expiryTimeUtc"]
         self.auth_headers = {"Prefer": "autoredeem", "Authorization": f"Badger {badger_token}"}
-        self.manager.cache_manager.save("onedrive_badger_token", badger_token)
-        self.manager.cache_manager.save("onedrive_badger_token_expires", badger_token_expires)
+        cache.save("onedrive_badger_token", badger_token)
+        cache.save("onedrive_badger_token_expires", badger_token_expires)
 
 
 def is_share_link(url: AbsoluteHttpURL) -> bool:

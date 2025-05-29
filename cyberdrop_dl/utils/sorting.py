@@ -13,6 +13,7 @@ import PIL
 from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
+from cyberdrop_dl import config
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_with_color
 from cyberdrop_dl.utils.utilities import purge_dir_tree
@@ -31,16 +32,7 @@ async def get_modified_date(file: Path) -> datetime:
 class Sorter:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.download_folder = manager.path_manager.scan_folder or manager.path_manager.download_folder
-        self.sorted_folder = manager.path_manager.sorted_folder
-        self.incrementer_format: str = manager.config_manager.settings_data.sorting.sort_incrementer_format
-        self.db_manager = manager.db_manager
-
-        settings = manager.config_manager.settings_data.sorting
-        self.audio_format: str | None = settings.sorted_audio
-        self.image_format: str | None = settings.sorted_image
-        self.video_format: str | None = settings.sorted_video
-        self.other_format: str | None = settings.sorted_other
+        self.download_folder = config.settings.sorting.scan_folder or config.settings.files.download_folder
 
     async def _get_files(self, directory: Path) -> AsyncGenerator[Path]:
         """Finds all files in a directory and returns them in a list."""
@@ -69,7 +61,7 @@ class Sorter:
                 old_path.unlink()
                 return True
             for auto_index in itertools.count(1):
-                new_filename = f"{new_path.stem}{self.incrementer_format.format(i=auto_index)}{new_path.suffix}"
+                new_filename = f"{new_path.stem}{config.settings.sorting.sort_incrementer_format.format(i=auto_index)}{new_path.suffix}"
                 possible_new_path = new_path.parent / new_filename
                 try:
                     old_path.rename(possible_new_path)
@@ -88,7 +80,7 @@ class Sorter:
             return
 
         log_with_color("\nSorting downloads, please wait", "cyan", 20)
-        await asyncio.to_thread(self.sorted_folder.mkdir, parents=True, exist_ok=True)
+        await asyncio.to_thread(config.settings.sorting.sort_folder.mkdir, parents=True, exist_ok=True)
 
         files_to_sort: dict[str, list[Path]] = {}
 
@@ -131,7 +123,7 @@ class Sorter:
 
     async def sort_audio(self, file: Path, base_name: str) -> None:
         """Sorts an audio file into the sorted audio folder."""
-        if not self.audio_format:
+        if not config.settings.sorting.sorted_audio:
             return
         bitrate = duration = sample_rate = None
         with contextlib.suppress(RuntimeError, CalledProcessError):
@@ -143,7 +135,7 @@ class Sorter:
         if await self._process_file_move(
             file,
             base_name,
-            self.audio_format,
+            config.settings.sorting.sorted_audio,
             bitrate=bitrate,
             duration=duration,
             length=duration,
@@ -153,7 +145,7 @@ class Sorter:
 
     async def sort_image(self, file: Path, base_name: str) -> None:
         """Sorts an image file into the sorted image folder."""
-        if not self.image_format:
+        if not config.settings.sorting.sorted_image:
             return
         height = resolution = width = None
         with (
@@ -164,13 +156,13 @@ class Sorter:
             resolution = f"{width}x{height}"
 
         if await self._process_file_move(
-            file, base_name, self.image_format, resolution=resolution, width=width, height=height
+            file, base_name, config.settings.sorting.sorted_image, resolution=resolution, width=width, height=height
         ):
             self.manager.progress_manager.sort_progress.increment_image()
 
     async def sort_video(self, file: Path, base_name: str) -> None:
         """Sorts a video file into the sorted video folder."""
-        if not self.video_format:
+        if not config.settings.sorting.sorted_video:
             return
 
         codec = duration = fps = height = resolution = width = None
@@ -195,7 +187,7 @@ class Sorter:
         if await self._process_file_move(
             file,
             base_name,
-            self.video_format,
+            config.settings.sorting.sorted_video,
             codec=codec,
             duration=duration,
             fps=fps,
@@ -207,9 +199,9 @@ class Sorter:
 
     async def sort_other(self, file: Path, base_name: str) -> None:
         """Sorts an other file into the sorted other folder."""
-        if not self.other_format:
+        if not config.settings.sorting.sorted_other:
             return
-        if await self._process_file_move(file, base_name, self.other_format):
+        if await self._process_file_move(file, base_name, config.settings.sorting.sorted_other):
             self.manager.progress_manager.sort_progress.increment_other()
 
     async def _process_file_move(self, file: Path, base_name: str, format_str: str, **kwargs) -> bool:
@@ -229,7 +221,7 @@ class Sorter:
                 file_date_us=file_date_us,
                 filename=file.stem,
                 parent_dir=file.parent.name,
-                sort_dir=self.sorted_folder,
+                sort_dir=config.settings.sorting.sort_folder,
                 **kwargs,
             ),
         )

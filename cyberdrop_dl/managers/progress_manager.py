@@ -15,7 +15,7 @@ from rich.progress import Progress, SpinnerColumn, TaskID
 from rich.text import Text
 from yarl import URL
 
-from cyberdrop_dl import __version__
+from cyberdrop_dl import __version__, config
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
 from cyberdrop_dl.ui.progress.hash_progress import HashProgress
@@ -43,8 +43,6 @@ class ProgressManager:
     def __init__(self, manager: Manager) -> None:
         # File Download Bars
         self.manager = manager
-        ui_options = manager.config_manager.global_settings_data.ui_options
-        self.portrait = manager.parsed_args.cli_only_args.portrait
         self.file_progress = FileProgress(manager)
         self.scraping_progress = ScrapingProgress(manager)
 
@@ -55,7 +53,7 @@ class ProgressManager:
         self.hash_progress = HashProgress(manager)
         self.sort_progress = SortProgress(1, manager)
 
-        self.ui_refresh_rate = ui_options.refresh_rate
+        self.ui_refresh_rate = config.global_settings.ui_options.refresh_rate
 
         self.hash_remove_layout: RenderableType = field(init=False)
         self.hash_layout: RenderableType = field(init=False)
@@ -71,18 +69,18 @@ class ProgressManager:
         finally:
             self.status_message.update(self.status_message_task_id, visible=False)
 
-    def pause_or_resume(self):
+    def pause_or_resume(self) -> None:
         if self.manager.states.RUNNING.is_set():
             self.pause()
         else:
             self.resume()
 
-    def pause(self, msg: str = ""):
+    def pause(self, msg: str = "") -> None:
         self.manager.states.RUNNING.clear()
         suffix = f" [{msg}]" if msg else ""
         self.activity.update(self.activity_task_id, description=f"Paused{suffix}")
 
-    def resume(self):
+    def resume(self) -> None:
         self.manager.states.RUNNING.set()
         self.activity.update(self.activity_task_id, description="Running Cyberdrop-DL")
 
@@ -131,13 +129,13 @@ class ProgressManager:
 
     @property
     def fullscreen_layout(self) -> Layout:
-        if self.portrait:
+        if config.cli.cli_only_args.portrait:
             return self.vertical_layout
         return self.horizontal_layout
 
     def print_stats(self, start_time: float) -> None:
         """Prints the stats of the program."""
-        if not self.manager.parsed_args.cli_only_args.print_stats:
+        if not config.cli.cli_only_args.print_stats:
             return
         end_time = time.perf_counter()
         runtime = timedelta(seconds=int(end_time - start_time))
@@ -145,10 +143,10 @@ class ProgressManager:
 
         log_spacer(20)
         log("Printing Stats...\n", 20)
-        config_path = self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config
-        config_path_text = get_console_hyperlink(config_path, text=self.manager.config_manager.loaded_config)
+
+        config_path_text = get_console_hyperlink(config.current_config.folder, text=config.current_config.folder.name)
         input_file_text = get_input(self.manager)
-        log_folder_text = get_console_hyperlink(self.manager.path_manager.log_folder)
+        log_folder_text = get_console_hyperlink(config.settings.logs.log_folder)
 
         log_concat("Run Stats (config: ", config_path_text, ")", style="cyan")
         log_concat("  Input File: ", input_file_text, style="yellow")
@@ -204,14 +202,14 @@ def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_
 
 
 def get_input(manager: Manager) -> Text | str:
-    if manager.parsed_args.cli_only_args.retry_all:
+    if config.cli.cli_only_args.retry_all:
         return "--retry-all"
-    if manager.parsed_args.cli_only_args.retry_failed:
+    if config.cli.cli_only_args.retry_failed:
         return "--retry-failed"
-    if manager.parsed_args.cli_only_args.retry_maintenance:
+    if config.cli.cli_only_args.retry_maintenance:
         return "--retry-maintenance"
     if manager.scrape_mapper.using_input_file:
-        return get_console_hyperlink(manager.path_manager.input_file)
+        return get_console_hyperlink(config.settings.files.input_file)
     return "--links (CLI args)"
 
 

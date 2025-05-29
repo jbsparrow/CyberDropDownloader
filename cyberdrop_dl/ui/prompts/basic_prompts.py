@@ -1,3 +1,5 @@
+# type: ignore[reportPrivateImportUsage]
+from collections.abc import Mapping
 from pathlib import Path
 
 from InquirerPy import inquirer
@@ -84,7 +86,7 @@ def enter_to_continue(message: str = "Press <ENTER> to continue", **kwargs):
 
 
 def create_choices(
-    options_groups: list[list[str]] | dict[str, list[list[str]]],
+    options_groups: list[list[str]] | Mapping[str, list[str]],
     append_last: Choice = DONE_CHOICE,
     *,
     disabled_choices: list[str] | None = None,

@@ -115,7 +115,7 @@ class Rule34VideoCrawler(Crawler):
 
 
 def get_video_info(soup: BeautifulSoup) -> VideoInfo:
-    title = soup.select_one(VIDEO_TITLE_SELECTOR).text.strip()
+    title = soup.select_one(VIDEO_TITLE_SELECTOR).get_text(strip=True)
     info_js_script = soup.select_one(JS_SELECTOR)
     info: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)
     info["title"] = title

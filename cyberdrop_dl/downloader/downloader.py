@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 
+from cyberdrop_dl import config, database
 from cyberdrop_dl.constants import CustomHTTPStatus
 from cyberdrop_dl.data_structures.url_objects import HlsSegment, MediaItem
 from cyberdrop_dl.exceptions import (
@@ -104,23 +105,23 @@ class Downloader:
         self._additional_headers = {}
         self._current_attempt_filesize = {}
         self._file_lock_vault = manager.download_manager.file_locks
-        self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
+        self._ignore_history = config.settings.runtime_options.ignore_history
         self._semaphore: asyncio.Semaphore = field(init=False)
 
     @property
-    def max_attempts(self):
-        if self.manager.config_manager.settings_data.download_options.disable_download_attempt_limit:
+    def max_attempts(self) -> int:
+        if config.settings.download_options.disable_download_attempt_limit:
             return 1
-        return self.manager.config_manager.global_settings_data.rate_limiting_options.download_attempts
+        return config.global_settings.rate_limiting_options.download_attempts
 
     def startup(self) -> None:
         """Starts the downloader."""
         self.client = self.manager.client_manager.downloader_session
         self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
 
-        self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
-        if self.manager.config_manager.settings_data.sorting.sort_downloads:
-            self.manager.path_manager.sorted_folder.mkdir(parents=True, exist_ok=True)
+        config.settings.files.download_folder.mkdir(parents=True, exist_ok=True)
+        if config.settings.sorting.sort_downloads:
+            config.settings.sorting.sort_folder.mkdir(parents=True, exist_ok=True)
 
     def update_queued_files(self, increase_total: bool = True):
         queued_files = self.manager.progress_manager.file_progress.get_queue_length()
@@ -237,7 +238,7 @@ class Downloader:
 
     async def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
         """Sets the file's datetime."""
-        if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
+        if config.settings.download_options.disable_file_timestamps:
             return
         if not media_item.datetime:
             log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
@@ -333,7 +334,7 @@ class Downloader:
         try:
             await self.manager.states.RUNNING.wait()
             media_item.current_attempt = media_item.current_attempt or 1
-            media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
+            media_item.duration = await database.history_table.get_duration(self.domain, media_item)
             await self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:

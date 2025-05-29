@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -219,7 +218,9 @@ class PMVHavenCrawler(Crawler):
             await self.process_video_info(new_scrape_item, video)
             scrape_item.add_children()
 
-    async def api_pager(self, api_url: URL, add_data: dict, *, check_key: str = "data") -> AsyncGenerator[dict]:
+    async def api_pager(
+        self, api_url: AbsoluteHttpURL, add_data: dict, *, check_key: str = "data"
+    ) -> AsyncGenerator[dict]:
         """Generator of API pages."""
         page: int = 1
         is_profile = api_url.name == "profileInput"
@@ -242,7 +243,7 @@ class PMVHavenCrawler(Crawler):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def create_canonical_video_url(video_info: dict) -> URL:
+def create_canonical_video_url(video_info: dict) -> AbsoluteHttpURL:
     title: str = video_info.get("title") or video_info["uploadTitle"]
     video_id: str = video_info["_id"]
     path = f"{title}_{video_id}"

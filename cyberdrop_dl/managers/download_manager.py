@@ -5,6 +5,7 @@ from base64 import b64encode
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl import config
 from cyberdrop_dl.clients.download_client import check_file_duration
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_debug
@@ -55,7 +56,7 @@ class DownloadManager:
 
     def get_download_limit(self, key: str) -> int:
         """Returns the download limit for a domain."""
-        rate_limiting_options = self.manager.config_manager.global_settings_data.rate_limiting_options
+        rate_limiting_options = config.global_settings.rate_limiting_options
         instances = self.download_limits.get(key, rate_limiting_options.max_simultaneous_downloads_per_domain)
 
         return min(
@@ -71,7 +72,7 @@ class DownloadManager:
 
     def check_allowed_filetype(self, media_item: MediaItem) -> bool:
         """Checks if the file type is allowed to download."""
-        ignore_options = self.manager.config_manager.settings_data.ignore_options
+        ignore_options = config.settings.ignore_options
         valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Audio"]
         if media_item.ext.lower() in FILE_FORMATS["Images"] and ignore_options.exclude_images:
             return False

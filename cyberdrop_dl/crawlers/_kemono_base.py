@@ -12,9 +12,10 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple, NotRequi
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
 
+from cyberdrop_dl import config
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
+from cyberdrop_dl.models import AliasModel
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 from cyberdrop_dl.utils.validators import parse_falsy_as_none
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 MAX_OFFSET_PER_CALL = 50
 LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
@@ -61,7 +63,7 @@ class UserURL(NamedTuple):
     post_id: str | None = None
 
     @staticmethod
-    def parse(url: URL) -> UserURL:
+    def parse(url: AbsoluteHttpURL) -> UserURL:
         if n_parts := len(url.parts) > 3:
             post_id = url.parts[5] if n_parts > 5 else None
             return UserURL(url.parts[1], url.parts[3], post_id)
@@ -73,7 +75,7 @@ class UserPostURL(UserURL):
     post_id: str
 
     @staticmethod
-    def parse(url: URL) -> UserPostURL:
+    def parse(url: AbsoluteHttpURL) -> UserPostURL:
         result = UserURL.parse(url)
         assert result.post_id, "Individual posts must have a post_id"
         return cast("UserPostURL", result)
@@ -86,7 +88,7 @@ class DiscordURL(NamedTuple):
     channel_id: str | None = None  # Only present for individual channels URLs
 
     @staticmethod
-    def parse(url: URL) -> DiscordURL:
+    def parse(url: AbsoluteHttpURL) -> DiscordURL:
         return DiscordURL(*url.parts[3:5])
 
 
@@ -221,7 +223,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self.__known_attachment_servers: dict[str, str] = {}
         self.__user_names_locks: dict[User, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-        self.session_cookie = self.manager.config_manager.authentication_data.kemono.session
+        self.session_cookie = config.auth.kemono.session
 
     async def async_startup(self) -> None:
         def check_kemono_page(response: AnyResponse) -> bool:
@@ -454,12 +456,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
         self._handle_post_content(scrape_item, post)
 
-    def __make_file_url(self, file: File) -> URL:
+    def __make_file_url(self, file: File) -> AbsoluteHttpURL:
         server = self.__known_attachment_servers.get(file["path"], "")
         url = server + f"/data{file['path']}"
         return self.parse_url(url).with_query(f=file["name"])
 
-    def __make_api_url_w_offset(self, path: str, og_url: URL) -> URL:
+    def __make_api_url_w_offset(self, path: str, og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         api_url = self.API_ENTRYPOINT / path
         offset = int(og_url.query.get("o", 0))
         if query := og_url.query.get("q"):
@@ -498,7 +500,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             self.__known_discord_servers[server_id] = server = DiscordServer(name, server_id, channels)
             return server
 
-    async def __iter_user_posts_from_url(self, scrape_item: ScrapeItem, url: URL) -> None:
+    async def __iter_user_posts_from_url(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL) -> None:
         async for json_resp in self.__api_pager(url):
             n_posts = 0
 
@@ -524,7 +526,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if not n_posts < MAX_OFFSET_PER_CALL:
                 break
 
-    async def __api_pager(self, url: URL) -> AsyncGenerator[dict[str, Any]]:
+    async def __api_pager(self, url: AbsoluteHttpURL) -> AsyncGenerator[dict[str, Any]]:
         """Yields jsons response from api calls, with increments of `MAX_OFFSET_PER_CALL`"""
         init_offset = int(url.query.get("o") or 0)
         for offset in itertools.count(init_offset, MAX_OFFSET_PER_CALL):

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from aiolimiter import AsyncLimiter
 
+from cyberdrop_dl import config
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -129,7 +130,7 @@ class TikTokCrawler(Crawler):
 
     @error_handling_wrapper
     async def handle_audio(self, scrape_item: ScrapeItem, json_data: dict, new_folder: bool = True) -> None:
-        if not self.manager.parsed_args.cli_only_args.download_tiktok_audios:
+        if not config.cli.cli_only_args.download_tiktok_audios:
             return
         title = json_data["music_info"]["title"]
         audio_id = json_data["music_info"]["id"]

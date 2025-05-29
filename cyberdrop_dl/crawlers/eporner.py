@@ -11,7 +11,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -228,7 +227,7 @@ def get_info_dict(soup: BeautifulSoup) -> dict:
     return info_dict
 
 
-def get_video_id(url: URL) -> str:
+def get_video_id(url: AbsoluteHttpURL) -> str:
     if "video-" in url.parts[1]:
         return url.parts[1].rsplit("-", 1)[1]
     if any(p in url.parts for p in ("hd-porn", "embed")) and len(url.parts) > 2:

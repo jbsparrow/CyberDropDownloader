@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
+from cyberdrop_dl import config
 from cyberdrop_dl.types import AbsoluteHttpURL
 
 from ._kemono_base import KemonoBaseCrawler, UserPost
@@ -25,7 +26,7 @@ class CoomerCrawler(KemonoBaseCrawler):
     def __post_init__(self) -> None:
         super().__post_init__()
         self.request_limiter = AsyncLimiter(4, 1)
-        self.session_cookie = self.manager.config_manager.authentication_data.coomer.session
+        self.session_cookie = config.auth.coomer.session
 
     async def async_startup(self) -> None:
         def check_coomer_page(response: AnyResponse) -> bool:
@@ -40,7 +41,7 @@ class CoomerCrawler(KemonoBaseCrawler):
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: UserPost) -> None:
         """Handles the content of a post."""
-        if "#ad" in post.content and self.manager.config_manager.settings_data.ignore_options.ignore_coomer_ads:
+        if "#ad" in post.content and config.settings.ignore_options.ignore_coomer_ads:
             return
 
         return super()._handle_post_content(scrape_item, post)

@@ -86,9 +86,9 @@ async def _run_manager(manager: Manager) -> None:
     debug_log_file_path = _setup_debug_logger(manager)
 
     if manager.multiconfig:
-        configs_to_run = manager.config_manager.get_configs()
+        configs_to_run = config.get_all_configs()
     else:
-        configs_to_run = [manager.config_manager.loaded_config]
+        configs_to_run = [config.current_config.folder.name]
 
     start_time = manager.start_time
     while configs_to_run:
@@ -145,7 +145,7 @@ async def _scheduler(manager: Manager) -> None:
 
 async def _runtime(manager: Manager) -> None:
     """Main runtime loop for the program, this will run until all scraping and downloading is complete."""
-    if manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads:
+    if manager.multiconfig and config.settings.sorting.sort_downloads:
         return
 
     manager.states.RUNNING.set()
@@ -159,21 +159,21 @@ async def _runtime(manager: Manager) -> None:
 async def _post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
     log_spacer(20, log_to_console=False)
-    msg = f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}"
+    msg = f"Running Post-Download Processes For Config: {config.current_config.folder.name}"
     log_with_color(msg, "green", 20)
     # checking and removing dupes
-    if not (manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads):
+    if not (manager.multiconfig and config.settings.sorting.sort_downloads):
         await manager.hash_manager.cleanup_dupes_after_download()
-    if manager.config_manager.settings_data.sorting.sort_downloads and not manager.parsed_args.cli_only_args.retry_any:
+    if config.settings.sorting.sort_downloads and not config.cli.cli_only_args.retry_any:
         sorter = Sorter(manager)
         await sorter.run()
 
     check_partials_and_empty_folders(manager)
 
-    if manager.config_manager.settings_data.runtime_options.update_last_forum_post:
+    if config.settings.runtime_options.update_last_forum_post:
         await manager.log_manager.update_last_forum_post()
 
-    if manager.config_manager.settings_data.files.dump_json:
+    if config.settings.files.dump_json:
         dumper = Dumper(manager)
         dumper.run()
 
@@ -184,8 +184,7 @@ def _setup_debug_logger(manager: Manager) -> Path | None:
 
     debug_logger = logging.getLogger("cyberdrop_dl_debug")
     log_level = 10
-    settings_data = manager.config_manager.settings_data
-    settings_data.runtime_options.log_level = log_level
+    config.settings.runtime_options.log_level = log_level
     debug_logger.setLevel(log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
     with _startup_logging():
@@ -201,7 +200,7 @@ def _setup_debug_logger(manager: Manager) -> Path | None:
 
         file_io = debug_log_file_path.open("w", encoding="utf8")
 
-    file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width, debug=True)
+    file_handler = LogHandler(level=log_level, file=file_io, width=config.settings.logs.log_line_width, debug=True)
     queued_logger = QueuedLogger(manager, file_handler, "debug")
     debug_logger.addHandler(queued_logger.handler)
 
@@ -223,25 +222,24 @@ def _setup_main_logger(manager: Manager, config_name: str) -> None:
         if manager.multiconfig and queued_logger:
             log(f"Picking new config: '{config_name}' ...", 20)
             try:
-                manager.config_manager.change_config(config_name)
+                config.load_config(config_name)
                 log(f"Changed config to {config_name}...", 20)
             finally:
                 logger.removeHandler(queued_logger.handler)
                 queued_logger.stop()
 
-        file_io = manager.path_manager.main_log.open("w", encoding="utf8")
+        file_io = config.settings.logs.main_log.open("w", encoding="utf8")
 
-    settings_data = manager.config_manager.settings_data
-    log_level = settings_data.runtime_options.log_level
+    log_level = config.settings.runtime_options.log_level
     logger.setLevel(log_level)
 
-    if not manager.parsed_args.cli_only_args.fullscreen_ui:
-        constants.CONSOLE_LEVEL = settings_data.runtime_options.console_log_level
+    if not config.cli.cli_only_args.fullscreen_ui:
+        constants.CONSOLE_LEVEL = config.settings.runtime_options.console_log_level
 
     console_handler = LogHandler(level=constants.CONSOLE_LEVEL)
     logger.addHandler(console_handler)
 
-    file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width)
+    file_handler = LogHandler(level=log_level, file=file_io, width=config.settings.logs.log_line_width)
     queued_logger = QueuedLogger(manager, file_handler)
     textual_log_handler = TextualLogQueueHandler(manager)
     logger.addHandler(queued_logger.handler)
@@ -322,18 +320,18 @@ def _setup_manager() -> Manager:
             config.startup()
             manager = Manager()
             manager.startup()
-            if manager.parsed_args.cli_only_args.multiconfig:
+            if config.cli.cli_only_args.multiconfig:
                 startup_logger.info("validating all configs, please wait...")
                 manager.validate_all_configs()
 
-            if not manager.parsed_args.cli_only_args.download:
+            if not config.cli.cli_only_args.download:
                 ProgramUI(manager)
 
         except ValidationError as e:
             sources = {
-                "GlobalSettings": manager.config_manager.global_settings,
-                "ConfigSettings": manager.config_manager.settings,
-                "AuthSettings": manager.config_manager.authentication_settings,
+                "GlobalSettings": config.global_settings,
+                "ConfigSettings": config.settings,
+                "AuthSettings": config.auth,
             }
 
             file = sources.get(e.title)

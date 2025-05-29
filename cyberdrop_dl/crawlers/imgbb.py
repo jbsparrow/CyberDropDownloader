@@ -10,7 +10,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -95,6 +94,6 @@ class ImgBBCrawler(Crawler):
         return calendar.timegm(parsed_date.timetuple())
 
 
-async def is_cdn(url: URL) -> bool:
+async def is_cdn(url: AbsoluteHttpURL) -> bool:
     """Determines if the url is a direct link or not."""
     return url.host == "i.ibb.co"

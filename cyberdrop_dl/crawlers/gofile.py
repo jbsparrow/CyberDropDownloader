@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, cas
 
 from aiolimiter import AsyncLimiter
 
+from cyberdrop_dl import cache, config
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.exceptions import DownloadError, PasswordProtectedError, ScrapeError
@@ -91,8 +92,8 @@ class GoFileCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "GoFile"
 
     def __post_init__(self) -> None:
-        self.api_key = self.manager.config_manager.authentication_data.gofile.api_key
-        self.website_token = self.manager.cache_manager.get("gofile_website_token")
+        self.api_key = config.auth.gofile.api_key
+        self.website_token = cache.get("gofile_website_token")
         self.headers: dict[str, str] = {}
         self.request_limiter = AsyncLimiter(4, 6)
         self._website_token_date = datetime.now(UTC) - timedelta(days=7)
@@ -152,7 +153,7 @@ class GoFileCrawler(Crawler):
         unavailable: list[URL] = []
         dangerous: list[URL] = []
 
-        def get_website_url(node: Node) -> URL:
+        def get_website_url(node: Node) -> AbsoluteHttpURL:
             if node["type"] == "folder":
                 return PRIMARY_URL / "d" / (node.get("code") or node["id"])
             return scrape_item.url.with_fragment(file["id"])
@@ -230,7 +231,7 @@ class GoFileCrawler(Crawler):
             return
         if update:
             self.website_token = ""
-            self.manager.cache_manager.remove("gofile_website_token")
+            cache.remove("gofile_website_token")
         if self.website_token:
             return
         await self._update_website_token()
@@ -242,7 +243,7 @@ class GoFileCrawler(Crawler):
         if not match:
             raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=GLOBAL_JS_URL)
         self.website_token = match.group(1)
-        self.manager.cache_manager.save("gofile_website_token", self.website_token)
+        cache.save("gofile_website_token", self.website_token)
         self._website_token_date = datetime.now(UTC)
 
 

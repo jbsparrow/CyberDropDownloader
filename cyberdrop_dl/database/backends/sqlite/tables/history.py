@@ -4,8 +4,8 @@ import asyncio
 from sqlite3 import IntegrityError, Row
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl.database.backends.sqlite.tables.definitions import create_fixed_history, create_history
 from cyberdrop_dl.database.base import HistoryTable
-from cyberdrop_dl.utils.database.table_definitions import create_fixed_history, create_history
 from cyberdrop_dl.utils.utilities import get_size_or_none, log
 
 if TYPE_CHECKING:
@@ -32,6 +32,10 @@ class SQliteHistoryTable(HistoryTable):
             await _add_columns_media(cursor)
             await _fix_bunkr_v4_entries(cursor)
             await _run_updates(cursor)
+
+    @staticmethod
+    def get_db_path(url: URL, referer: str | AbsoluteHttpURL = "", /) -> str:
+        return get_db_path(url, referer)
 
     async def check_complete(self, domain: str, url: URL, referer: URL) -> bool:
         """Checks whether an individual file has completed given its domain and url path."""
@@ -193,6 +197,19 @@ class SQliteHistoryTable(HistoryTable):
             else:
                 return results
 
+    async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None:
+        """Update old `no_crawler` entries that are now supported."""
+        domains_to_update = [(c.DOMAIN, f"http%{c.PRIMARY_URL.host}%") for c in crawlers.values()]
+        if not domains_to_update:
+            return
+
+        referers = [(d[1],) for d in domains_to_update]
+        async with self.db.get_cursor() as cursor:
+            query = "UPDATE OR IGNORE media SET domain = ? WHERE domain = 'no_crawler' AND referer LIKE ?"
+            await cursor.executemany(query, domains_to_update)
+            query = "DELETE FROM media WHERE domain = 'no_crawler' AND referer LIKE ?"
+            await cursor.executemany(query, referers)
+
 
 async def _fix_bunkr_v4_entries(cursor: aiosqlite.Cursor) -> None:
     query = """SELECT * from media WHERE domain = 'bunkr' and completed = 1"""
@@ -261,18 +278,3 @@ def get_db_path(url: URL, referer: str | AbsoluteHttpURL = "", /) -> str:
             url_path = url.name
 
     return url_path
-
-
-async def update_previously_unsupported(cursor: aiosqlite.Cursor, crawlers: dict[str, Crawler]) -> None:
-    """Update old `no_crawler` entries that are now supported."""
-    domains_to_update = [
-        (c.domain, f"http%{c.primary_base_domain.host}%") for c in crawlers.values() if c.update_unsupported
-    ]
-    if not domains_to_update:
-        return
-
-    referers = [(d[1],) for d in domains_to_update]
-    query = "UPDATE OR IGNORE media SET domain = ? WHERE domain = 'no_crawler' AND referer LIKE ?"
-    await cursor.executemany(query, domains_to_update)
-    query = "DELETE FROM media WHERE domain = 'no_crawler' AND referer LIKE ?"
-    await cursor.executemany(query, referers)

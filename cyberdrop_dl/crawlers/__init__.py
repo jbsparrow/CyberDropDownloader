@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl import env
+from cyberdrop_dl import cache, config, env
 
 from .acidimg import AcidImgCrawler
 from .archivebate import ArchiveBateCrawler

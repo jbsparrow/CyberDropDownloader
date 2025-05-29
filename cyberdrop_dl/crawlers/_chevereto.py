@@ -129,7 +129,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
             for _, sub_album in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(sub_album))
 
-    async def check_password_protected(self, soup: BeautifulSoup, url: URL) -> None:
+    async def check_password_protected(self, soup: BeautifulSoup, url: AbsoluteHttpURL) -> None:
         password = url.query.get("password", "")
         url = url.with_query(None)
 
@@ -149,7 +149,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
-    async def get_embed_info(self, url: URL) -> tuple[str, URL]:
+    async def get_embed_info(self, url: AbsoluteHttpURL) -> tuple[str, URL]:
         embed_url = self.PRIMARY_URL / "oembed" / ""
         embed_url = embed_url.with_query(url=str(url), format="json")
         async with self.request_limiter:
@@ -187,7 +187,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
     video = partialmethod(_proccess_media_item, media_type=Media.VIDEO, selector=VIDEO_SELECTOR)
     image = partialmethod(_proccess_media_item, media_type=Media.IMAGE, selector=IMAGE_SELECTOR)
 
-    def get_canonical_url(self, url: URL, media_type: Media = Media.ALBUM) -> tuple[str, AbsoluteHttpURL]:
+    def get_canonical_url(self, url: AbsoluteHttpURL, media_type: Media = Media.ALBUM) -> tuple[str, AbsoluteHttpURL]:
         """Returns the id and canonical URL from a given item (album, image or video)."""
         search_parts = ALBUM_PARTS
         if media_type == Media.IMAGE:

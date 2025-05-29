@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -163,7 +162,7 @@ class PornHubCrawler(Crawler):
         scrape_photos = profile.has_photos and (scrape_all or "photos" in scrape_item.url.parts)
         init_page = int(scrape_item.url.query.get("page") or 1)
 
-        def add_init_page(url: AbsoluteHttpURL) -> URL:
+        def add_init_page(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
             if scrape_item.url.path.startswith(url.path):
                 return url.with_query(page=init_page)
             return url
@@ -312,12 +311,12 @@ def get_video_id(url: AbsoluteHttpURL) -> str | None:
 
 
 def get_upload_date_str(soup: BeautifulSoup) -> str:
-    date_text = css.select_one(soup, _SELECTORS.DATE).text
+    date_text = css.select_one(soup, _SELECTORS.DATE).get_text(strip=True)
     return get_text_between(date_text, 'uploadDate": "', '",')
 
 
 def get_mp4_formats(soup: BeautifulSoup) -> Generator[Format]:
-    flashvars: str = css.select_one(soup, _SELECTORS.JS_VIDEO_INFO).text
+    flashvars: str = css.select_one(soup, _SELECTORS.JS_VIDEO_INFO).get_text(strip=True)
     media_text = get_text_between(flashvars, 'mediaDefinitions":', ',"isVertical"')
     for media in json.loads(media_text):
         format = Format.new(media)

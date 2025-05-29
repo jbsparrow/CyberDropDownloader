@@ -3,17 +3,17 @@ from __future__ import annotations
 import asyncio
 from enum import IntEnum
 from platform import system
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from InquirerPy import get_style
 from InquirerPy.base.control import Choice
 from InquirerPy.enum import (
     INQUIRERPY_EMPTY_CIRCLE_SEQUENCE,
     INQUIRERPY_FILL_CIRCLE_SEQUENCE,
 )
+from InquirerPy.utils import get_style
 from rich.console import Console
 
-from cyberdrop_dl import __version__
+from cyberdrop_dl import __version__, config
 from cyberdrop_dl.constants import BROWSERS, RESERVED_CONFIG_NAMES
 from cyberdrop_dl.data_structures.supported_domains import (
     SUPPORTED_FORUMS,
@@ -49,7 +49,9 @@ def main_prompt(manager: Manager) -> int:
     if not simp_disclaimer_shown:
         choices = [Choice(-1, "!! PRESS <ENTER> TO VIEW DISCLAIMER !!")]
 
-    prompt_options = {"style": get_style({"pointer": "#ff0000 bold"}) if not simp_disclaimer_shown else None}
+    prompt_options: dict[str, Any] = {
+        "style": get_style({"pointer": "#ff0000 bold"}) if not simp_disclaimer_shown else None
+    }
 
     if not simp_disclaimer_shown:
         prompt_options["long_instruction"] = "ENTER: view disclaimer"
@@ -102,9 +104,9 @@ def select_config(configs: list) -> str:
     )
 
 
-def switch_default_config_to(manager: Manager, config_name: str) -> str:
+def switch_default_config_to(manager: Manager, config_name: str) -> str | None:
     """Asks the user if they want to switch the default config to the provided config"""
-    if manager.config_manager.get_default_config() == config_name:
+    if config.get_default_config() == config_name:
         return
     return basic_prompts.ask_toggle(
         message=f"Do you want to switch the default config to {config_name}?",
@@ -118,11 +120,11 @@ def switch_default_config() -> str:
     )
 
 
-def activate_config(manager: Manager, config) -> str:
+def activate_config(manager: Manager, config_name: str) -> str | None:
     """Asks the user if they want to activate the provided config"""
-    if manager.config_manager.get_loaded_config() == config:
+    if config.current_config.folder.name == config_name:
         return
-    return basic_prompts.ask_toggle(message=f"Do also want to activate the {config} config?")
+    return basic_prompts.ask_toggle(message=f"Do also want to activate the {config_name} config?")
 
 
 def _check_valid_new_config_name(answer: str, manager: Manager) -> str | None:
@@ -131,7 +133,7 @@ def _check_valid_new_config_name(answer: str, manager: Manager) -> str | None:
     if answer.casefold() in RESERVED_CONFIG_NAMES:
         msg = f"[bold red]ERROR:[/bold red] Config name '{answer}' is a reserved internal name"
 
-    elif manager.path_manager.config_folder.joinpath(answer).is_dir():
+    elif answer in config.get_all_configs():
         msg = f"[bold red]ERROR:[/bold red] Config with name '{answer}' already exists!"
     if msg:
         console.print(msg)
@@ -144,12 +146,12 @@ def _check_valid_new_config_name(answer: str, manager: Manager) -> str | None:
 """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ AUTHENTICATION PROMPTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def auto_cookie_extraction(manager: Manager):
+def auto_cookie_extraction(manager: Manager) -> None:
     answer = basic_prompts.ask_toggle("Enable auto cookies import:")
-    manager.config_manager.settings_data.browser_cookies.auto_import = answer
+    config.settings.browser_cookies.auto_import = answer
     if answer:
         extract_cookies(manager, dry_run=True)
-    manager.config_manager.write_updated_settings_config()
+    config.current_config.write_updated_config()
 
 
 class DomainType(IntEnum):
@@ -210,8 +212,8 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
         browsers = list(BROWSERS)
 
     if dry_run:
-        manager.config_manager.settings_data.browser_cookies.browsers = browsers
-        current_sites = set(manager.config_manager.settings_data.browser_cookies.sites)
+        config.settings.browser_cookies.browsers = browsers  # type: ignore
+        current_sites = set(config.settings.browser_cookies.sites)
         new_sites = current_sites - set(all_domains)
         if domains == supported_forums:
             new_sites -= {"all"}
@@ -228,7 +230,7 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
         if "all_forums" in new_sites and "all_file_hosts" in new_sites:
             new_sites -= {"all_forums", "all_file_hosts"}
             new_sites.add("all")
-        manager.config_manager.settings_data.browser_cookies.sites = sorted(new_sites)
+        config.settings.browser_cookies.sites = sorted(new_sites)
         return
 
     get_cookies_from_browsers(manager, browsers=browsers, domains=domains)
@@ -236,7 +238,7 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
     basic_prompts.enter_to_continue()
 
 
-def browser_prompt() -> str:
+def browser_prompt() -> list[str]:
     """Asks the user to select browser(s) for cookie extraction."""
     unsupported_browsers = {
         "Windows": {
@@ -318,4 +320,4 @@ def prompt_header(manager: Manager, title: str | None = None) -> None:
     clear_term()
     title = title or f"[bold]Cyberdrop Downloader ([blue]V{__version__!s}[/blue])[/bold]"
     console.print(title)
-    console.print(f"[bold]Current config:[/bold] [blue]{manager.config_manager.loaded_config}[/blue]")
+    console.print(f"[bold]Current config:[/bold] [blue]{config.current_config.folder.name}[/blue]")

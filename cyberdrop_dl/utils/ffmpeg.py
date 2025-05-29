@@ -16,13 +16,12 @@ import aiofiles.os
 from multidict import CIMultiDict
 from yarl import URL
 
+from cyberdrop_dl import config
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import get_valid_dict, is_absolute_http_url
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping, Sequence
-
-    from cyberdrop_dl.managers.manager import Manager
 
 
 FFPROBE_CALL_PREFIX = "ffprobe", "-hide_banner", "-loglevel", "error", "-show_streams", "-print_format", "json"
@@ -32,9 +31,7 @@ CODEC_COPY = "-c", "copy"
 
 
 class FFmpeg:
-    def __init__(self, manager: Manager) -> None:
-        self.manager = manager
-        self.cache_folder = self.manager.path_manager.cache_folder.resolve()
+    def __init__(self, _=None) -> None:
         self.version = get_ffmpeg_version()
         self.is_available = bool(self.version)
 
@@ -43,7 +40,7 @@ class FFmpeg:
             raise RuntimeError("ffmpeg is not available")
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
         concat_file_name = f"{now} - {output_file.name[:40]}.ffmpeg_input.txt"
-        concat_file_path = self.cache_folder / concat_file_name
+        concat_file_path = config.appdata.cache_dir / concat_file_name
         await _create_concat_input_file(*input_files, file_path=concat_file_path)
         result = await _concat(concat_file_path, output_file)
         if result.success:

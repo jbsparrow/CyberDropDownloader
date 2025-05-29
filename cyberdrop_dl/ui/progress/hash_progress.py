@@ -7,6 +7,8 @@ from rich.console import Group
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress
 
+from cyberdrop_dl import config
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -46,7 +48,7 @@ class HashProgress:
         """Returns the progress bar."""
         return Panel(
             self.hash_progress_group,
-            title=f"Config: {self.manager.config_manager.loaded_config}",
+            title=f"Config: {config.current_config.folder.name}",
             border_style="green",
             padding=(1, 1),
         )

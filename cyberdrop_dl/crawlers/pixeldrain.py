@@ -122,7 +122,7 @@ class PixelDrainCrawler(Crawler):
         if not link_str or "filesystem" not in link_str:
             raise ScrapeError(422)
 
-        js_text: str = css.select_one(soup, JS_SELECTOR).text
+        js_text: str = css.select_one(soup, JS_SELECTOR).get_text(strip=True)
         if not js_text:
             raise ScrapeError(422)
 

@@ -5,8 +5,6 @@ import string
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
@@ -25,7 +23,7 @@ class Selectors:
 
 
 _SELECTORS = Selectors()
-API_MD5_ENTRYPOINT = URL("https://doodstream.com/pass_md5/")
+API_MD5_ENTRYPOINT = AbsoluteHttpURL("https://doodstream.com/pass_md5/")
 TOKEN_CHARS = string.ascii_letters + string.digits
 
 PRIMARY_URL = AbsoluteHttpURL("https://doodstream.com/")
@@ -66,7 +64,7 @@ class DoodStreamCrawler(Crawler):
         assert host
         del response
 
-        title: str = soup.select_one("title").text
+        title: str = soup.select_one("title").get_text(strip=True)
         title = title.split("- DoodStream")[0].strip()
 
         file_id = get_file_id(soup)
@@ -78,7 +76,7 @@ class DoodStreamCrawler(Crawler):
             scrape_item.url, scrape_item, filename, ext, debrid_link=debrid_link, custom_filename=custom_filename
         )
 
-    async def get_download_url(self, host: str, soup: BeautifulSoup) -> URL:
+    async def get_download_url(self, host: str, soup: BeautifulSoup) -> AbsoluteHttpURL:
         md5_path = get_md5_path(soup)
         api_url = API_MD5_ENTRYPOINT / md5_path
         token = api_url.name

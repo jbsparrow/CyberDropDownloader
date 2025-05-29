@@ -57,7 +57,7 @@ class PornPicsCrawler(Crawler):
 
         def update_scrape_item(soup: BeautifulSoup) -> None:
             selector = "h2" if collection_type == "channel" else "h1"
-            title = soup.select_one(selector).text.removesuffix(" Nude Pics").removesuffix(" Porn Pics")
+            title = soup.select_one(selector).get_text(strip=True).removesuffix(" Nude Pics").removesuffix(" Porn Pics")
             title = self.create_title(f"{title} [{collection_type}]")
             scrape_item.setup_as_profile(title)
 
@@ -80,7 +80,7 @@ class PornPicsCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         scrape_item.url = PRIMARY_URL / "galleries" / gallery_id  # canonical URL
-        title = soup.select_one("h1").text
+        title = soup.select_one("h1").get_text(strip=True)
         title = self.create_title(title, gallery_id)
         scrape_item.setup_as_album(title, album_id=gallery_id)
 

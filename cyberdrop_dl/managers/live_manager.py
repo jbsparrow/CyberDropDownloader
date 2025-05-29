@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from rich.live import Live
 
-from cyberdrop_dl import constants
+from cyberdrop_dl import config, constants
 from cyberdrop_dl.utils.args import is_terminal_in_portrait
 from cyberdrop_dl.utils.logger import console
 
@@ -23,12 +23,14 @@ if TYPE_CHECKING:
 class LiveManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.ui_setting = self.manager.parsed_args.cli_only_args.ui
-        self.fullscreen = f = self.manager.parsed_args.cli_only_args.fullscreen_ui
-        self.refresh_rate = rate = self.manager.config_manager.global_settings_data.ui_options.refresh_rate
-        self.use_textual = False  # manager.parsed_args.cli_only_args.textual_ui and self.fullscreen
-        self.auto_refresh = a = not self.use_textual
-        self.live = Live(refresh_per_second=rate, console=console, transient=True, screen=f, auto_refresh=a)
+        self.use_textual = False  # config.cli.cli_only_args.textual_ui and self.fullscreen
+        self.live = Live(
+            refresh_per_second=config.global_settings.ui_options.refresh_rate,
+            console=console,
+            transient=True,
+            screen=config.cli.cli_only_args.fullscreen_ui,
+            auto_refresh=not self.use_textual,
+        )
         self.current_layout: str = field(init=False)
 
     @contextmanager
@@ -46,7 +48,7 @@ class LiveManager:
 
     def get_layout(self, name: str) -> RenderableType | None:
         if name == "main_layout":
-            name = f"{self.ui_setting.value}_layout"
+            name = f"{config.cli.cli_only_args.ui.value}_layout"
             self.current_layout = name
         return getattr(self.manager.progress_manager, name, None)
 
@@ -57,7 +59,7 @@ class LiveManager:
             if new_layout != self.current_layout:
                 self.current_layout = new_layout
                 layout = self.get_layout(new_layout)
-                self.live.update(layout, refresh=not self.use_textual)
+                self.live.update(layout, refresh=not self.use_textual)  # type: ignore
             await asyncio.sleep(0.5)
 
     @contextmanager

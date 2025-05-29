@@ -3,8 +3,6 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -16,7 +14,7 @@ if TYPE_CHECKING:
 
 PRIMARY_URL = AbsoluteHttpURL("https://postimages.org/")
 DOWNLOAD_BUTTON_SELECTOR = "a[id=download]"
-API_ENTRYPOINT = URL("https://postimg.cc/json")
+API_ENTRYPOINT = AbsoluteHttpURL("https://postimg.cc/json")
 
 
 class PostImgCrawler(Crawler):

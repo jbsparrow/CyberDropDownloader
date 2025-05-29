@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from cyberdrop_dl import config
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
@@ -27,7 +28,7 @@ class ImgurCrawler(Crawler):
     DOMAIN: ClassVar[str] = "imgur"
 
     def __post_init__(self) -> None:
-        self.imgur_client_id = self.manager.config_manager.authentication_data.imgur.client_id
+        self.imgur_client_id = config.auth.imgur.client_id
         self.imgur_client_remaining = 12500
         self.headers = {"Authorization": f"Client-ID {self.imgur_client_id}"}
 

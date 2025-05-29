@@ -6,6 +6,8 @@ import json
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
+from cyberdrop_dl import config
+
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
@@ -21,16 +23,15 @@ _KEYS_TO_REPLACE = {"current_attempt": "attempts"}
 class Dumper:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.jsonl_file = manager.path_manager.main_log.with_suffix(".results.jsonl")
 
     def get_media_items_as_dict(self) -> Generator[dict]:
-        for item in self.manager.path_manager.prev_downloads:
+        for item in config.appdata.prev_downloads:
             yield convert_to_dict(item)
-        for item in self.manager.path_manager.completed_downloads:
+        for item in config.appdata.completed_downloads:
             yield convert_to_dict(item)
 
     def run(self) -> None:
-        dump_jsonl(self.get_media_items_as_dict(), self.jsonl_file)
+        dump_jsonl(self.get_media_items_as_dict(), config.settings.logs.jsonl_file)
 
 
 def convert_to_dict(media_item: MediaItem) -> dict:

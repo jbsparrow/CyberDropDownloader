@@ -6,6 +6,7 @@ from rich.markup import escape
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID
 
+from cyberdrop_dl import config
 from cyberdrop_dl.ui.progress.deque_progress import DequeProgress, adjust_title
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ class SortProgress(DequeProgress):
         """Returns the progress bar."""
         return Panel(
             self._progress_group,
-            title=f"Sorting Downloads ━ Config: {self.manager.config_manager.loaded_config}",
+            title=f"Sorting Downloads ━ Config: {config.current_config.folder.name}",
             border_style="green",
             padding=(1, 1),
         )

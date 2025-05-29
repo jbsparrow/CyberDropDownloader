@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
+from cyberdrop_dl import config
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.downloader.mega_nz import (
     DecryptData,
@@ -41,8 +42,8 @@ class MegaNzCrawler(Crawler):
 
     def __post_init__(self) -> None:
         self.api = MegaApi(self.manager)
-        self.user = self.manager.config_manager.authentication_data.meganz.email or None
-        self.password = self.manager.config_manager.authentication_data.meganz.password or None
+        self.user = config.auth.meganz.email or None
+        self.password = config.auth.meganz.password or None
         self.downloader: MegaDownloader
 
     async def startup(self) -> None:

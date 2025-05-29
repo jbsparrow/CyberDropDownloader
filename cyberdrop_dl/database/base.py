@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import datetime
     from collections.abc import AsyncGenerator, Generator, Iterable
-    from pathlib import Path
 
     import aiosqlite
 
+    from cyberdrop_dl.crawlers.crawler import Crawler
+    from cyberdrop_dl.data_structures.hash import Hash, HashAlgorithm
     from cyberdrop_dl.data_structures.url_objects import MediaItem
-    from cyberdrop_dl.types import AbsoluteHttpURL, Hash, HashAlgorithm
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 
 class DBTable(ABC):
@@ -26,7 +28,8 @@ class HashTable(DBTable):
     async def get_file_hash_if_exists(self, file: Path, hash_type: HashAlgorithm) -> Hash | None: ...
 
     @abstractmethod
-    async def get_files_with_hash_matches(self, hash: Hash, size: int) -> AsyncGenerator[Path]: ...
+    async def get_files_with_hash_matches(self, hash: Hash, size: int) -> AsyncGenerator[Path]:
+        yield Path()  # Retired to help the type checker
 
     @abstractmethod
     async def insert_or_update_hash_db(
@@ -36,7 +39,13 @@ class HashTable(DBTable):
 
 class HistoryTable(DBTable):
     @abstractmethod
+    def get_db_path(self, url: AbsoluteHttpURL, referer: str | AbsoluteHttpURL = "", /) -> str: ...
+
+    @abstractmethod
     async def check_complete(self, domain: str, url: AbsoluteHttpURL, referer: AbsoluteHttpURL) -> bool: ...
+
+    @abstractmethod
+    async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None: ...
 
     @abstractmethod
     async def check_album(self, domain: str, album_id: str) -> dict[str, int]: ...
@@ -92,7 +101,7 @@ class Database(ABC):
     temp_referer_table: TempRefererTable
 
     @abstractmethod
-    async def connect() -> None: ...
+    async def connect(self) -> None: ...
     @abstractmethod
     async def close(self) -> None: ...
 

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiohttp import ClientConnectorError
 
+from cyberdrop_dl import config
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
@@ -28,7 +29,6 @@ from cyberdrop_dl.utils.utilities import (
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -101,7 +101,7 @@ class AlbumItem:
 
     @classmethod
     def from_tag(cls, tag: Tag) -> AlbumItem:
-        name = css.select_one(tag, _SELECTORS.ITEM_NAME).text
+        name = css.select_one(tag, _SELECTORS.ITEM_NAME).get_text(strip=True)
         thumbnail: str = css.select_one_get_attr(tag, _SELECTORS.THUMBNAIL, "src")
         date_str = css.select_one(tag, _SELECTORS.ITEM_DATE).get_text(strip=True)
         path_qs: str = css.select_one_get_attr(tag, "a", "href")
@@ -155,7 +155,7 @@ class BunkrrCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         soup: BeautifulSoup = await self.get_soup_lenient(scrape_item.url)
         album_id = scrape_item.url.parts[2]
-        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
+        title = soup.select_one("title").get_text(strip=True).rsplit(" | Bunkr")[0].strip()
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
@@ -191,7 +191,7 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        link: URL | None = None
+        link: AbsoluteHttpURL | None = None
         soup: BeautifulSoup | None = None
         if is_stream_redirect(scrape_item.url):
             response, soup = await self.client._get_response_and_soup(self.DOMAIN, scrape_item.url)
@@ -240,8 +240,8 @@ class BunkrrCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("h1").text.strip()
-        link: URL | None = await self.get_download_url_from_api(scrape_item.url)
+        title: str = soup.select_one("h1").get_text(strip=True)
+        link: AbsoluteHttpURL | None = await self.get_download_url_from_api(scrape_item.url)
         if not link:
             raise ScrapeError(422)
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
@@ -306,17 +306,17 @@ class BunkrrCrawler(Crawler):
             return link
 
     def deep_scrape(self, url: AbsoluteHttpURL) -> bool:
-        return any(part in url.host.split(".") for part in ("burger.",)) or self.manager.config_manager.deep_scrape
+        return any(part in url.host.split(".") for part in ("burger.",)) or config.deep_scrape
 
     async def handle_file(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         scrape_item: ScrapeItem,
         filename: str,
         ext: str,
         *,
         custom_filename: str | None = None,
-        debrid_link: URL | None = None,
+        debrid_link: AbsoluteHttpURL | None = None,
     ) -> None:
         """Overrides primary host before before calling base crawler's `handle_file`"""
         if is_root_domain(scrape_item.url):
@@ -370,7 +370,7 @@ class BunkrrCrawler(Crawler):
         return await get_soup(url)
 
 
-def get_part_next_to(url: URL, part: str) -> str:
+def get_part_next_to(url: AbsoluteHttpURL, part: str) -> str:
     part_index = url.parts.index(part) + 1
     return url.parts[part_index]
 

@@ -10,7 +10,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -32,7 +31,7 @@ _SELECTORS = Selectors()
 
 class Format(NamedTuple):
     resolution: int | None
-    url: URL
+    url: AbsoluteHttpURL
 
 
 PRIMARY_URL = AbsoluteHttpURL("https://dirtyship.com")
@@ -106,7 +105,7 @@ class DirtyShipCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title: str = soup.select_one("title").text
+                title: str = soup.select_one("title").get_text(strip=True)
                 title = title.split("Archives - DirtyShip")[0]
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
@@ -119,7 +118,7 @@ class DirtyShipCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("title").text
+        title: str = soup.select_one("title").get_text(strip=True)
         title = title.split(" - DirtyShip")[0]
         videos = soup.select(_SELECTORS.VIDEO)
 

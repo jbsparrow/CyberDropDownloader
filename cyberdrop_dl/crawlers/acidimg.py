@@ -6,8 +6,6 @@ from cyberdrop_dl.crawlers.imx_to import ImxToCrawler
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 if TYPE_CHECKING:
-    from yarl import URL
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://acidimg.cc")
@@ -29,15 +27,15 @@ class AcidImgCrawler(ImxToCrawler):
             return await self.thumbnail(scrape_item)
         raise ValueError
 
-    def thumbnail_to_img(self, url: URL) -> URL:
+    def thumbnail_to_img(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         index = url.parts.index("upload") + 2
         path = "/".join(url.parts[index:])
         return PRIMARY_URL / "upload/big" / path
 
-    def get_canonical_url(self, url: URL) -> URL:
+    def get_canonical_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         image_id = get_image_id(url)
         return PRIMARY_URL / f"img-{image_id}.html"
 
 
-def get_image_id(url: URL) -> str:
+def get_image_id(url: AbsoluteHttpURL) -> str:
     return url.name.removesuffix(".html").removeprefix("img-")

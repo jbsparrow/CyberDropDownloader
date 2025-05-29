@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl.data_structures.hash import Hash
 from cyberdrop_dl.database.backends.sqlite.tables.definitions import create_files, create_hash
 from cyberdrop_dl.database.base import HashTable
 
@@ -12,8 +13,9 @@ if TYPE_CHECKING:
 
     import aiosqlite
 
+    from cyberdrop_dl.data_structures.hash import HashAlgorithm
     from cyberdrop_dl.database.backends.sqlite import SQLiteDatabase
-    from cyberdrop_dl.types import AbsoluteHttpURL, Hash, HashAlgorithm
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 
 class SQliteHashTable(HashTable):
@@ -33,7 +35,7 @@ class SQliteHashTable(HashTable):
             await cursor.execute(query, (folder, file.name, hash_type))
             result = await cursor.fetchone()
             if result:
-                return hash_type.create_hash(result[0])
+                return Hash(hash_type, result[0])
 
     async def get_files_with_hash_matches(self, hash: Hash, size: int) -> AsyncGenerator[Path]:
         """Yields paths of every file that matches the given hash and size."""

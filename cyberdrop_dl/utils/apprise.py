@@ -15,12 +15,12 @@ import rich
 from pydantic import ValidationError
 from rich.text import Text
 
-from cyberdrop_dl import constants
+from cyberdrop_dl import config, constants
 from cyberdrop_dl.models.base_models import AppriseURLModel
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 DEFAULT_APPRISE_MESSAGE = {
@@ -183,8 +183,7 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
         tuple[NotificationResult, list[LogLine]]: A tuple containing the overall notification result and a list of log lines.
 
     """
-    apprise_urls = manager.config_manager.apprise_urls
-    if not apprise_urls:
+    if not config.current_config.apprise_urls:
         return constants.NotificationResult.NONE, [LogLine(msg=constants.NotificationResult.NONE.value.plain)]
 
     rich.print("\nSending Apprise Notifications.. ")
@@ -192,12 +191,11 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
     constants.LOG_OUTPUT_TEXT = Text("")
 
     apprise_obj = apprise.Apprise()
-    for apprise_url in apprise_urls:
+    for apprise_url in config.current_config.apprise_urls:
         apprise_obj.add(apprise_url.url, tag=apprise_url.tags)
 
-    main_log = manager.path_manager.main_log
     results = {}
-    all_urls = [x.raw_url for x in apprise_urls]
+    all_urls = [x.raw_url for x in config.current_config.apprise_urls]
     log_lines = []
 
     with (
@@ -206,7 +204,7 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
     ):
         temp_dir = Path(temp_dir)
         assert isinstance(capture, StringIO)
-        temp_main_log = temp_dir / main_log.name
+        temp_main_log = temp_dir / config.settings.logs.main_log.name
         notifications_to_send = {
             "no_logs": {"body": text.plain},
             "attach_logs": {"body": text.plain},
@@ -215,7 +213,7 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
         attach_file_failed_msg = "Unable to get copy of main log file. 'attach_logs' URLs will be proccessed without it"
         log_lines = [LogLine(LogLevel.ERROR, attach_file_failed_msg)]
         try:
-            shutil.copy(main_log, temp_main_log)
+            shutil.copy(config.settings.logs.main_log, temp_main_log)
             notifications_to_send["attach_logs"]["attach"] = str(temp_main_log.resolve())
         except OSError:
             log(attach_file_failed_msg, 40)

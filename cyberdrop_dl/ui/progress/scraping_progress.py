@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from rich.progress import Progress, SpinnerColumn, TaskID
 
+from cyberdrop_dl import config
 from cyberdrop_dl.ui.progress.deque_progress import DequeProgress
 
 if TYPE_CHECKING:
@@ -20,8 +21,7 @@ class ScrapingProgress(DequeProgress):
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self._progress = Progress(SpinnerColumn(), "[progress.description]{task.description}")
-        visible_tasks_limit: int = manager.config_manager.global_settings_data.ui_options.scraping_item_limit
-        super().__init__("Scraping", visible_tasks_limit)
+        super().__init__("Scraping", config.global_settings.ui_options.scraping_item_limit)
 
     def get_queue_length(self) -> int:
         """Returns the number of tasks in the scraper queue."""

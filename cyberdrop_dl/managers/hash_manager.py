@@ -11,10 +11,9 @@ from typing import TYPE_CHECKING, NamedTuple, Protocol
 from send2trash import send2trash
 from xxhash import xxh128 as xxh128_hasher
 
-from cyberdrop_dl import config
+from cyberdrop_dl import config, database
 from cyberdrop_dl.data_structures.hash import Hash, HashAlgorithm, Hashing
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
-from cyberdrop_dl.utils.database.tables import hash_table
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
@@ -103,14 +102,14 @@ class HashManager:
 
     async def _get_hash(self, source: _Hashable, hash_type: HashAlgorithm) -> Hash:
         self.progress.update_currently_hashing(source.file)
-        hash = await hash_table.get_file_hash_if_exists(source.file, hash_type)
+        hash = await database.hash_table.get_file_hash_if_exists(source.file, hash_type)
         if hash:
             self.progress.add_prev_hash()
         else:
             hash = await asyncio.to_thread(compute_file_hash, source.file, hash_type)
             self.progress.add_new_completed_hash()
 
-        await hash_table.insert_or_update_hash_db(*source, hash)
+        await database.hash_table.insert_or_update_hash_db(*source, hash)
         return hash
 
     async def cleanup_dupes_after_download(self) -> None:
@@ -118,7 +117,7 @@ class HashManager:
             return
         if not config.settings.dupe_cleanup_options.auto_dedupe:
             return
-        if self.manager.config_manager.settings_data.runtime_options.ignore_history:
+        if config.settings.runtime_options.ignore_history:
             return
         with self.manager.live_manager.get_hash_live(stop=True):
             file_hashes_dict = await self.get_file_hashes_dict()
@@ -132,7 +131,7 @@ class HashManager:
         for hash, size_dict in final_dict.items():
             for size in size_dict:
                 original_file: Path | None = None
-                async for db_match in hash_table.get_files_with_hash_matches(hash, size):
+                async for db_match in database.hash_table.get_files_with_hash_matches(hash, size):
                     if not original_file:
                         original_file = db_match
                         continue
@@ -167,7 +166,7 @@ class HashManager:
 
     async def get_file_hashes_dict(self) -> _DedupeMapping:
         """Get a dictionary of files based on matching file hashes and file size."""
-        downloads = self.manager.path_manager.completed_downloads - self.hashed_media_items
+        downloads = config.appdata.completed_downloads - self.hashed_media_items
 
         async def exists(item: MediaItem) -> MediaItem | None:
             if await asyncio.to_thread(item.complete_file.is_file):

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup, Tag
 
+from cyberdrop_dl import config
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FORUM, ScrapeItem
 from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
@@ -100,7 +101,7 @@ class ThreadInfo:
     page: int
     post: int
     url: AbsoluteHttpURL
-    complete_url: URL
+    complete_url: AbsoluteHttpURL
 
 
 @dataclass(frozen=True, slots=True)
@@ -374,7 +375,9 @@ class XenforoCrawler(Crawler, is_abc=True):
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     @error_handling_wrapper
-    async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> AbsoluteHttpURL | None:
+    async def handle_confirmation_link(
+        self, link: AbsoluteHttpURL, *, origin: ScrapeItem | None = None
+    ) -> AbsoluteHttpURL | None:
         """Handles link confirmation."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, link)
@@ -387,7 +390,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         return await self.get_absolute_link(new_link)
 
     def stop_thread_recursion(self, scrape_item: ScrapeItem) -> bool:
-        max_thread_depth = self.manager.config_manager.settings_data.download_options.maximum_thread_depth
+        max_thread_depth = config.settings.download_options.maximum_thread_depth
         if not max_thread_depth:
             return True
         if len(scrape_item.parent_threads) > max_thread_depth:
@@ -398,7 +401,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         """Checks if the program should scrape the current post.
 
         Returns (continue_scraping, scrape_post)"""
-        scrape_single_forum_post = self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
+        scrape_single_forum_post = config.settings.download_options.scrape_single_forum_post
         scrape_post = continue_scraping = True
         if scrape_single_forum_post:
             if not post_number or post_number == current_post_number:
@@ -411,7 +414,7 @@ class XenforoCrawler(Crawler, is_abc=True):
 
         return continue_scraping, scrape_post
 
-    async def write_last_forum_post(self, thread_url: URL, last_post_url: URL | None) -> None:
+    async def write_last_forum_post(self, thread_url: AbsoluteHttpURL, last_post_url: AbsoluteHttpURL | None) -> None:
         if not last_post_url or last_post_url == thread_url:
             return
         await self.manager.log_manager.write_last_post_log(last_post_url)
@@ -421,7 +424,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         link_str: str = css.get_attr(link_obj, self.selectors.posts.links.element)
         return not (is_image or self.is_attachment(link_str))
 
-    def is_confirmation_link(self, link: URL) -> bool:
+    def is_confirmation_link(self, link: AbsoluteHttpURL) -> bool:
         return any(keyword in link.path for keyword in ("link-confirmation",))
 
     def extract_embed_url(self, embed_str: str) -> str | None:
@@ -433,13 +436,13 @@ class XenforoCrawler(Crawler, is_abc=True):
     def pre_filter_link(self, link: str) -> str:
         return link
 
-    def filter_link(self, link: URL | None) -> URL | None:
+    def filter_link(self, link: AbsoluteHttpURL | None) -> URL | None:
         return link
 
     """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
-    async def login_setup(self, login_url: URL) -> None:
+    async def login_setup(self, login_url: AbsoluteHttpURL) -> None:
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.PRIMARY_URL)
         session_cookie = host_cookies.get(self.session_cookie_name)
         session_cookie = session_cookie.value if session_cookie else None
@@ -460,7 +463,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         log(msg, 30)
 
     @error_handling_wrapper
-    async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str) -> None:
+    async def forum_login(self, login_url: AbsoluteHttpURL, session_cookie: str, username: str, password: str) -> None:
         """Logs in to a forum."""
 
         attempt = 0
@@ -503,7 +506,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         msg = f"Failed to login on {self.FOLDER_DOMAIN} after {retries} attempts"
         raise LoginError(message=msg)
 
-    async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
+    async def check_login_with_request(self, login_url: AbsoluteHttpURL) -> tuple[str, bool]:
         text = await self.client.get_text(self.DOMAIN, login_url, cache_disabled=True)
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
@@ -517,7 +520,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         return ThreadInfo(name, id_, page, post, thread_url, url)
 
 
-def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
+def get_thread_name_and_id(url: AbsoluteHttpURL, thread_name_index: int) -> tuple[str, int]:
     thread_name, thread_id_str = url.parts[thread_name_index].rsplit(".", 1)
     thread_id = int(thread_id_str)
     return thread_name, thread_id
@@ -530,7 +533,9 @@ def get_thread_canonical_url(url: AbsoluteHttpURL, thread_name_index: int) -> Ab
     return thread_url
 
 
-def get_thread_page_and_post(url: URL, thread_name_index: int, page_name: str, post_name: str) -> tuple[int, int]:
+def get_thread_page_and_post(
+    url: AbsoluteHttpURL, thread_name_index: int, page_name: str, post_name: str
+) -> tuple[int, int]:
     post_or_page_index = thread_name_index + 1
     extra_parts = set(url.parts[post_or_page_index:])
     sections = {url.fragment} if url.fragment else set()

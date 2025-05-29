@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
+from cyberdrop_dl import config
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
@@ -173,7 +174,7 @@ class XXXBunkerCrawler(Crawler):
         self.request_limiter = AsyncLimiter(self.rate_limit, 60)
 
     def check_session_cookie(self) -> None:
-        self.session_cookie = self.manager.config_manager.authentication_data.xxxbunker.PHPSESSID
+        self.session_cookie = config.auth.xxxbunker.PHPSESSID
         if not self.session_cookie:
             self.session_cookie = ""
             return

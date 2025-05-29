@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
-from yarl import URL
 
+from cyberdrop_dl import config, database
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.crawlers import CRAWLERS
 from cyberdrop_dl.crawlers.crawler import Crawler
@@ -18,6 +18,7 @@ from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import JDownloaderError, NoExtensionError
 from cyberdrop_dl.scraper.filters import has_valid_extension, is_in_domain_list, is_outside_date_range, is_valid_url
 from cyberdrop_dl.scraper.jdownloader import JDownloader
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_trailing_slash
 
@@ -39,8 +40,7 @@ class ScrapeMapper:
         self.manager = manager
         self.existing_crawlers: dict[str, Crawler] = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
-        self.jdownloader = JDownloader(self.manager)
-        self.jdownloader_whitelist = self.manager.config_manager.settings_data.runtime_options.jdownloader_whitelist
+        self.jdownloader = JDownloader()
         self.using_input_file = False
         self.groups = set()
         self.count = 0
@@ -54,7 +54,7 @@ class ScrapeMapper:
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
         self.existing_crawlers = get_crawlers_mapping(self.manager)
-        if not self.manager.config_manager.global_settings_data.general.enable_generic_crawler:
+        if not config.global_settings.general.enable_generic_crawler:
             _ = self.existing_crawlers.pop(".")
 
     def start_jdownloader(self) -> None:
@@ -79,7 +79,7 @@ class ScrapeMapper:
         self.manager.client_manager.load_cookie_files()
         self.manager.client_manager.scraper_session.startup()
         self.start_scrapers()
-        await self.manager.db_manager.history_table.update_previously_unsupported(self.existing_crawlers)
+        await database.history_table.update_previously_unsupported(self.existing_crawlers)
         self.start_jdownloader()
         await self.start_real_debrid()
         self.no_crawler_downloader.startup()
@@ -88,21 +88,21 @@ class ScrapeMapper:
 
     async def get_input_items(self) -> AsyncGenerator[ScrapeItem]:
         item_limit = 0
-        if self.manager.parsed_args.cli_only_args.retry_any and self.manager.parsed_args.cli_only_args.max_items_retry:
-            item_limit = self.manager.parsed_args.cli_only_args.max_items_retry
+        if config.cli.cli_only_args.retry_any and config.cli.cli_only_args.max_items_retry:
+            item_limit = config.cli.cli_only_args.max_items_retry
 
-        if self.manager.parsed_args.cli_only_args.retry_failed:
+        if config.cli.cli_only_args.retry_failed:
             items_generator = self.load_failed_links()
-        elif self.manager.parsed_args.cli_only_args.retry_all:
+        elif config.cli.cli_only_args.retry_all:
             items_generator = self.load_all_links()
-        elif self.manager.parsed_args.cli_only_args.retry_maintenance:
+        elif config.cli.cli_only_args.retry_maintenance:
             items_generator = self.load_all_bunkr_failed_links_via_hash()
         else:
             items_generator = self.load_links()
 
         async for item in items_generator:
             await self.manager.states.RUNNING.wait()
-            item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
+            item.children_limits = config.settings.download_options.maximum_number_of_children
             if self.filter_items(item):
                 if item_limit and self.count >= item_limit:
                     break
@@ -114,16 +114,15 @@ class ScrapeMapper:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[URL]]]:
+    async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[AbsoluteHttpURL]]]:
         """Split URLs from input file by their groups."""
-        input_file = self.manager.path_manager.input_file
-        if not await asyncio.to_thread(input_file.is_file):
+        if not await asyncio.to_thread(config.settings.files.input_file.is_file):
             yield ("", [])
             return
 
         block_quote = False
         current_group_name = ""
-        async with aiofiles.open(input_file, encoding="utf8") as f:
+        async with aiofiles.open(config.settings.files.input_file, encoding="utf8") as f:
             async for line in f:
                 assert isinstance(line, str)
 
@@ -144,7 +143,7 @@ class ScrapeMapper:
     async def load_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads links from args / input file."""
 
-        if not self.manager.parsed_args.cli_only_args.links:
+        if not config.cli.cli_only_args.links:
             self.using_input_file = True
             async for group_name, urls in self.parse_input_file_groups():
                 for url in urls:
@@ -158,26 +157,26 @@ class ScrapeMapper:
 
             return
 
-        for url in self.manager.parsed_args.cli_only_args.links:
+        for url in config.cli.cli_only_args.links:
             yield ScrapeItem(url=url)  # type: ignore
 
     async def load_failed_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads failed links from database."""
-        entries = await self.manager.db_manager.history_table.get_failed_items()
+        entries = await database.history_table.get_failed_items()
         for entry in entries:
             yield create_item_from_entry(entry)
 
     async def load_all_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all links from database."""
-        after = self.manager.parsed_args.cli_only_args.completed_after or date.fromtimestamp(0)
-        before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
-        entries = await self.manager.db_manager.history_table.get_all_items(after, before)
+        after = config.cli.cli_only_args.completed_after or date.fromtimestamp(0)
+        before = config.cli.cli_only_args.completed_before or datetime.now().date()
+        entries = await database.history_table.get_all_items(after, before)
         for entry in entries:
             yield create_item_from_entry(entry)
 
     async def load_all_bunkr_failed_links_via_hash(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all bunkr links with maintenance hash."""
-        entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
+        entries = await database.history_table.get_all_bunkr_failed()
 
         entries = sorted(set(entries), reverse=True, key=lambda x: datetime.strptime(x[-1], SQLITE_DATE_FORMAT))
         for entry in entries:
@@ -187,8 +186,6 @@ class ScrapeMapper:
 
     async def filter_and_send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Send scrape_item to a supported crawler."""
-        if not isinstance(scrape_item.url, URL):
-            scrape_item.url = URL(scrape_item.url)
         if self.filter_items(scrape_item):
             await self.send_to_crawler(scrape_item)
 
@@ -198,8 +195,10 @@ class ScrapeMapper:
         supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]
         is_generic = supported_domain == ["."]
         jdownloader_whitelisted = True
-        if self.jdownloader_whitelist:
-            jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)
+        if config.settings.runtime_options.jdownloader_whitelist:
+            jdownloader_whitelisted = any(
+                domain in scrape_item.url.host for domain in config.settings.runtime_options.jdownloader_whitelist
+            )
 
         if supported_domain and not is_generic:
             # get most restrictive domain if multiple domain matches
@@ -237,7 +236,7 @@ class ScrapeMapper:
             success = False
             try:
                 download_folder = get_download_path(self.manager, scrape_item, "jdownloader")
-                relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_folder)
+                relative_download_dir = download_folder.relative_to(config.settings.files.download_folder)
                 self.jdownloader.direct_unsupported_to_jdownloader(
                     scrape_item.url,
                     scrape_item.parent_title,
@@ -276,18 +275,18 @@ class ScrapeMapper:
             log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return False
 
-        before = self.manager.parsed_args.cli_only_args.completed_before
-        after = self.manager.parsed_args.cli_only_args.completed_after
+        before = config.cli.cli_only_args.completed_before
+        after = config.cli.cli_only_args.completed_after
         if is_outside_date_range(scrape_item, before, after):
             log(f"Skipping {scrape_item.url} as it is outside of the desired date range", 10)
             return False
 
-        skip_hosts = self.manager.config_manager.settings_data.ignore_options.skip_hosts
+        skip_hosts = config.settings.ignore_options.skip_hosts
         if skip_hosts and is_in_domain_list(scrape_item, skip_hosts):
             log(f"Skipping URL by skip_hosts config: {scrape_item.url}", 10)
             return False
 
-        only_hosts = self.manager.config_manager.settings_data.ignore_options.only_hosts
+        only_hosts = config.settings.ignore_options.only_hosts
         if only_hosts and not is_in_domain_list(scrape_item, only_hosts):
             log(f"Skipping URL by only_hosts config: {scrape_item.url}", 10)
             return False
@@ -295,7 +294,7 @@ class ScrapeMapper:
         return True
 
     async def skip_no_crawler_by_config(self, scrape_item: ScrapeItem) -> bool:
-        check_complete = await self.manager.db_manager.history_table.check_complete(
+        check_complete = await database.history_table.check_complete(
             "no_crawler",
             scrape_item.url,
             scrape_item.url,
@@ -307,8 +306,8 @@ class ScrapeMapper:
 
         posible_referer = scrape_item.parents[-1] if scrape_item.parents else scrape_item.url
         check_referer = False
-        if self.manager.config_manager.settings_data.download_options.skip_referer_seen_before:
-            check_referer = await self.manager.db_manager.temp_referer_table.check_referer(posible_referer)
+        if config.settings.download_options.skip_referer_seen_before:
+            check_referer = await database.temp_referer_table.check_referer(posible_referer)
 
         if check_referer:
             log(f"Skipping {scrape_item.url} as referer has been seen before", 10)
@@ -318,7 +317,7 @@ class ScrapeMapper:
         return False
 
 
-def regex_links(line: str) -> list[URL]:
+def regex_links(line: str) -> list[AbsoluteHttpURL]:
     """Regex grab the links from the URLs.txt file.
 
     This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt.
@@ -331,18 +330,16 @@ def regex_links(line: str) -> list[URL]:
     all_links = [x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line)]
     for link in all_links:
         encoded = "%" in link
-        yarl_links.append(URL(link, encoded=encoded))
+        yarl_links.append(AbsoluteHttpURL(link, encoded=encoded))
     return yarl_links
 
 
 def create_item_from_entry(entry: Sequence) -> ScrapeItem:
-    url = URL(entry[0])
+    url = AbsoluteHttpURL(entry[0])
     retry_path = Path(entry[1])
     item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
     completed_at = entry[2]
     created_at = entry[3]
-    if not isinstance(item.url, URL):
-        item.url = URL(item.url)
     item.completed_at = completed_at
     item.created_at = created_at
     return item

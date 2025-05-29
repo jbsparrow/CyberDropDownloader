@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
 from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 
@@ -22,8 +20,8 @@ class TitsInTopsCrawler(XenforoCrawler):
     )
     selectors = XenforoSelectors(posts=post_selectors)
 
-    def filter_link(self, link: URL) -> URL:
-        return URL(
+    def filter_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        return AbsoluteHttpURL(
             str(link)
             .replace("index.php%3F", "index.php/")
             .replace("index.php?", "index.php/")

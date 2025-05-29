@@ -72,6 +72,7 @@ from Crypto.Math.Numbers import Integer
 from Crypto.PublicKey import RSA
 from Crypto.Util import Counter
 
+from cyberdrop_dl import config
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import CDLBaseError, DownloadError, SlowDownloadError
@@ -451,7 +452,7 @@ class MegaApi:
         self.sid: str | None = None
         self.sequence_num: U32Int = random_u32int()
         self.request_id: str = "".join(random.choice(VALID_REQUEST_ID_CHARS) for _ in range(10))
-        self.user_agent = manager.config_manager.global_settings_data.general.user_agent
+        self.user_agent = config.global_settings_data.general.user_agent
         self.default_headers = {"Content-Type": "application/json", "User-Agent": self.user_agent}
         self.session = ClientSession()
         self.entrypoint = f"{self.schema}://{self.api_domain}/cs"
@@ -911,9 +912,9 @@ class MegaDownloader(Downloader):
         self.client = MegaDownloadClient(self.api)
         self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
 
-        self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
-        if self.manager.config_manager.settings_data.sorting.sort_downloads:
-            self.manager.path_manager.sorted_folder.mkdir(parents=True, exist_ok=True)
+        config.settings.files.download_folder.mkdir(parents=True, exist_ok=True)
+        if config.settings.sorting.sort_downloads:
+            config.appdata.sorted_folder.mkdir(parents=True, exist_ok=True)
 
     def register(
         self, url: URL, iv: U32IntTupleArray, k_decrypted: U32IntTupleArray, meta_mac: U32IntTupleArray, file_size: int

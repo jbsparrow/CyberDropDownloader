@@ -191,7 +191,7 @@ class AShemaleTubeCrawler(Crawler):
             if "uploadDate" in json_data:
                 scrape_item.possible_datetime = self.parse_date(json_data["uploadDate"])
 
-        title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()
+        title: str = soup.select_one("title").get_text(strip=True).split("- aShemaletube.com")[0].strip()
         link = self.parse_url(best_format.link_str)
 
         scrape_item.url = canonical_url

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
 from pydantic import AliasPath, Field, PlainValidator
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
+from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
@@ -15,7 +16,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -77,7 +77,7 @@ class XhamsterCrawler(Crawler):
             await self.process_children(scrape_item, gallerys_url, _SELECTORS.GALLERY, "galleries")
 
     @error_handling_wrapper
-    async def process_children(self, scrape_item: ScrapeItem, url: URL, selector: str, name: str) -> None:
+    async def process_children(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL, selector: str, name: str) -> None:
         async for soup in self.web_pager(url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -117,7 +117,7 @@ class XhamsterCrawler(Crawler):
             link, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=download_url
         )
 
-    async def get_model_details(self, url: URL, *model_name_choices: str) -> dict:
+    async def get_model_details(self, url: AbsoluteHttpURL, *model_name_choices: str) -> dict:
         model_names = model_name_choices or []
 
         async with self.request_limiter:
@@ -149,7 +149,7 @@ def get_window_initials_json(soup: BeautifulSoup) -> dict[str, dict]:
 class Format(NamedTuple):
     height: int
     resolution: str
-    url: URL
+    url: AbsoluteHttpURL
 
 
 class XHamsterItem(AliasModel):

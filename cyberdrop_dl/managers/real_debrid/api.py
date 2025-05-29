@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from requests import Session
 from requests.exceptions import RequestException
@@ -80,7 +80,7 @@ class RealDebridApi:
         self._session.headers.update({"Authorization": f"Bearer {self._api_token}"})
 
     @staticmethod
-    def handle_response(response: Response) -> dict | str | None:
+    def handle_response(response: Response) -> Any:
         try:
             JSONResp: dict = response.json()
             response.raise_for_status()

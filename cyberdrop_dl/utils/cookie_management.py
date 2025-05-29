@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.constants import BROWSERS
     from cyberdrop_dl.managers.manager import Manager
 
+from cyberdrop_dl import config
 from cyberdrop_dl.data_structures.supported_domains import (
     SUPPORTED_FORUMS,
     SUPPORTED_SITES_DOMAINS,
@@ -79,9 +80,9 @@ def get_cookies_from_browsers(
         msg = "No domains selected"
         raise ValueError(msg)
 
-    browsers_to_extract_from = browsers or manager.config_manager.settings_data.browser_cookies.browsers
+    browsers_to_extract_from = browsers or config.settings.browser_cookies.browsers
     extractors_to_use = list(map(str.lower, browsers_to_extract_from))
-    domains_to_extract: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
+    domains_to_extract: list[str] = domains or config.settings.browser_cookies.sites
     if "all" in domains_to_extract:
         domains_to_extract.remove("all")
         domains_to_extract.extend(SUPPORTED_SITES_DOMAINS)
@@ -113,10 +114,10 @@ def get_cookies_from_browsers(
         msg = "None of the provided browsers is supported for extraction"
         raise ValueError(msg)
 
-    manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
+    config.appdata.cookies_dir.mkdir(parents=True, exist_ok=True)
     domains_with_cookies: set[str] = set()
     for domain in domains_to_extract:
-        cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
+        cookie_file_path = config.appdata.cookies_dir / f"{domain}.txt"
         cdl_cookie_jar = MozillaCookieJar(cookie_file_path)
         for cookie_jar in extracted_cookies:
             for cookie in cookie_jar:
@@ -134,8 +135,8 @@ def clear_cookies(manager: Manager, domains: list[str]) -> None:
     if not domains:
         raise ValueError("No domains selected")
 
-    manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
+    config.appdata.cookies_dir.mkdir(parents=True, exist_ok=True)
     for domain in domains:
-        cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
+        cookie_file_path = config.appdata.cookies_dir / f"{domain}.txt"
         cookie_jar = MozillaCookieJar(cookie_file_path)
         cookie_jar.save(ignore_discard=True, ignore_expires=True)

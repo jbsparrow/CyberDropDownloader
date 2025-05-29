@@ -7,6 +7,7 @@ import asyncprawcore
 from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
 
+from cyberdrop_dl import config
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
@@ -17,7 +18,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Generator
 
     from asyncpraw.models import Redditor, Submission, Subreddit
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -57,8 +57,8 @@ class RedditCrawler(Crawler):
     DOMAIN: ClassVar[str] = "reddit"
 
     def __post_init__(self) -> None:
-        self.reddit_personal_use_script = self.manager.config_manager.authentication_data.reddit.personal_use_script
-        self.reddit_secret = self.manager.config_manager.authentication_data.reddit.secret
+        self.reddit_personal_use_script = config.auth.reddit.personal_use_script
+        self.reddit_secret = config.auth.reddit.secret
         self.request_limiter = AsyncLimiter(5, 1)
         self.logged_in = False
 
@@ -131,7 +131,7 @@ class RedditCrawler(Crawler):
         await self.process_item(scrape_item, submission, link)
 
     @error_handling_wrapper
-    async def process_item(self, scrape_item: ScrapeItem, submission: Submission, link: URL) -> None:
+    async def process_item(self, scrape_item: ScrapeItem, submission: Submission, link: AbsoluteHttpURL) -> None:
         assert link.host
         if "redd.it" in link.host:
             return await self.media(scrape_item, link)
@@ -167,7 +167,7 @@ class RedditCrawler(Crawler):
             scrape_item.add_children()
 
     @error_handling_wrapper
-    async def media(self, scrape_item: ScrapeItem, link: URL | None = None) -> None:
+    async def media(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL | None = None) -> None:
         """Handles media links."""
         url = link or scrape_item.url
         try:

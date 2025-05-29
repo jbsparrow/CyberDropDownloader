@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 _cache: dict[str, Any] = {}
 _cache_file: Path
-_request_cache: SQLiteBackend = None  # type: ignore
+request_cache: SQLiteBackend = None  # type: ignore
 DEFAULT_CONFIG_KEY = "default_config"
 
 
@@ -39,7 +39,7 @@ def load() -> None:
 def load_request_cache(
     cache_db: Path, file_host_cache_expire_after: timedelta, forum_cache_expire_after: timedelta
 ) -> None:
-    global _request_cache
+    global request_cache
     urls_expire_after = {"*.simpcity.su": file_host_cache_expire_after}
     for host in SUPPORTED_WEBSITES.values():
         match_host = f"*.{host}" if "." in host else f"*.{host}.*"
@@ -48,7 +48,7 @@ def load_request_cache(
     for forum in SUPPORTED_FORUMS.values():
         urls_expire_after[forum] = forum_cache_expire_after
 
-    _request_cache = SQLiteBackend(
+    request_cache = SQLiteBackend(
         cache_name=cache_db,  # type: ignore
         autoclose=False,
         allowed_codes=(
@@ -89,6 +89,6 @@ def remove(key: str) -> None:
 
 
 async def close() -> None:
-    if _request_cache:
-        await _request_cache.close()
+    if request_cache:
+        await request_cache.close()
     save("version", __version__)

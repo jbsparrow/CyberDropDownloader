@@ -13,6 +13,7 @@ from rich.progress import (
     TransferSpeedColumn,
 )
 
+from cyberdrop_dl import config
 from cyberdrop_dl.ui.progress.deque_progress import DequeProgress, adjust_title
 
 if TYPE_CHECKING:
@@ -25,7 +26,6 @@ class FileProgress(DequeProgress):
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         progress_colums = (SpinnerColumn(), "[progress.description]{task.description}", BarColumn(bar_width=None))
-        visible_tasks_limit: int = manager.config_manager.global_settings_data.ui_options.downloading_item_limit
         horizontal_columns = (
             *progress_colums,
             "[progress.percentage]{task.percentage:>6.2f}%",
@@ -38,10 +38,10 @@ class FileProgress(DequeProgress):
         )
         vertical_columns = (*progress_colums, DownloadColumn(), "━", TransferSpeedColumn())
         use_columns = horizontal_columns
-        if manager.parsed_args.cli_only_args.portrait:
+        if config.cli.cli_only_args.portrait:
             use_columns = vertical_columns
         self._progress = Progress(*use_columns)
-        super().__init__("Downloads", visible_tasks_limit)
+        super().__init__("Downloads", config.global_settings.ui_options.downloading_item_limit)
 
     def get_queue_length(self) -> int:
         """Returns the number of tasks in the downloader queue."""
@@ -60,7 +60,7 @@ class FileProgress(DequeProgress):
         """Adds a new task to the progress bar."""
         filename = filename.split("/")[-1].encode("ascii", "ignore").decode().strip()
         description = escape(adjust_title(filename, length=40))
-        if not self.manager.progress_manager.portrait:
+        if not config.cli.cli_only_args.portrait:
             description = f"({domain.upper()}) {description}"
         return super().add_task(description, expected_size)
 

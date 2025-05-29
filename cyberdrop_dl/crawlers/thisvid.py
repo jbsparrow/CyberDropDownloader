@@ -13,7 +13,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_betwee
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -151,7 +150,7 @@ class ThisVidCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        js_text: str = soup.select_one(ALBUM_ID_SELECTOR).text
+        js_text: str = soup.select_one(ALBUM_ID_SELECTOR).get_text(strip=True)
         album_id: str = get_text_between(js_text, "params['album_id'] =", ";").strip()
         results = await self.get_album_results(album_id)
         title: str = css.select_one_get_text(soup, ALBUM_NAME_SELECTOR)
@@ -167,7 +166,7 @@ class ThisVidCrawler(Crawler):
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        url: URL = self.parse_url(css.select_one_get_attr(soup, PICTURE_SELECTOR, "src"))
+        url: AbsoluteHttpURL = self.parse_url(css.select_one_get_attr(soup, PICTURE_SELECTOR, "src"))
         filename, ext = self.get_filename_and_ext(url.name)
         await self.handle_file(url, scrape_item, filename, ext)
 
