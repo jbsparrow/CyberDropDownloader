@@ -499,7 +499,7 @@ def remove_trailing_slash(url: AnyURL) -> AnyURL:
 def remove_parts(url: AnyURL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True) -> AnyURL:
     assert parts_to_remove
     new_parts = [p for p in url.parts[1:] if p not in set(parts_to_remove)]
-    return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
+    return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)  # type: ignore
 
 
 async def get_soup_no_error(response: CurlResponse | AnyResponse) -> BeautifulSoup | None:

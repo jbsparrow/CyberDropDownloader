@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from cyberdrop_dl import cache, constants, env
 from cyberdrop_dl.utils.apprise import get_apprise_urls
+from cyberdrop_dl.utils.args import parse_args
 
 from .auth_model import AuthSettings
 from .config_model import ConfigSettings
@@ -31,7 +32,6 @@ global_settings: GlobalSettings
 
 def startup() -> None:
     global appdata, cli
-    from cyberdrop_dl.utils.args import parse_args
 
     cli = parse_args()
 
@@ -45,7 +45,7 @@ def startup() -> None:
     appdata.mkdirs()
     cache.startup(appdata.cache_file)
     load_config(get_default_config())
-    settings.logs.delete_old_logs_and_folders(constants.STARTUP_TIME)
+    settings.logs._delete_old_logs_and_folders(constants.STARTUP_TIME)
 
 
 class AppData(Path):

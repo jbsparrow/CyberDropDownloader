@@ -16,11 +16,11 @@ from yarl import URL
 
 from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
+from cyberdrop_dl.database.tables.history_table import get_db_path
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths, TimeStamp
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
@@ -415,7 +415,7 @@ class Crawler(ABC):
         *,
         results: dict[str, int] | None = None,
         **kwargs: Any,
-    ) -> Generator[tuple[URL | None, ScrapeItem]]:
+    ) -> Generator[tuple[AbsoluteHttpURL | None, ScrapeItem]]:
         """Generates tuples with an URL from the `src` value of the first image tag (AKA the thumbnail) and a new scrape item from the value of `attribute`
 
         :param results: must be the output of `self.get_album_results`.

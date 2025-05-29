@@ -91,11 +91,11 @@ class Logs(PathAliasModel):
             if self.rotate_logs:
                 new_name = f"{log_file.stem}_{current_time_file_iso}{log_file.suffix}"
                 log_file: Path = log_file.parent / current_time_folder_iso / new_name
-                setattr(self, attr, log_file)
+                setattr(self, attr, self.log_folder / log_file)
 
             log_file.parent.mkdir(exist_ok=True, parents=True)
 
-    def delete_old_logs_and_folders(self, now: datetime | None = None) -> None:
+    def _delete_old_logs_and_folders(self, now: datetime | None = None) -> None:
         if now and self.logs_expire_after:
             for file in itertools.chain(self.log_folder.rglob("*.log"), self.log_folder.rglob("*.csv")):
                 file_date = file.stat().st_ctime

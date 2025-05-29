@@ -17,7 +17,7 @@ import browser_cookie3
 from pydantic import ValidationError
 from rich import print as rich_print
 
-from cyberdrop_dl import constants, env
+from cyberdrop_dl import config, constants, env
 from cyberdrop_dl.exceptions import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
@@ -82,7 +82,6 @@ def _ui_error_handling_wrapper(
 @_ui_error_handling_wrapper
 async def _run_manager(manager: Manager) -> None:
     """Runs the program and handles the UI."""
-    manager.path_manager.startup()
     manager.log_manager.startup()
     debug_log_file_path = _setup_debug_logger(manager)
 
@@ -320,6 +319,7 @@ def _setup_manager() -> Manager:
     """
     with _startup_logging(first_time_setup=True):
         try:
+            config.startup()
             manager = Manager()
             manager.startup()
             if manager.parsed_args.cli_only_args.multiconfig:

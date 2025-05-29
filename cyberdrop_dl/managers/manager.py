@@ -12,17 +12,14 @@ from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers import db_manager
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
-from cyberdrop_dl.managers.config_manager import ConfigManager
 from cyberdrop_dl.managers.download_manager import DownloadManager
 from cyberdrop_dl.managers.hash_manager import HashManager
 from cyberdrop_dl.managers.live_manager import LiveManager
 from cyberdrop_dl.managers.log_manager import LogManager
-from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
-from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.utilities import get_system_information
@@ -31,7 +28,10 @@ if TYPE_CHECKING:
     import queue
     from asyncio import TaskGroup
 
+    from cyberdrop_dl.managers.config_manager import ConfigManager
+    from cyberdrop_dl.managers.path_manager import PathManager
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
+    from cyberdrop_dl.utils.args import ParsedArgs
 
 
 class HasClose(Protocol):
@@ -118,15 +118,6 @@ class Manager:
 
     def startup(self) -> None:
         """Startup process for the manager."""
-
-        if isinstance(self.parsed_args, Field):
-            self.parsed_args = ParsedArgs.parse_args()
-
-        self.path_manager = PathManager(self)
-        self.path_manager.pre_startup()
-        self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
-        self.config_manager = ConfigManager(self)
-        self.config_manager.startup()
 
         self.args_consolidation()
         self.cache_manager.load_request_cache()

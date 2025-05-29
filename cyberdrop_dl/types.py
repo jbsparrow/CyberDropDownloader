@@ -13,7 +13,7 @@ import inspect
 import sys
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generic, Literal, NewType, ParamSpec, TypeAlias, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Literal, NewType, ParamSpec, TypeAlias, TypeVar, overload
 
 import yarl
 
@@ -123,32 +123,31 @@ else:
     AbsoluteHttpURL = yarl.URL
 
 
+# -- Crypto
 Array: TypeAlias = list[T] | tuple[T, ...]
 CMD: TypeAlias = Array[str]
 U32Int: TypeAlias = int
 U32IntArray: TypeAlias = Array[U32Int]
 U32IntSequence: TypeAlias = Sequence[U32Int]
+
+
+#  -- General
 AnyDict: TypeAlias = dict[str, Any]
 AnyURL = TypeVar("AnyURL", bound=yarl.URL | AbsoluteHttpURL)
-
 AbsolutePath = NewType("AbsolutePath", Path)
 TimeStamp = NewType("TimeStamp", int)
-
 StrMap: TypeAlias = Mapping[str, T]
 OneOrTuple: TypeAlias = T | tuple[T, ...]
 SupportedPaths: TypeAlias = StrMap[OneOrTuple[str]]
 SupportedDomains: TypeAlias = OneOrTuple[str]
-
-
 EnumMemberT = TypeVar("EnumMemberT", bound=enum.Enum)
-EnumBaseT = TypeVar("EnumBaseT")
 
 
-class ContainerEnumType(Generic[EnumBaseT], enum.EnumType):
+class ContainerEnumType(enum.EnumType):
     _member_names_: list[str]
     _member_map_: dict[str, enum.Enum]
 
-    def values(cls: type[EnumMemberT]) -> tuple[EnumBaseT, ...]:  # type: ignore[reportGeneralTypeIssues]
+    def values(cls: type[EnumMemberT]) -> tuple[Any, ...]:  # type: ignore[reportGeneralTypeIssues]
         return tuple(member.value for member in cls)
 
     if sys.version_info < (3, 12):
@@ -166,13 +165,21 @@ class ContainerEnumType(Generic[EnumBaseT], enum.EnumType):
             return (cls._member_map_[name] for name in cls._member_names_)  # type: ignore[reportReturnType]
 
 
-class Enum(enum.Enum, metaclass=ContainerEnumType[Any]): ...
+class Enum(enum.Enum, metaclass=ContainerEnumType): ...
 
 
-class IntEnum(enum.IntEnum, metaclass=ContainerEnumType[int]): ...
+class IntEnum(enum.IntEnum, metaclass=ContainerEnumType):
+    if TYPE_CHECKING:
+
+        @classmethod
+        def values(cls: type[EnumMemberT]) -> tuple[int, ...]: ...
 
 
-class StrEnum(enum.StrEnum, metaclass=ContainerEnumType[str]): ...
+class StrEnum(enum.StrEnum, metaclass=ContainerEnumType):
+    if TYPE_CHECKING:
+
+        @classmethod
+        def values(cls: type[EnumMemberT]) -> tuple[str, ...]: ...
 
 
 class MayBeUpperStrEnum(StrEnum):
