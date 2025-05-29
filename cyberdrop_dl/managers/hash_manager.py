@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import time
 from collections import defaultdict
 from collections.abc import Mapping
-from hashlib import md5 as md5_hasher
-from hashlib import sha256 as sha256_hasher
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple, Protocol
 
-import aiofiles
 from send2trash import send2trash
 from xxhash import xxh128 as xxh128_hasher
 
+from cyberdrop_dl import config
 from cyberdrop_dl.data_structures.hash import Hash, HashAlgorithm, Hashing
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils.database.tables import hash_table
@@ -22,7 +21,6 @@ from cyberdrop_dl.utils.utilities import get_size_or_none
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from cyberdrop_dl.config.config_model import DupeCleanup
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.types import AbsoluteHttpURL
@@ -33,15 +31,9 @@ _DedupeMapping = Mapping[Hash, Mapping[int, set[Path]]]
 
 
 class _Hasher(Protocol):
+    def digest(self) -> bytes: ...
     def hexdigest(self) -> str: ...
     def update(self, obj: bytes, /) -> None: ...
-
-
-_HASHER_MAP: dict[str, Callable[[], _Hasher]] = {
-    HashAlgorithm.xxh128: xxh128_hasher,
-    HashAlgorithm.md5: md5_hasher,
-    HashAlgorithm.sha256: sha256_hasher,
-}
 
 
 class _Hashable(NamedTuple):
@@ -50,7 +42,11 @@ class _Hashable(NamedTuple):
     referer: AbsoluteHttpURL | None = None
 
 
-_semaphore = asyncio.Semaphore(4)
+_HASHER_MAP: dict[str, Callable[[], _Hasher]] = {
+    HashAlgorithm.xxh128: xxh128_hasher,
+    HashAlgorithm.md5: hashlib.md5,
+    HashAlgorithm.sha256: hashlib.sha256,
+}
 
 
 class HashManager:
@@ -58,10 +54,6 @@ class HashManager:
         self.manager = manager
         self.hashed_media_items: set[MediaItem] = set()
         self.hashes_dict: _DedupeMapping = defaultdict(lambda: defaultdict(set))
-
-    @property
-    def dupe_cleanup_options(self) -> DupeCleanup:
-        return self.manager.config_manager.settings_data.dupe_cleanup_options
 
     @property
     def progress(self) -> HashProgress:
@@ -75,7 +67,7 @@ class HashManager:
                 _ = await self.get_xxh128_hash(_Hashable(file))
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
-        if self.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
+        if config.settings.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
             return
 
         await self.manager.states.RUNNING.wait()
@@ -100,7 +92,7 @@ class HashManager:
             return
 
         xxh128_hash = None
-        for hash_type in self.dupe_cleanup_options.algorithms_to_use:
+        for hash_type in config.settings.dupe_cleanup_options.algorithms_to_use:
             try:
                 hash = await self._get_hash(source, hash_type)
                 if hash_type == HashAlgorithm.xxh128:
@@ -111,21 +103,20 @@ class HashManager:
 
     async def _get_hash(self, source: _Hashable, hash_type: HashAlgorithm) -> Hash:
         self.progress.update_currently_hashing(source.file)
-        hash_value = await hash_table.get_file_hash_if_exists(source.file, hash_type)
-        if hash_value:
+        hash = await hash_table.get_file_hash_if_exists(source.file, hash_type)
+        if hash:
             self.progress.add_prev_hash()
         else:
-            hash_value = await compute_file_hash(source.file, hash_type)
+            hash = await asyncio.to_thread(compute_file_hash, source.file, hash_type)
             self.progress.add_new_completed_hash()
 
-        hash = Hash(hash_type, hash_value)
         await hash_table.insert_or_update_hash_db(*source, hash)
         return hash
 
     async def cleanup_dupes_after_download(self) -> None:
-        if self.dupe_cleanup_options.hashing == Hashing.OFF:
+        if config.settings.dupe_cleanup_options.hashing == Hashing.OFF:
             return
-        if not self.dupe_cleanup_options.auto_dedupe:
+        if not config.settings.dupe_cleanup_options.auto_dedupe:
             return
         if self.manager.config_manager.settings_data.runtime_options.ignore_history:
             return
@@ -153,7 +144,7 @@ class HashManager:
         log("Finished autodedupe")
 
     async def delete_and_log(self, file: Path, hash: Hash, original_file: Path) -> None:
-        to_trash = self.dupe_cleanup_options.send_deleted_to_trash
+        to_trash = config.settings.dupe_cleanup_options.send_deleted_to_trash
         suffix = "Sent to trash " if to_trash else "Permanently deleted"
         reason = "duplicate of file downloaded before"
         try:
@@ -232,18 +223,20 @@ def hash_directory_scanner(manager: Manager, path: Path) -> None:
     enter_to_continue()
 
 
-async def compute_file_hash(file: Path, hash_type: HashAlgorithm) -> Hash:
-    """Calculates the hash of a file asynchronously.
+def compute_file_hash(file: Path, hash_type: HashAlgorithm, /) -> Hash:
+    """Calculates the hash of a file.
 
     :param filename: The path to the file to hash.
     :param hash_type: The type of hash to calculate (e.g., MD5, SHA1, xxH128).
     :return: The calculated hash value as a HashValue object.
     """
+    # file may come from an old database entry, which is not resolved
     file_path = Path.cwd() / file
-    async with _semaphore, aiofiles.open(file_path, "rb") as file_io:
-        data = await file_io.read(_CHUNK_SIZE)
-        current_hasher = _HASHER_MAP[hash_type]()
-        while data:
-            await asyncio.to_thread(current_hasher.update, data)
-            data = await file_io.read(_CHUNK_SIZE)
-        return Hash(hash_type, current_hasher.hexdigest())
+    with file_path.open("rb") as file_io:
+        digestobj = _HASHER_MAP[hash_type]()
+        buffer = bytearray(_CHUNK_SIZE)
+        mem_view = memoryview(buffer)
+        while size := file_io.readinto(buffer):
+            digestobj.update(mem_view[:size])
+
+        return Hash(hash_type, digestobj.hexdigest())
