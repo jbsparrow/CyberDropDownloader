@@ -2,22 +2,22 @@ from __future__ import annotations
 
 import calendar
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
-from m3u8 import M3U8
 from pydantic import AliasPath, Field
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
+from cyberdrop_dl.utils.m3u8 import M3U8, VariantM3U8
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
+    from yarl import URL
 
-API_ENTRYPOINT = URL("https://api.fikfap.com")
-PRIMARY_BASE_DOMAIN = URL("https://fikfak.com")
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.fikfap.com")
+PRIMARY_URL = AbsoluteHttpURL("https://fikfak.com")
 POST_AMOUNT_LIMIT = 40  # Requesting more posts that this will return 400 - Bad Request
 
 
@@ -31,21 +31,29 @@ class Post(AliasModel):
     user: str = Field(validation_alias=AliasPath("author", "username"))
 
     @property
-    def url(self) -> URL:
-        return PRIMARY_BASE_DOMAIN / "posts" / self.id
+    def url(self) -> AbsoluteHttpURL:
+        return PRIMARY_URL / "posts" / self.id
 
     @property
     def timestamp(self) -> int:
         return calendar.timegm(self.created_at.timetuple())
 
 
-class FikFapCrawler(Crawler):
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+class M3U8Media(NamedTuple):
+    video: M3U8
+    audio: M3U8 | None = None
+    subtitles: M3U8 | None = None
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "fikfap", "FikFap")
+
+class FikFapCrawler(Crawler):
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "fikfap"
+    FOLDER_DOMAIN: ClassVar[str] = "FikFap"
+
+    def __post_init__(self) -> None:
         self.id_token = ""
-        self.headers = {"Authorization-Anonymous": self.id_token}
+        origin = str(PRIMARY_URL)
+        self.headers = {"Referer": origin, "Origin": origin, "Authorization-Anonymous": self.id_token}
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -64,57 +72,51 @@ class FikFapCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         post_id = scrape_item.url.name
-        canonical_url = PRIMARY_BASE_DOMAIN / "posts" / post_id
+        canonical_url = PRIMARY_URL / "posts" / post_id
         if await self.check_complete_from_referer(canonical_url):
             return
-        api_url = API_ENTRYPOINT / "posts" / post_id
-        json_resp: dict[str, Any] = await self._make_api_request(scrape_item, api_url)
-        post = Post(**json_resp)
+        json_resp: dict[str, Any] = await self._make_api_request(scrape_item, API_ENTRYPOINT / "posts" / post_id)
+        post = Post.model_validate(json_resp)
         await self.handle_post(scrape_item, post)
 
     async def user(self, scrape_item: ScrapeItem) -> None:
         user_name = scrape_item.url.name
-        api_url = API_ENTRYPOINT / "profile/username" / user_name / "posts"
-        api_url = api_url.with_query(amount=POST_AMOUNT_LIMIT)
         scrape_item.setup_as_profile("")
-        await self.collection(scrape_item, api_url)
+        await self.collection(
+            scrape_item,
+            API_ENTRYPOINT.joinpath("profile/username", user_name, "posts").with_query(amount=POST_AMOUNT_LIMIT),
+        )
 
     async def hashtag(self, scrape_item: ScrapeItem) -> None:
         label = scrape_item.url.name
-        api_url = API_ENTRYPOINT / "hashtags/label" / label / "posts"
-        api_url = api_url.with_query(amount=POST_AMOUNT_LIMIT, topPercentage=33)
-        title = self.create_title(f"{label} [hashtag]")
-        scrape_item.setup_as_album(title)
-        await self.collection(scrape_item, api_url)
+        scrape_item.setup_as_album(self.create_title(f"{label} [hashtag]"))
+        await self.collection(
+            scrape_item,
+            API_ENTRYPOINT.joinpath("hashtags/label", label, "posts").with_query(
+                amount=POST_AMOUNT_LIMIT, topPercentage=33
+            ),
+        )
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
         search_query = scrape_item.url.query["q"]
-        api_url = API_ENTRYPOINT / "search"
-        api_url = api_url.with_query(q=search_query, amount=POST_AMOUNT_LIMIT)
-
-        title = self.create_title(f"{search_query} [search]")
-        scrape_item.setup_as_profile(title)
-        json_resp: dict[str, list[dict[str, Any]]] = await self._make_api_request(scrape_item, api_url)
-
-        for post in (Post(**data) for data in json_resp["posts"]):
+        scrape_item.setup_as_profile(self.create_title(f"{search_query} [search]"))
+        json_resp: dict[str, list[dict[str, Any]]] = await self._make_api_request(
+            scrape_item, API_ENTRYPOINT.joinpath("search").with_query(q=search_query, amount=POST_AMOUNT_LIMIT)
+        )
+        for post in (Post.model_validate(data) for data in json_resp["posts"]):
             await self._proccess_post(scrape_item, post)
-
         for hashtag in json_resp["hashtags"]:
-            url = PRIMARY_BASE_DOMAIN / "hash" / hashtag["label"]
-            self._proccess_result(scrape_item, url)
-
+            self._proccess_result(scrape_item, PRIMARY_URL / "hash" / hashtag["label"])
         for user in json_resp["users"]:
-            url = PRIMARY_BASE_DOMAIN / "user" / user["username"]
-            self._proccess_result(scrape_item, url)
+            self._proccess_result(scrape_item, PRIMARY_URL / "user" / user["username"])
 
     @error_handling_wrapper
-    async def collection(self, scrape_item: ScrapeItem, api_url: URL) -> None:
+    async def collection(self, scrape_item: ScrapeItem, api_url: AbsoluteHttpURL) -> None:
         last_post_id: str = ""
         while True:
             json_resp: list[dict[str, Any]] = await self._make_api_request(scrape_item, api_url)
-
-            for post in (Post(**data) for data in json_resp):
+            for post in (Post.model_validate(**data) for data in json_resp):
                 await self._proccess_post(scrape_item, post)
                 last_post_id = post.id
 
@@ -122,7 +124,7 @@ class FikFapCrawler(Crawler):
                 break
             api_url = api_url.update_query(afterId=last_post_id)
 
-    def _proccess_result(self, scrape_item: ScrapeItem, url: URL) -> None:
+    def _proccess_result(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL) -> None:
         new_scrape_item = scrape_item.create_child(url)
         self.manager.task_group.create_task(self.run(new_scrape_item))
         scrape_item.add_children()
@@ -132,43 +134,46 @@ class FikFapCrawler(Crawler):
         await self.handle_post(new_scrape_item, post)
         scrape_item.add_children()
 
-    async def _make_api_request(self, scrape_item: ScrapeItem, api_url: URL) -> Any:
+    async def _make_api_request(self, scrape_item: ScrapeItem, api_url: AbsoluteHttpURL) -> Any:
         headers = self.headers | {"Referer": str(scrape_item.url)}
         async with self.request_limiter:
-            return await self.client.get_json(self.domain, api_url, headers)
+            return await self.client.get_json(self.DOMAIN, api_url, headers)
 
     async def handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
-        headers = {"Referer": "https://fikfap.com/", "Origin": "https://fikfap.com"}
-
-        playlist_list_link = self.parse_url(post.stream_url)
-        async with self.request_limiter:
-            playlist_list_content = await self.client.get_text(self.domain, playlist_list_link, headers)
-
-        playlist_list_m3u8 = M3U8(playlist_list_content, base_uri=str(playlist_list_link.parent))
-        all_playlists = playlist_list_m3u8.playlists
-        playlists = [p for p in all_playlists if p.stream_info.codecs and "vp09" not in p.stream_info.codecs]
-        best_video = sorted(playlists, key=lambda p: p.stream_info.resolution[1])[-1]  # type: ignore
-        audio = next(a for a in playlist_list_m3u8.media if a.group_id == best_video.stream_info.audio)
-
-        audio_link = self.parse_url(audio.absolute_uri)
-        video_link = self.parse_url(best_video.absolute_uri)
-        async with self.request_limiter:
-            audio_content = await self.client.get_text(self.domain, audio_link, headers)
-            video_content = await self.client.get_text(self.domain, video_link, headers)
-
-        video_m3u8 = M3U8(video_content, base_uri=str(video_link.parent))
-        audio_m3u8 = M3U8(audio_content, base_uri=str(audio_link.parent))
-
-        assert video_m3u8
-        assert audio_m3u8
-
+        m3u8_playlist_url = self.parse_url(post.stream_url)
+        m3u8_media = self.get_m3u8_media(m3u8_playlist_url)
         scrape_item.url = post.url
         scrape_item.possible_datetime = post.timestamp
-        title = self.create_title(f"{post.user} [user]", post.user_id)
-        scrape_item.setup_as_album(title, album_id=post.user_id)
+        scrape_item.setup_as_album(self.create_title(f"{post.user} [user]", post.user_id), album_id=post.user_id)
         filename, ext = self.get_filename_and_ext(f"{post.media_id}.mp4")
         custom_filename, _ = self.get_filename_and_ext(f"{post.label} [{post.id}].mp4")
 
         await self.handle_file(
-            post.url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=playlist_list_link
+            post.url,
+            scrape_item,
+            filename,
+            ext,
+            custom_filename=custom_filename,
+            debrid_link=m3u8_playlist_url,
+            m3u8_media=m3u8_media,
         )
+
+    async def get_m3u8_media(self, m3u8_url: AbsoluteHttpURL) -> M3U8Media:
+        main_m3u8 = await self._get_m3u8(m3u8_url)
+        if not main_m3u8.is_variant:
+            return M3U8Media(main_m3u8)
+
+        rendition_grup = VariantM3U8(main_m3u8).get_best_group(exclude="vp09")
+        audio = subtitle = None
+        video = await self._get_m3u8(rendition_grup.urls.video)
+        if rendition_grup.urls.audio:
+            audio = await self._get_m3u8(rendition_grup.urls.audio)
+        if rendition_grup.urls.subtitle:
+            subtitle = await self._get_m3u8(rendition_grup.urls.subtitle)
+        return M3U8Media(video, audio, subtitle)
+
+    async def _get_m3u8(self, url: URL, headers: dict[str, str] | None = None) -> M3U8:
+        headers = headers or self.headers
+        async with self.request_limiter:
+            playlist_list_content = await self.client.get_text(self.DOMAIN, url, headers)
+        return M3U8.new(playlist_list_content, url.parent)
