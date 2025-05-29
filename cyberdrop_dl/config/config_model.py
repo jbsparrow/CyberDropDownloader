@@ -1,3 +1,4 @@
+import itertools
 import re
 from collections.abc import Generator
 from datetime import datetime, timedelta
@@ -22,6 +23,7 @@ from cyberdrop_dl.models.types import (
     PathOrNone,
 )
 from cyberdrop_dl.models.validators import falsy_as, to_timedelta
+from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 from ._common import ConfigModel, Field, PathAliasModel
 
@@ -64,6 +66,10 @@ class Logs(PathAliasModel):
     unsupported_urls: LogPath = Field(Path("Unsupported_URLs.csv"), "unsupported_urls_filename")
     webhook: HttpAppriseURL | None = Field(None, "webhook_url")
 
+    @property
+    def cdl_responses_dir(self) -> Path:
+        return self.main_log.parent / "cdl_responses"
+
     @field_validator("webhook", mode="before")
     @classmethod
     def handle_falsy(cls, value: str) -> str | None:
@@ -74,7 +80,7 @@ class Logs(PathAliasModel):
     def parse_logs_duration(input_date: timedelta | str | int | None) -> timedelta | str | None:
         return falsy_as(input_date, None, to_timedelta)
 
-    def set_output_filenames(self, now: datetime) -> None:
+    def _set_output_filenames(self, now: datetime) -> None:
         self.log_folder.mkdir(exist_ok=True, parents=True)
         current_time_file_iso: str = now.strftime(constants.LOGS_DATETIME_FORMAT)
         current_time_folder_iso: str = now.strftime(constants.LOGS_DATE_FORMAT)
@@ -88,6 +94,15 @@ class Logs(PathAliasModel):
                 setattr(self, attr, log_file)
 
             log_file.parent.mkdir(exist_ok=True, parents=True)
+
+    def delete_old_logs_and_folders(self, now: datetime | None = None) -> None:
+        if now and self.logs_expire_after:
+            for file in itertools.chain(self.log_folder.rglob("*.log"), self.log_folder.rglob("*.csv")):
+                file_date = file.stat().st_ctime
+                t_delta = now - datetime.fromtimestamp(file_date)
+                if t_delta > self.logs_expire_after:
+                    file.unlink(missing_ok=True)
+        purge_dir_tree(self.log_folder)
 
 
 class FileSizeLimits(BaseModel):

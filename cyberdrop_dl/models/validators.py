@@ -4,13 +4,13 @@ import re
 from datetime import timedelta
 from functools import singledispatch
 from math import _SupportsTrunc
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, SupportsIndex, SupportsInt, TypeAlias, TypedDict
 
 from pydantic import AnyUrl, ByteSize, HttpUrl, TypeAdapter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
     import yarl
 
@@ -46,13 +46,8 @@ def to_bytesize(value: ByteSize | str | int) -> ByteSize:
 
 
 def change_path_suffix(suffix: str) -> Callable[[Path], Path]:
-    from cyberdrop_dl import constants
-
-    def replace(path: Path) -> Path:
-        return Path(str(path).replace("{config}", constants.current_config)).resolve()
-
     def with_suffix(value: Path) -> Path:
-        return replace(value.with_suffix(suffix))
+        return value.with_suffix(suffix)
 
     return with_suffix
 

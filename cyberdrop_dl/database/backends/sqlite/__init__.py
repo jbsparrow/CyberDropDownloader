@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 
 import aiosqlite
 
+from cyberdrop_dl.data_structures.hash import HashAlgorithm
 from cyberdrop_dl.database.backends.sqlite.tables import SQliteHashTable, SQliteHistoryTable, SQliteTempRefererTable
 from cyberdrop_dl.database.backends.sqlite.tables.definitions import create_files, create_temp_hash
 from cyberdrop_dl.database.base import Database
-from cyberdrop_dl.types import HashAlgorithm
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:

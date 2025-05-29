@@ -5,8 +5,7 @@ from pathlib import Path
 from time import sleep
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl import constants
-from cyberdrop_dl.managers.log_manager import LogManager
+from cyberdrop_dl import cache, constants
 from cyberdrop_dl.utils.apprise import get_apprise_urls
 from cyberdrop_dl.utils.args import ParsedArgs, parse_args
 
@@ -18,7 +17,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.apprise import AppriseURL
 
 
-_DEFAULT_CONFIG_KEY = "default_config"
 deep_scrape: bool = False
 
 current_config: Config
@@ -31,11 +29,22 @@ settings: ConfigSettings
 global_settings: GlobalSettings
 
 
+def startup() -> None:
+    global appdata, cli
+    cli = parse_args()
+    appdata = AppData(constants.APP_STORAGE)
+    appdata.mkdirs()
+    cache.startup(appdata.cache_file)
+    load_config(get_default_config())
+    settings.logs.delete_old_logs_and_folders(constants.STARTUP_TIME)
+
+
 class AppData(Path):
     def __init__(self, app_data_path: Path) -> None:
         self.configs_dir = app_data_path / "Configs"
         self.cache_dir = app_data_path / "Cache"
         self.cookies_dir = app_data_path / "Cookies"
+        self.cache_file = self.cache_dir / "cache.yaml"
         self.default_auth_config_file = self.configs_dir / "authentication.yaml"
         self.global_config_file = self.configs_dir / "global_settings.yaml"
         self.cache_db = self.cache_dir / "request_cache.db"
@@ -44,12 +53,6 @@ class AppData(Path):
     def mkdirs(self) -> None:
         for dir in (self.configs_dir, self.cache_dir, self.cookies_dir):
             dir.mkdir(parents=True, exist_ok=True)
-
-
-def startup() -> None:
-    global appdata, cli
-    cli = parse_args()
-    appdata = AppData(constants.APP_STORAGE)
 
 
 class Config:
@@ -110,15 +113,15 @@ class Config:
 
 
 def get_default_config() -> str:
-    return cache.get(_DEFAULT_CONFIG_KEY) or "Default"
+    return cache.get(cache.DEFAULT_CONFIG_KEY) or "Default"
 
 
 def get_all_configs() -> list:
     return sorted(config.name for config in appdata.configs_dir.iterdir() if config.is_dir())
 
 
-def change_default_config(config_name: str) -> None:
-    cache.save(_DEFAULT_CONFIG_KEY, config_name)
+def set_default_config(config_name: str) -> None:
+    cache.save(cache.DEFAULT_CONFIG_KEY, config_name)
 
 
 def delete_config(config_name: str) -> None:
@@ -128,20 +131,21 @@ def delete_config(config_name: str) -> None:
     assert config_name != current_config.folder.name
     all_configs.remove(config_name)
 
-    if cache.get(_DEFAULT_CONFIG_KEY) == config_name:
-        change_default_config(all_configs[0])
+    if cache.get(cache.DEFAULT_CONFIG_KEY) == config_name:
+        set_default_config(all_configs[0])
 
     config_path = appdata.configs_dir / config_name
     shutil.rmtree(config_path)
 
 
-def load_config(self, config_name: str) -> None:
+def load_config(config_name: str) -> None:
     global current_config, auth, global_settings, settings
+    assert config_name
     current_config = Config(config_name)
     current_config._load()
     current_config._resolve_all_paths()
     settings, auth, global_settings = current_config._all_settings()
-    self.manager.path_manager.startup()
-    sleep(1)
-    self.manager.log_manager = LogManager(self.manager)
+    settings.logs._set_output_filenames(constants.STARTUP_TIME)
+
+    # self.manager.log_manager = LogManager(self.manager)
     sleep(1)
