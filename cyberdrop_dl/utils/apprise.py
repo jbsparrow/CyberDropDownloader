@@ -6,6 +6,7 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from enum import IntEnum
+from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -86,7 +87,8 @@ def get_apprise_urls(*, file: Path | None = None, urls: list[str] | None = None)
     if not urls:
         return []
     try:
-        return _simplify_urls([AppriseURLModel(url=url) for url in set(urls)])
+        return _simplify_urls([AppriseURLModel.model_validate({"url": url}) for url in set(urls)])
+        AppriseURLModel.model_construct()
 
     except ValidationError as e:
         handle_validation_error(e, title="Apprise", file=file)
@@ -203,6 +205,7 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
         tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir,
     ):
         temp_dir = Path(temp_dir)
+        assert isinstance(capture, StringIO)
         temp_main_log = temp_dir / main_log.name
         notifications_to_send = {
             "no_logs": {"body": text.plain},

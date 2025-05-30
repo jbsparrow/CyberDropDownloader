@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -27,31 +27,28 @@ class Selectors:
 _SELECTORS = Selectors()
 API_MD5_ENTRYPOINT = URL("https://doodstream.com/pass_md5/")
 TOKEN_CHARS = string.ascii_letters + string.digits
-SUPPORTED_DOMAINS = [
-    "vidply.com",
-    "dood.re",
-    "doodstream",
-    "doodcdn",
-    "doodstream.co",
-    "dood.yt",
-    "do7go.com",
-    "all3do.com",
-]
+
+PRIMARY_URL = AbsoluteHttpURL("https://doodstream.com/")
 
 
 class DoodStreamCrawler(Crawler):
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"doodstream": SUPPORTED_DOMAINS}
-    primary_base_domain = URL("https://doodstream.com/")
-    update_unsupported = True
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/e/<video_id>"}
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (
+        "vidply.com",
+        "dood.re",
+        "doodstream",
+        "doodcdn",
+        "doodstream.co",
+        "dood.yt",
+        "do7go.com",
+        "all3do.com",
+    )
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    UPDATE_UNSUPPORTED: ClassVar[bool] = True
+    DOMAIN: ClassVar[str] = "doodstream"
+    FOLDER_DOMAIN: ClassVar[str] = "DoodStream"
 
-    def __init__(self, manager: Manager, _=None) -> None:
-        super().__init__(manager, "doodstream", "DoodStream")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "e" in scrape_item.url.parts:
             return await self.video(scrape_item)
         raise ValueError
@@ -63,13 +60,13 @@ class DoodStreamCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            response, soup = await self.client._get_response_and_soup_cffi(self.domain, scrape_item.url)
+            response, soup = await self.client._get_response_and_soup_cffi(self.DOMAIN, scrape_item.url)
 
         host = self.parse_url(response.url).host
         assert host
         del response
 
-        title: str = soup.select_one("title").text  # type: ignore
+        title: str = soup.select_one("title").text
         title = title.split("- DoodStream")[0].strip()
 
         file_id = get_file_id(soup)
@@ -86,7 +83,7 @@ class DoodStreamCrawler(Crawler):
         api_url = API_MD5_ENTRYPOINT / md5_path
         token = api_url.name
         async with self.request_limiter:
-            new_soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, api_url.with_host(host))
+            new_soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, api_url.with_host(host))
 
         text = new_soup.get_text(strip=True)
         random_padding = "".join(random.choice(TOKEN_CHARS) for _ in range(10))

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
-import platform
 from dataclasses import Field, field
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
@@ -27,6 +26,7 @@ from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
+from cyberdrop_dl.utils.utilities import get_system_information
 
 if TYPE_CHECKING:
     import queue
@@ -121,9 +121,6 @@ class Manager:
 
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
-
-        if self.parsed_args.cli_only_args.show_supported_sites:
-            show_supported_sites()
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
@@ -332,38 +329,8 @@ class Manager:
         for config in all_configs:
             self.config_manager.change_config(config)
 
-    def set_constants(self):
+    def set_constants(self) -> None:
         """
         rewrite constants after config/arg manager have loaded
         """
         constants.DISABLE_CACHE = self.parsed_args.cli_only_args.disable_cache
-
-
-def get_system_information() -> str:
-    system_info = {
-        "OS": platform.system(),
-        "release": platform.release(),
-        "version": platform.version(),
-        "machine": platform.machine(),
-        "architecture": str(platform.architecture()),
-        "python": platform.python_version(),
-    }
-
-    return json.dumps(system_info, indent=4)
-
-
-def show_supported_sites():
-    import sys
-
-    from rich import print
-    from rich.table import Table
-
-    from cyberdrop_dl.scraper.scrape_mapper import gen_crawlers_info
-
-    table = Table(title="Cyberdrop-DL Supported Sites")
-    for column in ("Site", "Crawler", "Primary Base Domain"):
-        table.add_column(column, no_wrap=True)
-    for crawler in gen_crawlers_info():
-        table.add_row(crawler.site, crawler.name, str(crawler.primary_base_domain))
-    print(table)
-    sys.exit(0)

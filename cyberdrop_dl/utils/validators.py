@@ -72,11 +72,11 @@ def _(input_date: str, raise_error: bool = False) -> timedelta | str:
     return input_date
 
 
-def parse_list(value: list):
+def parse_list(value: list) -> Any:
     return parse_falsy_as(value, [])
 
 
-def parse_falsy_as_none(value: Any):
+def parse_falsy_as_none(value: Any) -> Any:
     return parse_falsy_as(value, None)
 
 

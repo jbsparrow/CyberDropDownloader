@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -23,26 +21,25 @@ class Selectors:
 
 _SELECTORS = Selectors()
 
+PRIMARY_URL = AbsoluteHttpURL("https://www.erome.com")
+
 
 class EromeCrawler(Crawler):
-    primary_base_domain = URL("https://www.erome.com")
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/a/...",
+        "Profile": "/...",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
+    DOMAIN: ClassVar[str] = "erome"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "erome", "Erome")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "a" in scrape_item.url.parts:
             return await self.album(scrape_item)
         await self.profile(scrape_item)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile."""
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
@@ -54,14 +51,13 @@ class EromeCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title_portion = soup.select_one("title").text.rsplit(" - Porn")[0].strip()  # type: ignore
+        title_portion = soup.select_one("title").text.rsplit(" - Porn")[0].strip()
         if not title_portion:
             title_portion = scrape_item.url.name
 

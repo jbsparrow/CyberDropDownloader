@@ -1,46 +1,41 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import create_task_id
-from cyberdrop_dl.crawlers.kemono import KemonoCrawler, UserPost
+from cyberdrop_dl.types import AbsoluteHttpURL
+
+from ._kemono_base import KemonoBaseCrawler, UserPost
 
 if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
+
+PRIMARY_URL = AbsoluteHttpURL("https://coomer.su")
 
 
-class CoomerCrawler(KemonoCrawler):
-    primary_base_domain = URL("https://coomer.su")
-    DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
+class CoomerCrawler(KemonoBaseCrawler):
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "coomer"
+    API_ENTRYPOINT = AbsoluteHttpURL("https://coomer.su/api/v1")
+    SERVICES = "onlyfans", "fansly"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager)
-        self.domain = "coomer"
-        self.folder_domain = "Coomer"
-        self.api_entrypoint = URL("https://coomer.su/api/v1")
-        self.services = "onlyfans", "fansly"
+    def __post_init__(self) -> None:
+        super().__post_init__()
         self.request_limiter = AsyncLimiter(4, 1)
         self.session_cookie = self.manager.config_manager.authentication_data.coomer.session
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def async_startup(self) -> None:
-        def check_coomer_page(response: AnyResponse):
+        def check_coomer_page(response: AnyResponse) -> bool:
             if any(p in response.url.parts for p in ("onlyfans", "fansly", "data")):
                 return False
             return True
 
-        self.register_cache_filter(self.primary_base_domain, check_coomer_page)
+        self.register_cache_filter(PRIMARY_URL, check_coomer_page)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         return await self._fetch_kemono_defaults(scrape_item)
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: UserPost) -> None:
