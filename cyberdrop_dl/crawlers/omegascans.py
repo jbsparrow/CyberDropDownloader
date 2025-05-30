@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-import datetime
 import itertools
 from typing import TYPE_CHECKING, ClassVar
 
@@ -86,12 +84,11 @@ class OmegaScansCrawler(Crawler):
         scrape_item.add_to_parent_title(chapter_title)
 
         date_str = soup.select(DATE_SELECTOR)[-1].get_text()
-        try:
-            date = parse_datetime(date_str)
-        except ValueError:
+        date = self.parse_date(date_str)
+        if not date:
             script = soup.select_one(DATE_JS_SELECTOR)
             date_str = script.get_text().split('created_at\\":\\"')[1].split(".")[0]
-            date = parse_datetime(date_str)
+            date = self.parse_date(date_str)
 
         scrape_item.possible_datetime = date
         for attribute in ("src", "data-src"):
@@ -105,12 +102,3 @@ class OmegaScansCrawler(Crawler):
         scrape_item.url = scrape_item.url.with_query(None)
         filename, ext = self.get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    try:
-        parsed_date = datetime.datetime.strptime(date, "%m/%d/%Y")
-    except ValueError:
-        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
-    return calendar.timegm(parsed_date.timetuple())

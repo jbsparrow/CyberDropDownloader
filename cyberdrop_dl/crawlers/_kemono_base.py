@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import calendar
 import functools
 import itertools
 import re
@@ -16,6 +15,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
 from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 from cyberdrop_dl.utils.validators import parse_falsy_as_none
 
@@ -126,7 +126,7 @@ class Post(AliasModel):
 
     def model_post_init(self, *_) -> None:
         if self.published_or_added:
-            self.date = calendar.timegm(self.published_or_added.timetuple())
+            self.date = to_timestamp(self.published_or_added)
 
     @property
     def all_files(self) -> Generator[File]:

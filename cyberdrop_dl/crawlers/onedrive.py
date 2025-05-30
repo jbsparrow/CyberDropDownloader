@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import calendar
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -14,6 +13,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Self
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
+from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -253,7 +253,7 @@ def parse_api_response(json_resp: dict, access_details: AccessDetails) -> dict[s
         "url": create_api_url(new_access_details),
         "web_url": AbsoluteHttpURL(web_url_str, encoded="%" in web_url_str),
         "name": json_resp["name"],
-        "date": parse_datetime(date_str),
+        "date": to_timestamp(datetime.fromisoformat(date_str)),
         "access_details": new_access_details,
     }
 
@@ -268,9 +268,3 @@ def create_api_url(access_details: AccessDetails) -> AbsoluteHttpURL:
     if access_details.auth_key:
         return api_url.update_query(authkey=access_details.auth_key)
     return api_url
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.fromisoformat(date)
-    return calendar.timegm(parsed_date.timetuple())

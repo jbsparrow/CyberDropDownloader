@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import re
-from calendar import timegm
-from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
@@ -80,7 +78,7 @@ class TokioMotionCrawler(Crawler):
 
         with contextlib.suppress(AttributeError):
             relative_date_str = soup.select_one(self.video_date_selector).text.strip()
-            scrape_item.possible_datetime = parse_relative_date(relative_date_str)
+            scrape_item.possible_datetime = self.parse_date(relative_date_str)
 
         try:
             srcSD = soup.select_one('source[title="SD"]')
@@ -222,21 +220,3 @@ class TokioMotionCrawler(Crawler):
             scrape_item.add_to_parent_title(full_user_title)
         if user_title not in scrape_item.parent_title:
             scrape_item.add_to_parent_title(user_title)
-
-
-def parse_relative_date(relative_date: timedelta | str) -> int:
-    """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp."""
-    if isinstance(relative_date, str):
-        time_str = relative_date.casefold()
-        matches: list[str] = re.findall(DATE_PATTERN, time_str)
-        time_dict = {"days": 0}  # Assume today
-
-        for value, unit in matches:
-            value = int(value)
-            unit = unit.lower()
-            time_dict[unit] = value
-
-        relative_date = timedelta(**time_dict)
-
-    date = datetime.now() - relative_date
-    return timegm(date.timetuple())

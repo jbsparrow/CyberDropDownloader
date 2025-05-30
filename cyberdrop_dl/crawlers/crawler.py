@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import calendar
 import re
 from abc import ABC, abstractmethod
 from dataclasses import field
@@ -18,9 +17,10 @@ from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths, TimeStamp
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
+from cyberdrop_dl.utils.dates import parse_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.types import AbsoluteHttpURL
+    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths, TimeStamp
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
 
@@ -483,23 +483,19 @@ class Crawler(ABC):
         if not date_or_datetime:
             log(f"{msg}: Unable to extract date from soup", 40)
             return None
+        parsed_date = None
         try:
             if format:
                 parsed_date = datetime.strptime(date_or_datetime, format)
             else:
-                parsed_date = parser.parse(date_or_datetime)
+                parsed_date = parse_date(date_or_datetime)
         except (ValueError, TypeError, parser.ParserError) as e:
-            log(f"{msg}: {e}", 40)
-            return None
-        else:
-            return TimeStamp(calendar.timegm(parsed_date.timetuple()))
+            msg = f"{msg}: {e}"
 
-    def parse_soup_date(
-        self, soup: Tag, selector: str, attribute: str, format: str | None = None, /
-    ) -> TimeStamp | None:
-        if date_tag := soup.select_one(selector):
-            date_str: str = css.get_attr_or_none(date_tag, attribute) or ""
-            return self.parse_date(date_str, format)
+        if parsed_date is None:
+            log(msg, 40)
+            return None
+        return to_timestamp(parsed_date)
 
     @staticmethod
     def register_cache_filter(

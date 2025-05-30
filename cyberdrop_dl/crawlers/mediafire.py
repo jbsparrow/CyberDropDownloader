@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-import datetime
 import itertools
 from typing import TYPE_CHECKING, ClassVar
 
@@ -55,7 +53,7 @@ class MediaFireCrawler(Crawler):
                 raise MediaFireError(status=e.code, message=e.message) from None
 
             for file in folder_contents["folder_content"]["files"]:
-                date = self.parse_datetime(file["created"])
+                date = self.parse_date(file["created"])
                 link = self.parse_url(file["links"]["normal_download"])
                 new_scrape_item = scrape_item.create_child(link, new_title_part=title, possible_datetime=date)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -78,14 +76,8 @@ class MediaFireCrawler(Crawler):
                 raise ScrapeError(410)
             raise ScrapeError(422)
 
-        scrape_item.possible_datetime = self.parse_datetime(soup.select(DATE_SELECTOR)[-1].get_text())
+        scrape_item.possible_datetime = self.parse_date(soup.select(DATE_SELECTOR)[-1].get_text(), "%Y-%m-%d %H:%M:%S")
         link_str: str = link_tag.get("href")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
-
-    @staticmethod
-    def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
-        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(parsed_date.timetuple())

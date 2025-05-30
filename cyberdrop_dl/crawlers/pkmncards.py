@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import calendar
 import json
 from collections import defaultdict
 from dataclasses import dataclass
@@ -14,6 +13,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths, TimeStamp
 from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -227,7 +227,7 @@ def create_set(soup: Tag) -> CardSet:
     release_date: int | None = None
     for item in set_info["@graph"]:
         if iso_date := item.get("datePublished"):
-            release_date = calendar.timegm(datetime.fromisoformat(iso_date).timetuple())
+            release_date = to_timestamp(datetime.fromisoformat(iso_date))
             break
 
     set_abbr = css.select_one(soup, _SELECTORS.SET_ABBR).text
