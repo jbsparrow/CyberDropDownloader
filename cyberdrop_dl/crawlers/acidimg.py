@@ -1,28 +1,27 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.imx_to import ImxToCrawler
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
+
+PRIMARY_URL = AbsoluteHttpURL("https://acidimg.cc")
 
 
 class AcidImgCrawler(ImxToCrawler):
-    primary_base_domain = URL("https://acidimg.cc")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Image": "/i/...",
+        "Thumbnail": "/upload/...",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "acidimg.cc"
+    FOLDER_DOMAIN: ClassVar[str] = "AcidImg"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager)
-        self.domain = "acidimg.cc"
-        self.folder_domain = "AcidImg"
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "i" in scrape_item.url.parts:
             return await self.image(scrape_item)
@@ -33,11 +32,11 @@ class AcidImgCrawler(ImxToCrawler):
     def thumbnail_to_img(self, url: URL) -> URL:
         index = url.parts.index("upload") + 2
         path = "/".join(url.parts[index:])
-        return self.primary_base_domain / "upload/big" / path
+        return PRIMARY_URL / "upload/big" / path
 
     def get_canonical_url(self, url: URL) -> URL:
         image_id = get_image_id(url)
-        return self.primary_base_domain / f"img-{image_id}.html"
+        return PRIMARY_URL / f"img-{image_id}.html"
 
 
 def get_image_id(url: URL) -> str:

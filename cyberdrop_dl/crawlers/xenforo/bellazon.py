@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import ClassVar
 
-from yarl import URL
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
-if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
-
 
 class BellazonCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://www.bellazon.com/main/")
-    domain = "bellazon"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.bellazon.com/main/")
+    DOMAIN: ClassVar[str] = "bellazon"
+    FOLDER_DOMAIN: ClassVar[str] = "Bellazon"
     thread_url_part = "topic"
     login_required = False
     post_selectors = PostSelectors(
@@ -30,7 +28,4 @@ class BellazonCrawler(XenforoCrawler):
         next_page=Selector("li[class=ipsPagination_next] a", "href"),
         post_name="comment-",
     )
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "Bellazon")
-        self.attachment_url_part = ["attachments", "uploads"]
+    ATTACHMENT_URL_PARTS = "attachments", "uploads"

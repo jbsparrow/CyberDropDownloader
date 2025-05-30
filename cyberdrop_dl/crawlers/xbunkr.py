@@ -1,46 +1,41 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 IMAGE_SELECTOR = "a[class=image]"
+TITLE_SELECTOR = "h1#title"
+PRIMARY_URL = AbsoluteHttpURL("https://xbunkr.com")
 
 
 class XBunkrCrawler(Crawler):
-    primary_base_domain = URL("https://xbunkr.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Albums": "/a/...", "Direct links": ""}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "xbunkr"
+    FOLDER_DOMAIN: ClassVar[str] = "XBunkr"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "xbunkr", "XBunkr")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
-        assert scrape_item.url.host
         if "media" in scrape_item.url.host:
             await self.file(scrape_item)
         return await self.album(scrape_item)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         album_id = scrape_item.url.parts[2]
-        title = self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id)  # type: ignore
+        title = self.create_title(css.select_one_get_text(soup, TITLE_SELECTOR), album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
 
         for _, link in self.iter_tags(soup, IMAGE_SELECTOR):

@@ -4,9 +4,9 @@ import mimetypes
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ClassVar, ParamSpec, TypeVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import InvalidContentTypeError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.filters import has_valid_extension
 from cyberdrop_dl.utils.logger import log
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 
 P = ParamSpec("P")
@@ -32,7 +32,7 @@ def log_unsupported_wrapper(
     func: Callable[P, Coroutine[None, None, R]],
 ) -> Callable[P, Coroutine[None, None, R | None]]:
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs) -> R | None:
         self: GenericCrawler = args[0]
         item: ScrapeItem = args[1]
         try:
@@ -55,24 +55,16 @@ class FakeURL:
 
 
 class GenericCrawler(Crawler):
-    primary_base_domain = FakeURL(host=".")  # type: ignore
-    scrape_prefix = "Scraping (unsupported domain):"
-    scrape_mapper_domain = "."
+    DOMAIN: ClassVar[str] = "generic"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "generic", "Generic")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = FakeURL(host=".")
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         await self.file(scrape_item)
 
     @error_handling_wrapper
     @log_unsupported_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file trying to guess the ext from the headers"""
         content_type = await self.get_content_type(scrape_item.url)
         if "html" in content_type:
             return await self.try_video_from_soup(scrape_item)
@@ -87,7 +79,7 @@ class GenericCrawler(Crawler):
 
     async def get_content_type(self, url: URL) -> str:
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.DOMAIN, url)
         content_type: str = headers.get("Content-Type", "")
         if not content_type:
             raise ScrapeError(422)
@@ -95,16 +87,16 @@ class GenericCrawler(Crawler):
 
     async def try_video_from_soup(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("title").text  # type: ignore
+        title: str = soup.select_one("title").text
         title = title.rsplit(" - ", 1)[0].rsplit("|", 1)[0]
 
         video = soup.select_one(VIDEO_SELECTOR)
         if not video:
             raise ScrapeError(422)
 
-        link_str: str = video.get("src")  # type: ignore
+        link_str: str = video.get("src")
         link = self.parse_url(link_str, scrape_item.url.with_path("/"))
         try:
             filename, ext = self.get_filename_and_ext(link.name)

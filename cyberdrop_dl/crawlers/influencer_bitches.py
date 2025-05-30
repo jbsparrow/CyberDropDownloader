@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -23,18 +21,16 @@ class Selectors:
 
 _SELECTORS = Selectors()
 
+PRIMARY_URL = AbsoluteHttpURL("https://influencerbitches.com")
+
 
 class InfluencerBitchesCrawler(Crawler):
-    primary_base_domain = URL("https://influencerbitches.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Model": "/model/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "influencerbitches"
+    FOLDER_DOMAIN: ClassVar[str] = "InfluencerBitches"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "influencerbitches", "InfluencerBitches")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "model" in scrape_item.url.parts:
             return await self.model(scrape_item)
         raise ValueError
@@ -42,7 +38,7 @@ class InfluencerBitchesCrawler(Crawler):
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         title_tag = soup.select_one(_SELECTORS.TITLE) or soup.select_one(_SELECTORS.ALTERNATIVE_TITLE)
         assert title_tag
         title: str = title_tag.get_text(strip=True).replace("leaks", "").strip()
@@ -58,11 +54,11 @@ class InfluencerBitchesCrawler(Crawler):
         scrape_item.setup_as_album("Photos", album_id=album_id)
         results = await self.get_album_results(album_id)
         for a_tag in soup.select(_SELECTORS.PICTURES):
-            link_str: str = a_tag.select_one("img")["data-full"]  # type: ignore
+            link_str: str = a_tag.select_one("img")["data-full"]
             link = self.parse_url(link_str)
             if self.check_album_results(link, results):
                 continue
-            web_url = self.parse_url(a_tag["href"])  # type: ignore
+            web_url = self.parse_url(a_tag["href"])
             new_scrape_item = scrape_item.create_child(web_url)
             filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(link, new_scrape_item, filename, ext)

@@ -5,7 +5,7 @@ import re
 from dataclasses import Field
 from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 import aiofiles
 import arrow
@@ -13,6 +13,7 @@ from yarl import URL
 
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.crawlers import CRAWLERS
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import JDownloaderError, NoExtensionError
@@ -51,7 +52,7 @@ class ScrapeMapper:
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
-        self.existing_crawlers = get_crawlers(self.manager)
+        self.existing_crawlers = get_crawlers_mapping(self.manager)
         if not self.manager.config_manager.global_settings_data.general.enable_generic_crawler:
             _ = self.existing_crawlers.pop(".")
 
@@ -192,11 +193,11 @@ class ScrapeMapper:
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
         scrape_item.url = remove_trailing_slash(scrape_item.url)
-        supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]  # type: ignore
+        supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]
         is_generic = supported_domain == ["."]
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
-            jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)  # type: ignore
+            jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)
 
         if supported_domain and not is_generic:
             # get most restrictive domain if multiple domain matches
@@ -345,7 +346,7 @@ def create_item_from_entry(entry: Sequence) -> ScrapeItem:
     return item
 
 
-def get_crawlers(manager: Manager | None = None) -> dict[str, Crawler]:
+def get_crawlers_mapping(manager: Manager | None = None) -> dict[str, Crawler]:
     """Retuns a mapping with an instance of all crawlers.
 
     Crawlers are only created on the first calls. Future calls always return a reference to the same crawlers
@@ -358,31 +359,13 @@ def get_crawlers(manager: Manager | None = None) -> dict[str, Crawler]:
     global existing_crawlers
     if not existing_crawlers:
         for crawler in CRAWLERS:
-            if not crawler.SUPPORTED_SITES:
-                site_crawler = crawler(manager)  # type: ignore
-                assert site_crawler.domain not in existing_crawlers
-                key = site_crawler.scrape_mapper_domain or site_crawler.domain
-                existing_crawlers[key] = site_crawler
-                continue
-
-            for site, domains in crawler.SUPPORTED_SITES.items():
-                site_crawler = crawler(manager, site)
-                for domain in domains:
-                    assert domain not in existing_crawlers
-                    existing_crawlers[domain] = site_crawler
+            site_crawler = crawler(manager)
+            for domain in site_crawler.SCRAPE_MAPPER_KEYS:
+                msg = f"{domain} from {site_crawler.NAME} already registered by {existing_crawlers.get(domain)}"
+                assert domain not in existing_crawlers, msg
+                existing_crawlers[domain] = site_crawler
     return existing_crawlers
 
 
-def gen_crawlers_info():
-    """Yields information about every crawler as a NamedTuple"""
-
-    class CrawlerInfo(NamedTuple):
-        site: str
-        name: str
-        primary_base_domain: URL
-        crawler: Crawler
-
-    for name, crawler in sorted(get_crawlers().items()):
-        if name == ".":
-            continue
-        yield CrawlerInfo(name, type(crawler).__name__.removesuffix("Crawler"), crawler.primary_base_domain, crawler)
+def get_unique_crawlers() -> list[Crawler]:
+    return sorted(set(get_crawlers_mapping().values()), key=lambda x: x.FOLDER_DOMAIN)
