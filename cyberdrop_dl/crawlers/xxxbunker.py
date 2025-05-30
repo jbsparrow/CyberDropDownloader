@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import re
-from calendar import timegm
-from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
@@ -73,7 +71,7 @@ class XXXBunkerCrawler(Crawler):
 
         title = css.select_one_get_text(soup, "title").rsplit(" : XXXBunker.com", 1)[0].strip()
         if date_tag := soup.select_one(DATE_SELECTOR):
-            scrape_item.possible_datetime = parse_relative_date(date_tag.text.strip())
+            scrape_item.possible_datetime = self.parse_date(date_tag.get_text(strip=True))
 
         video_soup = None
         try:
@@ -180,21 +178,3 @@ class XXXBunkerCrawler(Crawler):
 
         cookies = {"PHPSESSID": self.session_cookie}
         self.update_cookies(cookies)
-
-
-def parse_relative_date(relative_date: timedelta | str) -> int:
-    """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp."""
-    if isinstance(relative_date, str):
-        time_str = relative_date.casefold()
-        matches: list[str] = re.findall(DATE_PATTERN, time_str)
-        time_dict = {"days": 0}
-
-        for value, unit in matches:
-            value = int(value)
-            unit = unit.lower()
-            time_dict[unit] = value
-
-        relative_date = timedelta(**time_dict)
-
-    date = datetime.now() - relative_date
-    return timegm(date.timetuple())

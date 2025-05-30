@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import calendar
 import json
-from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
@@ -201,7 +199,7 @@ class PMVHavenCrawler(Crawler):
         resolution: str = video_info.get("height") or ""
         title: str = video_info.get("title") or video_info["uploadTitle"]
         link_str: str = video_info["url"]
-        date = parse_datetime(video_info["isoDate"])
+        date = self.parse_date(video_info["isoDate"])
 
         scrape_item.possible_datetime = date
         link = self.parse_url(link_str)
@@ -266,9 +264,3 @@ def get_video_info_from_js(soup: BeautifulSoup) -> dict:
     for name, index in indices.items():
         video_properties[name] = info_dict["data"][index]
     return video_properties
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.fromisoformat(date.replace("Z", "+00.00"))
-    return calendar.timegm(parsed_date.timetuple())

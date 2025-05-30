@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-from calendar import timegm
-from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler
@@ -71,7 +69,7 @@ class YouJizzCrawler(Crawler):
         link = self.parse_url(link_str)
         date_str: str | None = info["date"]
         if date_str:
-            date = parse_relative_date(date_str)
+            date = self.parse_date(date_str)
             scrape_item.possible_datetime = date
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
@@ -114,22 +112,3 @@ def get_best_quality(info_dict: dict) -> Format | None:
     if default_quality:
         default_link_str = default_quality.get("filename") or ""
         return Format(DEFAULT_QUALITY, default_link_str)
-
-
-## TODO: move to utils. multiple crawler use the same function
-def parse_relative_date(relative_date: timedelta | str) -> int:
-    """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp."""
-    if isinstance(relative_date, str):
-        time_str = relative_date.casefold()
-        matches: list[str] = re.findall(DATE_PATTERN, time_str)
-        time_dict = {"days": 0}  # Assume today
-
-        for value, unit in matches:
-            value = int(value)
-            unit = unit.lower()
-            time_dict[unit] = value
-
-        relative_date = timedelta(**time_dict)
-
-    date = datetime.now() - relative_date
-    return timegm(date.timetuple())
