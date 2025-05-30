@@ -1,8 +1,16 @@
+"""Custom types for type annotations
+
+
+1. Only add types here if they do NOT depend on any runtime import from `cyberdrop_dl` itself, except utils
+2. Only add types here if they are going to be used across multiple modules
+"""
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType, TypeAlias, TypeGuard, TypeVar
 
 import yarl
 from pydantic import (
@@ -22,8 +30,31 @@ from pydantic import (
     model_validator,
 )
 
-from .converters import change_path_suffix, convert_byte_size_to_str
-from .validators import parse_apprise_url, parse_falsy_as_none, parse_list, pydantyc_yarl_url
+from cyberdrop_dl.utils.converters import change_path_suffix, convert_byte_size_to_str
+from cyberdrop_dl.utils.validators import (
+    parse_apprise_url,
+    parse_falsy_as_none,
+    parse_list,
+    pydantyc_yarl_url,
+)
+
+if TYPE_CHECKING:
+
+    class AbsoluteHttpURL(yarl.URL):
+        absolute: Literal[True]
+        scheme: Literal["http", "https"]
+
+        @property
+        def host(self) -> str:  # type: ignore
+            """Decoded host part of URL."""
+
+else:
+    AbsoluteHttpURL = yarl.URL
+
+
+def is_absolute_http_url(url: yarl.URL) -> TypeGuard[AbsoluteHttpURL]:
+    return url.absolute and url.scheme.startswith("http")
+
 
 # ~~~~~ Strings ~~~~~~~
 StrSerializer = PlainSerializer(str, return_type=str, when_used="json-unless-none")
@@ -59,7 +90,7 @@ class AppriseURLModel(FrozenModel):
     tags: set[str] = set()
 
     @model_serializer()
-    def serialize(self, info: SerializationInfo):
+    def serialize(self, info: SerializationInfo) -> str:
         dump_secret = info.mode != "json"
         url = self.url.get_secret_value() if dump_secret else self.url
         tags = self.tags - set("no_logs")
@@ -78,3 +109,16 @@ class HttpAppriseURL(AppriseURLModel):
 
 # DEPRECATED
 # HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl), StrSerializer]
+
+
+T = TypeVar("T")
+Array: TypeAlias = list[T] | tuple[T, ...]
+CMD: TypeAlias = Array[str]
+U32Int: TypeAlias = int
+U32IntArray: TypeAlias = Array[U32Int]
+U32IntSequence: TypeAlias = Sequence[U32Int]
+AnyDict: TypeAlias = dict[str, Any]
+
+AbsolutePath = NewType("AbsolutePath", Path)
+HashValue = NewType("HashValue", str)
+TimeStamp = NewType("TimeStamp", int)

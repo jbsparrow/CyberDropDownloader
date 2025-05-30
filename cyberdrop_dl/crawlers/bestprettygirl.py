@@ -1,34 +1,37 @@
 from __future__ import annotations
 
-import calendar
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-IMAGES_SELECTOR = "div.elementor-widget-theme-post-content  div.elementor-widget-container img"
-VIDEO_IFRAME_SELECTOR = "div.elementor-widget-theme-post-content  div.elementor-widget-container iframe"
-TITLE_SELECTOR = "meta[property='og:title']"
-DATE_SELECTOR = "meta[property='article:published_time']"
+class Selectors:
+    IMAGES = "div.elementor-widget-theme-post-content  div.elementor-widget-container img"
+    VIDEO_IFRAME = "div.elementor-widget-theme-post-content  div.elementor-widget-container iframe"
+    TITLE = "meta[property='og:title']"
+    DATE = "meta[property='article:published_time']"
+    COLLECTION_ITEM = "article.elementor-post.post a"
+
+
+_SELECTORS = Selectors()
+
 COLLECTION_PARTS = "category", "tag", "date"
-ITEM_SELECTOR = "article.elementor-post.post a"
 
 
 class BestPrettyGirlCrawler(Crawler):
     primary_base_domain = URL("https://bestprettygirl.com/")
-    next_page_selector = "a.page-numbers.next"
+    next_page = "a.page-numbers.next"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "bestprettygirl.com", "BestPrettyGirl")
@@ -49,7 +52,7 @@ class BestPrettyGirlCrawler(Crawler):
         collection_type = title = ""
         async for soup in self.web_pager(scrape_item.url):
             if not collection_type:
-                title_tag = soup.select_one(TITLE_SELECTOR)
+                title_tag = soup.select_one(_SELECTORS.TITLE)
                 if not title_tag:
                     raise ScrapeError(422)
 
@@ -66,44 +69,34 @@ class BestPrettyGirlCrawler(Crawler):
                 else:
                     title: str = title_tag.get_text(strip=True)  # type: ignore
                     title = title.removeprefix("Tag:").removeprefix("Category:").strip()
-                    title = title + f" [{collection_type}]"
-                    title = self.create_title(title)
+                    title = self.create_title(f"{title} [{collection_type}]")
 
                 scrape_item.setup_as_album(title)
 
-            for item in soup.select(ITEM_SELECTOR):
-                link_str: str = item.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.COLLECTION_ITEM):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        og_title: str = soup.select_one(TITLE_SELECTOR).get("content")  # type: ignore
-        date_str: str = soup.select_one(DATE_SELECTOR).get("content")  # type: ignore
-        date = datetime.fromisoformat(date_str)
+        og_title: str = soup.select_one(_SELECTORS.TITLE)["content"]  # type: ignore
+        date_str: str = soup.select_one(_SELECTORS.DATE)["content"]  # type: ignore
         title = self.create_title(og_title)
         scrape_item.setup_as_album(title)
-        scrape_item.possible_datetime = calendar.timegm(date.timetuple())
+        scrape_item.possible_datetime = self.parse_date(date_str)
 
-        trash: str = ""
-        for image in soup.select(IMAGES_SELECTOR):
-            link_str: str = image.get("src")  # type: ignore
-            link = self.parse_url(link_str)
-            if not trash:
-                trash = link.name.split("-0000", 1)[0]
-            filename, ext = get_filename_and_ext(link.name)
-            custom_filename = link.name.replace(trash, "").removeprefix("-")
-            custom_filename, _ = get_filename_and_ext(custom_filename)
+        trash_split = "-0000-"
+        trash_len: int = 0
+        for _, link in self.iter_tags(soup, _SELECTORS.IMAGES, "src"):
+            if not trash_len:
+                trash_len = link.name.find(trash_split) + len(trash_split)
+            filename, ext = self.get_filename_and_ext(link.name)
+            custom_filename = link.name[trash_len:]
+            custom_filename, _ = self.get_filename_and_ext(custom_filename)
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-        for video_ifr in soup.select(VIDEO_IFRAME_SELECTOR):
-            link_str: str = video_ifr.get("data-src")  # type: ignore
-            link_str = link_str.replace("//dood.re/", "//vidply.com/")
-            link = self.parse_url(link_str)
-            new_scrape_item = scrape_item.create_child(link)
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO_IFRAME, "data-src"):
+            new_scrape_item.url = new_scrape_item.url.with_host("vidply.com")
             self.handle_external_links(new_scrape_item)

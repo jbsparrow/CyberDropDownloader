@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import os
@@ -7,19 +8,23 @@ import platform
 import re
 import shutil
 import subprocess
-from dataclasses import fields
+import sys
+import unicodedata
+from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Protocol
+from stat import S_ISREG
+from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
 
 import aiofiles
 import rich
-from aiohttp import ClientConnectorError, ClientResponse, ClientSession, FormData
-from aiohttp_client_cache import CachedResponse
+from aiohttp import ClientConnectorError, ClientSession, FormData
+from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import (
+from cyberdrop_dl import constants
+from cyberdrop_dl.exceptions import (
     CDLBaseError,
     ErrorLogMessage,
     InvalidExtensionError,
@@ -27,46 +32,71 @@ from cyberdrop_dl.clients.errors import (
     NoExtensionError,
     get_origin,
 )
-from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Coroutine, Mapping
 
     from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
 
     from cyberdrop_dl.crawlers import Crawler
+    from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
+FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
+ALLOWED_FILEPATH_PUNCTUATION = " .-_!#$%'()+,;=@[]^{}~"
+subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
 class Dataclass(Protocol):
     __dataclass_fields__: ClassVar[dict]
 
 
-TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
+@dataclass(frozen=True, slots=True)
+class OGProperties:
+    """Open Graph properties.  Each attribute corresponds to an OG property."""
 
-subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
+    title: str = ""
+    description: str = ""
+    image: str = ""
+    url: str = ""
+    type: str = ""
+    site_name: str = ""
+    locale: str = ""
+    determiner: str = ""
+    audio: str = ""
+    video: str = ""
 
 
-def error_handling_wrapper(func: Callable) -> Callable:
+def error_handling_wrapper(
+    func: Callable[..., Coroutine[None, None, R]],
+) -> Callable[..., Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
-    async def wrapper(self: Crawler | Downloader, *args, **kwargs):
-        item: ScrapeItem | MediaItem | URL = args[0]
+    async def wrapper(*args, **kwargs) -> R | None:
+        self: Crawler | Downloader = args[0]
+        item: ScrapeItem | MediaItem | URL = args[1]
         link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         link_to_show: URL | str = ""
         try:
-            return await func(self, *args, **kwargs)
+            return await func(*args, **kwargs)
         except CDLBaseError as e:
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
             e_url: URL | str | None = getattr(e, "url", None)
             link_to_show = e_url or link_to_show
+        except NotImplementedError:
+            error_log_msg = ErrorLogMessage("NotImplemented")
         except TimeoutError:
             error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
@@ -98,17 +128,28 @@ def error_handling_wrapper(func: Callable) -> Callable:
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def sanitize_filename(name: str) -> str:
+def sanitize_unicode_emojis_and_symbols(title: str) -> str:
+    """Allow all Unicode letters/numbers/marks, plus safe filename punctuation, but not symbols or emoji."""
+    return "".join(
+        c for c in title if (c in ALLOWED_FILEPATH_PUNCTUATION or unicodedata.category(c)[0] in {"L", "N", "M"})
+    ).strip()
+
+
+def sanitize_filename(name: str, sub: str = "") -> str:
     """Simple sanitization to remove illegal characters from filename."""
-    return re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name).strip()
+    clean_name = re.sub(constants.SANITIZE_FILENAME_PATTERN, sub, name)
+    if platform.system() in ("Windows", "Darwin"):
+        return sanitize_unicode_emojis_and_symbols(clean_name)
+    return clean_name
 
 
 def sanitize_folder(title: str) -> str:
     """Simple sanitization to remove illegal characters from titles and trim the length to be less than 60 chars."""
+
     title = title.replace("\n", "").strip()
     title = title.replace("\t", "").strip()
     title = re.sub(" +", " ", title)
-    title = re.sub(r'[\\*?:"<>|/]', "-", title)
+    title = sanitize_filename(title, "-")
     title = re.sub(r"\.{2,}", ".", title)
     title = title.rstrip(".").strip()
 
@@ -286,8 +327,8 @@ async def send_webhook_message(manager: Manager) -> None:
 
     form = FormData()
 
-    if "attach_logs" in webhook.tags and main_log.is_file():
-        if main_log.stat().st_size <= 25 * 1024 * 1024:
+    if "attach_logs" in webhook.tags and (size := await asyncio.to_thread(get_size_or_none, main_log)):
+        if size <= 25 * 1024 * 1024:  # 25MB
             async with aiofiles.open(main_log, "rb") as f:
                 form.add_field("file", await f.read(), filename=main_log.name)
 
@@ -376,7 +417,7 @@ def set_default_app_if_none(file_path: Path) -> bool:
     return False
 
 
-def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any]) -> dict[str, Any]:
+def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: Mapping[str, Any]) -> dict[str, Any]:
     """Remove all keys that are not fields in the dataclass"""
     return {k: v for k, v in info.items() if k in get_field_names(dataclass)}
 
@@ -415,10 +456,14 @@ def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = Tru
         query_and_frag = query_and_frag.replace("+", "%20")
         return f"{parts}?{query_and_frag}"
 
+    def fix_multiple_slashes(link_str: str) -> str:
+        return re.sub(r"(?:https?)?:?(\/{3,})", "//", link_str)
+
     try:
         assert link_str, "link_str is empty"
         assert isinstance(link_str, str), f"link_str must be a string object, got: {link_str!r}"
         clean_link_str = fix_query_params_encoding()
+        clean_link_str = fix_multiple_slashes(clean_link_str)
         is_encoded = "%" in clean_link_str
         new_url = URL(clean_link_str, encoded=is_encoded)
     except (AssertionError, AttributeError, ValueError, TypeError) as e:
@@ -438,12 +483,88 @@ def remove_trailing_slash(url: URL) -> URL:
     return url.parent.with_fragment(url.fragment).with_query(url.query)
 
 
-async def get_soup_from_response(response: CurlResponse | ClientResponse | CachedResponse) -> BeautifulSoup | None:
+def remove_parts(url: URL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True) -> URL:
+    assert parts_to_remove
+    new_parts = [p for p in url.parts[1:] if p not in set(parts_to_remove)]
+    return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
+
+
+async def get_soup_no_error(response: CurlResponse | AnyResponse) -> BeautifulSoup | None:
     # We can't use `CurlResponse` at runtime so we check the reverse
-    is_curl = not isinstance(response, ClientResponse | CachedResponse)
     with contextlib.suppress(UnicodeDecodeError):
-        response_text = response.text if is_curl else await response.text()
-        return BeautifulSoup(response_text, "html.parser")
+        if isinstance(response, AnyResponse):
+            content = await response.read()  # aiohttp
+        else:
+            content = response.content  # curl response
+        return BeautifulSoup(content, "html.parser")
+
+
+def get_og_properties(soup: BeautifulSoup) -> OGProperties:
+    """Extracts Open Graph properties (og properties) from soup."""
+    og_properties: dict[str, str] = {}
+
+    for meta in soup.select('meta[property^="og:"]'):
+        property_name = meta["property"].replace("og:", "").replace(":", "_")  # type: ignore
+        og_properties[property_name] = meta["content"] or ""  # type: ignore
+
+    return OGProperties(**og_properties)
+
+
+def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
+    """Get `filename=` value from `Content-Disposition`"""
+    content_disposition: str | None = headers.get("Content-Disposition")
+    if not content_disposition:
+        return
+    if match := re.search(FILENAME_REGEX, content_disposition):
+        matches = match.groups()
+        return matches[0] or matches[1]
+
+
+def get_size_or_none(path: Path) -> int | None:
+    """Checks if this is a file and returns its size with a single system call.
+
+    Returns `None` otherwise"""
+
+    try:
+        stat = path.stat()
+        if S_ISREG(stat.st_mode):
+            return stat.st_size
+    except (OSError, ValueError):
+        return None
+
+
+@lru_cache
+def get_system_information() -> str:
+    system_info = platform.uname()._asdict() | {
+        "architecture": str(platform.architecture()),
+        "python": f"{platform.python_version()} {platform.python_implementation()}",
+        "common_name": get_os_common_name(),
+    }
+    return json.dumps(system_info, indent=4)
+
+
+@lru_cache
+def get_os_common_name() -> str:
+    system = platform.system()
+
+    if system in ("Linux",):
+        try:
+            return platform.freedesktop_os_release()["PRETTY_NAME"]
+        except OSError:
+            pass
+
+    if system == "Android" and sys.version_info >= (3, 13):
+        ver = platform.android_ver()
+        os_name = f"{system} {ver.release}"
+        for component in (ver.manufacturer, ver.model, ver.device):
+            if component:
+                os_name += f" ({component})"
+        return os_name
+
+    default = platform.platform(aliased=True, terse=True).replace("-", " ")
+    if system == "Windows" and (edition := platform.win32_edition()):
+        return f"{default} {edition}"
+    return default
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

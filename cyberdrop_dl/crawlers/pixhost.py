@@ -5,16 +5,19 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
 
 PRIMARY_BASE_DOMAIN = URL("https://pixhost.to/")
+GALLERY_TITLE_SELECTOR = "a[class=link] h2"
+IMAGES_SELECTOR = "div[class=images] a"
+IMAGE_SELECTOR = "img[class=image-img]"
 
 
 class PixHostCrawler(Crawler):
@@ -32,55 +35,45 @@ class PixHostCrawler(Crawler):
         if is_cdn(scrape_item.url):
             link = scrape_item.url
             scrape_item.url = get_canonical_url(link)
-            await self.handle_direct_link(scrape_item, link)
-        elif "gallery" in scrape_item.url.parts:
-            await self.gallery(scrape_item)
-        elif "show" in scrape_item.url.parts:
-            await self.image(scrape_item)
-        else:
-            raise ValueError
+            return await self.handle_direct_link(scrape_item, link)
+        if "gallery" in scrape_item.url.parts:
+            return await self.gallery(scrape_item)
+        if "show" in scrape_item.url.parts:
+            return await self.image(scrape_item)
+        raise ValueError
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a gallery."""
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         album_id = scrape_item.url.name
-        title = soup.select_one("a[class=link] h2").text  # type: ignore
+        title = soup.select_one(GALLERY_TITLE_SELECTOR).text  # type: ignore
         title = self.create_title(title, album_id)
-        scrape_item.add_to_parent_title(title)
-        scrape_item.part_of_album = True
-        scrape_item.album_id = album_id
+        scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
 
-        images = soup.select("div[class=images] a")
-        for image in images:
-            link_str: str = image.get("href")  # type: ignore
-            thumb_link_str: str = image.select_one("img").get("src")  # type: ignore
-            if not (thumb_link_str and link_str):
+        for thumb, link in self.iter_tags(soup, IMAGES_SELECTOR):
+            if not thumb:
                 continue
-            link = self.parse_url(link_str)
             link = get_canonical_url(link)
-            thumb_link = self.parse_url(thumb_link_str)
-            src = thumbnail_to_img(thumb_link)
+            src = thumbnail_to_img(thumb)
             if not self.check_album_results(src, results):
-                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+                new_scrape_item = scrape_item.create_child(link)
                 await self.handle_direct_link(new_scrape_item, src)
             scrape_item.add_children()
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
-
         if await self.check_complete_from_referer(scrape_item):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        link_str: str = soup.select_one("img[class=image-img]").get("src")  # type: ignore
+        link_str: str = soup.select_one(IMAGE_SELECTOR).get("src")  # type: ignore
         link = self.parse_url(link_str)
         await self.handle_direct_link(scrape_item, link)
 
@@ -89,8 +82,7 @@ class PixHostCrawler(Crawler):
         link = url or scrape_item.url
         if is_thumbnail(link):
             link = thumbnail_to_img(link)
-        filename, ext = get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
+        await self.direct_file(scrape_item, link)
 
 
 def thumbnail_to_img(url: URL) -> URL:
@@ -102,8 +94,7 @@ def thumbnail_to_img(url: URL) -> URL:
 
 
 def replace_first_part(url: URL, new_part: str) -> URL:
-    new_parts = list(url.parts)[1:]
-    new_parts[0] = new_part
+    new_parts = new_part, *url.parts[1:]
     new_path = "/".join(new_parts)
     return url.with_path(new_path)
 

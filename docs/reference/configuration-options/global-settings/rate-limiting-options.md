@@ -86,6 +86,14 @@ You can set the value to `0` to disable caching
 
 Same as `file_host_cache_expire_after` but applied to forums requests.
 
+## `jitter`
+
+| Type               | Default |
+| ------------------ | ------- |
+| `NonNegativeFloat` | `0`     |
+
+Additional number of seconds to wait in between downloads. CDL will wait an additional random number of seconds in between 0 and the `jitter` value.
+
 ## `max_simultaneous_downloads`
 
 | Type          | Default |

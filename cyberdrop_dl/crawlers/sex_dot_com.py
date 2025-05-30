@@ -1,19 +1,22 @@
 from __future__ import annotations
 
 import calendar
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from dateutil import parser
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
+
+
+API_URL = URL("https://iframe.sex.com/api/")
 
 
 class SexDotComCrawler(Crawler):
@@ -21,7 +24,6 @@ class SexDotComCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "sex", "Sex.com")
-        self.api_url = URL("https://iframe.sex.com/api/")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -39,23 +41,16 @@ class SexDotComCrawler(Crawler):
         username = scrape_item.url.parts[3]
         page = 1
         while True:
-            posts_api_url = self.api_url / "feed" / "listUserItems"
-
-            query = {
-                "pageSize": 300,
-                "pageNumber": page,
-                "visibility": "public",
-                "username": username,
-            }
-
+            posts_api_url = API_URL / "feed" / "listUserItems"
+            query = {"pageSize": 300, "pageNumber": page, "visibility": "public", "username": username}
             posts_api_url = posts_api_url.with_query(query)
             async with self.request_limiter:
-                json_data = await self.client.get_json(self.domain, posts_api_url, origin=scrape_item)
+                json_data = await self.client.get_json(self.domain, posts_api_url)
 
             if scrape_item.album_id is None:
                 user_id = json_data["page"]["items"][0]["media"]["user"]["userUid"]
-                scrape_item.album_id = user_id
-                scrape_item.add_to_parent_title(self.create_title(username))
+                title = self.create_title(username, user_id)
+                scrape_item.setup_as_profile(title, album_id=user_id)
 
             yield json_data
 
@@ -63,50 +58,40 @@ class SexDotComCrawler(Crawler):
                 break
             page += 1
 
-    @error_handling_wrapper
-    async def get_media(self, scrape_item: ScrapeItem) -> dict:
+    async def get_media(self, scrape_item: ScrapeItem) -> dict[str, Any]:
         """Gets media from its relative URL."""
         relative_url = "/".join(scrape_item.url.parts[3:])
-        data_url = self.api_url / "media" / "getMedia"
-        query = {
-            "relativeUrl": relative_url,
-        }
-        data_url = data_url.with_query(query)
+        data_url = API_URL / "media" / "getMedia"
+        data_url = data_url.with_query(relativeUrl=relative_url)
         async with self.request_limiter:
-            json_data = await self.client.get_json(self.domain, data_url, origin=scrape_item)
+            json_data = await self.client.get_json(self.domain, data_url)
         return json_data["media"]
 
     @error_handling_wrapper
-    async def handle_media(self, scrape_item: ScrapeItem, item: dict | None) -> None:
-        if item is None:
-            item = await self.get_media(scrape_item)
-        relative_url = item["relativeUrl"]
+    async def handle_media(self, scrape_item: ScrapeItem, item: dict[str, Any] | None) -> None:
+        real_item = item or await self.get_media(scrape_item)
+        relative_url = real_item["relativeUrl"]
         canonical_url = URL("https://sex.com/en/shorts") / relative_url
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        fileType = item.get("fileType") or item.get("mediaType")
+        fileType: str = real_item.get("fileType") or real_item["mediaType"]
         if fileType.startswith("image"):
-            media_url = URL(item["fullPath"]).with_query(
-                {
-                    "optimizer": "image",
-                    "width": 1200,
-                }
-            )
-            filename = f"{item['pictureUid']}.jpg"
-            ext = "jpg"
+            media_url = URL(real_item["fullPath"]).with_query(optimizer="image", width=1200)
+            filename, ext = f"{real_item['pictureUid']}.jpg", "jpg"
+
         elif fileType.startswith("video"):
-            media_url = URL(item["sources"][0]["fullPath"])
-            filename, ext = get_filename_and_ext(media_url.name)
-        date = self.parse_datetime(item["createdAt"])
-        new_scrape_item = self.create_scrape_item(scrape_item, canonical_url, "", True, scrape_item.album_id, date)
-        await self.handle_file(media_url, new_scrape_item, filename, ext)
+            media_url = URL(real_item["sources"][0]["fullPath"])
+            filename, ext = self.get_filename_and_ext(media_url.name)
+
+        scrape_item.possible_datetime = self.parse_datetime(real_item["createdAt"])
+        scrape_item.url = canonical_url
+        await self.handle_file(media_url, scrape_item, filename, ext)
         scrape_item.add_children()
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes shorts."""
-        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
         async for json_data in self.shorts_profile_paginator(scrape_item):
             for item in json_data["page"]["items"]:
                 await self.handle_media(scrape_item, item["media"])
@@ -114,7 +99,8 @@ class SexDotComCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem):
         """Scrapes a post."""
         username = scrape_item.url.parts[2]
-        scrape_item.add_to_parent_title(self.create_title(username))
+        title = self.create_title(username)
+        scrape_item.setup_as_album(title)
         await self.handle_media(scrape_item, None)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

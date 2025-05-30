@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 from pydantic import AliasPath, Field, PlainValidator
 from yarl import URL
 
-from cyberdrop_dl.config_definitions.custom.types import AliasModel
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AliasModel
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 PRIMARY_BASE_DOMAIN = URL("https://xhamster.com/")
 JS_VIDEO_INFO_SELECTOR = "script#initials-script"
@@ -63,12 +63,8 @@ class XhamsterCrawler(Crawler):
 
         async def process_children(url: URL, selector: str, name: str):
             async for soup in self.web_pager(url):
-                for item in soup.select(selector):
-                    link_str: str = item["href"]  # type: ignore
-                    link = self.parse_url(link_str)
-                    new_scrape_item = scrape_item.create_child(link, add_to_parent_title=name)
+                for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
                     self.manager.task_group.create_task(self.run(new_scrape_item))
-                    scrape_item.add_children()
 
         if "videos" in paths_to_scrape:
             videos_url = base_url / last_part

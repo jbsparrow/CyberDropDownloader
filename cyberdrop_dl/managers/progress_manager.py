@@ -15,6 +15,7 @@ from rich.progress import Progress, SpinnerColumn, TaskID
 from rich.text import Text
 from yarl import URL
 
+from cyberdrop_dl import __version__
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
 from cyberdrop_dl.ui.progress.hash_progress import HashProgress
@@ -92,7 +93,7 @@ class ProgressManager:
         self.status_message = Progress(spinner, "[progress.description]{task.description}")
 
         self.status_message_task_id = self.status_message.add_task("", total=100, completed=0, visible=False)
-        self.activity_task_id = activity.add_task("Running Cyberdrop-DL", total=100, completed=0)
+        self.activity_task_id = activity.add_task(f"Running Cyberdrop-DL: v{__version__}", total=100, completed=0)
         self.activity = activity
 
         simple_layout = Group(activity, self.download_progress.simple_progress)

@@ -2,21 +2,25 @@ from __future__ import annotations
 
 import calendar
 import datetime
+import itertools
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from mediafire import MediaFireApi, api
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MediaFireError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.exceptions import MediaFireError, ScrapeError
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
+
+DOWNLOAD_BUTTON_SELECTOR = "a[id=downloadButton]"
+DATE_SELECTOR = "ul[class=details] li span"
 
 
 class MediaFireCrawler(Crawler):
@@ -33,56 +37,36 @@ class MediaFireCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "folder" in scrape_item.url.parts:
-            await self.folder(scrape_item)
-        else:
-            await self.file(scrape_item)
+            return await self.folder(scrape_item)
+        await self.file(scrape_item)
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder of media."""
         folder_key = scrape_item.url.parts[2]
         try:
-            folder_details: dict[str, dict] = self.api.folder_get_info(folder_key=folder_key)
+            folder_details: dict[str, dict] = self.api.folder_get_info(folder_key=folder_key)  # type: ignore
         except api.MediaFireApiError as e:
-            raise MediaFireError(status=e.code, message=e.message, origin=scrape_item) from None
+            raise MediaFireError(status=e.code, message=e.message) from None
 
         title = self.create_title(folder_details["folder_info"]["name"], folder_key)
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-        scrape_item.album_id = folder_key
-        scrape_item.part_of_album = True
+        scrape_item.setup_as_album(title)
 
-        chunk = 1
-        chunk_size = 100
-        while True:
+        for chunk in itertools.count(1):
             try:
-                folder_contents: dict[str, dict] = self.api.folder_get_content(
-                    folder_key=folder_key,
-                    content_type="files",
-                    chunk=chunk,
-                    chunk_size=chunk_size,
-                )  # type: ignore
+                folder_contents: dict = self.api.folder_get_content(folder_key, "files", chunk=chunk, chunk_size=100)  # type: ignore
             except api.MediaFireApiError as e:
-                raise MediaFireError(status=e.code, message=e.message, origin=scrape_item) from None
+                raise MediaFireError(status=e.code, message=e.message) from None
 
-            files = folder_contents["folder_content"]["files"]
-
-            for file in files:
+            for file in folder_contents["folder_content"]["files"]:
                 date = self.parse_datetime(file["created"])
-                link_str = file["links"]["normal_download"]
-                link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    link,
-                    title,
-                    possible_datetime=date,
-                    add_parent=scrape_item.url,
-                )
+                link = self.parse_url(file["links"]["normal_download"])
+                new_scrape_item = scrape_item.create_child(link, new_title_part=title, possible_datetime=date)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
 
             if not folder_contents["folder_content"]["more_chunks"] == "yes":
                 break
-            chunk += 1
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -91,21 +75,18 @@ class MediaFireCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        link_tag = soup.select_one("a[id=downloadButton]")
+        link_tag = soup.select_one(DOWNLOAD_BUTTON_SELECTOR)
         if not link_tag:
-            if "Something appears to be missing" in str(soup):
-                raise ScrapeError(410, origin=scrape_item)
-            raise ScrapeError(422, origin=scrape_item)
+            if "Something appears to be missing" in soup.get_text():
+                raise ScrapeError(410)
+            raise ScrapeError(422)
 
-        date_tag = soup.select("ul[class=details] li span")
-        if date_tag:
-            date = self.parse_datetime(date_tag[-1].get_text())
-            scrape_item.possible_datetime = date
-        link_str: str = link_tag.get("href")
+        scrape_item.possible_datetime = self.parse_datetime(soup.select(DATE_SELECTOR)[-1].get_text())
+        link_str: str = link_tag.get("href")  # type: ignore
         link = self.parse_url(link_str)
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

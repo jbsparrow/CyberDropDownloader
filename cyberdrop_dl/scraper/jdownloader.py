@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import field
 from functools import wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from myjdapi import myjdapi
 
-from cyberdrop_dl.clients.errors import JDownloaderError
+from cyberdrop_dl.exceptions import JDownloaderError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
@@ -17,14 +17,18 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def error_wrapper(func: Callable) -> Callable:
+
+def error_wrapper(func: Callable[P, R]) -> Callable[P, R | None]:
     """Wrapper handles limits for scrape session."""
 
     @wraps(func)
-    def wrapper(self: JDownloader, *args, **kwargs) -> None:
+    def wrapper(*args, **kwargs) -> R | None:
+        self: JDownloader = args[0]
         try:
-            return func(self, *args, **kwargs)
+            return func(*args, **kwargs)
         except JDownloaderError as e:
             msg = e.message
 

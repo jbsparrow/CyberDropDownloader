@@ -4,32 +4,39 @@ import mimetypes
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
-from cyberdrop_dl.clients.errors import InvalidContentTypeError, NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.exceptions import InvalidContentTypeError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.filters import has_valid_extension
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Coroutine
 
     from bs4 import BeautifulSoup
     from yarl import URL
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 VIDEO_SELECTOR = "video > source"
 
 
-def log_unsupported_wrapper(func: Callable) -> Callable:
+def log_unsupported_wrapper(
+    func: Callable[P, Coroutine[None, None, R]],
+) -> Callable[P, Coroutine[None, None, R | None]]:
     @wraps(func)
-    async def wrapper(self: GenericCrawler, item: ScrapeItem, *args, **kwargs):
+    async def wrapper(*args, **kwargs):
+        self: GenericCrawler = args[0]
+        item: ScrapeItem = args[1]
         try:
-            return await func(self, item, *args, **kwargs)
+            return await func(*args, **kwargs)
         except (InvalidContentTypeError, ScrapeError) as e:
             await self.log_unsupported(item, f"({e})")
         except Exception:
@@ -75,12 +82,12 @@ class GenericCrawler(Crawler):
             msg = f"Received '{content_type}', was expecting other"
             raise InvalidContentTypeError(message=msg)
         fullname = Path(filename).with_suffix(ext)
-        filename, _ = get_filename_and_ext(fullname.name)
+        filename, _ = self.get_filename_and_ext(fullname.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     async def get_content_type(self, url: URL) -> str:
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.domain, url)
         content_type: str = headers.get("Content-Type", "")
         if not content_type:
             raise ScrapeError(422)
@@ -88,7 +95,7 @@ class GenericCrawler(Crawler):
 
     async def try_video_from_soup(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title: str = soup.select_one("title").text  # type: ignore
         title = title.rsplit(" - ", 1)[0].rsplit("|", 1)[0]
@@ -100,17 +107,14 @@ class GenericCrawler(Crawler):
         link_str: str = video.get("src")  # type: ignore
         link = self.parse_url(link_str, scrape_item.url.with_path("/"))
         try:
-            filename, ext = get_filename_and_ext(link.name)
+            filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
-            filename, ext = get_filename_and_ext(link.name + ".mp4")
+            filename, ext = self.get_filename_and_ext(link.name + ".mp4")
         await self.handle_file(link, scrape_item, filename, ext)
 
     async def log_unsupported(self, scrape_item: ScrapeItem, msg: str = "") -> None:
         log(f"Unsupported URL: {scrape_item.url} {msg}", 30)
-        await self.manager.log_manager.write_unsupported_urls_log(
-            scrape_item.url,
-            scrape_item.parents[0] if scrape_item.parents else None,
-        )
+        await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.origin())
         self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
 

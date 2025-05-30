@@ -32,28 +32,25 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.exceptions import DownloadError, ScrapeError
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Mapping
 
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-FILENAME_REGEX_STR = r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\""
-FILENAME_REGEX = re.compile(FILENAME_REGEX_STR, re.IGNORECASE)
 VALID_FILE_URL_PARTS = "file", "document", "presentation", "spreadsheets"
 ITEM_SELECTOR = "div.flip-entry-info > a"
 
@@ -81,8 +78,8 @@ class GoogleDriveCrawler(Crawler):
         if is_folder(scrape_item.url):
             return await self.folder(scrape_item)
 
-        if bool(get_file_id(scrape_item.url)):
-            await self.file(scrape_item)
+        if file_id := get_file_id(scrape_item.url):
+            return await self.file(scrape_item, file_id)
 
         raise ValueError
 
@@ -91,7 +88,6 @@ class GoogleDriveCrawler(Crawler):
         folder = await self.get_folder_details(scrape_item)
         title = self.create_title(folder.title, folder.id)
         scrape_item.setup_as_album(title, album_id=folder.id)
-
         results = await self.get_album_results(folder.id)
 
         subfolders = []
@@ -144,11 +140,11 @@ class GoogleDriveCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
-    async def get_file_url_and_headers(self, url: URL, file_id: str) -> tuple[URL, dict]:
-        soup: BeautifulSoup | None = None
+    async def get_file_url_and_headers(self, url: URL, file_id: str) -> tuple[URL, Mapping[str, str]]:
+        soup = last_error = None
         current_url: URL | None = url
         try_file_open_url = True
-        last_error = None
+
         headers = {}
         while current_url:
             current_url, headers = await self.add_headers(current_url)
@@ -157,7 +153,9 @@ class GoogleDriveCrawler(Crawler):
 
             try:
                 async with self.request_limiter:
-                    soup, headers = await self.client.get_soup(self.domain, current_url, with_response_headers=True)
+                    response, soup = await self.client._get_response_and_soup(self.domain, current_url)
+                    headers = response.headers
+
             except DownloadError as e:
                 last_error = e
                 if e.status == 500 and try_file_open_url:
@@ -168,29 +166,43 @@ class GoogleDriveCrawler(Crawler):
             if not soup:
                 raise last_error or ScrapeError(400)
 
-            docs_url = get_docs_url(soup, file_id)
-            if docs_url:
+            if docs_url := get_docs_url(soup, file_id):
                 current_url = docs_url
                 continue
 
             if are_valid_headers(headers):
                 return current_url, headers
 
-            current_url = get_url_from_download_button(soup, self.parse_url)
+            current_url = self.get_url_from_download_button(soup)
             if not current_url:
                 break
             return await self.add_headers(current_url)
 
         raise ScrapeError(422)
 
-    async def add_headers(self, url: URL) -> tuple[URL, dict]:
+    async def add_headers(self, url: URL) -> tuple[URL, Mapping[str, str]]:
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.domain, url)
         location = headers.get("location")
         if location:
             link = self.parse_url(location)
             return await self.add_headers(link)
         return url, headers
+
+    def get_url_from_download_button(self, soup: BeautifulSoup) -> URL | None:
+        form = soup.select_one("#download-form")
+        if not form:
+            return None
+
+        url_str: str = form["action"]  # type: ignore
+        url: URL = self.parse_url(url_str.replace("&amp;", "&"))
+        query_params = dict(url.query)
+
+        input_tags = soup.select('input[type="hidden"]')
+        for input_tag in input_tags:
+            query_params[input_tag.get("name")] = input_tag.get("value")  # type: ignore
+
+        return url.with_query(query_params)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -241,16 +253,6 @@ def get_folder_id(url: URL) -> str:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def get_filename_from_headers(headers: dict) -> str | None:
-    content_disposition = headers.get("Content-Disposition")
-    if not content_disposition:
-        return ""
-    match = re.search(FILENAME_REGEX, content_disposition)
-    if match:
-        matches = match.groups()
-        return matches[0] or matches[1]
-
-
 def get_canonical_url(item_id: str, folder: bool = False) -> URL:
     if folder:
         return URL(f"https://drive.google.com/drive/folders/{item_id}")
@@ -260,33 +262,17 @@ def get_canonical_url(item_id: str, folder: bool = False) -> URL:
 def get_download_url(item_id: str, folder: bool = False) -> URL:
     if folder:
         return URL(f"https://drive.google.com/embeddedfolderview?id={item_id}")
-    return URL(f"https://drive.google.com/uc?id={item_id}")
-
-
-def get_url_from_download_button(soup: BeautifulSoup, url_parser: Callable[..., URL]) -> URL | None:
-    form = soup.select_one("#download-form")
-    if not form:
-        return None
-
-    url_str: str = form["action"]  # type: ignore
-    url: URL = url_parser(url_str.replace("&amp;", "&"))
-    query_params = dict(url.query)
-
-    input_tags = soup.select('input[type="hidden"]')
-    for input_tag in input_tags:
-        query_params[input_tag.get("name")] = input_tag.get("value")  # type: ignore
-
-    return url.with_query(query_params)
+    return URL(f"https://drive.google.com/uc?export=download&id={item_id}")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def are_valid_headers(headers: dict):
+def are_valid_headers(headers: Mapping[str, str]):
     return "Content-Disposition" in headers and not is_html(headers)
 
 
-def is_html(headers: dict) -> bool:
+def is_html(headers: Mapping[str, str]) -> bool:
     content_type: str = headers.get("Content-Type", "").lower()
     return any(s in content_type for s in ("html", "text"))
 

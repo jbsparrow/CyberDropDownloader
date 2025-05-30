@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
 IMAGE_SELECTOR = "img[id*=main-image]"
@@ -45,22 +45,14 @@ class HotPicCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        scrape_item.album_id = scrape_item.url.parts[2]
+        album_id = scrape_item.url.parts[2]
         title = self.create_title(soup.title.text.rsplit(" - ")[0], scrape_item.album_id)  # type: ignore
-        scrape_item.add_to_parent_title(title)
-        scrape_item.part_of_album = True
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        scrape_item.setup_as_profile(title, album_id=album_id)
 
-        files = soup.select(ALBUM_ITEM_SELECTOR)
-        for file in files:
-            link_str: str = file.get("href")  # type: ignore
-            link = self.parse_url(link_str)
-            canonical_url = get_canonical_url(link)
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
-            scrape_item.add_children()
+        for _, link in self.iter_tags(soup, ALBUM_ITEM_SELECTOR):
+            await self.handle_direct_link(scrape_item, link)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -69,22 +61,20 @@ class HotPicCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         file = soup.select_one(VIDEO_SELECTOR) or soup.select_one(IMAGE_SELECTOR)
         if not file:
             raise ScrapeError(422)
         link_str: str = file.get("src")  # type: ignore
         link = self.parse_url(link_str)
-        canonical_url = get_canonical_url(link)
-        filename, ext = get_filename_and_ext(link.name)
-        await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
+        await self.handle_direct_link(scrape_item, link)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         link = thumbnail_to_img(scrape_item.url)
         canonical_url = get_canonical_url(link)
-        filename, ext = get_filename_and_ext(canonical_url.name)
+        filename, ext = self.get_filename_and_ext(canonical_url.name)
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
 

@@ -6,16 +6,16 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import LoginError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.exceptions import LoginError, ScrapeError
 from cyberdrop_dl.utils.logger import log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 PRIMARY_BASE_DOMAIN = URL("https://nhentai.net/")
@@ -24,6 +24,7 @@ EXT_MAP = {"a": ".avif", "g": ".gif", "j": ".jpg", "p": ".png", "w": ".webp"}
 COLLECTION_PARTS = "favorites", "tag", "search", "parody", "group", "character", "artist"
 ITEM_SELECTOR = "div.gallery > a"
 COLLECTION_TITLE_SELECTOR = "div#content > h1"
+LOGIN_PAGE_SELECTOR = "input.id_username_or_email"
 
 
 class NHentaiCrawler(Crawler):
@@ -47,23 +48,20 @@ class NHentaiCrawler(Crawler):
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
-        collection_type = title = ""
-        async for soup in self.web_pager(scrape_item):
-            if not collection_type:
+        title = ""
+        async for soup in self.web_pager(scrape_item.url):
+            if not title:
                 title_tag = soup.select_one(COLLECTION_TITLE_SELECTOR)
                 if not title_tag:
                     raise ScrapeError(422)
 
-                for part in COLLECTION_PARTS:
-                    if part in scrape_item.url.parts:
-                        collection_type = part
-                        break
-
+                collection_type = next((part for part in COLLECTION_PARTS if part in scrape_item.url.parts), None)
+                assert collection_type
                 if collection_type == "favorites":
-                    if soup.select_one("input.id_username_or_email"):
+                    if soup.select_one(LOGIN_PAGE_SELECTOR):
                         raise LoginError("No cookies provided to download favorites")
 
-                    for span in soup.find_all("span"):
+                    for span in soup.select("span"):
                         span.decompose()
 
                 else:
@@ -74,12 +72,8 @@ class NHentaiCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for item in soup.select(ITEM_SELECTOR):
-                link_str: str = item.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
@@ -98,7 +92,7 @@ class NHentaiCrawler(Crawler):
         n_images: int = json_resp["num_pages"]
         padding = max(3, len(str(n_images)))
         for index, link in get_image_urls(json_resp):
-            filename, ext = get_filename_and_ext(link.name)
+            filename, ext = self.get_filename_and_ext(link.name)
             custom_filename = f"{index:0{padding}d}{ext}"
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 

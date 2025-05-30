@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
-
-
-BLOCK_FOLDER_DOWNLOADS = False
 
 
 class DropboxCrawler(Crawler):
@@ -31,9 +29,10 @@ class DropboxCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        scrape_item.url = await self.get_share_url(scrape_item)
-        if not scrape_item.url:
+        url = await self.get_share_url(scrape_item)
+        if not url:
             return
+        scrape_item.url = url
 
         if any(p in scrape_item.url.path for p in ("/scl/fi/", "/scl/fo/")):
             return await self.file(scrape_item)
@@ -56,7 +55,7 @@ class DropboxCrawler(Crawler):
         filename = item.filename or await self.get_folder_name(item.download_url)
         if not filename:
             raise ScrapeError(422)
-        filename, ext = get_filename_and_ext(filename)
+        filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(item.canonical_url, scrape_item, filename, ext, debrid_link=item.download_url)
 
     @error_handling_wrapper
@@ -68,14 +67,14 @@ class DropboxCrawler(Crawler):
     async def get_folder_name(self, url: URL) -> str | None:
         url = await self.get_redict_url(url)
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, url)
-        if not are_valid_headers(headers):
+            headers = await self.client.get_head(self.domain, url)
+        if not ("Content-Disposition" in headers and not is_html(headers)):
             raise ScrapeError(422)
         return get_filename_from_headers(headers)
 
     async def get_redict_url(self, url: URL) -> URL:
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.domain, url)
         location = headers.get("location")
         if not location:
             raise ScrapeError(400)
@@ -142,24 +141,6 @@ def get_item_info(url: URL) -> DropboxItem:
     return DropboxItem(file_id, folder_tokens, url, rlkey, filename)
 
 
-FILENAME_REGEX_STR = r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\""
-FILENAME_REGEX = re.compile(FILENAME_REGEX_STR, re.IGNORECASE)
-
-
-def get_filename_from_headers(headers: dict) -> str | None:
-    content_disposition = headers.get("Content-Disposition")
-    if not content_disposition:
-        return
-    match = re.search(FILENAME_REGEX, content_disposition)
-    if match:
-        matches = match.groups()
-        return matches[0] or matches[1]
-
-
-def are_valid_headers(headers: dict):
-    return "Content-Disposition" in headers and not is_html(headers)
-
-
-def is_html(headers: dict) -> bool:
+def is_html(headers: Mapping[str, str]) -> bool:
     content_type: str = headers.get("Content-Type", "").lower()
     return any(s in content_type for s in ("html", "text"))

@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -17,8 +17,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 DEFAULT_QUALITY = "Auto"
@@ -64,13 +64,13 @@ class YouJizzCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         scrape_item.url = canonical_url
         info = get_info(soup)
         v_format = get_best_quality(info)
         if not v_format:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
 
         resolution, link_str = v_format
 
@@ -81,7 +81,7 @@ class YouJizzCrawler(Crawler):
             scrape_item.possible_datetime = date
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
         custom_filename = f"{info['title']} [{video_id}][{resolution}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)

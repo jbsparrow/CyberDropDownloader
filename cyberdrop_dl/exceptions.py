@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 from yaml import YAMLError
 from yarl import URL
 
-from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
+from cyberdrop_dl.constants import VALIDATION_ERROR_FOOTER
 
 if TYPE_CHECKING:
     from requests import Response
 
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 
 
 # See: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-5xx-errors/
@@ -144,10 +144,10 @@ class DurationError(CDLBaseError):
 
 class MediaFireError(CDLBaseError):
     def __init__(
-        self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
+        self, status: str | int | None, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
     ) -> None:
         """This error will be thrown when a scrape fails."""
-        ui_failure = f"{status} MediaFire Error"
+        ui_failure = f"{status or ''} MediaFire Error"
         super().__init__(ui_failure, message=message, status=status, origin=origin)
 
 

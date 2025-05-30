@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING, Literal, NamedTuple
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 MEDIA_INFO_JS_SELECTOR = "script:contains('__fileurl')"
@@ -85,12 +85,14 @@ class MotherlessCrawler(Crawler):
         if is_homepage or "images" in scrape_item.url.parts:
             async for soup in self.web_pager(images_url):
                 check_soup(soup)
-                await self.iter_items(scrape_item, soup, "Images")
+                for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR, new_title_part="Images"):
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
 
         if is_homepage or "videos" in scrape_item.url.parts:
             async for soup in self.web_pager(videos_url):
                 check_soup(soup)
-                await self.iter_items(scrape_item, soup, "Videos")
+                for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR, new_title_part="Videos"):
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
@@ -120,6 +122,7 @@ class MotherlessCrawler(Crawler):
         self, scrape_item: ScrapeItem, media_type: Literal["videos", "images"], collection_id: str | None = None
     ) -> None:
         title = ""
+        name = media_type.capitalize()
         async for soup in self.web_pager(scrape_item.url):
             check_soup(soup)
             if not title:
@@ -128,7 +131,8 @@ class MotherlessCrawler(Crawler):
                 title = self.create_title(title, collection_id)
                 scrape_item.setup_as_album(title, album_id=collection_id)
 
-            await self.iter_items(scrape_item, soup, media_type.capitalize())
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR, new_title_part=name):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:
@@ -147,11 +151,11 @@ class MotherlessCrawler(Crawler):
         scrape_item.url = canonical_url
 
         title: str = soup.select_one(ITEM_TITLE_SELECTOR).get_text(strip=True)  # type: ignore
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         custom_filename = Path(title).with_suffix(ext)
         if INCLUDE_ID_IN_FILENAME:
             custom_filename = f"{custom_filename.stem} [{media_id}]{ext}"
-        custom_filename, _ = get_filename_and_ext(str(custom_filename))
+        custom_filename, _ = self.get_filename_and_ext(str(custom_filename))
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -186,14 +190,6 @@ class MotherlessCrawler(Crawler):
             scrape_item.add_to_parent_title(f"{media_info.type.capitalize()}s")
 
         return media_info
-
-    async def iter_items(self, scrape_item: ScrapeItem, soup: BeautifulSoup, new_title_part: str = "") -> None:
-        for item in soup.select(ITEM_SELECTOR):
-            link_str: str = item.get("href")  # type: ignore
-            link = self.parse_url(link_str)
-            new_scrape_item = scrape_item.create_child(link, new_title_part=new_title_part)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
 
 
 def check_soup(soup: BeautifulSoup) -> None:

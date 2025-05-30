@@ -1,11 +1,12 @@
+import random
 from datetime import timedelta
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
-from .custom.converters import convert_to_byte_size
-from .custom.types import AliasModel, ByteSizeSerilized, HttpURL, NonEmptyStr
-from .custom.validators import parse_duration_as_timedelta, parse_falsy_as
+from cyberdrop_dl.types import AliasModel, ByteSizeSerilized, HttpURL, NonEmptyStr
+from cyberdrop_dl.utils.converters import convert_to_byte_size
+from cyberdrop_dl.utils.validators import parse_duration_as_timedelta, parse_falsy_as
 
 MIN_REQUIRED_FREE_SPACE = convert_to_byte_size("512MB")
 DEFAULT_REQUIRED_FREE_SPACE = convert_to_byte_size("5GB")
@@ -13,6 +14,7 @@ DEFAULT_REQUIRED_FREE_SPACE = convert_to_byte_size("5GB")
 
 class General(BaseModel):
     allow_insecure_connections: bool = False
+    enable_generic_crawler: bool = True
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
     max_folder_name_length: PositiveInt = 60
@@ -43,6 +45,7 @@ class RateLimiting(BaseModel):
     download_speed_limit: ByteSizeSerilized = ByteSize(0)
     file_host_cache_expire_after: timedelta = timedelta(days=7)
     forum_cache_expire_after: timedelta = timedelta(weeks=4)
+    jitter: NonNegativeFloat = 0
     max_simultaneous_downloads_per_domain: PositiveInt = 3
     max_simultaneous_downloads: PositiveInt = 15
     rate_limit: PositiveInt = 50
@@ -52,6 +55,15 @@ class RateLimiting(BaseModel):
     @staticmethod
     def parse_cache_duration(input_date: timedelta | str | int) -> timedelta:
         return parse_duration_as_timedelta(input_date)
+
+    @property
+    def total_delay(self) -> NonNegativeFloat:
+        """download_delay + jitter"""
+        return self.download_delay + self.get_jitter()
+
+    def get_jitter(self) -> NonNegativeFloat:
+        """Get a random number in the range [0, self.jitter]"""
+        return random.uniform(0, self.jitter)
 
 
 class UIOptions(BaseModel):

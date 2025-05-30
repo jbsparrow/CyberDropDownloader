@@ -12,14 +12,14 @@ from typing import TYPE_CHECKING, NamedTuple
 import psutil
 from pydantic import ByteSize
 
-from cyberdrop_dl.clients.errors import InsufficientFreeSpaceError
+from cyberdrop_dl.exceptions import InsufficientFreeSpaceError
 from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
     from psutil._common import sdiskpart
 
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -58,7 +58,16 @@ class StorageManager:
         self._period: int = 2  # how often the check_free_space_loop will run (in seconds)
         self._log_period: int = 10  # log storage details every <x> loops, AKA log every 20 (2x10) seconds,
         self._timedelta_period = timedelta(seconds=self._period)
-        self._partitions = [DiskPartition.from_psutil(p) for p in psutil.disk_partitions(all=True)]
+        self._partitions = []
+        for p in psutil.disk_partitions(all=True):
+            try:
+                part = DiskPartition.from_psutil(p)
+            except OSError as e:
+                msg = f"Unable to get information about {p.mountpoint}. All files with that mountpoint as target will be skipped: {e!r}"
+                log(msg, 40)
+            else:
+                self._partitions.append(part)
+
         self._loop = asyncio.create_task(self._check_free_space_loop())
         self._unavailable_mounts: set[Path] = set()
 
@@ -146,7 +155,12 @@ class StorageManager:
                     return
                 msg = f"Checking new possible network_drive: '{folder_drive}' for folder '{folder}'"
                 log_debug(msg)
-                if await asyncio.to_thread(folder_drive.is_dir):
+
+                try:
+                    is_dir = await asyncio.to_thread(folder_drive.is_dir)
+                except OSError:
+                    is_dir = False
+                if is_dir:
                     net_drive = DiskPartition(folder_drive, folder_drive, "network_drive", "")
                     self._partitions.append(net_drive)
                 else:
