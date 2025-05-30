@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
+
+PRIMARY_URL = AbsoluteHttpURL("https://www.eporner.com/")
 
 
 class Selectors:
@@ -49,26 +50,31 @@ class VideoInfo(NamedTuple):
 
     @classmethod
     def from_tag(cls, tag: Tag) -> VideoInfo:
-        link_str: str = tag["href"]  # type: ignore
+        link_str: str = css.get_attr(tag, "href")
         name = tag.get_text(strip=True).removeprefix("Download")
         details = name.split("(", 1)[1].removesuffix(")").split(",")
-        res, codec, size = tuple([d.strip() for d in details])
+        res, codec, size = [d.strip() for d in details]
         codec = codec.lower()
         return cls(codec, res, size, link_str)
 
 
 class EpornerCrawler(Crawler):
-    primary_base_domain = URL("https://www.eporner.com/")
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Categories": "/cat/...",
+        "Channels": "/channel/...",
+        "Pornstar": "/pornstar/...",
+        "Profile": "/profile/...",
+        "Search": "/search/...",
+        "Video": ("/<video_name>-<video-id>", "/hd-porn/<video_id>", "/embed/<video_id>"),
+        "Photo": "/photo/...",
+        "Gallery": "/gallery/...",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "eporner"
+    FOLDER_DOMAIN: ClassVar[str] = "ePorner"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "eporner", "ePorner")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if get_video_id(scrape_item.url):
             return await self.video(scrape_item)
         if any(p in scrape_item.url.parts for p in ("cat", "channel", "search", "pornstar")):
@@ -84,7 +90,7 @@ class EpornerCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         username = scrape_item.url.parts[2]
-        canonical_url = self.primary_base_domain / "profile" / username
+        canonical_url = PRIMARY_URL / "profile" / username
         if canonical_url in scrape_item.parents and "playlist" in scrape_item.url.parts:
             await self.playlist(scrape_item, from_profile=True)
 
@@ -111,7 +117,7 @@ class EpornerCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title and not from_profile:
-                title = soup.title.text  # type: ignore
+                title = soup.title.text
                 title_trash = "Porn Star Videos", "Porn Videos", "Videos -", "EPORNER"
                 for trash in title_trash:
                     title = title.rsplit(trash)[0].strip()
@@ -126,7 +132,7 @@ class EpornerCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = soup.select_one(_SELECTORS.GALLERY_TITLE).get_text(strip=True)  # type: ignore
+                title = soup.select_one(_SELECTORS.GALLERY_TITLE).get_text(strip=True)
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
@@ -140,32 +146,31 @@ class EpornerCrawler(Crawler):
     @error_handling_wrapper
     async def photo(self, scrape_item: ScrapeItem) -> None:
         photo_id = scrape_item.url.parts[2]
-        canonical_url = self.primary_base_domain / "photo" / photo_id
+        canonical_url = PRIMARY_URL / "photo" / photo_id
         if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         scrape_item.url = canonical_url
         img = soup.select_one(_SELECTORS.PHOTO)
         if not img:
             raise ScrapeError(422)
-        link_str: str = img["href"]  # type: ignore
+        link_str: str = img["href"]
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an embeded video page."""
         video_id = get_video_id(scrape_item.url)
-        canonical_url = self.primary_base_domain / f"video-{video_id}"
+        canonical_url = PRIMARY_URL / f"video-{video_id}"
         if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         soup_str = soup.text
         if "File has been removed due to copyright owner request" in soup_str:
@@ -218,7 +223,7 @@ def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
     info_js_script = soup.select_one(_SELECTORS.DATE_JS)
-    info_dict: dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)  # type: ignore
+    info_dict: dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)
     javascript.clean_dict(info_dict)
     return info_dict
 

@@ -1,36 +1,31 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
-
+PRIMARY_URL = AbsoluteHttpURL("https://postimages.org/")
 DOWNLOAD_BUTTON_SELECTOR = "a[id=download]"
 API_ENTRYPOINT = URL("https://postimg.cc/json")
 
 
 class PostImgCrawler(Crawler):
-    primary_base_domain = URL("https://postimages.org/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/gallery/...", "Image": "/...", "Direct links": ""}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "postimg"
+    FOLDER_DOMAIN: ClassVar[str] = "PostImg"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "postimg", "PostImg")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
-        assert scrape_item.url.host
         if "i.postimg.cc" in scrape_item.url.host:
             return await self.direct_file(scrape_item)
         if "gallery" in scrape_item.url.parts:
@@ -39,13 +34,12 @@ class PostImgCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         data = {"action": "list", "album": scrape_item.url.raw_name, "page": 0}
         title: str = ""
         for page in itertools.count(1):
             data["page"] = page
             async with self.request_limiter:
-                json_resp = await self.client.post_data(self.domain, API_ENTRYPOINT, data=data)
+                json_resp = await self.client.post_data(self.DOMAIN, API_ENTRYPOINT, data=data)
 
             if not title:
                 album_id = scrape_item.url.parts[2]
@@ -64,14 +58,13 @@ class PostImgCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        link_str: str = soup.select_one(DOWNLOAD_BUTTON_SELECTOR).get("href")  # type: ignore
+        link_str: str = soup.select_one(DOWNLOAD_BUTTON_SELECTOR).get("href")
         link = self.parse_url(link_str).with_query(None)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

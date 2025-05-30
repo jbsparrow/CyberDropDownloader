@@ -1,41 +1,38 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
-API_ENTRYPOINT = URL("https://api.files.vc/api")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.files.vc/api")
+
+PRIMARY_URL = AbsoluteHttpURL("https://files.vc")
 
 
 class FilesVcCrawler(Crawler):
-    primary_base_domain = URL("https://files.vc")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "files.vc"
+    FOLDER_DOMAIN: ClassVar[str] = "FilesVC"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "files.vc", "FilesVC")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 1)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if scrape_item.url.path == "/d/dl" and scrape_item.url.query.get("hash"):
             return await self.file(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file."""
-
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -43,7 +40,7 @@ class FilesVcCrawler(Crawler):
         api_url = API_ENTRYPOINT.joinpath("info").with_query(hash=hash)
 
         async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.domain, api_url)
+            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url)
 
         filename, ext = self.get_filename_and_ext(json_resp["filename"], assume_ext=".zip")
         scrape_item.possible_datetime = self.parse_date(json_resp["upload_time"])

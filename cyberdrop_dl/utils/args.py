@@ -8,19 +8,19 @@ from datetime import date
 from enum import StrEnum, auto
 from pathlib import Path
 from shutil import get_terminal_size
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, NoReturn, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
 from cyberdrop_dl import __version__, env
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
-from cyberdrop_dl.types import AliasModel, HttpURL
+from cyberdrop_dl.types import AliasModel, AnyDict, HttpURL
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
-CLI_ARGUMENTS_MD = Path("docs/reference/cli-arguments.md")
+
 CDL_EPILOG = "Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl"
 
 
@@ -226,29 +226,22 @@ def _create_groups_from_nested_models(parser: ArgumentParser, model: type[BaseMo
 
 
 class CustomHelpFormatter(RawDescriptionHelpFormatter):
-    def __init__(self, prog):
-        witdh = 300 if env.RUNNING_IN_IDE else None
-        super().__init__(prog, max_help_position=80, width=witdh)
+    MAX_HELP_POS = 80
+    INDENT_INCREMENT = 2
 
-    def _get_help_string(self, action):
+    def __init__(self, prog: str, width: int | None = None) -> None:
+        super().__init__(prog, self.INDENT_INCREMENT, self.MAX_HELP_POS, width)
+
+    def _get_help_string(self, action) -> str | None:
         if action.help:
-            return action.help.replace("program's", "CDL")  ## The ' messes up the markdown formatting
+            return action.help.replace("program's", "CDL")  # The ' messes up the markdown formatting
         return action.help
 
-    def format_help(self):
-        help_text = super().format_help()
-        if env.RUNNING_IN_IDE and CLI_ARGUMENTS_MD.is_file():
-            cli_overview, *_ = help_text.partition(CDL_EPILOG)
-            current_text = CLI_ARGUMENTS_MD.read_text(encoding="utf8")
-            new_text, *_ = current_text.partition("```shell")
-            new_text += f"```shell\n{cli_overview}```\n"
-            if current_text != new_text:
-                CLI_ARGUMENTS_MD.write_text(new_text, encoding="utf8")
-        return help_text
+
+USING_DEPRECATED_ARGS: bool = bool(DeprecatedArgs.model_fields)
 
 
-def parse_args() -> ParsedArgs:
-    """Parses the command line arguments passed into the program."""
+def make_parser() -> tuple[ArgumentParser, dict[str, list[ArgGroup]]]:
     parser = ArgumentParser(
         description="Bulk asynchronous downloader for multiple file hosts",
         usage="cyberdrop-dl [OPTIONS] URL [URL...]",
@@ -266,14 +259,18 @@ def parse_args() -> ParsedArgs:
         "cli_only_args": [cli_only],
     }
 
-    using_deprecated_args: bool = bool(DeprecatedArgs.model_fields)
-    if using_deprecated_args:
+    if USING_DEPRECATED_ARGS:
         deprecated = parser.add_argument_group("deprecated")
         _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
         group_lists["deprecated_args"] = [deprecated]
 
+    return parser, group_lists
+
+
+def get_parsed_args_dict() -> dict[str, AnyDict]:
+    parser, group_lists = make_parser()
     args = parser.parse_intermixed_args()
-    parsed_args: dict[str, dict] = {}
+    parsed_args: dict[str, AnyDict] = {}
     for name, groups in group_lists.items():
         parsed_args[name] = {}
         for group in groups:
@@ -283,16 +280,36 @@ def parse_args() -> ParsedArgs:
                 if getattr(args, arg.dest, None) is not None
             }
             if group_dict:
+                assert group.title
                 parsed_args[name][group.title] = group_dict
 
-    if using_deprecated_args:
+    if USING_DEPRECATED_ARGS:
         parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("deprecated") or {}
     parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only options"]
+    return parsed_args
 
+
+def parse_args() -> ParsedArgs:
+    """Parses the command line arguments passed into the program."""
+    parsed_args_dict = get_parsed_args_dict()
     try:
-        parsed_args_model = ParsedArgs.model_validate(parsed_args)
+        parsed_args_model = ParsedArgs.model_validate(parsed_args_dict)
 
     except ValidationError as e:
         handle_validation_error(e, title="CLI arguments")
         sys.exit(1)
+
+    if parsed_args_model.cli_only_args.show_supported_sites:
+        show_supported_sites()
+
     return parsed_args_model
+
+
+def show_supported_sites() -> NoReturn:
+    from rich import print
+
+    from cyberdrop_dl.utils.markdown import get_crawlers_info_as_rich_table
+
+    table = get_crawlers_info_as_rich_table()
+    print(table)
+    sys.exit(0)

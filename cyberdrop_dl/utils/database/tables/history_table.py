@@ -48,7 +48,7 @@ class HistoryTable:
     async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None:
         """Update old `no_crawler` entries that are now supported."""
         domains_to_update = [
-            (c.domain, f"http%{c.primary_base_domain.host}%") for c in crawlers.values() if c.update_unsupported
+            (c.DOMAIN, f"http%{c.PRIMARY_URL.host}%") for c in crawlers.values() if c.UPDATE_UNSUPPORTED
         ]
         if not domains_to_update:
             return
@@ -300,8 +300,6 @@ class HistoryTable:
         except Exception as e:
             log(f"Error getting bunkr failed via hash: {e}", 40, exc_info=e)
             return []
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fix_bunkr_v4_entries(self) -> None:
         """Fixes bunkr v4 entries in the database."""
