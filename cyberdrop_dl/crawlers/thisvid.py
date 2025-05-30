@@ -34,6 +34,7 @@ class Selectors:
     COMMON_VIDEOS_TITLE = "div#list_videos_common_videos_list"
     VIDEOS = "a.tumbpu"
     ALBUM_ID = "script:contains('album_id')"
+    DATE_ADDED = ".tools-left > li:nth-child(4) > span:nth-child(2)"
 
 
 _SELECTORS = Selectors()
@@ -147,6 +148,7 @@ class ThisVidCrawler(Crawler):
         title: str = css.select_one_get_text(soup, "title").split("- ThisVid.com")[0].strip()
         filename, ext = self.get_filename_and_ext(video.url.name)
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{video.id}] [{video.res}]{ext}")
+        scrape_item.possible_datetime = self.parse_date(css.select_one_get_text(soup, _SELECTORS.DATE_ADDED))
         await self.handle_file(
             scrape_item.url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
         )
