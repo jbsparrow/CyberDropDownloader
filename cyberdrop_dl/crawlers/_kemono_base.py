@@ -334,7 +334,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 self.__known_attachment_servers[path] = server
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None) -> None:
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
         """Handles a direct link."""
 
         def clean_url(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
