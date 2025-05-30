@@ -391,6 +391,10 @@ class Crawler(ABC):
         If provided, it will be used as a filter, to only yield items that has not been downloaded before"""
         album_results = results or {}
 
+        def is_embedded_image(link: str) -> bool:
+            """Checks if the link is an embedded image URL."""
+            return link.startswith("data:image") or link.startswith("blob:")
+
         for tag in soup.css.iselect(selector):
             link_str: str | None = css.get_attr_or_none(tag, attribute)
             if not link_str:
@@ -402,7 +406,7 @@ class Crawler(ABC):
                 thumb_str: str | None = css.get_attr_or_none(t_tag, "src")
             else:
                 thumb_str = None
-            thumb = self.parse_url(thumb_str) if thumb_str else None
+            thumb = self.parse_url(thumb_str) if thumb_str and not is_embedded_image(thumb_str) else None
             yield thumb, link
 
     def iter_children(
