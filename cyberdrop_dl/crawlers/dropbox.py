@@ -2,33 +2,36 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from yarl import URL
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
+
+ZIP_REFERENCE = "[--download-dropbox-folders-as-zip](https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#download-dropbox-folders-as-zip)"
 
 
 class DropboxCrawler(Crawler):
-    primary_base_domain = URL("https://dropbox.com/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "File": ("/scl/fi/...", "/s/..."),
+        "Folder": ("/scl/fo/...", "/sh/..."),
+        "**NOTE**": f"Folders will be downloaded as a zip file. See: {ZIP_REFERENCE}",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://dropbox.com/")
+    DOMAIN: ClassVar[str] = "dropbox"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "dropbox", "Dropbox")
-        self.download_folders = manager.parsed_args.cli_only_args.download_dropbox_folders_as_zip
+    def __post_init__(self) -> None:
+        self.download_folders = self.manager.parsed_args.cli_only_args.download_dropbox_folders_as_zip
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         url = await self.get_share_url(scrape_item)
         if not url:
             return
@@ -40,7 +43,6 @@ class DropboxCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a dropbox file"""
         item = get_item_info(scrape_item.url)
         if not item.is_file and not self.download_folders:
             raise ScrapeError(422, message="Folders download is not enabled")
@@ -59,7 +61,7 @@ class DropboxCrawler(Crawler):
         await self.handle_file(item.canonical_url, scrape_item, filename, ext, debrid_link=item.download_url)
 
     @error_handling_wrapper
-    async def get_share_url(self, scrape_item: ScrapeItem) -> URL:
+    async def get_share_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:
         if not any(p in scrape_item.url.parts for p in ("s", "sh")):
             return scrape_item.url
         return await self.get_redict_url(scrape_item.url)
@@ -67,14 +69,14 @@ class DropboxCrawler(Crawler):
     async def get_folder_name(self, url: URL) -> str | None:
         url = await self.get_redict_url(url)
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.DOMAIN, url)
         if not ("Content-Disposition" in headers and not is_html(headers)):
             raise ScrapeError(422)
         return get_filename_from_headers(headers)
 
-    async def get_redict_url(self, url: URL) -> URL:
+    async def get_redict_url(self, url: URL) -> AbsoluteHttpURL:
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.DOMAIN, url)
         location = headers.get("location")
         if not location:
             raise ScrapeError(400)
@@ -94,19 +96,19 @@ class DropboxItem:
         return bool(self.filename)
 
     @cached_property
-    def canonical_url(self) -> URL:
+    def canonical_url(self) -> AbsoluteHttpURL:
         if not self.is_file:
-            return URL(self._folder_url_str)
+            return AbsoluteHttpURL(self._folder_url_str)
         if not self.file_id:
-            return URL(f"{self._folder_url_str}?preview={self.filename}")
-        return URL(f"https://www.dropbox.com/scl/fi/{self.file_id}")
+            return AbsoluteHttpURL(f"{self._folder_url_str}?preview={self.filename}")
+        return AbsoluteHttpURL(f"https://www.dropbox.com/scl/fi/{self.file_id}")
 
     @cached_property
     def download_url(self) -> URL:
         return self.canonical_url.update_query(dl=1, rlkey=self.rlkey)
 
     @cached_property
-    def view_url(self) -> URL:
+    def view_url(self) -> AbsoluteHttpURL:
         return self.canonical_url.with_query(rlkey=self.rlkey, e=1, dl=0)
 
     @cached_property

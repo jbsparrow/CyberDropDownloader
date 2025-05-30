@@ -16,9 +16,8 @@ import aiofiles.os
 from multidict import CIMultiDict
 from yarl import URL
 
-from cyberdrop_dl.types import is_absolute_http_url
 from cyberdrop_dl.utils.logger import log_debug
-from cyberdrop_dl.utils.utilities import get_valid_dict
+from cyberdrop_dl.utils.utilities import get_valid_dict, is_absolute_http_url
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping, Sequence

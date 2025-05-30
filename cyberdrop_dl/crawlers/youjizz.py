@@ -4,23 +4,22 @@ import json
 import re
 from calendar import timegm
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
-
+PRIMARY_URL = AbsoluteHttpURL("https://www.youjizz.com/")
 DEFAULT_QUALITY = "Auto"
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
@@ -40,31 +39,26 @@ class VideoInfo(dict): ...
 
 
 class YouJizzCrawler(Crawler):
-    primary_base_domain = URL("https://www.youjizz.com/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": ("/video/embed/<video_id>", "/video/<video_id>/...")}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "youjizz"
+    FOLDER_DOMAIN: ClassVar[str] = "YouJizz"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "youjizz", "YouJizz")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("videos", "embed")):
             return await self.video(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video."""
         video_id = get_video_id(scrape_item.url)
-        canonical_url = self.primary_base_domain / "videos" / "embed" / video_id
+        canonical_url = PRIMARY_URL / "videos" / "embed" / video_id
 
         if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         scrape_item.url = canonical_url
         info = get_info(soup)
@@ -97,11 +91,10 @@ def get_video_id(url: URL) -> str:
 
 
 def get_info(soup: BeautifulSoup) -> VideoInfo:
-    info_js_script = soup.select_one(JS_SELECTOR)
-    info_js_script_text: str = info_js_script.text  # type: ignore
-    info: dict[str, str | None | dict] = javascript.parse_js_vars(info_js_script_text)  # type: ignore
-    info["title"] = soup.title.text.replace("\n", "").strip()  # type: ignore
-    date_tag = soup.select_one(DATE_SELECTOR)  # type: ignore
+    info_js_script_text: str = css.select_one_get_text(soup, JS_SELECTOR)
+    info: dict[str, str | None | dict] = javascript.parse_js_vars(info_js_script_text)
+    info["title"] = css.get_attr(soup, "title").replace("\n", "").strip()
+    date_tag = soup.select_one(DATE_SELECTOR)
     date_str: str | None = date_tag.text if date_tag else None
     info["date"] = date_str.replace("(s)", "s").strip() if date_str else None
     javascript.clean_dict(info, "stream_data")

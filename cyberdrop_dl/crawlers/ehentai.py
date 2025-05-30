@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -24,20 +22,23 @@ class Selectors:
 
 _SELECTORS = Selectors()
 
+PRIMARY_URL = AbsoluteHttpURL("https://e-hentai.org/")
+
 
 class EHentaiCrawler(Crawler):
-    primary_base_domain = URL("https://e-hentai.org/")
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/g/...",
+        "File": "/s/...",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
+    DOMAIN: ClassVar[str] = "e-hentai"
+    FOLDER_DOMAIN: ClassVar[str] = "E-Hentai"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "e-hentai", "E-Hentai")
+    def __post_init__(self) -> None:
         self._warnings_set = False
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "g" in scrape_item.url.parts:
             return await self.album(scrape_item)
         if "s" in scrape_item.url.parts:
@@ -46,7 +47,6 @@ class EHentaiCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         async with self.startup_lock:
             if not self._warnings_set:
                 await self.set_no_warnings(scrape_item)
@@ -55,8 +55,8 @@ class EHentaiCrawler(Crawler):
         scrape_item.url = scrape_item.url.with_query(None)
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = self.create_title(soup.select_one(_SELECTORS.TITLE).get_text())  # type: ignore
-                date_str: str = soup.select_one(_SELECTORS.DATE).get_text()  # type: ignore
+                title = self.create_title(soup.select_one(_SELECTORS.TITLE).get_text())
+                date_str: str = soup.select_one(_SELECTORS.DATE).get_text()
                 gallery_id = scrape_item.url.parts[2]
                 title = self.create_title(title, gallery_id)
                 scrape_item.setup_as_album(title, album_id=gallery_id)
@@ -67,25 +67,22 @@ class EHentaiCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        link_str: str = soup.select_one(_SELECTORS.IMAGE).get("src")  # type: ignore
+        link_str: str = soup.select_one(_SELECTORS.IMAGE).get("src")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(f"{scrape_item.url.name}{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
     async def set_no_warnings(self, scrape_item: ScrapeItem) -> None:
         """Sets the no warnings cookie."""
         url = scrape_item.url.update_query(nw="session")
         async with self.request_limiter:
-            await self.client.get_soup(self.domain, url)
+            await self.client.get_soup(self.DOMAIN, url)
         self._warnings_set = True

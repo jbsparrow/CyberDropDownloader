@@ -12,18 +12,25 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiohttp import ClientConnectorError
-from yarl import URL
 
 from cyberdrop_dl.constants import FILE_FORMATS
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between, parse_url
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils.utilities import (
+    error_handling_wrapper,
+    get_og_properties,
+    get_text_between,
+    parse_url,
+    with_suffix_encoded,
+)
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 # CDNs
@@ -57,9 +64,9 @@ CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
 CDN_POSSIBILITIES = re.compile(r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
 
 # URLs
-DOWNLOAD_API_ENTRYPOINT = URL("https://get.bunkrr.su/api/_001")
-STREAMING_API_ENTRYPOINT = URL("https://bunkr.site/api/vs")
-PRIMARY_BASE_DOMAIN = URL("https://bunkr.site")
+DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://get.bunkrr.su/api/_001")
+STREAMING_API_ENTRYPOINT = AbsoluteHttpURL("https://bunkr.site/api/vs")
+PRIMARY_URL = AbsoluteHttpURL("https://bunkr.site")
 
 
 class Selectors:
@@ -94,19 +101,19 @@ class AlbumItem:
 
     @classmethod
     def from_tag(cls, tag: Tag) -> AlbumItem:
-        name = tag.select_one(_SELECTORS.ITEM_NAME).text  # type: ignore
-        thumbnail: str = tag.select_one(_SELECTORS.THUMBNAIL)["src"]  # type: ignore
-        date_str = tag.select_one(_SELECTORS.ITEM_DATE).text.strip()  # type: ignore
-        path_qs: str = tag.select_one("a")["href"]  # type: ignore
+        name = css.select_one(tag, _SELECTORS.ITEM_NAME).text
+        thumbnail: str = css.select_one_get_attr(tag, _SELECTORS.THUMBNAIL, "src")
+        date_str = css.select_one(tag, _SELECTORS.ITEM_DATE).get_text(strip=True)
+        path_qs: str = css.select_one_get_attr(tag, "a", "href")
         return cls(name, thumbnail, date_str, path_qs)
 
     @property
-    def src(self) -> URL:
+    def src(self) -> AbsoluteHttpURL:
         src_str = self.thumbnail.replace("/thumbs/", "/")
-        src = parse_url(src_str, relative_to=PRIMARY_BASE_DOMAIN)
+        src = parse_url(src_str, relative_to=PRIMARY_URL)
         src = with_suffix_encoded(src, self.suffix).with_query(None)
         if src.suffix.lower() not in FILE_FORMATS["Images"]:
-            src = src.with_host(src.host.replace("i-", ""))  # type: ignore
+            src = src.with_host(src.host.replace("i-", ""))
         return override_cdn(src)
 
     @property
@@ -115,20 +122,26 @@ class AlbumItem:
 
 
 class BunkrrCrawler(Crawler):
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/a/...",
+        "Video": "/v/...",
+        "File": "/f/...",
+        "Direct links": "",
+    }
     DATABASE_PRIMARY_HOST: ClassVar[str] = "bunkr.site"
-    primary_base_domain: ClassVar[URL] = URL(f"https://{DATABASE_PRIMARY_HOST}")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL(f"https://{DATABASE_PRIMARY_HOST}")
+    DOMAIN: ClassVar[str] = "bunkrr"
 
-    def __init__(self, manager: Manager, site: str) -> None:
-        super().__init__(manager, site, "Bunkrr")
+    def __post_init__(self) -> None:
         self.known_good_host: str = ""
         self.switch_host_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    @property
+    def known_good_url(self) -> AbsoluteHttpURL | None:
+        if self.known_good_host:
+            return AbsoluteHttpURL(f"https://{self.known_good_host}")
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/<file_id>
             return await self.reinforced_file(scrape_item)
         if "a" in scrape_item.url.parts:  #  bunkr.site/a/<album_id>
@@ -140,10 +153,9 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         soup: BeautifulSoup = await self.get_soup_lenient(scrape_item.url)
         album_id = scrape_item.url.parts[2]
-        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
+        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
@@ -179,12 +191,11 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file from a streaming URL."""
         link: URL | None = None
         soup: BeautifulSoup | None = None
         if is_stream_redirect(scrape_item.url):
-            response, soup = await self.client._get_response_and_soup(self.domain, scrape_item.url)
-            scrape_item.url = response.url
+            response, soup = await self.client._get_response_and_soup(self.DOMAIN, scrape_item.url)
+            scrape_item.url = AbsoluteHttpURL(response.url)
             del response
 
         database_url = scrape_item.url.with_host(self.DATABASE_PRIMARY_HOST)
@@ -199,19 +210,19 @@ class BunkrrCrawler(Crawler):
 
         # Try image first to not make any aditional request
         if image_container:
-            link_str: str = image_container.get("src")  # type: ignore
+            link_str: str = image_container.get("src")
             link = self.parse_url(link_str)
 
         # Try to get downloadd URL from streaming API. Should work for most files, even none video files
         if not link and "f" in scrape_item.url.parts:
             slug = get_slug_from_soup(soup) or scrape_item.url.name or scrape_item.url.parent.name
-            base = URL(f"https://{self.known_good_host}") if self.known_good_host else scrape_item.url.origin()
+            base = self.known_good_url or scrape_item.url.origin()
             slug_url = base / "f" / slug
             link = await self.get_download_url_from_api(slug_url)
 
         # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
         if not link and download_link_container:
-            link_str: str = download_link_container.get("href")  # type: ignore
+            link_str: str = download_link_container.get("href")
             link = self.parse_url(link_str)
 
         # Everything failed, abort
@@ -226,20 +237,19 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def reinforced_file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file from a reinforced URL.
-
-        Gets the filename from the soup before sending the scrape_item to `handle_direct_link`"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("h1").text.strip()  # type: ignore
+        title: str = soup.select_one("h1").text.strip()
         link: URL | None = await self.get_download_url_from_api(scrape_item.url)
         if not link:
             raise ScrapeError(422)
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL, fallback_filename: str = "") -> None:
+    async def handle_direct_link(
+        self, scrape_item: ScrapeItem, url: AbsoluteHttpURL, fallback_filename: str = ""
+    ) -> None:
         """Handles direct links (CDNs URLs) before sending them to the downloader.
 
         `fallback_filename` will only be used if the link has no `n` query parameter"""
@@ -265,11 +275,11 @@ class BunkrrCrawler(Crawler):
             filename, ext = self.get_filename_and_ext(str(Path(link.name).with_suffix(ext)))
 
         if is_cdn(scrape_item.url) and not is_reinforced_link(scrape_item.url):
-            scrape_item.url = URL("https://get.bunkr.su/")  # Using a CDN as referer gets a 403 response
+            scrape_item.url = AbsoluteHttpURL("https://get.bunkr.su/")  # Using a CDN as referer gets a 403 response
 
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    async def get_download_url_from_api(self, url: URL) -> URL | None:
+    async def get_download_url_from_api(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
         """Gets the download link for a given URL
 
         1. Reinforced URL (get.bunkr.su/<file_id>). or
@@ -287,16 +297,15 @@ class BunkrrCrawler(Crawler):
 
         data = json.dumps(data_dict)
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers=headers)
+            json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=data, headers=headers)
 
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
         link = self.parse_url(link_str)
-        if link != self.primary_base_domain:  # We got an empty response
+        if link != PRIMARY_URL:  # We got an empty response
             return link
 
-    def deep_scrape(self, url: URL) -> bool:
-        assert url.host
+    def deep_scrape(self, url: AbsoluteHttpURL) -> bool:
         return any(part in url.host.split(".") for part in ("burger.",)) or self.manager.config_manager.deep_scrape
 
     async def handle_file(
@@ -316,27 +325,26 @@ class BunkrrCrawler(Crawler):
             url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=debrid_link
         )
 
-    async def get_soup_lenient(self, url: URL) -> BeautifulSoup:
+    async def get_soup_lenient(self, url: AbsoluteHttpURL) -> BeautifulSoup:
         """Overrides URL in host if we know a valid host.
 
         If we don't know a valid host but the response was successful, register the host as a valid host"""
-        assert url.host
 
-        async def get_soup(url: URL) -> BeautifulSoup:
+        async def get_soup(url: AbsoluteHttpURL) -> BeautifulSoup:
             async with self.request_limiter:
-                return await self.client.get_soup(self.domain, url)
+                return await self.client.get_soup(self.DOMAIN, url)
 
-        async def get_soup_no_error(url: URL) -> BeautifulSoup | None:
+        async def get_soup_no_error(url: AbsoluteHttpURL) -> BeautifulSoup | None:
             global known_bad_hosts
             try:
                 soup: BeautifulSoup = await get_soup(url)
             except (ClientConnectorError, DDOSGuardError):
-                known_bad_hosts.add(url.host)  # type: ignore
+                known_bad_hosts.add(url.host)
                 if not HOST_OPTIONS - known_bad_hosts:
                     raise
             else:
                 if not self.known_good_host:
-                    self.known_good_host = url.host  # type: ignore
+                    self.known_good_host = url.host
                 return soup
 
         if not is_root_domain(url):
@@ -361,16 +369,13 @@ class BunkrrCrawler(Crawler):
         # everything failed, do the request with the original URL to throw an exception
         return await get_soup(url)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
 
 def get_part_next_to(url: URL, part: str) -> str:
     part_index = url.parts.index(part) + 1
     return url.parts[part_index]
 
 
-def is_stream_redirect(url: URL) -> bool:
-    assert url.host
+def is_stream_redirect(url: AbsoluteHttpURL) -> bool:
     first_subdomain = url.host.split(".")[0]
     prefix, _, number = first_subdomain.partition("cdn")
     if not prefix and number.isdigit():
@@ -378,27 +383,18 @@ def is_stream_redirect(url: URL) -> bool:
     return any(part in url.host for part in ("cdn12", "cdn-")) or url.host == "cdn.bunkr.ru"
 
 
-def is_cdn(url: URL) -> bool:
-    """Checks if a given URL is from a CDN."""
-    assert url.host
+def is_cdn(url: AbsoluteHttpURL) -> bool:
     return bool(CDN_POSSIBILITIES.match(url.host))
 
 
-def override_cdn(url: URL) -> URL:
-    assert url.host
+def override_cdn(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     if "milkshake" in url.host:
         return url.with_host("mlk-bk.cdn.gigachad-cdn.ru")
     return url
 
 
-def is_reinforced_link(url: URL) -> bool:
-    assert url.host
+def is_reinforced_link(url: AbsoluteHttpURL) -> bool:
     return url.host.startswith("get.") and "file" in url.parts
-
-
-def with_suffix_encoded(url: URL, suffix: str) -> URL:
-    name = Path(url.raw_name).with_suffix(suffix)
-    return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
 
 
 def decrypt_api_response(api_response: ApiResponse) -> str:
@@ -423,6 +419,5 @@ def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
     return get_text_between(info_js.text, "jsSlug = '", "';")
 
 
-def is_root_domain(url: URL):
-    assert url.host
+def is_root_domain(url: AbsoluteHttpURL) -> bool:
     return "bunkr" in url.host and url.host.count(".") == 1

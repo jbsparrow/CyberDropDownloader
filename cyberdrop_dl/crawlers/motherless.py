@@ -1,24 +1,24 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, Literal, NamedTuple
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://motherless.com")
 MEDIA_INFO_JS_SELECTOR = "script:contains('__fileurl')"
-PRIMARY_BASE_DOMAIN = URL("https://motherless.com")
 ITEM_SELECTOR = "div.thumb-container a.img-container"
 ITEM_TITLE_SELECTOR = "div.media-meta-title"
 GALLERY_TITLE_SELECTOR = "div.gallery-title > h2"
@@ -35,18 +35,21 @@ class MediaInfo(NamedTuple):
 
 
 class MotherlessCrawler(Crawler):
-    primary_base_domain = PRIMARY_BASE_DOMAIN
-    next_page_selector = "div.pagination_link > a[rel=next]"
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Group": ("/g/<group_name>", "/gi/<image>", "/gv/<video>"),
+        "User": ("/u/...", "/f/..."),
+        "Image": "/...",
+        "Video": "pending",
+        "**NOTE**": "Galleries are NOT supported",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "div.pagination_link > a[rel=next]"
+    DOMAIN: ClassVar[str] = "motherless"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "motherless", "Motherless")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(2, 1)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem, collection_id: str = "") -> None:
-        """Determines where to send the scrape item based on the url."""
         parts = scrape_item.url.parts
         n_parts = len(parts)
         item_id = collection_id or scrape_item.url.name
@@ -73,7 +76,7 @@ class MotherlessCrawler(Crawler):
         n_parts = len(scrape_item.url.parts)
         assert n_parts >= 3
         username = scrape_item.url.parts[2]
-        canonical_url = self.primary_base_domain / "f" / username
+        canonical_url = PRIMARY_URL / "f" / username
         videos_url = canonical_url / "videos"
         images_url = canonical_url / "images"
         is_homepage = n_parts == 3
@@ -107,10 +110,10 @@ class MotherlessCrawler(Crawler):
             gallery_id = gallery_id.removeprefix(prefix)
 
         if is_group:
-            new_urls = [PRIMARY_BASE_DOMAIN / part / group_id for part in ("gi", "gv")]
+            new_urls = [PRIMARY_URL / part / group_id for part in ("gi", "gv")]
 
         else:
-            new_urls = [PRIMARY_BASE_DOMAIN / f"{part}{gallery_id}" for part in ("GI", "GV")]
+            new_urls = [PRIMARY_URL / f"{part}{gallery_id}" for part in ("GI", "GV")]
 
         collection_id = group_id if is_group else gallery_id
         for media_type, url in zip(media_types, new_urls, strict=True):
@@ -127,7 +130,8 @@ class MotherlessCrawler(Crawler):
             check_soup(soup)
             if not title:
                 title_tag = soup.select_one(GALLERY_TITLE_SELECTOR) or soup.select_one(GROUP_TITLE_SELECTOR)
-                title: str = title_tag.get_text(strip=True)  # type: ignore
+                assert title_tag
+                title: str = title_tag.get_text(strip=True)
                 title = self.create_title(title, collection_id)
                 scrape_item.setup_as_album(title, album_id=collection_id)
 
@@ -137,20 +141,20 @@ class MotherlessCrawler(Crawler):
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:
         media_id = scrape_item.url.parts[-1]
-        canonical_url = PRIMARY_BASE_DOMAIN / media_id
+        canonical_url = PRIMARY_URL / media_id
 
         if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         check_soup(soup)
         media_info = self.process_media_soup(scrape_item, soup)
         link = self.parse_url(media_info.url)
         scrape_item.url = canonical_url
 
-        title: str = soup.select_one(ITEM_TITLE_SELECTOR).get_text(strip=True)  # type: ignore
+        title = css.select_one_get_text(soup, ITEM_TITLE_SELECTOR)
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename = Path(title).with_suffix(ext)
         if INCLUDE_ID_IN_FILENAME:
@@ -179,10 +183,10 @@ class MotherlessCrawler(Crawler):
             title_tag = soup.select_one(GROUP_TITLE_SELECTOR)
 
         if title_tag:
-            parent_title: str = title_tag.get("title") if from_gallery else title_tag.get_text(strip=True)  # type: ignore
+            parent_title: str = css.get_attr(title_tag, "title") if from_gallery else title_tag.get_text(strip=True)
 
         parent_path = parent_id if from_gallery else f"g/{parent_id}"
-        parent_url = PRIMARY_BASE_DOMAIN / parent_path
+        parent_url = PRIMARY_URL / parent_path
         if parent_url not in scrape_item.parents and parent_title:
             scrape_item.parents.append(parent_url)
             title = self.create_title(parent_title, parent_id)
@@ -193,7 +197,7 @@ class MotherlessCrawler(Crawler):
 
 
 def check_soup(soup: BeautifulSoup) -> None:
-    soup_str = str(soup)
+    soup_str = soup.get_text()
     if any(p in soup_str for p in NOT_FOUND_TEXTS):
         raise ScrapeError(404)
     if "The content you are trying to view is for friends only" in soup_str:
@@ -202,7 +206,7 @@ def check_soup(soup: BeautifulSoup) -> None:
 
 def get_media_info(soup: BeautifulSoup) -> MediaInfo:
     media_js = soup.select_one(MEDIA_INFO_JS_SELECTOR)
-    js_text = media_js.text if media_js else None
+    js_text = css.get_text(media_js) if media_js else None
     if not js_text:
         return MediaInfo("gallery", "")
     media_type = js_text.split("__mediatype", 1)[-1].split("=", 1)[-1].split(",", 1)[0].strip()

@@ -1,21 +1,24 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
+
+PRIMARY_URL = AbsoluteHttpURL("https://thisvid.com")
 # Selectors
 UNAUTHORIZED_SELECTOR = "div.video-holder:contains('This video is a private video')"
 JS_SELECTOR = "div.video-holder > script:contains('var flashvars')"
@@ -43,23 +46,29 @@ HASH_LENGTH = 32
 
 class Video(NamedTuple):
     id: str
-    url: URL
+    url: AbsoluteHttpURL
     res: str
 
 
 class ThisVidCrawler(Crawler):
-    primary_base_domain = URL("https://thisvid.com")
-    next_page_selector = "li.pagination-next > a"
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Albums": "/albums/<album_name>",
+        "Image": "/albums/<album_name>/<image_name>",
+        "Search": "/search/?q=...",
+        "Categories": "/categories/...",
+        "Tags": "/tags/...",
+        "Videos": "/videos/...",
+        "Members": "/members/<member_id>",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "li.pagination-next > a"
+    DOMAIN: ClassVar[str] = "thisvid"
+    FOLDER_DOMAIN: ClassVar[str] = "ThisVid"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "thisvid", "ThisVid")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("categories", "tags")) or scrape_item.url.query.get("q"):
             return await self.search(scrape_item)
         if "members" in scrape_item.url.parts:
@@ -75,13 +84,12 @@ class ThisVidCrawler(Crawler):
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         title = ""
         if search_query := scrape_item.url.query.get("q"):
             title = f"{search_query} [search]"
         else:
-            category_title = soup.select_one(COMMON_VIDEOS_TITLE_SELECTOR)
-            common_title: str = category_title.get_text(strip=True)  # type: ignore
+            common_title = css.select_one_get_text(soup, COMMON_VIDEOS_TITLE_SELECTOR)
             if common_title.startswith("New Videos Tagged"):
                 common_title = common_title.split("Showing")[0].split("Tagged with")[1].strip()
                 title = f"{common_title} [tag]"
@@ -96,9 +104,9 @@ class ThisVidCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        user_name: str = soup.select_one(USER_NAME_SELECTOR).get_text().split("'s Profile")[0].strip()  # type: ignore
+        user_name: str = css.select_one_get_text(soup, USER_NAME_SELECTOR).split("'s Profile")[0].strip()
         title = f"{user_name} [user]"
         title = self.create_title(title)
         scrape_item.setup_as_profile(title)
@@ -111,7 +119,7 @@ class ThisVidCrawler(Crawler):
             await self.iter_videos(scrape_item, "private_videos")
 
     async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
-        url: URL = scrape_item.url / video_category if video_category else scrape_item.url
+        url = scrape_item.url / video_category if video_category else scrape_item.url
         async for soup in self.web_pager(url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -122,7 +130,7 @@ class ThisVidCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if soup.select_one(UNAUTHORIZED_SELECTOR):
             raise ScrapeError(401)
@@ -131,7 +139,7 @@ class ThisVidCrawler(Crawler):
             raise ScrapeError(404)
 
         video = get_video_info(script.text)
-        title: str = soup.select_one("title").text.split("- ThisVid.com")[0].strip()  # type: ignore
+        title: str = css.select_one_get_text(soup, "title").split("- ThisVid.com")[0].strip()
         filename, ext = self.get_filename_and_ext(video.url.name)
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{video.id}] [{video.res}]{ext}")
         await self.handle_file(
@@ -141,12 +149,12 @@ class ThisVidCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        js_text: str = soup.select_one(ALBUM_ID_SELECTOR).text  # type: ignore
+        js_text: str = soup.select_one(ALBUM_ID_SELECTOR).text
         album_id: str = get_text_between(js_text, "params['album_id'] =", ";").strip()
         results = await self.get_album_results(album_id)
-        title: str = soup.select_one(ALBUM_NAME_SELECTOR).get_text(strip=True)  # type: ignore
+        title: str = css.select_one_get_text(soup, ALBUM_NAME_SELECTOR)
         title = self.create_title(f"{title} [album]", album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
         for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_PICTURES_SELECTOR, results=results):
@@ -158,13 +166,10 @@ class ThisVidCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        url: URL = self.parse_url(soup.select_one(PICTURE_SELECTOR)["src"])  # type: ignore
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        url: URL = self.parse_url(css.select_one_get_attr(soup, PICTURE_SELECTOR, "src"))
         filename, ext = self.get_filename_and_ext(url.name)
         await self.handle_file(url, scrape_item, filename, ext)
-
-
-"""~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
 def get_video_info(flashvars: str) -> Video:
@@ -199,11 +204,11 @@ def kvs_get_license_token(license_code: str) -> list[int]:
     ]
 
 
-def kvs_get_real_url(video_url: str, license_code: str) -> URL:
+def kvs_get_real_url(video_url: str, license_code: str) -> AbsoluteHttpURL:
     if not video_url.startswith("function/0/"):
-        return URL(video_url)  # not obfuscated
+        return AbsoluteHttpURL(video_url)  # not obfuscated
 
-    parsed_url = URL(video_url.removeprefix("function/0/"))
+    parsed_url = AbsoluteHttpURL(video_url.removeprefix("function/0/"))
     license_token = kvs_get_license_token(license_code)
     hash, tail = parsed_url.parts[3][:HASH_LENGTH], parsed_url.parts[3][HASH_LENGTH:]
     indices = list(range(HASH_LENGTH))
