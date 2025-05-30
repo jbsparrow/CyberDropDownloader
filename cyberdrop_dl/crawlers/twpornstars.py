@@ -42,7 +42,7 @@ class TwPornstarsCrawler(TwimgCrawler):
         "www.twpornstars.com",
     )
     PRIMARY_URL: ClassVar = AbsoluteHttpURL("https://www.twpornstars.com")
-    NEXT_PAGE_SELLECTOR: ClassVar = _SELECTORS.NEXT
+    NEXT_PAGE_SELECTOR: ClassVar = _SELECTORS.NEXT
     DOMAIN: ClassVar = "twpornstars"
     FOLDER_DOMAIN: ClassVar = "TWPornStars"
 
