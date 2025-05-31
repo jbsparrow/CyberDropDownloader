@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import calendar
 import json
-from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -17,25 +14,33 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
-API_ENTRYPOINT = URL("https://pmvhaven.com/api/v2/")
-PRIMARY_BASE_DOMAIN = URL("https://pmvhaven.com")
+API_ENTRYPOINT = AbsoluteHttpURL("https://pmvhaven.com/api/v2/")
+PRIMARY_URL = AbsoluteHttpURL("https://pmvhaven.com")
 CATEGORIES = "Hmv", "Pmv", "Hypno", "Tiktok", "KoreanBJ"
 INCLUDE_VIDEO_ID_IN_FILENAME = True
 
 
 class PMVHavenCrawler(Crawler):
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Category": "/category/...",
+        "Music": "/music/...",
+        "Playlist": "/playlist/...",
+        "Search results": "/search/...",
+        "Star": "/star/...",
+        "Tag": "/tags/...",
+        "Users": "/profile/...",
+        "Video": "/video/...",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "pmvhaven"
+    FOLDER_DOMAIN: ClassVar[str] = "PMVHaven"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "pmvhaven", "PMVHaven")
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "video" in scrape_item.url.parts:
             return await self.video_from_api(scrape_item)
@@ -78,12 +83,12 @@ class PMVHavenCrawler(Crawler):
         add_headers = {"Content-Type": "text/plain;charset=UTF-8"}
         add_data = json.dumps({"profile": username, "mode": "GetUser"})
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data, headers=add_headers)
+            json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=add_data, headers=add_headers)
 
         user_info: dict[str, dict] = json_resp["data"]
         for playlist in user_info["playlists"]:
             playlist_id = playlist["_id"]
-            link = PRIMARY_BASE_DOMAIN / "playlist" / playlist_id
+            link = PRIMARY_URL / "playlist" / playlist_id
             new_scrape_item = scrape_item.create_child(link, new_title_part="Playlists")
             self.manager.task_group.create_task(self.playlist(new_scrape_item, add_suffix=False))
             scrape_item.add_children()
@@ -153,7 +158,7 @@ class PMVHavenCrawler(Crawler):
         add_data = {"video": video_id, "mode": "InitVideo", "view": True}
         api_url = API_ENTRYPOINT / "videoInput"
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data)
+            json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=add_data)
 
         videos = json_resp.get("video")
         video_info: dict = videos[0] if videos else {}
@@ -165,7 +170,7 @@ class PMVHavenCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         video_info = get_video_info_from_js(soup)
         await self.process_video_info(scrape_item, video_info)
@@ -194,7 +199,7 @@ class PMVHavenCrawler(Crawler):
         resolution: str = video_info.get("height") or ""
         title: str = video_info.get("title") or video_info["uploadTitle"]
         link_str: str = video_info["url"]
-        date = parse_datetime(video_info["isoDate"])
+        date = self.parse_date(video_info["isoDate"])
 
         scrape_item.possible_datetime = date
         link = self.parse_url(link_str)
@@ -223,7 +228,7 @@ class PMVHavenCrawler(Crawler):
             if is_profile:
                 data = json.dumps(data)
             async with self.request_limiter:
-                json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers=add_headers)
+                json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=data, headers=add_headers)
 
             has_videos = bool(json_resp[check_key])
             if not has_videos:
@@ -239,7 +244,7 @@ def create_canonical_video_url(video_info: dict) -> URL:
     title: str = video_info.get("title") or video_info["uploadTitle"]
     video_id: str = video_info["_id"]
     path = f"{title}_{video_id}"
-    return PRIMARY_BASE_DOMAIN / "video" / path
+    return PRIMARY_URL / "video" / path
 
 
 def get_video_info_from_js(soup: BeautifulSoup) -> dict:
@@ -247,7 +252,7 @@ def get_video_info_from_js(soup: BeautifulSoup) -> dict:
     js_text = info_js_script.text if info_js_script else None
     if not js_text:
         raise ScrapeError(422)
-    json_data: list = javascript.parse_json_to_dict(js_text, use_regex=False)  # type: ignore
+    json_data: list = javascript.parse_json_to_dict(js_text, use_regex=False)
     info_dict = {"data": json_data}
     javascript.clean_dict(info_dict)
     indices: dict[str, int] = {}
@@ -259,9 +264,3 @@ def get_video_info_from_js(soup: BeautifulSoup) -> dict:
     for name, index in indices.items():
         video_properties[name] = info_dict["data"][index]
     return video_properties
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.fromisoformat(date.replace("Z", "+00.00"))
-    return calendar.timegm(parsed_date.timetuple())

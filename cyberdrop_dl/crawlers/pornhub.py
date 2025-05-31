@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, TypedDict
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -15,12 +14,12 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
-PRIMARY_BASE_DOMAIN = URL("https://www.pornhub.com")
-ALBUM_API_URL = PRIMARY_BASE_DOMAIN / "album/show_album_json"
+PRIMARY_URL = AbsoluteHttpURL("https://www.pornhub.com")
+ALBUM_API_URL = PRIMARY_URL / "album/show_album_json"
 PROFILE_PARTS = "user", "channel", "channels", "model", "pornstar"
 
 
@@ -30,8 +29,8 @@ class Profile:
     name: str
 
     @property
-    def url(self) -> URL:
-        return PRIMARY_BASE_DOMAIN / self.type / self.name
+    def url(self) -> AbsoluteHttpURL:
+        return PRIMARY_URL / self.type / self.name
 
     @property
     def has_photos(self) -> bool:
@@ -98,14 +97,28 @@ class Format(NamedTuple):
 
 
 class PornHubCrawler(Crawler):
-    primary_base_domain = PRIMARY_BASE_DOMAIN
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/album/...",
+        "Channel": "/channel/...",
+        "Gif": "/gif/...",
+        "Photo": "/photo/...",
+        "Playlist": "/playlist/...",
+        "Profile": ("/user/...", "/model/...", "/pornstar/..."),
+        "Video": ("/embed/<video_id>", "/view_video.php?viewkey=<video_id>"),
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
+    DOMAIN: ClassVar[str] = "pornhub"
+    FOLDER_DOMAIN: ClassVar[str] = "PornHub"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "pornhub", "PornHub")
-        self._known_profiles_urls: set[URL] = set()
+    def __post_init__(self) -> None:
+        self._known_profiles_urls: set[AbsoluteHttpURL] = set()
 
-    @create_task_id
+    async def async_startup(self) -> None:
+        keys = ("age_verified", "accessPH", "accessAgeDisclaimerPH", "accessAgeDisclaimerUK", "expiredEnterModalShown")
+        cookies = dict.fromkeys(keys, 1)
+        self.update_cookies(cookies)
+
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         # This logic prevents scraping 2 different URLs of the same profile, ex: /gifs and /videos
         # user can only scrape an entire profile or a single specific type per run
@@ -134,9 +147,9 @@ class PornHubCrawler(Crawler):
         scrape_item.setup_as_profile(title)
         await self._proccess_profile_items(scrape_item, profile)
 
-    async def _get_profile_title(self, url: URL, profile: Profile) -> str:
+    async def _get_profile_title(self, url: AbsoluteHttpURL, profile: Profile) -> str:
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, url)
+            soup = await self.client.get_soup(self.DOMAIN, url)
         title_tag = css.select_one(soup, _SELECTORS.PROFILE_TITLE)
         for span in css.iselect(title_tag, "span"):
             span.decompose()
@@ -150,7 +163,7 @@ class PornHubCrawler(Crawler):
         scrape_photos = profile.has_photos and (scrape_all or "photos" in scrape_item.url.parts)
         init_page = int(scrape_item.url.query.get("page") or 1)
 
-        def add_init_page(url: URL) -> URL:
+        def add_init_page(url: AbsoluteHttpURL) -> URL:
             if scrape_item.url.path.startswith(url.path):
                 return url.with_query(page=init_page)
             return url
@@ -168,7 +181,7 @@ class PornHubCrawler(Crawler):
             await self._proccess_profile_pages(scrape_item, add_init_page(url), _SELECTORS.PROFILE_ALBUMS)
 
     @error_handling_wrapper
-    async def _proccess_profile_pages(self, scrape_item: ScrapeItem, url: URL, selector: str) -> None:
+    async def _proccess_profile_pages(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL, selector: str) -> None:
         async for soup in self.web_pager(url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, selector):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -178,7 +191,7 @@ class PornHubCrawler(Crawler):
         album_id = scrape_item.url.parts[2]
         api_url = ALBUM_API_URL.with_query(album=album_id)
         async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.domain, api_url)
+            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url)
 
         if not json_resp:
             return
@@ -188,14 +201,14 @@ class PornHubCrawler(Crawler):
         results = await self.get_album_results(album_id)
 
         for id, photo in json_resp.items():
-            web_url = self.primary_base_domain / "photo" / id
+            web_url = PRIMARY_URL / "photo" / id
             link = self.parse_url(photo["img_large"])
             new_scrape_item = scrape_item.create_new(web_url)
             await self._proccess_photo(new_scrape_item, link, results)
 
-    async def _get_album_title(self, url: URL, album_id: str) -> str:
+    async def _get_album_title(self, url: AbsoluteHttpURL, album_id: str) -> str:
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, url)
+            soup = await self.client.get_soup(self.DOMAIN, url)
 
         album_name: str = css.select_one(soup, _SELECTORS.ALBUM_TITLE).get_text(strip=True)
         return self.create_title(album_name, album_id)
@@ -206,7 +219,7 @@ class PornHubCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         link_str: str = css.select_one_get_attr(soup, _SELECTORS.PHOTO, "src")
         link = self.parse_url(link_str)
@@ -221,7 +234,7 @@ class PornHubCrawler(Crawler):
     @error_handling_wrapper
     async def gif(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         attributes = "data-mp4", "data-fallback", "data-webm"
         gif_tag = css.select_one(soup, _SELECTORS.GIF)
@@ -229,7 +242,9 @@ class PornHubCrawler(Crawler):
         link = self.parse_url(link_str)
         await self._proccess_photo(scrape_item, link)
 
-    async def _proccess_photo(self, scrape_item: ScrapeItem, link: URL, results: dict[str, Any] | None = None) -> None:
+    async def _proccess_photo(
+        self, scrape_item: ScrapeItem, link: AbsoluteHttpURL, results: dict[str, Any] | None = None
+    ) -> None:
         results = results or {}
         name = link.name.rsplit(")")[-1].removeprefix("original_")
         canonical_url = link.with_name(name)
@@ -242,7 +257,7 @@ class PornHubCrawler(Crawler):
         playlist_id = scrape_item.url.parts[2]
         results = await self.get_album_results(playlist_id)
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         title: str = css.select_one(soup, _SELECTORS.PLAYLIST_TITLE).get_text(strip=True)
         title = self.create_title(title, playlist_id)
@@ -252,14 +267,14 @@ class PornHubCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
-        embed_url = self.primary_base_domain / "embed" / video_id
-        page_url = self.primary_base_domain.joinpath("view_video.php").with_query(viewkey=video_id)
+        embed_url = PRIMARY_URL / "embed" / video_id
+        page_url = PRIMARY_URL.joinpath("view_video.php").with_query(viewkey=video_id)
 
         if await self.check_complete_from_referer(page_url):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, page_url, cache_disabled=True)
+            soup = await self.client.get_soup(self.DOMAIN, page_url, cache_disabled=True)
 
         check_video_is_available(soup)
         title: str = css.select_one(soup, _SELECTORS.TITLE).get_text(strip=True)
@@ -281,20 +296,15 @@ class PornHubCrawler(Crawler):
 
         mp4_media_url = self.parse_url(mp4_format.url)
         async with self.request_limiter:
-            mp4_media: list[Media] = await self.client.get_json(self.domain, mp4_media_url, cache_disabled=True)
+            mp4_media: list[Media] = await self.client.get_json(self.DOMAIN, mp4_media_url, cache_disabled=True)
 
         if not mp4_media:
             raise ScrapeError(422)
 
         return max(Format.new(media) for media in mp4_media)
 
-    def set_cookies(self, _) -> None:
-        keys = ("age_verified", "accessPH", "accessAgeDisclaimerPH", "accessAgeDisclaimerUK", "expiredEnterModalShown")
-        cookies = dict.fromkeys(keys, 1)
-        self.update_cookies(cookies)
 
-
-def get_video_id(url: URL) -> str | None:
+def get_video_id(url: AbsoluteHttpURL) -> str | None:
     if "embed" in url.parts and len(url.parts) > 2:
         return url.parts[2]
     if viewkey := url.query.get("viewkey"):

@@ -13,9 +13,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from yarl import URL
-
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -73,13 +72,12 @@ class JDownloader:
 
     def direct_unsupported_to_jdownloader(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         title: str,
         relative_download_path: Path | None = None,
     ) -> None:
         """Sends links to JDownloader."""
         try:
-            assert url.host, f"{url} has no host"
             assert self.jdownloader_agent is not None
             download_folder = self.jdownloader_download_dir
             if relative_download_path:
