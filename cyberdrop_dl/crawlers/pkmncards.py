@@ -177,7 +177,7 @@ class PkmncardsCrawler(Crawler):
         @error_handling_wrapper
         async def get_card_set(self, scrape_item: ScrapeItem):
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
             return create_set(soup)
 
         async with self.set_locks[simple_card.set_abbr]:
