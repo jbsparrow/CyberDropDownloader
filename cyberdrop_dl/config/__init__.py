@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from cyberdrop_dl import constants, env
 from cyberdrop_dl.utils.apprise import get_apprise_urls
-from cyberdrop_dl.utils.args import parse_args
 
 from .auth_model import AuthSettings
 from .config_model import ConfigSettings
@@ -37,6 +36,7 @@ global_settings: GlobalSettings
 
 def startup() -> None:
     global appdata, cli
+    from cyberdrop_dl.utils.args import parse_args
 
     cli = parse_args()
 

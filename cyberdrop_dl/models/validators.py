@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from datetime import timedelta
 from functools import singledispatch
-from math import _SupportsTrunc
 from typing import TYPE_CHECKING, Any, SupportsIndex, SupportsInt, TypeAlias, TypedDict
 
 from pydantic import AnyUrl, ByteSize, HttpUrl, TypeAdapter
@@ -18,7 +17,7 @@ if TYPE_CHECKING:
 _DATE_PATTERN_REGEX = r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)"
 _DATE_PATTERN = re.compile(_DATE_PATTERN_REGEX, re.IGNORECASE)
 _BYTE_SIZE_ADAPTER = TypeAdapter(ByteSize)
-_ConvertibleToInt: TypeAlias = str | SupportsInt | SupportsIndex | _SupportsTrunc
+_ConvertibleToInt: TypeAlias = str | SupportsInt | SupportsIndex
 
 
 def bytesize_to_str(value: _ConvertibleToInt) -> str:

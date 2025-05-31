@@ -8,7 +8,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
 
 from cyberdrop_dl import __version__, constants
-from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
+from cyberdrop_dl.config import ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
 from cyberdrop_dl.managers.config_manager import ConfigManager
