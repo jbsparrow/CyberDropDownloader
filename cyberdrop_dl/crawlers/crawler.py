@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeVar, final
 
 from aiolimiter import AsyncLimiter
-from dateutil import parser
 from yarl import URL
 
 from cyberdrop_dl.constants import NEW_ISSUE_URL
@@ -180,13 +179,9 @@ class Crawler(ABC):
             if item.url.path_qs not in self.scraped_items:
                 log(f"{scrape_prefix}: {item.url}", 20)
                 self.scraped_items.append(item.url.path_qs)
-                await self.queue_fetch_task(item)
+                await create_task_id(self.fetch)(item)
             else:
                 log(f"Skipping {item.url} as it has already been scraped", 10)
-
-    @create_task_id
-    async def queue_fetch_task(self, scrape_item: ScrapeItem) -> None:
-        await self.fetch(scrape_item)
 
     async def handle_file(
         self,
@@ -485,7 +480,7 @@ class Crawler(ABC):
     def parse_date(self, date_or_datetime: str, format: str | None = None, /) -> TimeStamp | None:
         msg = f"Date parsing for {self.DOMAIN} seems to be broken. Please report this as a bug at {NEW_ISSUE_URL}"
         if not date_or_datetime:
-            log(f"{msg}: Unable to extract date from soup", 40)
+            log(f"{msg}: Unable to extract date from soup", 30)
             return None
         parsed_date = None
         try:
@@ -493,11 +488,11 @@ class Crawler(ABC):
                 parsed_date = datetime.strptime(date_or_datetime, format)
             else:
                 parsed_date = parse_date(date_or_datetime)
-        except (ValueError, TypeError, parser.ParserError) as e:
+        except (ValueError, TypeError) as e:
             msg = f"{msg}: {e}"
 
         if parsed_date is None:
-            log(msg, 40)
+            log(msg, 30)
             return None
         return to_timestamp(parsed_date)
 
