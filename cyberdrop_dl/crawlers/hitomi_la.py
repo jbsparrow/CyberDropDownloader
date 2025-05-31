@@ -6,16 +6,18 @@ import struct
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Required, TypedDict
+from typing import TYPE_CHECKING, ClassVar, NamedTuple, Required, TypedDict
 
 from Crypto.Util.Padding import pad as pad_bytes
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -28,16 +30,29 @@ PRIMARY_URL = AbsoluteHttpURL("https://hitomi.la/")
 SERVERS_EXPIRE_AFTER = timedelta(minutes=40)
 
 
-class Servers(defaultdict[int, int]):
-    base: int
+class SearchArguments(NamedTuple):
+    area: str | None
+    tag: str
+    language: str = "all"
 
-    def __init__(self, base: int, default: int) -> None:
+    @property
+    def url(self) -> AbsoluteHttpURL:
+        if self.area:
+            return LTN_SERVER / "n" / self.area / f"{self.tag}-{self.language}.nozomi"
+        return LTN_SERVER / "n" / f"{self.tag}-{self.language}.nozomi"
+
+
+class Servers(defaultdict[int, int]):
+    def __init__(self, root: int, default: int | None = None) -> None:
+        if default is None:
+            default = 0
         super().__init__(lambda: default)
-        self.base = base
+        self.root = root
+        self.fetch_datetime = datetime.now()
 
 
 class Regex:
-    BASE = r"b: '(.+)'"
+    ROOT = r"b: '(.+)'"
     CASES = r"case (\d+):"
     DEFAULT_NUM = r"var o = (\d+)"
     NUM = r"o = (\d+); break;"
@@ -72,30 +87,62 @@ _REGEX = Regex()
 
 
 class HitomiLaCrawler(Crawler):
-    PRIMARY_URL = PRIMARY_URL
-    DOMAIN = "hitomi.la"
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Gallery": tuple(f"/{g}/..." for g in GALLERY_PARTS),
+        "Collection": tuple(f"/{g}/..." for g in COLLECTION_PARTS),
+        "Search": "/search.html?<query>",
+    }
+    PRIMARY_URL: ClassVar = PRIMARY_URL
+    DOMAIN: ClassVar = "hitomi.la"
 
     def __post_init__(self) -> None:
         self.headers = {"Referer": str(PRIMARY_URL)}
-        self._servers: Servers = None  # type: ignore
-        self._last_servers_update: datetime
+        self._servers: Servers | None = None
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in GALLERY_PARTS):
             return await self.gallery(scrape_item)
         if any(p in scrape_item.url.parts for p in COLLECTION_PARTS):
             return await self.collection(scrape_item)
+        if scrape_item.url.name == "search.html" and scrape_item.url.query_string:
+            return await self.search(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def search(self, scrape_item: ScrapeItem) -> None:
+        search_query = scrape_item.url.query_string
+        scrape_item.setup_as_profile(self.create_title(f"{search_query} [search]"))
+        gallery_sets = [gallery_set async for gallery_set in self.get_gallery_ids_from_query(search_query)]
+        if not gallery_sets:
+            raise ScrapeError(204)
+
+        for gallery_id in sorted(set.intersection(*gallery_sets), reverse=True):
+            new_scrape_item = scrape_item.create_child(PRIMARY_URL / f"galleries/{gallery_id}.html")
+            self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.add_children()
+
+    async def get_gallery_ids_from_query(self, search_query: str) -> AsyncGenerator[set[int]]:
+        # https://ltn.gold-usergeneratedcontent.net/search.js
+        # This is partial implementation. Only parses tagged words, ex `female:dark_skin`
+        # Free form query searches are ignored
+        for nozomi_search_args in (parse_query_word(word) for word in search_query.split(" ") if ":" in word):
+            async with self.request_limiter:
+                response, _ = await self.client._get(self.DOMAIN, nozomi_search_args.url, self.headers)
+            yield set(decode_nozomi_response(await response.read()))
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
         colletion_type = scrape_item.url.parts[1]
-        full_name = scrape_item.url.name.removesuffix(".html")
-        colletion_name, _, language = full_name.partition("-")
+        name, _, language = scrape_item.url.name.removesuffix(".html").partition("-")
 
-        title = self.create_title(f"{colletion_name} [{colletion_type}][{language}]")
+        if name == "index":
+            title = self.create_title(f"{name} [{language}]")
+            nozomi_url = LTN_SERVER / f"{name}-{language}.nozomi"
+        else:
+            title = self.create_title(f"{name} [{colletion_type}][{language}]")
+            nozomi_url = LTN_SERVER / colletion_type / f"{name}-{language}.nozomi"
+
         scrape_item.setup_as_profile(title)
-        nozomi_url = LTN_SERVER / colletion_type / f"{full_name}.nozomi"
         async with self.request_limiter:
             response, _ = await self.client._get(self.DOMAIN, nozomi_url, self.headers)
 
@@ -117,33 +164,30 @@ class HitomiLaCrawler(Crawler):
         await self.process_gallery(scrape_item, gallery)
 
     async def get_gallery(self, gallery_id: str) -> Gallery:
-        url = LTN_SERVER / "galleries" / gallery_id
+        gallery_url = LTN_SERVER / "galleries" / gallery_id
         async with self.request_limiter:
-            js_text = await self.client.get_text(self.DOMAIN, url, self.headers)
+            js_text = await self.client.get_text(self.DOMAIN, gallery_url, self.headers)
         return json.loads(js_text.split("=", 1)[-1])
 
     async def get_servers(self) -> Servers:
-        if self._servers and (datetime.now() - self._last_servers_update < SERVERS_EXPIRE_AFTER):
-            return self._servers
-        self._servers, self._last_servers_update = await self._get_servers(), datetime.now()
+        async with self.startup_lock:
+            if self._servers is None or (datetime.now() - self._servers.fetch_datetime > SERVERS_EXPIRE_AFTER):
+                self._servers = await self._get_servers()
         return self._servers
 
     async def _get_servers(self) -> Servers:
-        # See: https://ltn.gold-usergeneratedcontent.net/gg.js
-        url = LTN_SERVER / "gg.js"
+        # https://ltn.gold-usergeneratedcontent.net/gg.js
         async with self.request_limiter:
-            js_text = await self.client.get_text(self.DOMAIN, url)
+            js_text = await self.client.get_text(self.DOMAIN, LTN_SERVER / "gg.js")
 
-        base, num, default_num = [
-            match_int_or_none(pattern, js_text) for pattern in (_REGEX.BASE, _REGEX.NUM, _REGEX.DEFAULT_NUM)
+        root, num, default_num = [
+            match_int_or_none(pattern, js_text) for pattern in (_REGEX.ROOT, _REGEX.NUM, _REGEX.DEFAULT_NUM)
         ]
-        assert base is not None
+        assert root is not None
         assert num is not None
-        default_num = default_num if default_num is not None else 0
-        servers = Servers(base, default_num)
+        servers = Servers(root, default_num)
 
-        for match in re.finditer(_REGEX.CASES, js_text):
-            case = match.group(1)
+        for case in (match.group(1) for match in re.finditer(_REGEX.CASES, js_text)):
             servers[int(case)] = num + 1
 
         return servers
@@ -154,12 +198,12 @@ class HitomiLaCrawler(Crawler):
 
         for index, image in enumerate(gallery["files"], 1):
             link = get_image_url(servers, image)
-            reader_url = gallery_reader_url.with_fragment(str(index))
-            new_scrape_item = scrape_item.create_child(reader_url)
+            img_reader_url = gallery_reader_url.with_fragment(str(index))
+            new_scrape_item = scrape_item.create_child(img_reader_url)
             filename, ext = self.get_filename_and_ext(image["name"])
             custom_filename = Path(filename).with_suffix(link.suffix).as_posix()
             await self.handle_file(
-                reader_url, new_scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
+                img_reader_url, new_scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
             )
 
 
@@ -172,16 +216,15 @@ def get_image_url(servers: Servers, image: Image) -> AbsoluteHttpURL:
 
 
 def url_from_hash(servers: Servers, image: Image, dir: str, ext: str | None = None) -> AbsoluteHttpURL:
-    # See: https://ltn.gold-usergeneratedcontent.net/common.js
+    # https://ltn.gold-usergeneratedcontent.net/common.js
     if ext is None:
         _, ext = get_filename_and_ext(image["name"])
 
     image_hash = image["hash"]
     server_hex_num = int(image_hash[-1] + image_hash[-3:-1], base=16)
     server_num = servers[server_hex_num]
-
     origin = AbsoluteHttpURL(f"https://{ext[0]}{server_num}.{CONTENT_HOST}")
-    path = f"{servers.base}/{server_hex_num}/{image_hash}{ext}"
+    path = f"{servers.root}/{server_hex_num}/{image_hash}{ext}"
     if dir in ("webp", "avif"):
         return origin / path
     return origin / dir / path
@@ -192,6 +235,15 @@ def match_int_or_none(pattern: str, string: str) -> int | None:
         return int(match.group(1).removesuffix("/"))
 
 
-def decode_nozomi_response(data: bytes) -> tuple[int, ...]:
+def decode_nozomi_response(data: bytes) -> list[int]:
     padded_bytes = pad_bytes(data, 4)
-    return struct.unpack(f">{(len(padded_bytes) / 4):.0f}I", padded_bytes)
+    return sorted(struct.unpack(f">{(len(padded_bytes) / 4):.0f}I", padded_bytes), reverse=True)
+
+
+def parse_query_word(query_word: str) -> SearchArguments:
+    left_side, _, right_side = query_word.replace("_", " ").partition(":")
+    if left_side == "language":
+        return SearchArguments(None, "index", right_side)
+    if left_side in ("female", "male"):
+        return SearchArguments("tag", query_word)
+    return SearchArguments(left_side, right_side)
