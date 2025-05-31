@@ -1,8 +1,6 @@
 # ruff: noqa: F401
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from cyberdrop_dl import env
 
 from .acidimg import AcidImgCrawler
@@ -114,3 +112,5 @@ CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
     CRAWLERS.update(DEBUG_CRAWLERS)
+
+__all__ = ["ALL_CRAWLERS", "CRAWLERS", "DEBUG_CRAWLERS", "Crawler"]
