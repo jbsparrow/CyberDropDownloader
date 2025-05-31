@@ -38,22 +38,31 @@ DOWNLOAD_ERROR_ETAGS = {
     "5c4fb843-ece": "PixHost Removed Image",
 }
 
-DDOS_GUARD_CHALLENGE_TITLES = ["Just a moment...", "DDoS-Guard"]
-DDOS_GUARD_CHALLENGE_SELECTORS = [
-    "#cf-challenge-running",
-    ".ray_id",
-    ".attack-box",
-    "#cf-please-wait",
-    "#challenge-spinner",
-    "#trk_jschal_js",
-    "#turnstile-wrapper",
-    ".lds-ring",
-]
 
-CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection", "Attention Required! | Cloudflare", "Sentinel CAPTCHA"]
-CLOUDFLARE_CHALLENGE_SELECTORS = ["captchawrapper", "cf-turnstile"]
-CLOUDFLARE_CHALLENGE_JS_SELECTOR = "script[src*='challenges.cloudflare.com/turnstile']"
-CLOUDFLARE_NO_SNIFF_JS_SELECTOR = "script:contains('Dont open Developer Tools')"
+class DDosGuard:
+    TITLES = ("Just a moment...", "DDoS-Guard")
+    SELECTORS = (
+        "#cf-challenge-running",
+        ".ray_id",
+        ".attack-box",
+        "#cf-please-wait",
+        "#challenge-spinner",
+        "#trk_jschal_js",
+        "#turnstile-wrapper",
+        ".lds-ring",
+    )
+    ALL_SELECTORS = ", ".join(SELECTORS)
+
+
+class CloudflareTurnstile:
+    TITLES = ("Simpcity Cuck Detection", "Attention Required! | Cloudflare", "Sentinel CAPTCHA")
+    SELECTORS = (
+        "captchawrapper",
+        "cf-turnstile",
+        "script[src*='challenges.cloudflare.com/turnstile']",
+        "script:contains('Dont open Developer Tools')",
+    )
+    ALL_SELECTORS = ", ".join(SELECTORS)
 
 
 class ClientManager:
@@ -216,35 +225,18 @@ class ClientManager:
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
         if (title := soup.select_one("title")) and (title_str := title.string):
-            for title in DDOS_GUARD_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == title_str.casefold()
-                if challenge_found:
-                    return True
-
-        for selector in DDOS_GUARD_CHALLENGE_SELECTORS:
-            challenge_found = soup.find(selector)
-            if challenge_found:
+            if any(title.casefold() == title_str.casefold() for title in DDosGuard.TITLES):
                 return True
 
-        return False
+        return bool(soup.select_one(DDosGuard.ALL_SELECTORS))
 
     @staticmethod
     def check_cloudflare(soup: BeautifulSoup) -> bool:
         if (title := soup.select_one("title")) and (title_str := title.string):
-            for title in CLOUDFLARE_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == title_str.casefold()
-                if challenge_found:
-                    return True
-
-        for selector in CLOUDFLARE_CHALLENGE_SELECTORS:
-            challenge_found = soup.find(selector)
-            if challenge_found:
+            if any(title.casefold() == title_str.casefold() for title in CloudflareTurnstile.TITLES):
                 return True
 
-        if soup.select_one(CLOUDFLARE_CHALLENGE_JS_SELECTOR) and soup.select_one(CLOUDFLARE_NO_SNIFF_JS_SELECTOR):
-            return True
-
-        return False
+        return bool(soup.select_one(CloudflareTurnstile.ALL_SELECTORS))
 
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
