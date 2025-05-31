@@ -13,12 +13,11 @@ from typing_extensions import TypedDict  # Import from typing is not compatible 
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.models.validators import falsy_as_none
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
-from cyberdrop_dl.models.validators import falsy_as_none
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
@@ -28,6 +27,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 MAX_OFFSET_PER_CALL = 50
 LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
