@@ -50,7 +50,7 @@ DDOS_GUARD_CHALLENGE_SELECTORS = [
     ".lds-ring",
 ]
 
-CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection", "Attention Required! | Cloudflare"]
+CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection", "Attention Required! | Cloudflare", "Sentinel CAPTCHA"]
 CLOUDFLARE_CHALLENGE_SELECTORS = ["captchawrapper", "cf-turnstile"]
 CLOUDFLARE_CHALLENGE_JS_SELECTOR = "script[src*='challenges.cloudflare.com/turnstile']"
 CLOUDFLARE_NO_SNIFF_JS_SELECTOR = "script:contains('Dont open Developer Tools')"
