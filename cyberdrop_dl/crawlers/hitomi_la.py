@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import re
+import struct
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Required, TypedDict
+
+from Crypto.Util.Padding import pad as pad_bytes
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
@@ -15,20 +18,21 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-PRIMARY_URL = AbsoluteHttpURL("https://hitomi.la/")
-GALLERY_PARTS = "cg", "doujinshi", "galleries", "gamecg", "imageset", "manga", "reader"
-TAG_PARTS = "artist", "character", "group", "series", "tag", "type"
 
+ALLOW_AVIF = False
+GALLERY_PARTS = "cg", "doujinshi", "galleries", "gamecg", "imageset", "manga", "reader"
+COLLECTION_PARTS = "artist", "character", "group", "series", "tag", "type"
 CONTENT_HOST = "gold-usergeneratedcontent.net"
 LTN_SERVER = AbsoluteHttpURL(f"https://ltn.{CONTENT_HOST}/")
-ALLOW_AVIF = False
+PRIMARY_URL = AbsoluteHttpURL("https://hitomi.la/")
+SERVERS_EXPIRE_AFTER = timedelta(minutes=40)
 
 
 class Servers(defaultdict[int, int]):
     base: int
 
-    def __init__(self, base: int, default: int = 0, *args, **kwargs) -> None:
-        super().__init__(lambda: default, *args, **kwargs)
+    def __init__(self, base: int, default: int) -> None:
+        super().__init__(lambda: default)
         self.base = base
 
 
@@ -37,9 +41,6 @@ class Regex:
     CASES = r"case (\d+):"
     DEFAULT_NUM = r"var o = (\d+)"
     NUM = r"o = (\d+); break;"
-
-
-_REGEX = Regex()
 
 
 class Image(TypedDict, total=False):
@@ -67,6 +68,9 @@ class Gallery(TypedDict, total=False):
     language_url: str
 
 
+_REGEX = Regex()
+
+
 class HitomiLaCrawler(Crawler):
     PRIMARY_URL = PRIMARY_URL
     DOMAIN = "hitomi.la"
@@ -74,12 +78,31 @@ class HitomiLaCrawler(Crawler):
     def __post_init__(self) -> None:
         self.headers = {"Referer": str(PRIMARY_URL)}
         self._servers: Servers = None  # type: ignore
-        self._last_update: datetime
+        self._last_servers_update: datetime
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in GALLERY_PARTS):
             return await self.gallery(scrape_item)
+        if any(p in scrape_item.url.parts for p in COLLECTION_PARTS):
+            return await self.collection(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def collection(self, scrape_item: ScrapeItem) -> None:
+        colletion_type = scrape_item.url.parts[1]
+        full_name = scrape_item.url.name.removesuffix(".html")
+        colletion_name, _, language = full_name.partition("-")
+
+        title = self.create_title(f"{colletion_name} [{colletion_type}][{language}]")
+        scrape_item.setup_as_profile(title)
+        nozomi_url = LTN_SERVER / colletion_type / f"{full_name}.nozomi"
+        async with self.request_limiter:
+            response, _ = await self.client._get(self.DOMAIN, nozomi_url, self.headers)
+
+        for gallery_id in decode_nozomi_response(await response.read()):
+            new_scrape_item = scrape_item.create_child(PRIMARY_URL / f"galleries/{gallery_id}.html")
+            self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
@@ -100,10 +123,9 @@ class HitomiLaCrawler(Crawler):
         return json.loads(js_text.split("=", 1)[-1])
 
     async def get_servers(self) -> Servers:
-        if self._servers and (datetime.now() - self._last_update < timedelta(minutes=40)):
+        if self._servers and (datetime.now() - self._last_servers_update < SERVERS_EXPIRE_AFTER):
             return self._servers
-        self._servers = await self._get_servers()
-        self._last_update = datetime.now()
+        self._servers, self._last_servers_update = await self._get_servers(), datetime.now()
         return self._servers
 
     async def _get_servers(self) -> Servers:
@@ -168,3 +190,8 @@ def url_from_hash(servers: Servers, image: Image, dir: str, ext: str | None = No
 def match_int_or_none(pattern: str, string: str) -> int | None:
     if match := re.search(pattern, string):
         return int(match.group(1).removesuffix("/"))
+
+
+def decode_nozomi_response(data: bytes) -> tuple[int, ...]:
+    padded_bytes = pad_bytes(data, 4)
+    return struct.unpack(f">{(len(padded_bytes) / 4):.0f}I", padded_bytes)

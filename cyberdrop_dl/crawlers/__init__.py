@@ -33,6 +33,7 @@ from .fourchan import FourChanCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
+from .hitomi_la import HitomiLaCrawler
 from .hotpic import HotPicCrawler
 from .iceyfile import IceyFileCrawler
 from .imagebam import ImageBamCrawler
