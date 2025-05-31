@@ -26,7 +26,7 @@ class Selectors:
     DOWNLOAD_BUTTON = 'div[class="btn-group responsiveMobileMargin"] button'
     FILE_MENU = 'ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a'
     FILE_NAME = "div.image-name-title"
-    FILE_UPLOAD_DATE = 'table[class="table table-bordered table-striped"] tr td[class=responsiveTable]'
+    FILE_UPLOAD_DATE = "td:contains('Uploaded:') + td"
     FOLDER_ID_JS = "div[class*='page-container'] script:contains('loadImages')"
     FOLDER_ID = "#folderId"
     FOLDER_ITEM = "div[class=fileListing] div[class*=fileItem]"
