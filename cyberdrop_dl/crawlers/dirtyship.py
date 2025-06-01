@@ -65,7 +65,7 @@ class DirtyShipCrawler(Crawler):
             return
         if not scrape_item.url.suffix == ".jpg":
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
             url = next(
                 self.parse_url(a["href"]) for a in soup.select(_SELECTORS.SINGLE_PHOTO) if "full" in a.get_text()
             )
