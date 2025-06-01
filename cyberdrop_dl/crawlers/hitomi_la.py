@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import struct
@@ -8,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple, Required, TypedDict
 
-from Crypto.Util.Padding import pad as pad_bytes
+from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
@@ -30,7 +31,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://hitomi.la")
 SERVERS_EXPIRE_AFTER = timedelta(minutes=40)
 
 
-class SearchArguments(NamedTuple):
+class NozomiSearchArguments(NamedTuple):
     area: str | None
     tag: str
     language: str = "all"
@@ -87,6 +88,8 @@ class HitomiLaCrawler(Crawler):
     DOMAIN: ClassVar = "hitomi.la"
 
     def __post_init__(self) -> None:
+        self._semaphore = asyncio.Semaphore(3)
+        self.request_limiter = AsyncLimiter(1, 1)
         self.headers = {"Referer": str(PRIMARY_URL), "Origin": str(PRIMARY_URL)}
         self._servers: Servers | None = None
 
@@ -98,28 +101,6 @@ class HitomiLaCrawler(Crawler):
         if scrape_item.url.name == "search.html" and scrape_item.url.query_string:
             return await self.search(scrape_item)
         raise ValueError
-
-    @error_handling_wrapper
-    async def search(self, scrape_item: ScrapeItem) -> None:
-        search_query = scrape_item.url.query_string
-        scrape_item.setup_as_profile(self.create_title(f"{search_query} [search]"))
-        gallery_sets = [gallery_set async for gallery_set in self.get_gallery_ids_from_query(search_query)]
-        if not gallery_sets:
-            raise ScrapeError(204)
-
-        for gallery_id in sorted(set.intersection(*gallery_sets), reverse=True):
-            new_scrape_item = scrape_item.create_child(PRIMARY_URL / f"galleries/{gallery_id}.html")
-            self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
-
-    async def get_gallery_ids_from_query(self, search_query: str) -> AsyncGenerator[set[int]]:
-        # https://ltn.gold-usergeneratedcontent.net/search.js
-        # This is partial implementation. Only parses tagged words, ex `female:dark_skin`
-        # Free form query searches are ignored
-        for nozomi_search_args in (parse_query_word(word) for word in search_query.split(" ") if ":" in word):
-            async with self.request_limiter:
-                response, _ = await self.client._get(self.DOMAIN, nozomi_search_args.url, self.headers)
-            yield set(decode_nozomi_response(await response.read()))
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
@@ -139,8 +120,34 @@ class HitomiLaCrawler(Crawler):
 
         for gallery_id in decode_nozomi_response(await response.read()):
             new_scrape_item = scrape_item.create_child(PRIMARY_URL / f"galleries/{gallery_id}.html")
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            task = self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
+            # await immediately to prevent overwhelming the downloader
+            # there could be thousands of galleries in the result
+            await task
+
+    @error_handling_wrapper
+    async def search(self, scrape_item: ScrapeItem) -> None:
+        search_query = scrape_item.url.query_string
+        scrape_item.setup_as_profile(self.create_title(f"{search_query} [search]"))
+        gallery_sets = [gallery_set async for gallery_set in self.get_gallery_sets_from_query(search_query)]
+        if not gallery_sets:
+            raise ScrapeError(204)
+
+        for gallery_id in sorted(set.intersection(*gallery_sets), reverse=True):
+            new_scrape_item = scrape_item.create_child(PRIMARY_URL / f"galleries/{gallery_id}.html")
+            task = self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.add_children()
+            await task
+
+    async def get_gallery_sets_from_query(self, search_query: str) -> AsyncGenerator[set[int]]:
+        # https://ltn.gold-usergeneratedcontent.net/search.js
+        # This is partial implementation. Only parses tagged words, ex `female:dark_skin`
+        # Free form query searches are ignored
+        for nozomi_search_args in (parse_query_word(word) for word in search_query.split(" ") if ":" in word):
+            async with self.request_limiter:
+                response, _ = await self.client._get(self.DOMAIN, nozomi_search_args.url, self.headers)
+            yield set(decode_nozomi_response(await response.read()))
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
@@ -231,15 +238,14 @@ def match_int_or_none(pattern: str, string: str) -> int | None:
         return int(match.group(1).removesuffix("/"))
 
 
-def decode_nozomi_response(data: bytes) -> list[int]:
-    padded_bytes = pad_bytes(data, 4)
-    return sorted(struct.unpack(f">{(len(padded_bytes) / 4):.0f}I", padded_bytes), reverse=True)
+def decode_nozomi_response(data: bytes) -> tuple[int, ...]:
+    return struct.unpack(f">{(len(data) / 4):.0f}I", data)
 
 
-def parse_query_word(query_word: str) -> SearchArguments:
+def parse_query_word(query_word: str) -> NozomiSearchArguments:
     left_side, _, right_side = query_word.replace("_", " ").partition(":")
     if left_side == "language":
-        return SearchArguments(None, "index", right_side)
+        return NozomiSearchArguments(None, "index", right_side)
     if left_side in ("female", "male"):
-        return SearchArguments("tag", query_word)
-    return SearchArguments(left_side, right_side)
+        return NozomiSearchArguments("tag", query_word)
+    return NozomiSearchArguments(left_side, right_side)
