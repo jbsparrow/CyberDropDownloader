@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, ClassVar, ParamSpec, TypeVar
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import InvalidContentTypeError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.filters import has_valid_extension
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -56,8 +57,7 @@ class FakeURL:
 
 class GenericCrawler(Crawler):
     DOMAIN: ClassVar[str] = "generic"
-
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = FakeURL(host=".")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = FakeURL(host=".")  # type: ignore
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.file(scrape_item)
@@ -89,20 +89,19 @@ class GenericCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("title").text
-        title = title.rsplit(" - ", 1)[0].rsplit("|", 1)[0]
+        try:
+            title = css.select_one_get_text(soup, "title").rsplit(" - ", 1)[0].rsplit("|", 1)[0]
+            link_str: str = css.select_one_get_attr(soup, VIDEO_SELECTOR, "src")
+        except (AssertionError, AttributeError, KeyError):
+            raise ScrapeError(422) from None
 
-        video = soup.select_one(VIDEO_SELECTOR)
-        if not video:
-            raise ScrapeError(422)
-
-        link_str: str = video.get("src")
         link = self.parse_url(link_str, scrape_item.url.with_path("/"))
         try:
             filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
             filename, ext = self.get_filename_and_ext(link.name + ".mp4")
-        await self.handle_file(link, scrape_item, filename, ext)
+        custom_filename, _ = self.get_filename_and_ext(f"{title}{ext}")
+        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def log_unsupported(self, scrape_item: ScrapeItem, msg: str = "") -> None:
         log(f"Unsupported URL: {scrape_item.url} {msg}", 30)
