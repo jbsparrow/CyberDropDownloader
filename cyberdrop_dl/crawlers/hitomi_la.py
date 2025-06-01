@@ -243,7 +243,8 @@ def decode_nozomi_response(data: bytes) -> tuple[int, ...]:
 
 
 def parse_query_word(query_word: str) -> NozomiSearchArguments:
-    left_side, _, right_side = query_word.replace("_", " ").partition(":")
+    query_word = query_word.replace("_", " ")
+    left_side, _, right_side = query_word.partition(":")
     if left_side == "language":
         return NozomiSearchArguments(None, "index", right_side)
     if left_side in ("female", "male"):
