@@ -122,11 +122,10 @@ class HitomiLaCrawler(Crawler):
 
         for gallery_id in decode_nozomi_response(await response.read()):
             new_scrape_item = scrape_item.create_child(PRIMARY_URL / f"galleries/{gallery_id}.html")
-            task = self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
             # await immediately to prevent overwhelming the downloader
             # there could be thousands of galleries in the result
-            await task
+            await self.run(new_scrape_item)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
@@ -138,9 +137,8 @@ class HitomiLaCrawler(Crawler):
 
         for gallery_id in sorted(set.intersection(*gallery_sets), reverse=True):
             new_scrape_item = scrape_item.create_child(PRIMARY_URL / f"galleries/{gallery_id}.html")
-            task = self.manager.task_group.create_task(self.run(new_scrape_item))
+            await self.run(new_scrape_item)
             scrape_item.add_children()
-            await task
 
     async def get_gallery_sets_from_query(self, search_query: str) -> AsyncGenerator[set[int]]:
         # https://ltn.gold-usergeneratedcontent.net/search.js
@@ -166,7 +164,7 @@ class HitomiLaCrawler(Crawler):
         await self.process_gallery(scrape_item, gallery)
 
     async def get_gallery(self, gallery_id: str) -> Gallery:
-        gallery_url = LTN_SERVER / "galleries" / f"{gallery_id}.js"
+        gallery_url = LTN_SERVER / f"galleries/{gallery_id}.js"
         async with self.request_limiter:
             js_text = await self.client.get_text(self.DOMAIN, gallery_url, self.headers)
         return json.loads(js_text.split("=", 1)[-1])
