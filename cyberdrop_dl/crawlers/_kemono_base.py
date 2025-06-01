@@ -62,8 +62,8 @@ class UserURL(NamedTuple):
 
     @staticmethod
     def parse(url: URL) -> UserURL:
-        if n_parts := len(url.parts) > 3:
-            post_id = url.parts[5] if n_parts >= 5 else None
+        if (n_parts := len(url.parts)) > 3:
+            post_id = url.parts[5] if n_parts > 5 else None
             return UserURL(url.parts[1], url.parts[3], post_id)
         msg = "Invalid user URL"
         raise ValueError(msg)
