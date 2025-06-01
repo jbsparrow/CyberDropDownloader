@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
-from cyberdrop_dl.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
+from cyberdrop_dl.constants import BROWSERS, DEFAULT_APP_STORAGE, DEFAULT_DOWNLOAD_STORAGE
 from cyberdrop_dl.data_structures.hash import Hashing
 from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_SITES_DOMAINS
 from cyberdrop_dl.types import (
@@ -43,9 +43,9 @@ class DownloadOptions(BaseModel):
 
 
 class Files(AliasModel):
-    download_folder: Path = Field(validation_alias="d", default=DOWNLOAD_STORAGE)
+    download_folder: Path = Field(validation_alias="d", default=DEFAULT_DOWNLOAD_STORAGE)
     dump_json: bool = Field(default=False, validation_alias="j")
-    input_file: Path = Field(validation_alias="i", default=APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
+    input_file: Path = Field(validation_alias="i", default=DEFAULT_APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
     save_pages_html: bool = False
 
 
@@ -56,7 +56,7 @@ class Logs(AliasModel):
     last_forum_post: LogPath = Field(
         default=Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename"
     )
-    log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
+    log_folder: Path = DEFAULT_APP_STORAGE / "Configs" / "{config}" / "Logs"
     log_line_width: PositiveInt = Field(default=240, ge=50)
     logs_expire_after: timedelta | None = None
     main_log: MainLogPath = Field(default=Path("downloader.log"), validation_alias="main_log_filename")
@@ -151,7 +151,7 @@ class RuntimeOptions(BaseModel):
 class Sorting(BaseModel):
     scan_folder: PathOrNone = None
     sort_downloads: bool = False
-    sort_folder: Path = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
+    sort_folder: Path = DEFAULT_DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
     sort_incrementer_format: NonEmptyStr = " ({i})"
     sorted_audio: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
     sorted_image: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Images/{filename}{ext}"
