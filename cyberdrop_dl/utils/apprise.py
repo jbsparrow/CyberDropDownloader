@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from rich.text import Text
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.types import AppriseURLModel
+from cyberdrop_dl.models import AppriseURLModel
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.yaml import handle_validation_error
 

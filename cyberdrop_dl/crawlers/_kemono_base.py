@@ -13,11 +13,11 @@ from typing_extensions import TypedDict  # Import from typing is not compatible 
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
+from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.models.validators import falsy_as_none
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
-from cyberdrop_dl.utils.validators import parse_falsy_as_none
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 MAX_OFFSET_PER_CALL = 50
 LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
@@ -112,7 +113,7 @@ class File(TypedDict):
     server: NotRequired[str]  # Sometimes present in attachments
 
 
-FileOrNone = Annotated[File | None, BeforeValidator(parse_falsy_as_none)]
+FileOrNone = Annotated[File | None, BeforeValidator(falsy_as_none)]
 
 
 class Post(AliasModel):
