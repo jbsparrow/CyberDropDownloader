@@ -23,11 +23,12 @@ if TYPE_CHECKING:
 
 
 ALLOW_AVIF = False
-GALLERY_PARTS = "cg", "doujinshi", "galleries", "gamecg", "imageset", "manga", "reader"
+GALLERY_PARTS = "cg", "doujinshi", "galleries", "gamecg", "imageset", "manga", "reader", "anime"
 COLLECTION_PARTS = "artist", "character", "group", "series", "tag", "type"
 CONTENT_HOST = "gold-usergeneratedcontent.net"
 LTN_SERVER = AbsoluteHttpURL(f"https://ltn.{CONTENT_HOST}/")
 PRIMARY_URL = AbsoluteHttpURL("https://hitomi.la")
+VIDEOS_SERVER = AbsoluteHttpURL(f"https://streaming.{CONTENT_HOST}/")
 SERVERS_EXPIRE_AFTER = timedelta(minutes=40)
 
 
@@ -73,6 +74,7 @@ class Gallery(TypedDict, total=False):
     type: Required[str]
     date: Required[str]
     datepublished: str
+    videofilename: str
 
 
 _REGEX = Regex()
@@ -196,6 +198,11 @@ class HitomiLaCrawler(Crawler):
         servers = await self.get_servers()
         gallery_reader_url = PRIMARY_URL / f"reader/{gallery['id']}.html"
         results = await self.get_album_results(gallery["id"])
+
+        if video_filename := gallery.get("videofilename"):
+            link = VIDEOS_SERVER / "videos" / video_filename
+            filename, ext = self.get_filename_and_ext(video_filename)
+            await self.handle_file(link, scrape_item, filename, ext)
 
         for index, image in enumerate(gallery["files"], 1):
             img_reader_url = gallery_reader_url.with_fragment(str(index))
