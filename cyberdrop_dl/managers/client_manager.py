@@ -82,6 +82,7 @@ class ClientManager:
             "kemono": AsyncLimiter(1, 1),
             "pixeldrain": AsyncLimiter(10, 1),
             "gofile": AsyncLimiter(100, 60),
+            "hitomi.la": AsyncLimiter(3, 1),
             "other": AsyncLimiter(25, 1),
         }
 
