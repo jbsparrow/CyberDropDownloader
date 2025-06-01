@@ -8,13 +8,14 @@ from datetime import date
 from enum import StrEnum, auto
 from pathlib import Path
 from shutil import get_terminal_size
-from typing import TYPE_CHECKING, NoReturn, Self
+from typing import TYPE_CHECKING, Any, NoReturn, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
 from cyberdrop_dl import __version__, env
-from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
-from cyberdrop_dl.types import AliasModel, AnyDict, HttpURL
+from cyberdrop_dl.config import ConfigSettings, GlobalSettings
+from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.models.types import HttpURL
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
@@ -262,10 +263,10 @@ def make_parser() -> tuple[ArgumentParser, dict[str, list[ArgGroup]]]:
     return parser, group_lists
 
 
-def get_parsed_args_dict(args: Sequence[str] | None = None) -> dict[str, AnyDict]:
+def get_parsed_args_dict(args: Sequence[str] | None = None) -> dict[str, dict[str, Any]]:
     parser, group_lists = make_parser()
     namespace = parser.parse_intermixed_args(args)
-    parsed_args: dict[str, AnyDict] = {}
+    parsed_args: dict[str, dict[str, Any]] = {}
     for name, groups in group_lists.items():
         parsed_args[name] = {}
         for group in groups:

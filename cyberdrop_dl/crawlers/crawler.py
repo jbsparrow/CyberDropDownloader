@@ -122,9 +122,10 @@ class Crawler(ABC):
         if is_abc:
             return
 
-        REQUIRED_FIELDS = "PRIMARY_URL", "DOMAIN"
-        for field_name in REQUIRED_FIELDS:
-            assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
+        if cls.DOMAIN != "generic":
+            REQUIRED_FIELDS = "PRIMARY_URL", "DOMAIN", "SUPPORTED_PATHS"
+            for field_name in REQUIRED_FIELDS:
+                assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
 
         cls.FOLDER_DOMAIN = cls.FOLDER_DOMAIN or cls.DOMAIN.capitalize()
         cls.NAME = cls.__name__.removesuffix("Crawler")
@@ -138,6 +139,8 @@ class Crawler(ABC):
             if path_name != "Direct links":
                 assert paths, f"{cls.__name__} has not paths for {path_name}"
 
+            if isinstance(paths, str):
+                paths = (paths,)
             for path in paths:
                 assert "`" not in path, f"{cls.__name__}, Invalid path {path_name}: {path}"
 

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
 from pydantic import AliasPath, Field, PlainValidator
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
+from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 

@@ -7,7 +7,7 @@ class Hashing(StrEnum):
     POST_DOWNLOAD = auto()
 
     @classmethod
-    def _missing_(cls, value):
+    def _missing_(cls, value: str):
         try:
             return cls[str(value.upper())]
         except KeyError as e:
