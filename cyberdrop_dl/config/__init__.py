@@ -42,10 +42,10 @@ def startup() -> None:
 
     if env.RUNNING_IN_IDE and Path.cwd().name == "cyberdrop_dl":
         """This is for testing purposes only"""
-        constants.APP_STORAGE = Path("../AppData")
-        constants.DOWNLOAD_STORAGE = Path("../Downloads")
+        constants.DEFAULT_APP_STORAGE = Path("../AppData")
+        constants.DEFAULT_DOWNLOAD_STORAGE = Path("../Downloads")
 
-    appdata_path = cli.cli_only_args.appdata_folder or constants.APP_STORAGE
+    appdata_path = cli.cli_only_args.appdata_folder or constants.DEFAULT_APP_STORAGE
     appdata = AppData(appdata_path.resolve())
     appdata.mkdirs()
     # cache.startup(appdata.cache_file)
