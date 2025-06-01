@@ -3,18 +3,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.mixdrop import MixDropCrawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -27,24 +26,21 @@ class Selectors:
 
 
 _SELECTORS = Selectors()
+PRIMARY_URL = AbsoluteHttpURL("https://www.archivebate.store")
 
 
 class ArchiveBateCrawler(MixDropCrawler):
-    SUPPORTED_SITES: ClassVar[dict] = {}
-    primary_base_domain = URL("https://www.archivebate.store")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/watch/<video_id>"}
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ()
+    DOMAIN: ClassVar[str] = "archivebate"
+    FOLDER_DOMAIN: ClassVar[str] = "ArchiveBate"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page = _SELECTORS.NEXT_PAGE
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager)
-        self.domain = "archivebate"
-        self.folder_domain = "ArchiveBate"
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 1)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "watch" in scrape_item.url.parts:
             return await self.video(scrape_item)
 
@@ -69,23 +65,23 @@ class ArchiveBateCrawler(MixDropCrawler):
 
         url = scrape_item.url
         # Can't use check_complete_by_referer. We need the mixdrop url for that
-        check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, url)
+        check_complete = await self.manager.db_manager.history_table.check_complete(self.DOMAIN, url, url)
         if check_complete:
             self.log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
             self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if "This video has been deleted" in soup.text:
             raise ScrapeError(410)
 
         og_props = get_og_properties(soup)
         date_str: str = get_text_between(og_props.description, "show on", " - ").strip()
-        user_name: str = soup.select_one(_SELECTORS.USER_NAME).text  # type: ignore
-        site_name: str = soup.select_one(_SELECTORS.SITE_NAME).text  # type: ignore
-        video_src: str = soup.select_one(_SELECTORS.VIDEO)["src"]  # type: ignore
+        user_name: str = css.select_one_get_text(soup, _SELECTORS.USER_NAME)
+        site_name: str = css.select_one_get_text(soup, _SELECTORS.SITE_NAME)
+        video_src: str = css.select_one_get_attr(soup, _SELECTORS.VIDEO, "src")
         title = self.create_title(f"{user_name} [{site_name}]")
         scrape_item.setup_as_profile(title)
         scrape_item.possible_datetime = self.parse_date(date_str)
@@ -97,7 +93,7 @@ class ArchiveBateCrawler(MixDropCrawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, mixdrop_url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, mixdrop_url)
 
         link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)

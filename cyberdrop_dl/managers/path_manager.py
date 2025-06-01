@@ -1,22 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import field
+from dataclasses import Field, field
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl import constants, env
+from cyberdrop_dl import env
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
-
-
-if env.RUNNING_IN_IDE and Path.cwd().name == "cyberdrop_dl":
-    """This is for testing purposes only"""
-    constants.APP_STORAGE = Path("../AppData")
-    constants.DOWNLOAD_STORAGE = Path("../Downloads")
 
 
 class PathManager:
@@ -55,16 +49,30 @@ class PathManager:
             "download_error_urls",
             "scrape_error_urls",
         ]
+        self._appdata: Path = field(init=False)
+
+    @property
+    def cwd(self) -> Path:
+        if env.RUNNING_IN_IDE and Path.cwd().name == "cyberdrop_dl":
+            # This is for testing purposes only"""
+            return Path("..").resolve()
+        return Path().resolve()
+
+    @property
+    def appdata(self) -> Path:
+        if isinstance(self._appdata, Field):
+            if self.manager.parsed_args.cli_only_args.appdata_folder:
+                path = self.manager.parsed_args.cli_only_args.appdata_folder / "AppData"
+                self._appdata = self.cwd / path
+            else:
+                self._appdata = self.cwd / "AppData"
+
+        return self._appdata
 
     def pre_startup(self) -> None:
-        if self.manager.parsed_args.cli_only_args.appdata_folder:
-            constants.APP_STORAGE = self.manager.parsed_args.cli_only_args.appdata_folder / "AppData"
-
-        constants.APP_STORAGE = constants.APP_STORAGE.resolve()
-
-        self.cache_folder = constants.APP_STORAGE / "Cache"
-        self.config_folder = constants.APP_STORAGE / "Configs"
-        self.cookies_dir = constants.APP_STORAGE / "Cookies"
+        self.cache_folder = self.appdata / "Cache"
+        self.config_folder = self.appdata / "Configs"
+        self.cookies_dir = self.appdata / "Cookies"
         self.cache_db = self.cache_folder / "request_cache.db"
 
         self.cache_folder.mkdir(parents=True, exist_ok=True)
@@ -78,7 +86,8 @@ class PathManager:
         current_config = self.manager.config_manager.loaded_config
 
         def replace(path: Path) -> Path:
-            return Path(str(path).replace("{config}", current_config)).resolve()
+            path_w_config = str(path).replace("{config}", current_config)
+            return self.cwd.joinpath(Path(path_w_config))
 
         self.download_folder = replace(settings_data.files.download_folder)
         self.sorted_folder = replace(settings_data.sorting.sort_folder)

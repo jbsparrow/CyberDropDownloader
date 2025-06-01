@@ -22,6 +22,21 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.10.1] - 2025-06-06
+
+### Changed
+
+- CDL will try to parse upload dates from human expresions. ex: "Last friday at 10:55", "3 hours, 50 minutes ago",
+- Improve DDosCheck performance
+- Scrape errors from the generic crawler will be logged as "Unsupported" instead of "Unknown"
+
+### Fixed
+
+- Download from individual posts (Kemono, Coomer, Nekohouse)
+- Handling of xenforo redirects
+- Cyberfile date parsing
+- Remove invalid characters from cyberfile filenames
+
 ## [6.10.0] - 2025-05-30
 
 ### Added
