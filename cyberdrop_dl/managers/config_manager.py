@@ -114,13 +114,16 @@ class ConfigManager:
             if posible_fields == set_fields and not needs_update and self.pydantic_config:
                 return
         else:
-            from cyberdrop_dl import constants
-
             self.settings_data = ConfigSettings()
-            self.settings_data.files.input_file = constants.APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"
-            self.settings_data.files.download_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
-            self.settings_data.logs.log_folder = constants.APP_STORAGE / "Configs" / self.loaded_config / "Logs"
-            self.settings_data.sorting.sort_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
+            self.settings_data.files.input_file = (
+                self.manager.path_manager.appdata / "Configs" / self.loaded_config / "URLs.txt"
+            )
+            downloads = self.manager.path_manager.cwd / "Downloads"
+            self.settings_data.sorting.sort_folder = downloads / "Cyberdrop-DL Sorted Downloads"
+            self.settings_data.files.download_folder = downloads / "Cyberdrop-DL Downloads"
+            self.settings_data.logs.log_folder = (
+                self.manager.path_manager.appdata / "Configs" / self.loaded_config / "Logs"
+            )
 
         yaml.save(self.settings, self.settings_data)
 

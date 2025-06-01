@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import json
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
+from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar
+
+from pydantic import BaseModel
 
 from cyberdrop_dl import __version__, constants
-from cyberdrop_dl.config import ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
 from cyberdrop_dl.managers.config_manager import ConfigManager
@@ -22,38 +22,18 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
-from cyberdrop_dl.utils.args import ParsedArgs
+from cyberdrop_dl.utils.args import ParsedArgs, parse_args
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
-from cyberdrop_dl.utils.utilities import get_system_information
+from cyberdrop_dl.utils.utilities import close_if_defined, get_system_information
 
 if TYPE_CHECKING:
     import queue
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
-
-
-class HasClose(Protocol):
-    def close(self): ...
-
-
-class HasAsyncClose(Protocol):
-    async def close(self): ...
-
-
-C = TypeVar("C", bound=HasAsyncClose | HasClose)
-
-
-def unset() -> Any:
-    return field(init=False)
-
-
-async def close_if_set(obj: C) -> C:
-    if not isinstance(obj, Field):
-        await obj.close() if inspect.iscoroutinefunction(obj.close) else obj.close()
-    return unset()
+    from cyberdrop_dl.types import AnyDict
 
 
 class AsyncioEvents(NamedTuple):
@@ -62,7 +42,7 @@ class AsyncioEvents(NamedTuple):
 
 
 class Manager:
-    def __init__(self) -> None:
+    def __init__(self, args: tuple[str, ...] | None = None) -> None:
         self.parsed_args: ParsedArgs = field(init=False)
         self.cache_manager: CacheManager = CacheManager(self)
         self.path_manager: PathManager = field(init=False)
@@ -96,6 +76,7 @@ class Manager:
         self.multiconfig: bool = False
         self.loggers: dict[str, QueuedLogger] = {}
         self.states = AsyncioEvents()
+        self.args = args
 
     @property
     def config(self):
@@ -120,7 +101,7 @@ class Manager:
         """Startup process for the manager."""
 
         if isinstance(self.parsed_args, Field):
-            self.parsed_args = ParsedArgs.parse_args()
+            self.parsed_args = parse_args(self.args)
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
@@ -215,62 +196,21 @@ class Manager:
         cli_ignore_options = self.parsed_args.config_settings.ignore_options
         config_skip_hosts = self.config_manager.settings_data.ignore_options.skip_hosts
         config_only_hosts = self.config_manager.settings_data.ignore_options.only_hosts
-        exclude = {"+", "-"}
 
-        def add(config_list: list[str], cli_list: list[str]) -> list[str]:
-            new_list_as_set = set(config_list + cli_list)
-            return sorted(new_list_as_set - exclude)
-
-        def remove(config_list: list[str], cli_list: list[str]) -> list[str]:
-            new_list_as_set = set(config_list) - set(cli_list)
-            return sorted(new_list_as_set - exclude)
-
-        def add_or_remove(config_list: list[str], cli_list: list[str]) -> list[str]:
-            if cli_list:
-                if cli_list[0] == "+":
-                    return add(config_list, cli_list)
-                if cli_list[0] == "-":
-                    return remove(config_list, cli_list)
-            return cli_list
-
-        cli_ignore_options.skip_hosts = add_or_remove(config_skip_hosts, cli_ignore_options.skip_hosts)
-        cli_ignore_options.only_hosts = add_or_remove(config_only_hosts, cli_ignore_options.only_hosts)
+        cli_ignore_options.skip_hosts = add_or_remove_lists(config_skip_hosts, cli_ignore_options.skip_hosts)
+        cli_ignore_options.only_hosts = add_or_remove_lists(config_only_hosts, cli_ignore_options.only_hosts)
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
         self.process_additive_args()
-        cli_config_settings = self.parsed_args.config_settings.model_dump(exclude_unset=True)
-        cli_global_settings = self.parsed_args.global_settings.model_dump(exclude_unset=True)
 
-        current_config_settings = self.config_manager.settings_data.model_dump()
-        current_global_settings = self.config_manager.global_settings_data.model_dump()
+        conf = merge_models(self.config_manager.settings_data, self.parsed_args.config_settings)
+        global_conf = merge_models(self.config_manager.global_settings_data, self.parsed_args.global_settings)
+        deep_scrape = self.parsed_args.config_settings.runtime_options.deep_scrape or self.config_manager.deep_scrape
 
-        merged_config_settings = self.merge_dicts(current_config_settings, cli_config_settings)
-        merged_global_settings = self.merge_dicts(current_global_settings, cli_global_settings)
-
-        updated_config_settings = ConfigSettings.model_validate(merged_config_settings)
-        updated_global_settings = GlobalSettings.model_validate(merged_global_settings)
-
-        self.config_manager.settings_data = updated_config_settings
-        self.config_manager.global_settings_data = updated_global_settings
-        self.config_manager.deep_scrape = (
-            self.parsed_args.config_settings.runtime_options.deep_scrape or self.config_manager.deep_scrape
-        )
-
-    def merge_dicts(self, dict1: dict, dict2: dict):
-        for key, val in dict1.items():
-            if isinstance(val, dict):
-                if key in dict2 and isinstance(dict2[key], dict):
-                    self.merge_dicts(dict1[key], dict2[key])
-            else:
-                if key in dict2:
-                    dict1[key] = dict2[key]
-
-        for key, val in dict2.items():
-            if key not in dict1:
-                dict1[key] = val
-
-        return dict1
+        self.config_manager.settings_data = conf
+        self.config_manager.global_settings_data = global_conf
+        self.config_manager.deep_scrape = deep_scrape
 
     def args_logging(self) -> None:
         """Logs the runtime arguments."""
@@ -303,8 +243,8 @@ class Manager:
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"
-        self.db_manager = await close_if_set(self.db_manager)
-        self.hash_manager = unset()
+        self.db_manager = await close_if_defined(self.db_manager)
+        self.hash_manager = constants.NOT_DEFINED
         self.progress_manager.hash_progress.reset()
 
     async def close(self) -> None:
@@ -313,9 +253,9 @@ class Manager:
 
         await self.async_db_close()
 
-        self.client_manager = await close_if_set(self.client_manager)
-        self.storage_manager = await close_if_set(self.storage_manager)
-        self.cache_manager = await close_if_set(self.cache_manager)
+        self.client_manager = await close_if_defined(self.client_manager)
+        self.storage_manager = await close_if_defined(self.storage_manager)
+        self.cache_manager = await close_if_defined(self.cache_manager)
 
         while self.loggers:
             _, queued_logger = self.loggers.popitem()
@@ -334,3 +274,49 @@ class Manager:
         rewrite constants after config/arg manager have loaded
         """
         constants.DISABLE_CACHE = self.parsed_args.cli_only_args.disable_cache
+
+
+def add_or_remove_lists(old_list: list[str], new_list: list[str]) -> list[str]:
+    exclude = {"+", "-"}
+
+    def add(config_list: list[str], cli_list: list[str]) -> list[str]:
+        new_list_as_set = set(config_list + cli_list)
+        return sorted(new_list_as_set - exclude)
+
+    def remove(config_list: list[str], cli_list: list[str]) -> list[str]:
+        new_list_as_set = set(config_list) - set(cli_list)
+        return sorted(new_list_as_set - exclude)
+
+    if new_list:
+        if new_list[0] == "+":
+            return add(old_list, new_list)
+        if new_list[0] == "-":
+            return remove(old_list, new_list)
+    return new_list
+
+
+def merge_dicts(dict1: AnyDict, dict2: AnyDict) -> AnyDict:
+    for key, val in dict1.items():
+        if isinstance(val, dict):
+            if key in dict2 and isinstance(dict2[key], dict):
+                merge_dicts(dict1[key], dict2[key])
+        else:
+            if key in dict2:
+                dict1[key] = dict2[key]
+
+    for key, val in dict2.items():
+        if key not in dict1:
+            dict1[key] = val
+
+    return dict1
+
+
+M = TypeVar("M", bound=BaseModel)
+
+
+def merge_models(default: M, new: M) -> M:
+    default_dict = default.model_dump()
+    new_dict = new.model_dump(exclude_unset=True)
+
+    updated_dict = merge_dicts(default_dict, new_dict)
+    return default.model_validate(updated_dict)

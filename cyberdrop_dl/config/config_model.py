@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel, ByteSize, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
+from cyberdrop_dl.constants import BROWSERS, DEFAULT_APP_STORAGE, DEFAULT_DOWNLOAD_STORAGE
 from cyberdrop_dl.data_structures.hash import Hashing
 from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_SITES_DOMAINS
 from cyberdrop_dl.models import HttpAppriseURL
@@ -47,16 +47,16 @@ class DownloadOptions(BaseModel):
 
 
 class Files(PathAliasModel):
-    download_folder: Path = Field(DOWNLOAD_STORAGE, "d")
+    download_folder: Path = Field(DEFAULT_DOWNLOAD_STORAGE, "d")
     dump_json: bool = Field(False, "j")
-    input_file: Path = Field(APP_STORAGE / "Configs{config}/URLs.txt", "i")
+    input_file: Path = Field(DEFAULT_APP_STORAGE / "Configs{config}/URLs.txt", "i")
     save_pages_html: bool = False
 
 
 class Logs(PathAliasModel):
     download_error_urls: LogPath = Field(Path("Download_Error_URLs.csv"), "download_error_urls_filename")
     last_forum_post: LogPath = Field(Path("Last_Scraped_Forum_Posts.csv"), "last_forum_post_filename")
-    log_folder: Path = APP_STORAGE / "Configs/{config}/Logs"
+    log_folder: Path = DEFAULT_APP_STORAGE / "Configs/{config}/Logs"
     log_line_width: PositiveInt = Field(240, ge=50)
     logs_expire_after: timedelta | None = None
     main_log: MainLogPath = Field(Path("downloader.log"), "main_log_filename")
@@ -179,7 +179,7 @@ class RuntimeOptions(BaseModel):
 class Sorting(BaseModel):
     scan_folder: PathOrNone = None
     sort_downloads: bool = False
-    sort_folder: Path = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
+    sort_folder: Path = DEFAULT_DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
     sort_incrementer_format: NonEmptyStr = " ({i})"
     sorted_audio: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
     sorted_image: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Images/{filename}{ext}"

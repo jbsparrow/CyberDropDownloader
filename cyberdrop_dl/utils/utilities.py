@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import inspect
 import json
 import os
 import platform
@@ -10,7 +11,7 @@ import shutil
 import subprocess
 import sys
 import unicodedata
-from dataclasses import dataclass, fields
+from dataclasses import Field, dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
@@ -546,6 +547,23 @@ def get_size_or_none(path: Path) -> int | None:
         return None
 
 
+class HasClose(Protocol):
+    def close(self): ...
+
+
+class HasAsyncClose(Protocol):
+    async def close(self): ...
+
+
+C = TypeVar("C", bound=HasAsyncClose | HasClose)
+
+
+async def close_if_defined(obj: C) -> C:
+    if not isinstance(obj, Field):
+        await obj.close() if inspect.iscoroutinefunction(obj.close) else obj.close()
+    return constants.NOT_DEFINED
+
+
 def with_suffix_encoded(url: AnyURL, suffix: str) -> AnyURL:
     name = Path(url.raw_name).with_suffix(suffix)
     return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
@@ -572,6 +590,7 @@ def get_system_information() -> str:
         "python": f"{platform.python_version()} {platform.python_implementation()}",
         "common_name": get_os_common_name(),
     }
+    _ = system_info.pop("node", None)
     return json.dumps(system_info, indent=4)
 
 
