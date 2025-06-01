@@ -296,10 +296,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     async def discord_channel(self, scrape_item: ScrapeItem, channel_id: str) -> None:
         scrape_item.setup_as_profile("")
-        api_url_template = self.__make_api_url_w_offset(
-            f"discord/channel/{channel_id}",
-            scrape_item.url
-        )
+        api_url_template = self.__make_api_url_w_offset(f"discord/channel/{channel_id}", scrape_item.url)
         async for json_response_list in self.__api_pager(api_url_template, step_size=DISCORD_CHANNEL_PAGE_SIZE):
             if not isinstance(json_response_list, list):
                 break
@@ -540,11 +537,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if n_posts < MAX_OFFSET_PER_CALL:
                 break
 
-    async def __api_pager(
-        self,
-        url: URL,
-        step_size: int | None = None
-    ) -> AsyncGenerator[Any, None]:
+    async def __api_pager(self, url: URL, step_size: int | None = None) -> AsyncGenerator[Any, None]:
         """Yields JSON responses from API calls, with configurable increments."""
         current_step_size = step_size if step_size is not None else MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
