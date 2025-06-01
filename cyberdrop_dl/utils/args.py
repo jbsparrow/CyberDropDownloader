@@ -3,7 +3,7 @@ import time
 import warnings
 from argparse import SUPPRESS, ArgumentParser, BooleanOptionalAction, RawDescriptionHelpFormatter
 from argparse import _ArgumentGroup as ArgGroup
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import date
 from enum import StrEnum, auto
 from pathlib import Path
@@ -158,11 +158,6 @@ class ParsedArgs(AliasModel):
                 sys.exit(1)
             time.sleep(WARNING_TIMEOUT)
 
-    @staticmethod
-    def parse_args() -> "ParsedArgs":
-        """Parses the command line arguments passed into the program. Returns an instance of `ParsedArgs`"""
-        return parse_args()
-
     def prepare_warnings(self) -> set[str]:
         warnings_to_emit = set()
 
@@ -267,17 +262,17 @@ def make_parser() -> tuple[ArgumentParser, dict[str, list[ArgGroup]]]:
     return parser, group_lists
 
 
-def get_parsed_args_dict() -> dict[str, AnyDict]:
+def get_parsed_args_dict(args: Sequence[str] | None = None) -> dict[str, AnyDict]:
     parser, group_lists = make_parser()
-    args = parser.parse_intermixed_args()
+    namespace = parser.parse_intermixed_args(args)
     parsed_args: dict[str, AnyDict] = {}
     for name, groups in group_lists.items():
         parsed_args[name] = {}
         for group in groups:
             group_dict = {
-                arg.dest: getattr(args, arg.dest)
+                arg.dest: getattr(namespace, arg.dest)
                 for arg in group._group_actions
-                if getattr(args, arg.dest, None) is not None
+                if getattr(namespace, arg.dest, None) is not None
             }
             if group_dict:
                 assert group.title
@@ -289,9 +284,9 @@ def get_parsed_args_dict() -> dict[str, AnyDict]:
     return parsed_args
 
 
-def parse_args() -> ParsedArgs:
+def parse_args(args: Sequence[str] | None = None) -> ParsedArgs:
     """Parses the command line arguments passed into the program."""
-    parsed_args_dict = get_parsed_args_dict()
+    parsed_args_dict = get_parsed_args_dict(args)
     try:
         parsed_args_model = ParsedArgs.model_validate(parsed_args_dict)
 

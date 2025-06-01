@@ -26,7 +26,7 @@ class Selectors:
     DOWNLOAD_BUTTON = 'div[class="btn-group responsiveMobileMargin"] button'
     FILE_MENU = 'ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a'
     FILE_NAME = "div.image-name-title"
-    FILE_UPLOAD_DATE = 'table[class="table table-bordered table-striped"] tr td[class=responsiveTable]'
+    FILE_UPLOAD_DATE = "td:contains('Uploaded:') + td"
     FOLDER_ID_JS = "div[class*='page-container'] script:contains('loadImages')"
     FOLDER_ID = "#folderId"
     FOLDER_ITEM = "div[class=fileListing] div[class*=fileItem]"
@@ -173,9 +173,9 @@ class YetiShareCrawler(Crawler, is_abc=True):
             scrape_item.possible_datetime = self.parse_date(uploaded_date.text.strip(), "%d/%m/%Y %H:%M:%S")
 
         if ajax_title := ajax_soup.select_one(_SELECTOR.FILE_NAME):
-            filename = ajax_title.text
+            filename = ajax_title.get_text(strip=True)
         else:
-            filename = page_title
+            filename = page_title.strip()
 
         filename, ext = self.get_filename_and_ext(filename or link.name)
         await self.handle_file(link, scrape_item, filename, ext)

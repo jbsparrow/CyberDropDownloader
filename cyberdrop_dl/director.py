@@ -312,7 +312,7 @@ def _startup_logging(*, first_time_setup: bool = False) -> Generator:
     sys.exit(exit_code)
 
 
-def _setup_manager() -> Manager:
+def _setup_manager(args: tuple[str, ...] | None = None) -> Manager:
     """Starts the program and returns the manager.
 
     This will also run the UI for the program
@@ -320,7 +320,7 @@ def _setup_manager() -> Manager:
     """
     with _startup_logging(first_time_setup=True):
         try:
-            manager = Manager()
+            manager = Manager(args)
             manager.startup()
             if manager.parsed_args.cli_only_args.multiconfig:
                 startup_logger.info("validating all configs, please wait...")
@@ -346,12 +346,12 @@ def _setup_manager() -> Manager:
 class Director:
     """Creates a manager and runs it"""
 
-    def __init__(self) -> None:
+    def __init__(self, args: tuple[str, ...] | None = None) -> None:
         if os.name == "nt":
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.manager = _setup_manager()
+        self.manager = _setup_manager(args)
         # For future use with textual
         # fullscreen = f = m.parsed_args.cli_only_args.fullscreen_ui
         # self.use_textual = m.parsed_args.cli_only_args.textual_ui and fullscreen
