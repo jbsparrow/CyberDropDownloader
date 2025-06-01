@@ -572,6 +572,7 @@ def get_system_information() -> str:
         "python": f"{platform.python_version()} {platform.python_implementation()}",
         "common_name": get_os_common_name(),
     }
+    _ = system_info.pop("node", None)
     return json.dumps(system_info, indent=4)
 
 
