@@ -306,7 +306,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 await self._handle_discord_post(new_scrape_item, post)
                 scrape_item.add_children()
 
-            if not n_posts < MAX_OFFSET_PER_CALL:
+            if n_posts < MAX_OFFSET_PER_CALL:
                 break
 
     @fallback_if_no_api
@@ -521,7 +521,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 await self._handle_user_post(new_scrape_item, post)
                 scrape_item.add_children()
 
-            if not n_posts < MAX_OFFSET_PER_CALL:
+            if n_posts < MAX_OFFSET_PER_CALL:
                 break
 
     async def __api_pager(self, url: URL) -> AsyncGenerator[dict[str, Any]]:
