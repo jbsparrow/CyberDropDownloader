@@ -3,24 +3,24 @@ from __future__ import annotations
 import asyncio
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import field
 from datetime import datetime
 from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
 
 from aiolimiter import AsyncLimiter
 from dateutil import parser
 from yarl import URL
 
 from cyberdrop_dl.constants import NEW_ISSUE_URL
-from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
-from cyberdrop_dl.utils.dates import parse_date, to_timestamp
+from cyberdrop_dl.utils.dates import TimeStamp, parse_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
@@ -34,6 +34,7 @@ from cyberdrop_dl.utils.utilities import (
 
 P = ParamSpec("P")
 R = TypeVar("R")
+T = TypeVar("T")
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
@@ -43,7 +44,11 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths, TimeStamp
+
+
+OneOrTuple: TypeAlias = T | tuple[T, ...]
+SupportedPaths: TypeAlias = Mapping[str, OneOrTuple[str]]
+SupportedDomains: TypeAlias = OneOrTuple[str]
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
 
