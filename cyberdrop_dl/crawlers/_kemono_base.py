@@ -300,7 +300,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         api_url_template = self.__make_api_url_w_offset(f"discord/channel/{channel_id}", scrape_item.url)
         async for json_response_list in self.__api_pager(api_url_template, step_size=DISCORD_CHANNEL_PAGE_SIZE):
             if not isinstance(json_response_list, list):
-                break
+                error_msg = (
+                    f"[{self.NAME}] Invalid API response for Discord channel '{channel_id}' posts (URL template: {api_url_template}). "
+                    f"Expected a list, but got type {type(json_response_list).__name__}. "
+                    f"Response data (truncated): {str(json_response_list)[:200]}"
+                )
+                raise ScrapeError(422, error_msg)
             if not json_response_list:
                 break
 
@@ -308,11 +313,13 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             for post_data in json_response_list:
                 num_posts_in_page += 1
                 if not isinstance(post_data, dict):
-                    continue
-                try:
-                    post = DiscordPost.model_validate(post_data)
-                except Exception:
-                    continue
+                    error_msg = (
+                        f"[{self.NAME}] Invalid post data type in list for Discord channel '{channel_id}' (URL template: {api_url_template}). "
+                        f"Expected a dict for post data, but got type {type(post_data).__name__}. "
+                        f"Post data (truncated): {str(post_data)[:200]}"
+                    )
+                    raise ScrapeError(422, error_msg)
+                post = DiscordPost.model_validate(post_data)
                 post_web_url = self.parse_url(post.web_path_qs)
                 new_scrape_item_for_post = scrape_item.create_child(post_web_url)
                 await self._handle_discord_post(new_scrape_item_for_post, post)
@@ -542,10 +549,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         """Yields JSON responses from API calls, with configurable increments."""
         current_step_size = step_size if step_size is not None else MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
-        for i in itertools.count():
-            current_offset = init_offset + (i * current_step_size)
-            if i == 0:
-                current_offset = init_offset
+        for current_offset in itertools.count(init_offset, current_step_size):
             api_url = url.update_query(o=current_offset)
             async with self.request_limiter:
                 json_resp: Any = await self.client.get_json(self.DOMAIN, api_url)

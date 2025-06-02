@@ -4,6 +4,7 @@ from dataclasses import Field, field
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
+import os
 
 from cyberdrop_dl import env
 from cyberdrop_dl.utils.utilities import purge_dir_tree
@@ -87,8 +88,11 @@ class PathManager:
 
         def replace(path: Path) -> Path:
             path_w_config = str(path).replace("{config}", current_config)
-            normalized_path_str = path_w_config.replace("\\", "/")
-            return self.cwd.joinpath(Path(normalized_path_str))
+            if os.name == "nt": 
+                return self.cwd.joinpath(Path(path_w_config))
+            else:
+                normalized_path_str = path_w_config.replace("\\", "/")
+                return self.cwd.joinpath(Path(normalized_path_str))
 
         self.download_folder = replace(settings_data.files.download_folder)
         self.sorted_folder = replace(settings_data.sorting.sort_folder)
