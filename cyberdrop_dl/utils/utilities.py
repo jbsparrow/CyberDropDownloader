@@ -42,10 +42,9 @@ if TYPE_CHECKING:
     from rich.text import Text
 
     from cyberdrop_dl.crawlers import Crawler
-    from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, AnyURL, MediaItem, ScrapeItem
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.types import AbsoluteHttpURL, AnyURL
 
 
 P = ParamSpec("P")
@@ -497,9 +496,12 @@ def remove_trailing_slash(url: AnyURL) -> AnyURL:
     return url.parent.with_fragment(url.fragment).with_query(url.query)
 
 
-def remove_parts(url: AnyURL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True) -> AnyURL:
-    assert parts_to_remove
-    new_parts = [p for p in url.parts[1:] if p not in set(parts_to_remove)]
+def remove_parts(
+    url: AbsoluteHttpURL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True
+) -> AbsoluteHttpURL:
+    if not parts_to_remove:
+        return url
+    new_parts = [p for p in url.parts[1:] if p not in parts_to_remove]
     return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
 
 

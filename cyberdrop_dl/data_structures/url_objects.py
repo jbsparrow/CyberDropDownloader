@@ -8,7 +8,7 @@ from functools import partialmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple, ParamSpec, TypeVar, overload
 
-from yarl import URL
+import yarl
 
 from cyberdrop_dl.exceptions import MaxChildrenError
 from cyberdrop_dl.utils.utilities import is_absolute_http_url, sanitize_folder
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
     from propcache.api import under_cached_property as cached_property
     from rich.progress import TaskID
-    from yarl._query import Query, QueryVariable
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -41,14 +40,14 @@ if TYPE_CHECKING:
 
         return decorator
 
-    class AbsoluteHttpURL(URL):
-        @copy_signature(URL.__new__)
+    class AbsoluteHttpURL(yarl.URL):
+        @copy_signature(yarl.URL.__new__)
         def __new__(cls) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.__truediv__)
+        @copy_signature(yarl.URL.__truediv__)
         def __truediv__(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.__mod__)
+        @copy_signature(yarl.URL.__mod__)
         def __mod__(self) -> AbsoluteHttpURL: ...
 
         @cached_property
@@ -63,64 +62,64 @@ if TYPE_CHECKING:
         @cached_property
         def parent(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.with_path)
+        @copy_signature(yarl.URL.with_path)
         def with_path(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.with_host)
+        @copy_signature(yarl.URL.with_host)
         def with_host(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.origin)
+        @copy_signature(yarl.URL.origin)
         def origin(self) -> AbsoluteHttpURL: ...
 
         @overload
-        def with_query(self, query: Query) -> AbsoluteHttpURL: ...
+        def with_query(self, query: yarl.Query) -> AbsoluteHttpURL: ...
 
         @overload
-        def with_query(self, **kwargs: QueryVariable) -> AbsoluteHttpURL: ...
+        def with_query(self, **kwargs: yarl.QueryVariable) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.with_query)
+        @copy_signature(yarl.URL.with_query)
         def with_query(self) -> AbsoluteHttpURL: ...
 
         @overload
-        def extend_query(self, query: Query) -> AbsoluteHttpURL: ...
+        def extend_query(self, query: yarl.Query) -> AbsoluteHttpURL: ...
 
         @overload
-        def extend_query(self, **kwargs: QueryVariable) -> AbsoluteHttpURL: ...
+        def extend_query(self, **kwargs: yarl.QueryVariable) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.extend_query)
+        @copy_signature(yarl.URL.extend_query)
         def extend_query(self) -> AbsoluteHttpURL: ...
 
         @overload
-        def update_query(self, query: Query) -> AbsoluteHttpURL: ...
+        def update_query(self, query: yarl.Query) -> AbsoluteHttpURL: ...
 
         @overload
-        def update_query(self, **kwargs: QueryVariable) -> AbsoluteHttpURL: ...
+        def update_query(self, **kwargs: yarl.QueryVariable) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.update_query)
+        @copy_signature(yarl.URL.update_query)
         def update_query(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.without_query_params)
+        @copy_signature(yarl.URL.without_query_params)
         def without_query_params(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.with_fragment)
+        @copy_signature(yarl.URL.with_fragment)
         def with_fragment(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.with_name)
+        @copy_signature(yarl.URL.with_name)
         def with_name(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.with_suffix)
+        @copy_signature(yarl.URL.with_suffix)
         def with_suffix(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.join)
+        @copy_signature(yarl.URL.join)
         def join(self) -> AbsoluteHttpURL: ...
 
-        @copy_signature(URL.joinpath)
+        @copy_signature(yarl.URL.joinpath)
         def joinpath(self) -> AbsoluteHttpURL: ...
 
 else:
-    AbsoluteHttpURL = URL
+    AbsoluteHttpURL = yarl.URL
 
-AnyURL = TypeVar("AnyURL", bound=URL | AbsoluteHttpURL)
+AnyURL = TypeVar("AnyURL", bound=yarl.URL | AbsoluteHttpURL)
 
 
 class ScrapeItemType(IntEnum):
@@ -139,7 +138,7 @@ FILE_HOST_ALBUM = ScrapeItemType.FILE_HOST_ALBUM
 class HlsSegment(NamedTuple):
     part: str
     name: str
-    url: URL
+    url: yarl.URL
 
 
 @dataclass(unsafe_hash=True, slots=True)
@@ -170,7 +169,7 @@ class MediaItem:
     _task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
 
     # slots for __post_init__
-    referer: URL = field(init=False)
+    referer: yarl.URL = field(init=False)
     album_id: str | None = field(init=False)
     datetime: int | None = field(init=False, hash=False, compare=False)
     parents: list[AbsoluteHttpURL] = field(init=False, hash=False, compare=False)
@@ -269,20 +268,20 @@ class ScrapeItem:
 
     def create_new(
         self,
-        url: URL,
+        url: yarl.URL,
         *,
         new_title_part: str = "",
         part_of_album: bool = False,
         album_id: str | None = None,
         possible_datetime: int | None = None,
-        add_parent: URL | bool | None = None,
+        add_parent: yarl.URL | bool | None = None,
     ) -> ScrapeItem:
         """Creates a scrape item."""
         scrape_item = self.copy()
         assert is_absolute_http_url(url)
         scrape_item.url = url
         if add_parent:
-            new_parent = add_parent if isinstance(add_parent, URL) else self.url
+            new_parent = add_parent if isinstance(add_parent, yarl.URL) else self.url
             assert is_absolute_http_url(new_parent)
             scrape_item.parents.append(new_parent)
         if new_title_part:
@@ -298,11 +297,11 @@ class ScrapeItem:
     setup_as_forum = partialmethod(setup_as, type=FORUM)
     setup_as_post = partialmethod(setup_as, type=FORUM_POST)
 
-    def origin(self) -> URL | None:
+    def origin(self) -> yarl.URL | None:
         if self.parents:
             return self.parents[0]
 
-    def parent(self) -> URL | None:
+    def parent(self) -> yarl.URL | None:
         if self.parents:
             return self.parents[-1]
 
