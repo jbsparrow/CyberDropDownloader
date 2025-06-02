@@ -35,7 +35,7 @@ class ArchiveBateCrawler(MixDropCrawler):
     DOMAIN: ClassVar[str] = "archivebate"
     FOLDER_DOMAIN: ClassVar[str] = "ArchiveBate"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    next_page = _SELECTORS.NEXT_PAGE
+    NEXT_PAGE_SELECTOR = _SELECTORS.NEXT_PAGE
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 1)
