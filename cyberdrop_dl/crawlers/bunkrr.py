@@ -16,7 +16,7 @@ from aiohttp import ClientConnectorError
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
@@ -122,6 +122,7 @@ class AlbumItem:
 
 
 class BunkrrCrawler(Crawler):
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "bunkr", "bunkrr"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Album": "/a/...",
         "Video": "/v/...",
@@ -130,7 +131,7 @@ class BunkrrCrawler(Crawler):
     }
     DATABASE_PRIMARY_HOST: ClassVar[str] = "bunkr.site"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL(f"https://{DATABASE_PRIMARY_HOST}")
-    DOMAIN: ClassVar[str] = "bunkr"
+    DOMAIN: ClassVar[str] = "bunkrr"
 
     def __post_init__(self) -> None:
         self.known_good_host: str = ""
