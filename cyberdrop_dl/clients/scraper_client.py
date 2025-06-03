@@ -354,7 +354,7 @@ class ScraperClient:
         return BeautifulSoup(content, "html.parser")
 
     @limiter
-    async def get_head(
+    async def _get_head(
         self,
         domain: str,
         url: URL,
@@ -362,7 +362,7 @@ class ScraperClient:
         request_params: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
-    ) -> CIMultiDictProxy[str]:
+    ) -> aiohttp.ClientResponse:
         """
         Makes a GET request to an URL and returns its headers
 
@@ -377,6 +377,11 @@ class ScraperClient:
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response = await self._session.head(url, headers=headers, **request_params)
         await self.client_manager.check_http_status(response)
+        return response
+
+    @copy_signature(_get_head)
+    async def get_head(self, *args: Any, **kwargs: Any) -> CIMultiDictProxy[str]:
+        response = await self._get_head(*args, **kwargs)
         return response.headers
 
     async def write_soup_to_disk(
