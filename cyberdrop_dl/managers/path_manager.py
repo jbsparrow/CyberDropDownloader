@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import Field, field
 from datetime import datetime
 from pathlib import Path
@@ -87,7 +88,10 @@ class PathManager:
 
         def replace(path: Path) -> Path:
             path_w_config = str(path).replace("{config}", current_config)
-            return self.cwd.joinpath(Path(path_w_config))
+            if os.name == "nt":
+                return self.cwd.joinpath(Path(path_w_config))
+            normalized_path_str = path_w_config.replace("\\", "/")
+            return self.cwd.joinpath(Path(normalized_path_str))
 
         self.download_folder = replace(settings_data.files.download_folder)
         self.sorted_folder = replace(settings_data.sorting.sort_folder)

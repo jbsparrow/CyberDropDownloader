@@ -7,6 +7,7 @@ from aiolimiter import AsyncLimiter
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -47,14 +48,13 @@ class FapelloCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = self.create_title(soup.select_one(TITLE_SELECTOR).get_text())
+                title = self.create_title(css.select_one_get_text(soup, TITLE_SELECTOR))
                 scrape_item.setup_as_album(title)
 
             for post in soup.select(CONTENT_SELECTOR):
-                link_str: str = post.get("href")
+                link_str: str = css.get_attr(post, "href")
                 if "javascript" in link_str:
-                    video_tag = post.select_one("iframe")
-                    link_str: str = video_tag.get("src")
+                    link_str = css.select_one_get_attr(post, "iframe", "src")
 
                 link = self.parse_url(link_str)
                 new_scrape_item = scrape_item.create_child(link)

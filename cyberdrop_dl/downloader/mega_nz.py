@@ -79,7 +79,7 @@ from cyberdrop_dl.types import AnyDict, U32Int, U32IntArray, U32IntSequence
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator, Generator, Mapping
 
     from yarl import URL
 
@@ -742,7 +742,7 @@ class MegaApi:
         nodes = {node["h"]: node async for node in prepare_nodes()}
         return nodes
 
-    async def _build_file_system(self, nodes_map: dict[str, Node], root_ids: list[str]) -> dict[Path, Node]:
+    async def _build_file_system(self, nodes_map: Mapping[str, Node], root_ids: list[str]) -> dict[Path, Node]:
         """Builds a flattened dictionary representing a file system from a list of items.
 
         Returns:

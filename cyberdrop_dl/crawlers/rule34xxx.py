@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -66,7 +67,7 @@ class Rule34XXXCrawler(Crawler):
         if date_tag := soup.select_one(_SELECTOR.DATE):
             date_str = date_tag.get_text(strip=True).removeprefix("Posted: ")
             scrape_item.possible_datetime = self.parse_date(date_str)
-        link_str: str = media_tag["src"]
+        link_str: str = css.get_attr(media_tag, "src")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
