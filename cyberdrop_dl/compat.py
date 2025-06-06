@@ -2,18 +2,12 @@ from __future__ import annotations
 
 import enum
 import sys
-from collections.abc import Iterator, Sequence
-from typing import TypeAlias, TypeVar
+from typing import TYPE_CHECKING, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 T = TypeVar("T")
-
-
-# -- Crypto
-Array: TypeAlias = list[T] | tuple[T, ...]
-CMD: TypeAlias = Array[str]
-U32Int: TypeAlias = int
-U32IntArray: TypeAlias = Array[U32Int]
-U32IntSequence: TypeAlias = Sequence[U32Int]
 
 
 if sys.version_info < (3, 12):
