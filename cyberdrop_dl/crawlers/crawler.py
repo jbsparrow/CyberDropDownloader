@@ -67,7 +67,7 @@ def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, C
         try:
             if not self.SKIP_PRE_CHECK:
                 pre_check_scrape_item(scrape_item)
-            return await func(*args, **kwargs)
+            return await func(scrape_item, **kwargs)
         except ValueError:
             log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
             self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
@@ -183,7 +183,7 @@ class Crawler(ABC):
             if item.url.path_qs not in self.scraped_items:
                 log(f"{scrape_prefix}: {item.url}", 20)
                 self.scraped_items.append(item.url.path_qs)
-                await create_task_id(self.fetch)(item)
+                await create_task_id(self.fetch)(self, item)
             else:
                 log(f"Skipping {item.url} as it has already been scraped", 10)
 
