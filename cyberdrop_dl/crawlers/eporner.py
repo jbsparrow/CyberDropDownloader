@@ -117,7 +117,7 @@ class EpornerCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title and not from_profile:
-                title = soup.title.text
+                title = css.select_one_get_text(soup, "title")
                 title_trash = "Porn Star Videos", "Porn Videos", "Videos -", "EPORNER"
                 for trash in title_trash:
                     title = title.rsplit(trash)[0].strip()
@@ -132,7 +132,7 @@ class EpornerCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = soup.select_one(_SELECTORS.GALLERY_TITLE).get_text(strip=True)
+                title = css.select_one_get_text(soup, _SELECTORS.GALLERY_TITLE)
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
@@ -157,7 +157,7 @@ class EpornerCrawler(Crawler):
         img = soup.select_one(_SELECTORS.PHOTO)
         if not img:
             raise ScrapeError(422)
-        link_str: str = img["href"]
+        link_str: str = css.get_attr(img, "href")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

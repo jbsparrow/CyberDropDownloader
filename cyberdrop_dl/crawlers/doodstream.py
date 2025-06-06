@@ -10,6 +10,7 @@ from yarl import URL
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -66,7 +67,7 @@ class DoodStreamCrawler(Crawler):
         assert host
         del response
 
-        title: str = soup.select_one("title").text
+        title: str = css.select_one_get_text(soup, "title")
         title = title.split("- DoodStream")[0].strip()
 
         file_id = get_file_id(soup)

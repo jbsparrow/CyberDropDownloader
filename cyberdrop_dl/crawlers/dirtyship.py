@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -66,8 +67,8 @@ class DirtyShipCrawler(Crawler):
         if not scrape_item.url.suffix == ".jpg":
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-            url = next(
-                self.parse_url(a["href"]) for a in soup.select(_SELECTORS.SINGLE_PHOTO) if "full" in a.get_text()
+            url = self.parse_url(
+                next(css.get_attr(a, "href") for a in soup.select(_SELECTORS.SINGLE_PHOTO) if "full" in a.get_text())
             )
         else:
             url = scrape_item.url
@@ -94,7 +95,11 @@ class DirtyShipCrawler(Crawler):
             )
 
             for img in thumbnails:
-                url = img["src"] if img.get("decoding") == "async" else get_highest_resolution_picture(img["srcset"])
+                url = (
+                    css.get_attr(img, "src")
+                    if img.get("decoding") == "async"
+                    else get_highest_resolution_picture(css.get_attr(img, "srcset"))
+                )
                 if not url:
                     raise ScrapeError(404)
                 url = self.parse_url(url)
@@ -106,7 +111,7 @@ class DirtyShipCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title: str = soup.select_one("title").text
+                title: str = css.select_one_get_text(soup, "title")
                 title = title.split("Archives - DirtyShip")[0]
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
@@ -119,16 +124,16 @@ class DirtyShipCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("title").text
+        title: str = css.select_one_get_text(soup, "title")
         title = title.split(" - DirtyShip")[0]
         videos = soup.select(_SELECTORS.VIDEO)
 
         def get_formats():
             for video in videos:
-                link_str: str = video["src"]
+                link_str: str = css.get_attr(video, "src")
                 if link_str.startswith("type="):
                     continue
-                res: str = video["title"]
+                res: str = css.get_attr(video, "title")
                 link = self.parse_url(link_str)
                 yield (Format(int(res), link))
 
@@ -146,7 +151,7 @@ class DirtyShipCrawler(Crawler):
 
     def get_flowplayer_sources(self, soup: BeautifulSoup) -> set[Format]:
         flow_player = soup.select_one(_SELECTORS.FLOWPLAYER_VIDEO)
-        data_item: str | None = flow_player.get("data-item") if flow_player else None
+        data_item: str | None = css.get_attr_or_none(flow_player, "data-item") if flow_player else None
         if not data_item:
             return set()
         data_item = data_item.replace(r"\/", "/")

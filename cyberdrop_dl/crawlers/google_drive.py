@@ -119,7 +119,7 @@ class GoogleDriveCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, download_url)
 
-        title: str = soup.title.text.strip()
+        title: str = css.select_one_get_text(soup, "title")
         children = []
         for item in soup.select(ITEM_SELECTOR):
             link = item.get("href")
@@ -215,7 +215,7 @@ class GoogleDriveCrawler(Crawler):
 
 
 def get_docs_url(soup: BeautifulSoup, file_id: str) -> AbsoluteHttpURL | None:
-    title: str = soup.title.text
+    title: str = css.select_one_get_text(soup, "title")
     if title.endswith(" - Google Docs"):
         return AbsoluteHttpURL(f"https://docs.google.com/document/d/{file_id}/export?format=docx")
     if title.endswith(" - Google Sheets"):
@@ -225,16 +225,14 @@ def get_docs_url(soup: BeautifulSoup, file_id: str) -> AbsoluteHttpURL | None:
 
 
 def get_id_from_query(url: AbsoluteHttpURL) -> str | None:
-    item_id = url.query.get("id")
-    if item_id:
+    if item_id := url.query.get("id"):
         if len(item_id) == 1:
             return item_id[1]
         return item_id
 
 
 def get_file_id(url: AbsoluteHttpURL) -> str:
-    file_id = get_id_from_query(url)
-    if file_id:
+    if file_id := get_id_from_query(url):
         return file_id
 
     if "d" in url.parts and any(p in url.parts for p in VALID_FILE_URL_PARTS):

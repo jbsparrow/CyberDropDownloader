@@ -34,6 +34,7 @@ from cyberdrop_dl.utils.utilities import (
 P = ParamSpec("P")
 R = TypeVar("R")
 
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
 
@@ -417,7 +418,7 @@ class Crawler(ABC):
         *,
         results: dict[str, int] | None = None,
         **kwargs: Any,
-    ) -> Generator[tuple[URL | None, ScrapeItem]]:
+    ) -> Generator[tuple[AbsoluteHttpURL | None, ScrapeItem]]:
         """Generates tuples with an URL from the `src` value of the first image tag (AKA the thumbnail) and a new scrape item from the value of `attribute`
 
         :param results: must be the output of `self.get_album_results`.

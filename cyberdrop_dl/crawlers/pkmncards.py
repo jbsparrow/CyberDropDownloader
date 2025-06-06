@@ -139,8 +139,9 @@ class PkmncardsCrawler(Crawler):
         page_url = url.with_query(sort="date", ord="auto", display="images")
         async for soup in self.web_pager(page_url):
             for thumb in soup.select(_SELECTORS.CARD):
-                parts: tuple[str, str, str] = thumb.select_one("img")["src"], thumb["href"], thumb["title"]
-                link_str, card_page_url_str, title = parts
+                link_str = css.select_one_get_attr(thumb, "img", "src")
+                card_page_url_str = css.get_attr(thumb, "href")
+                title = css.get_attr(thumb, "title")
                 card_page_url = self.parse_url(card_page_url_str)
                 download_url = self.parse_url(link_str)
                 simple_card = create_simple_card(title, download_url)
@@ -153,9 +154,9 @@ class PkmncardsCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        name = soup.select_one(_SELECTORS.CARD_NAME).text
-        number = soup.select_one(_SELECTORS.CARD_NUMBER).text
-        link_str: str = soup.select_one(_SELECTORS.CARD_DOWNLOAD)["href"]
+        name = css.select_one_get_text(soup, _SELECTORS.CARD_NAME)
+        number = css.select_one_get_text(soup, _SELECTORS.CARD_NUMBER)
+        link_str: str = css.select_one_get_attr(soup, _SELECTORS.CARD_DOWNLOAD, "href")
         link = self.parse_url(link_str)
         card_set = create_set(soup)
         card = Card(name, number, card_set, link)
@@ -173,9 +174,9 @@ class PkmncardsCrawler(Crawler):
         custom_filename, _ = self.get_filename_and_ext(f"{card.full_name}{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    async def handle_simple_card(self, scrape_item: ScrapeItem, simple_card: SimpleCard):
+    async def handle_simple_card(self, scrape_item: ScrapeItem, simple_card: SimpleCard) -> None:
         @error_handling_wrapper
-        async def get_card_set(self, scrape_item: ScrapeItem):
+        async def get_card_set(self, scrape_item: ScrapeItem) -> CardSet:
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
             return create_set(soup)
