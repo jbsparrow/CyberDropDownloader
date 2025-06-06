@@ -115,7 +115,7 @@ class Rule34VideoCrawler(Crawler):
 
 
 def get_video_info(soup: BeautifulSoup) -> VideoInfo:
-    title = soup.select_one(VIDEO_TITLE_SELECTOR).text.strip()
+    title = css.select_one_get_text(soup, VIDEO_TITLE_SELECTOR)
     info_js_script = soup.select_one(JS_SELECTOR)
     info: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)
     info["title"] = title
@@ -126,7 +126,7 @@ def get_video_info(soup: BeautifulSoup) -> VideoInfo:
 
 def get_available_formats(soup: BeautifulSoup) -> Generator[Format]:
     for download in soup.select(DOWNLOADS_SELECTOR):
-        link_str: str = download.get("href")
+        link_str: str = css.get_attr(download, "href")
         if "/tags/" in link_str or not all(p in link_str for p in REQUIRED_FORMAT_STRINGS):
             continue
         ext, res = download.text.rsplit(" ", 1)
@@ -150,10 +150,10 @@ def get_playlist_title(soup: BeautifulSoup, playlist_type: str) -> str:
     selector = PLAYLIST_TITLE_SELECTORS[playlist_type]
     title_tag = css.select_one(soup, selector)
     if playlist_type in ("tags", "search"):
-        for span in title_tag.find_all("span"):
+        for span in title_tag.select("span"):
             span.decompose()
 
-    title = css.get_text(title_tag.text)
+    title = css.get_text(title_tag)
     for trash in TITLE_TRASH:
         title = title.replace(trash, "").strip()
 

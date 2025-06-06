@@ -28,7 +28,7 @@ def select_one(tag: Tag, selector: str) -> Tag:
 
 
 def select_one_get_text(tag: Tag, selector: str, strip: bool = True) -> str:
-    """Same as `tag.select_one` but asserts the result is not `None`"""
+    """Same as `tag.select_one.get_text(strip=strip)` but asserts the result is not `None`"""
     return get_text(select_one(tag, selector), strip)
 
 

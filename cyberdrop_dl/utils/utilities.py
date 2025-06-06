@@ -53,7 +53,6 @@ R = TypeVar("R")
 
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
-FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
 ALLOWED_FILEPATH_PUNCTUATION = " .-_!#$%'()+,;=@[]^{}~"
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
@@ -524,16 +523,6 @@ def get_og_properties(soup: BeautifulSoup) -> OGProperties:
         og_properties[property_name] = meta["content"] or ""  # type: ignore
 
     return OGProperties(**og_properties)
-
-
-def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
-    """Get `filename=` value from `Content-Disposition`"""
-    content_disposition: str | None = headers.get("Content-Disposition")
-    if not content_disposition:
-        return
-    if match := re.search(FILENAME_REGEX, content_disposition):
-        matches = match.groups()
-        return matches[0] or matches[1]
 
 
 def get_size_or_none(path: Path) -> int | None:

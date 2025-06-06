@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -54,7 +55,7 @@ class CyberdropCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         try:
-            title: str = soup.select_one(_SELECTORS.ALBUM_TITLE).text
+            title: str = css.select_one_get_text(soup, _SELECTORS.ALBUM_TITLE)
             title = self.create_title(title, album_id)
             scrape_item.setup_as_album(title, album_id=album_id)
         except AttributeError:

@@ -9,6 +9,7 @@ from mediafire import MediaFireApi, api
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import MediaFireError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -77,7 +78,7 @@ class MediaFireCrawler(Crawler):
             raise ScrapeError(422)
 
         scrape_item.possible_datetime = self.parse_date(soup.select(DATE_SELECTOR)[-1].get_text(), "%Y-%m-%d %H:%M:%S")
-        link_str: str = link_tag.get("href")
+        link_str: str = css.get_attr(link_tag, "href")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
