@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import calendar
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import AliasPath, Field
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers import Crawler
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths, TimeStamp
+from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -34,11 +34,17 @@ class Post(AliasModel):
         return PRIMARY_URL / "posts" / self.id
 
     @property
-    def timestamp(self) -> int:
-        return calendar.timegm(self.created_at.timetuple())
+    def timestamp(self) -> TimeStamp:
+        return to_timestamp(self.created_at)
 
 
 class FikFapCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Post": "/post/...",
+        "User": "/user/...",
+        "hashtag": "/hash/...",
+        "Search": "/search?q=...",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "fikfap"
     FOLDER_DOMAIN: ClassVar[str] = "FikFap"
@@ -50,7 +56,6 @@ class FikFapCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "post" in scrape_item.url.parts:
             return await self.post(scrape_item)
