@@ -7,7 +7,7 @@ from pydantic import AliasPath, Field
 
 from cyberdrop_dl.crawlers import Crawler
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths, TimeStamp
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -32,10 +32,6 @@ class Post(AliasModel):
     @property
     def url(self) -> AbsoluteHttpURL:
         return PRIMARY_URL / "posts" / self.id
-
-    @property
-    def timestamp(self) -> TimeStamp:
-        return to_timestamp(self.created_at)
 
 
 class FikFapCrawler(Crawler):
@@ -140,7 +136,7 @@ class FikFapCrawler(Crawler):
         m3u8_playlist_url = self.parse_url(post.stream_url)
         m3u8_media = self.get_m3u8_media(m3u8_playlist_url)
         scrape_item.url = post.url
-        scrape_item.possible_datetime = post.timestamp
+        scrape_item.possible_datetime = to_timestamp(post.created_at)
         scrape_item.setup_as_album(self.create_title(f"{post.user} [user]", post.user_id), album_id=post.user_id)
         filename, ext = self.get_filename_and_ext(f"{post.media_id}.mp4")
         custom_filename, _ = self.get_filename_and_ext(f"{post.label} [{post.id}].mp4")
