@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from pydantic import AliasPath, Field
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
+from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from yarl import URL
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.fikfap.com")
@@ -165,7 +164,7 @@ class FikFapCrawler(Crawler):
             subtitle = await self._get_m3u8_from_url(rendition_group.urls.subtitle)
         return M3U8Media(video, audio, subtitle)
 
-    async def _get_m3u8_from_url(self, url: URL, headers: dict[str, str] | None = None) -> M3U8:
+    async def _get_m3u8_from_url(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
         headers = headers or self.headers
         async with self.request_limiter:
             content = await self.client.get_text(self.DOMAIN, url, headers)
