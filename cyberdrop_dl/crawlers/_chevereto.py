@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -14,9 +15,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 if TYPE_CHECKING:
     from yarl import URL
 
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
-
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
+from cyberdrop_dl.crawlers.crawler import SupportedPaths
 
 ITEM_DESCRIPTION_SELECTOR = "p[class*=description-meta]"
 ALBUM_TITLE_SELECTOR = "a[data-text=album-name]"

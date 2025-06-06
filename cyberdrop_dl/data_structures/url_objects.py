@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Literal, NamedTuple, ParamSpec, TypeVar, overl
 import yarl
 
 from cyberdrop_dl.exceptions import MaxChildrenError
-from cyberdrop_dl.utils.utilities import is_absolute_http_url, sanitize_folder
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -138,7 +137,7 @@ FILE_HOST_ALBUM = ScrapeItemType.FILE_HOST_ALBUM
 class HlsSegment(NamedTuple):
     part: str
     name: str
-    url: yarl.URL
+    url: AbsoluteHttpURL
 
 
 @dataclass(unsafe_hash=True, slots=True)
@@ -162,14 +161,14 @@ class MediaItem:
     download_filename: str | None = field(default=None, init=False)
     filesize: int | None = field(default=None, init=False)
     current_attempt: int = field(default=0, init=False, hash=False, compare=False)
-    partial_file: Path | None = field(default=None, init=False)
+    partial_file: Path = field(default=None, init=False)  # type: ignore
     complete_file: Path = field(default=None, init=False)  # type: ignore
     hash: str | None = field(default=None, init=False, hash=False, compare=False)
     downloaded: bool = field(default=False, init=False, hash=False, compare=False)
     _task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
 
     # slots for __post_init__
-    referer: yarl.URL = field(init=False)
+    referer: AbsoluteHttpURL = field(init=False)
     album_id: str | None = field(init=False)
     datetime: int | None = field(init=False, hash=False, compare=False)
     parents: list[AbsoluteHttpURL] = field(init=False, hash=False, compare=False)
@@ -224,6 +223,8 @@ class ScrapeItem:
 
     def add_to_parent_title(self, title: str) -> None:
         """Adds a title to the parent title."""
+        from cyberdrop_dl.utils.utilities import sanitize_folder
+
         if not title or self.retry:
             return
         title = sanitize_folder(title)
@@ -277,6 +278,8 @@ class ScrapeItem:
         add_parent: yarl.URL | bool | None = None,
     ) -> ScrapeItem:
         """Creates a scrape item."""
+        from cyberdrop_dl.utils.utilities import is_absolute_http_url
+
         scrape_item = self.copy()
         assert is_absolute_http_url(url)
         scrape_item.url = url

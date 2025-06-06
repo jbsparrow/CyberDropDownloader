@@ -3,6 +3,8 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
+import bs4.css
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
@@ -61,4 +63,4 @@ def select_one_get_attr_or_none(tag: Tag, selector: str, attribute: str) -> str 
 
 def iselect(tag: Tag, selector: str) -> Generator[Tag]:
     """Same as `tag.select(selector)`, but it returns a generator instead of a list."""
-    yield from tag.css.iselect(selector)
+    yield from bs4.css.CSS(tag).iselect(selector)

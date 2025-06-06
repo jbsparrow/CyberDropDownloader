@@ -18,7 +18,8 @@ if TYPE_CHECKING:
 
     from m3u8.model import StreamInfo
 
-    from cyberdrop_dl.types import AbsoluteHttpURL
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+
 
 RESOLUTION_REGEX = [
     re.compile(regex)

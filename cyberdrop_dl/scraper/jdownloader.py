@@ -13,8 +13,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.types import AbsoluteHttpURL
+
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -52,10 +53,11 @@ class JDownloader:
         self.jdownloader_device = manager.config_manager.authentication_data.jdownloader.device
         self.jdownloader_username = manager.config_manager.authentication_data.jdownloader.username
         self.jdownloader_password = manager.config_manager.authentication_data.jdownloader.password
-        self.jdownloader_download_dir = manager.config_manager.settings_data.runtime_options.jdownloader_download_dir
+        self.jdownloader_download_dir = (
+            manager.config_manager.settings_data.runtime_options.jdownloader_download_dir
+            or manager.path_manager.download_folder
+        )
         self.jdownloader_autostart = manager.config_manager.settings_data.runtime_options.jdownloader_autostart
-        if not self.jdownloader_download_dir:
-            self.jdownloader_download_dir = manager.path_manager.download_folder
         self.jdownloader_download_dir = self.jdownloader_download_dir.resolve()
         self.jdownloader_agent = field(init=False)
 
@@ -94,4 +96,4 @@ class JDownloader:
                 ],
             )
         except (AssertionError, myjdapi.MYJDException) as e:
-            raise JDownloaderError(e) from e
+            raise JDownloaderError(str(e)) from e

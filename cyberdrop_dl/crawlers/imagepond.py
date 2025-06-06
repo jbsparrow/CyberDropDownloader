@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from cyberdrop_dl.crawlers._chevereto import CheveretoCrawler
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 PRIMARY_URL = AbsoluteHttpURL("https://imagepond.net")
 

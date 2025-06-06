@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
     from multidict import CIMultiDictProxy
 
-    from cyberdrop_dl.data_structures.url_objects import MediaItem
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
 
@@ -145,7 +145,7 @@ class DownloadClient:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def add_api_key_headers(self, domain: str, referer: URL) -> dict:
+    def add_api_key_headers(self, domain: str, referer: AbsoluteHttpURL) -> dict:
         download_headers = copy.deepcopy(self._headers)
         download_headers["Referer"] = str(referer)
         auth_data = self.manager.config_manager.authentication_data
@@ -184,15 +184,15 @@ class DownloadClient:
         await asyncio.sleep(self.manager.config_manager.global_settings_data.rate_limiting_options.total_delay)
 
         download_url = media_item.debrid_link or media_item.url
-        gen: Callable[..., URL] | list[URL] | None = media_item.fallbacks
+        gen: Callable[..., AbsoluteHttpURL] | list[AbsoluteHttpURL] | None = media_item.fallbacks
         fallback_urls = fallback_call = None
         if gen is not None:
             if isinstance(gen, list):
-                fallback_urls: list[URL] | None = gen
+                fallback_urls: list[AbsoluteHttpURL] | None = gen
             else:
-                fallback_call: Callable[..., URL] | None = gen
+                fallback_call: Callable[..., AbsoluteHttpURL] | None = gen
 
-        def gen_fallback() -> Generator[URL | None, aiohttp.ClientResponse, None]:
+        def gen_fallback() -> Generator[AbsoluteHttpURL | None, aiohttp.ClientResponse, None]:
             response = yield
             if fallback_urls is not None:
                 yield from fallback_urls
@@ -206,7 +206,7 @@ class DownloadClient:
                         break
                     response = yield url
 
-        async def process_response(resp: aiohttp.ClientResponse):
+        async def process_response(resp: aiohttp.ClientResponse) -> bool:
             nonlocal resume_point
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
@@ -307,8 +307,9 @@ class DownloadClient:
 
         last_slow_speed_read = None
 
-        def check_download_speed():
+        def check_download_speed() -> None:
             nonlocal last_slow_speed_read
+            assert media_item.task_id
             speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
             if speed > self.download_speed_threshold:
                 last_slow_speed_read = None

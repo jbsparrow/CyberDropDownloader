@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.crawlers.crawler import AbsoluteHttpURL, Crawler, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import TimeStamp, to_timestamp

@@ -9,6 +9,7 @@ from yarl import URL
 
 import cyberdrop_dl.constants as constants
 from cyberdrop_dl.constants import FILE_FORMATS
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import NoExtensionError
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-return_values: dict[URL | str, tuple] = {}
+return_values: dict[AbsoluteHttpURL | str, tuple] = {}
 
 MEDIA_EXTENSIONS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Audio"]
 
@@ -31,7 +32,7 @@ def is_valid_url(scrape_item: ScrapeItem) -> bool:
         return False
     if not isinstance(scrape_item.url, URL):
         try:
-            scrape_item.url = URL(scrape_item.url)
+            scrape_item.url = AbsoluteHttpURL(scrape_item.url)
         except AttributeError:
             return False
     try:

@@ -47,7 +47,7 @@ class RealDebridManager:
             self.file_regex = re.compile(file_regex)
             self.folder_regex = re.compile(folder_regex)
         except RealDebridError as e:
-            log(f"Failed RealDebrid setup: {e.error}", 40)
+            log(f"Failed RealDebrid setup: {e}", 40)
             self.enabled = False
 
     def is_supported_folder(self, url: URL) -> bool:

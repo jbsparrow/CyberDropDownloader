@@ -14,7 +14,7 @@ from yarl import URL
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.crawlers import CRAWLERS
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import JDownloaderError, NoExtensionError
 from cyberdrop_dl.scraper.filters import has_valid_extension, is_in_domain_list, is_outside_date_range, is_valid_url
@@ -113,7 +113,7 @@ class ScrapeMapper:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[URL]]]:
+    async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[AbsoluteHttpURL]]]:
         """Split URLs from input file by their groups."""
         input_file = self.manager.path_manager.input_file
         if not await asyncio.to_thread(input_file.is_file):
@@ -186,7 +186,7 @@ class ScrapeMapper:
     async def filter_and_send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Send scrape_item to a supported crawler."""
         if not isinstance(scrape_item.url, URL):
-            scrape_item.url = URL(scrape_item.url)
+            scrape_item.url = AbsoluteHttpURL(scrape_item.url)
         if self.filter_items(scrape_item):
             await self.send_to_crawler(scrape_item)
 
@@ -316,7 +316,7 @@ class ScrapeMapper:
         return False
 
 
-def regex_links(line: str) -> list[URL]:
+def regex_links(line: str) -> list[AbsoluteHttpURL]:
     """Regex grab the links from the URLs.txt file.
 
     This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt.
@@ -329,18 +329,18 @@ def regex_links(line: str) -> list[URL]:
     all_links = [x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line)]
     for link in all_links:
         encoded = "%" in link
-        yarl_links.append(URL(link, encoded=encoded))
+        yarl_links.append(AbsoluteHttpURL(link, encoded=encoded))
     return yarl_links
 
 
 def create_item_from_entry(entry: Sequence) -> ScrapeItem:
-    url = URL(entry[0])
+    url = AbsoluteHttpURL(entry[0])
     retry_path = Path(entry[1])
     item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
     completed_at = entry[2]
     created_at = entry[3]
     if not isinstance(item.url, URL):
-        item.url = URL(item.url)
+        item.url = AbsoluteHttpURL(item.url)
     item.completed_at = completed_at
     item.created_at = created_at
     return item

@@ -14,9 +14,9 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from aiohttp import ClientConnectorError
 
 from cyberdrop_dl.constants import FILE_FORMATS
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,

@@ -25,6 +25,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl import constants
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import (
     CDLBaseError,
     ErrorLogMessage,

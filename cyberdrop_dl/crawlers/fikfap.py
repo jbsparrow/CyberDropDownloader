@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import AliasPath, Field
 
-from cyberdrop_dl.crawlers import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
