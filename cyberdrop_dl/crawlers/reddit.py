@@ -8,9 +8,9 @@ from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
 
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -104,7 +104,7 @@ class RedditCrawler(Crawler):
         title = self.create_title(subreddit_name)
         scrape_item.setup_as_profile(title)
         subreddit: Subreddit = await self._reddit.subreddit(subreddit_name)
-        submissions: AsyncIterator[Submission] = subreddit.new(limit=None)
+        submissions: AsyncIterator[Submission] = subreddit.new(limit=None)  # type: ignore[reportArgumentType]
         await self.get_posts(scrape_item, submissions)
 
     @error_handling_wrapper

@@ -57,7 +57,7 @@ class LiveManager:
             if new_layout != self.current_layout:
                 self.current_layout = new_layout
                 layout = self.get_layout(new_layout)
-                self.live.update(layout, refresh=not self.use_textual)
+                self.live.update(layout, refresh=not self.use_textual)  # type: ignore
             await asyncio.sleep(0.5)
 
     @contextmanager

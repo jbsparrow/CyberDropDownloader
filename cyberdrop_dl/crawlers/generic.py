@@ -19,8 +19,7 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
     from yarl import URL
 
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.types import AbsoluteHttpURL
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
 P = ParamSpec("P")

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, ClassVar
 from bs4 import BeautifulSoup, Tag
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.data_structures.url_objects import FORUM, ScrapeItem
+from cyberdrop_dl.data_structures.url_objects import FORUM, AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -24,7 +24,8 @@ if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
     from yarl import URL
 
-    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.crawlers.crawler import SupportedPaths
 
 HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
 HTTP_URL_REGEX = re.compile(HTTP_URL_REGEX_STR)

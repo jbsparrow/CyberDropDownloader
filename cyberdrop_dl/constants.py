@@ -1,11 +1,13 @@
 import re
 from dataclasses import field
 from datetime import UTC, datetime
-from enum import Enum, IntEnum, StrEnum, auto
+from enum import auto
 from pathlib import Path
 from typing import Any
 
 from rich.text import Text
+
+from cyberdrop_dl.compat import Enum, IntEnum, StrEnum
 
 NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
 

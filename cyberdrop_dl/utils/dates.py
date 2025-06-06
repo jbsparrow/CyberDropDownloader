@@ -1,17 +1,13 @@
 import calendar
 import datetime
 from functools import lru_cache
-from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar
+from typing import Literal, NewType, TypeAlias, TypeVar
 
 import dateparser.date
 import dateutil
 import dateutil.parser
 
-if TYPE_CHECKING:
-    from cyberdrop_dl.types import TimeStamp
-else:
-    TimeStamp = int
-
+TimeStamp = NewType("TimeStamp", int)
 MIDNIGHT_TIME = datetime.time.min
 DATE_NOT_FOUND = dateparser.date.DateData(date_obj=None, period="day")
 DateOrder: TypeAlias = Literal["DMY", "DYM", "MDY", "MYD", "YDM", "YMD"]

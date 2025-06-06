@@ -4,7 +4,7 @@ import asyncio
 import json
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar
 
 from pydantic import BaseModel
 
@@ -33,7 +33,6 @@ if TYPE_CHECKING:
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
-    from cyberdrop_dl.types import AnyDict
 
 
 class AsyncioEvents(NamedTuple):
@@ -295,7 +294,7 @@ def add_or_remove_lists(old_list: list[str], new_list: list[str]) -> list[str]:
     return new_list
 
 
-def merge_dicts(dict1: AnyDict, dict2: AnyDict) -> AnyDict:
+def merge_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, Any]:
     for key, val in dict1.items():
         if isinstance(val, dict):
             if key in dict2 and isinstance(dict2[key], dict):
