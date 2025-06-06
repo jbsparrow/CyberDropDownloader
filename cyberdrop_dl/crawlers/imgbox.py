@@ -66,7 +66,7 @@ class ImgBoxCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        link_str: str = soup.select_one(IMAGE_SELECTOR).get("src")
+        link_str: str = css.select_one_get_attr(soup, IMAGE_SELECTOR, "src")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

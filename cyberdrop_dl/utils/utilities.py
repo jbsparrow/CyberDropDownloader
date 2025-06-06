@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import inspect
 import json
 import os
 import platform
@@ -10,7 +11,7 @@ import shutil
 import subprocess
 import sys
 import unicodedata
-from dataclasses import dataclass, fields
+from dataclasses import Field, dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
@@ -53,7 +54,6 @@ R = TypeVar("R")
 
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
-FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
 ALLOWED_FILEPATH_PUNCTUATION = " .-_!#$%'()+,;=@[]^{}~"
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
@@ -523,16 +523,6 @@ def get_og_properties(soup: BeautifulSoup) -> OGProperties:
     return OGProperties(**og_properties)
 
 
-def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
-    """Get `filename=` value from `Content-Disposition`"""
-    content_disposition: str | None = headers.get("Content-Disposition")
-    if not content_disposition:
-        return
-    if match := re.search(FILENAME_REGEX, content_disposition):
-        matches = match.groups()
-        return matches[0] or matches[1]
-
-
 def get_size_or_none(path: Path) -> int | None:
     """Checks if this is a file and returns its size with a single system call.
 
@@ -544,6 +534,23 @@ def get_size_or_none(path: Path) -> int | None:
             return stat.st_size
     except (OSError, ValueError):
         return None
+
+
+class HasClose(Protocol):
+    def close(self): ...
+
+
+class HasAsyncClose(Protocol):
+    async def close(self): ...
+
+
+C = TypeVar("C", bound=HasAsyncClose | HasClose)
+
+
+async def close_if_defined(obj: C) -> C:
+    if not isinstance(obj, Field):
+        await obj.close() if inspect.iscoroutinefunction(obj.close) else obj.close()
+    return constants.NOT_DEFINED
 
 
 def with_suffix_encoded(url: AnyURL, suffix: str) -> AnyURL:
@@ -572,6 +579,7 @@ def get_system_information() -> str:
         "python": f"{platform.python_version()} {platform.python_implementation()}",
         "common_name": get_os_common_name(),
     }
+    _ = system_info.pop("node", None)
     return json.dumps(system_info, indent=4)
 
 

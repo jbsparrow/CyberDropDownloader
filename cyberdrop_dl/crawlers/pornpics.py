@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -57,7 +58,7 @@ class PornPicsCrawler(Crawler):
 
         def update_scrape_item(soup: BeautifulSoup) -> None:
             selector = "h2" if collection_type == "channel" else "h1"
-            title = soup.select_one(selector).text.removesuffix(" Nude Pics").removesuffix(" Porn Pics")
+            title = css.select_one_get_text(soup, selector).removesuffix(" Nude Pics").removesuffix(" Porn Pics")
             title = self.create_title(f"{title} [{collection_type}]")
             scrape_item.setup_as_profile(title)
 
@@ -80,7 +81,7 @@ class PornPicsCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         scrape_item.url = PRIMARY_URL / "galleries" / gallery_id  # canonical URL
-        title = soup.select_one("h1").text
+        title = css.select_one_get_text(soup, "h1")
         title = self.create_title(title, gallery_id)
         scrape_item.setup_as_album(title, album_id=gallery_id)
 
@@ -109,7 +110,7 @@ class PornPicsCrawler(Crawler):
                 async with self.request_limiter:
                     soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, current_page)
                 items = soup.select(IMAGE_SELECTOR)
-                return soup, tuple(self.parse_url(image.get("href")) for image in items)
+                return soup, tuple(self.parse_url(css.get_attr(image, "href")) for image in items)
 
             async with self.request_limiter:
                 # The response is JSON but the "content-type" is wrong so we have to request it as text

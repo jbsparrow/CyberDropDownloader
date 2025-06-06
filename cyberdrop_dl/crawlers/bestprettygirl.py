@@ -7,6 +7,7 @@ from aiolimiter import AsyncLimiter
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -83,8 +84,8 @@ class BestPrettyGirlCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        og_title: str = soup.select_one(_SELECTORS.TITLE)["content"]
-        date_str: str = soup.select_one(_SELECTORS.DATE)["content"]
+        og_title: str = css.select_one_get_attr(soup, _SELECTORS.TITLE, "content")
+        date_str: str = css.select_one_get_attr(soup, _SELECTORS.DATE, "content")
         title = self.create_title(og_title)
         scrape_item.setup_as_album(title)
         scrape_item.possible_datetime = self.parse_date(date_str)

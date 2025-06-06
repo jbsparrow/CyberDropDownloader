@@ -13,11 +13,11 @@ from typing_extensions import TypedDict  # Import from typing is not compatible 
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
+from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.models.validators import falsy_as_none
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
-from cyberdrop_dl.utils.validators import parse_falsy_as_none
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
@@ -27,11 +27,12 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 MAX_OFFSET_PER_CALL = 50
+DISCORD_CHANNEL_PAGE_SIZE = 150
 LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
 POST_SELECTOR = "article.post-card a"
-DISCORD_SERVER_NAME_SELECTOR = "spam[class*=__profile-image] + span[itemprop='name']"
 
 
 class PostSelectors:
@@ -62,7 +63,7 @@ class UserURL(NamedTuple):
 
     @staticmethod
     def parse(url: URL) -> UserURL:
-        if n_parts := len(url.parts) > 3:
+        if (n_parts := len(url.parts)) > 3:
             post_id = url.parts[5] if n_parts > 5 else None
             return UserURL(url.parts[1], url.parts[3], post_id)
         msg = "Invalid user URL"
@@ -112,7 +113,7 @@ class File(TypedDict):
     server: NotRequired[str]  # Sometimes present in attachments
 
 
-FileOrNone = Annotated[File | None, BeforeValidator(parse_falsy_as_none)]
+FileOrNone = Annotated[File | None, BeforeValidator(falsy_as_none)]
 
 
 class Post(AliasModel):
@@ -296,17 +297,35 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     async def discord_channel(self, scrape_item: ScrapeItem, channel_id: str) -> None:
         scrape_item.setup_as_profile("")
-        api_url = self.__make_api_url_w_offset(f"discord/channel/{channel_id}", scrape_item.url)
-        async for json_resp in self.__api_pager(api_url):
-            n_posts = 0
-            for post in (DiscordPost.model_validate(entry) for entry in json_resp):
-                n_posts += 1
-                link = self.parse_url(post.web_path_qs)
-                new_scrape_item = scrape_item.create_child(link)
-                await self._handle_discord_post(new_scrape_item, post)
+        api_url_template = self.__make_api_url_w_offset(f"discord/channel/{channel_id}", scrape_item.url)
+        async for json_response_list in self.__api_pager(api_url_template, step_size=DISCORD_CHANNEL_PAGE_SIZE):
+            if not isinstance(json_response_list, list):
+                error_msg = (
+                    f"[{self.NAME}] Invalid API response for Discord channel '{channel_id}' posts (URL template: {api_url_template}). "
+                    f"Expected a list, but got type {type(json_response_list).__name__}. "
+                    f"Response data (truncated): {str(json_response_list)[:200]}"
+                )
+                raise ScrapeError(422, error_msg)
+            if not json_response_list:
+                break
+
+            num_posts_in_page = 0
+            for post_data in json_response_list:
+                num_posts_in_page += 1
+                if not isinstance(post_data, dict):
+                    error_msg = (
+                        f"[{self.NAME}] Invalid post data type in list for Discord channel '{channel_id}' (URL template: {api_url_template}). "
+                        f"Expected a dict for post data, but got type {type(post_data).__name__}. "
+                        f"Post data (truncated): {str(post_data)[:200]}"
+                    )
+                    raise ScrapeError(422, error_msg)
+                post = DiscordPost.model_validate(post_data)
+                post_web_url = self.parse_url(post.web_path_qs)
+                new_scrape_item_for_post = scrape_item.create_child(post_web_url)
+                await self._handle_discord_post(new_scrape_item_for_post, post)
                 scrape_item.add_children()
 
-            if not n_posts < MAX_OFFSET_PER_CALL:
+            if num_posts_in_page < DISCORD_CHANNEL_PAGE_SIZE:
                 break
 
     @fallback_if_no_api
@@ -334,7 +353,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 self.__known_attachment_servers[path] = server
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None) -> None:
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
         """Handles a direct link."""
 
         def clean_url(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
@@ -480,21 +499,23 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             return user_name
 
     async def __get_discord_server(self, server_id: str) -> DiscordServer:
-        """Get discord server information, making a new api call if needed"""
+        """Get discord server information, making new API calls if needed."""
         async with self.__discord_servers_locks[server_id]:
             if server := self.__known_discord_servers.get(server_id):
                 return server
 
-            url = self.PRIMARY_URL / "discord/user" / server_id / "links"
+            api_url_server_profile = self.API_ENTRYPOINT / "discord" / "user" / server_id / "profile"
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
+                server_profile_json: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url_server_profile)
 
-            name = css.select_one_get_text(soup, DISCORD_SERVER_NAME_SELECTOR)
-            url = self.API_ENTRYPOINT / "discord/channel/lookup" / server_id
+            name = server_profile_json.get("name")
+            if not name:
+                name = f"Discord Server {server_id}"
+            api_url_channels = self.API_ENTRYPOINT / "discord/channel/lookup" / server_id
             async with self.request_limiter:
-                json_resp: list[dict] = await self.client.get_json(self.DOMAIN, url)
+                channels_json_resp: list[dict] = await self.client.get_json(self.DOMAIN, api_url_channels)
 
-            channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in json_resp)
+            channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in channels_json_resp)
             self.__known_discord_servers[server_id] = server = DiscordServer(name, server_id, channels)
             return server
 
@@ -521,16 +542,17 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 await self._handle_user_post(new_scrape_item, post)
                 scrape_item.add_children()
 
-            if not n_posts < MAX_OFFSET_PER_CALL:
+            if n_posts < MAX_OFFSET_PER_CALL:
                 break
 
-    async def __api_pager(self, url: URL) -> AsyncGenerator[dict[str, Any]]:
-        """Yields jsons response from api calls, with increments of `MAX_OFFSET_PER_CALL`"""
+    async def __api_pager(self, url: URL, step_size: int | None = None) -> AsyncGenerator[Any, None]:
+        """Yields JSON responses from API calls, with configurable increments."""
+        current_step_size = step_size if step_size is not None else MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
-        for offset in itertools.count(init_offset, MAX_OFFSET_PER_CALL):
-            api_url = url.update_query(o=offset)
+        for current_offset in itertools.count(init_offset, current_step_size):
+            api_url = url.update_query(o=current_offset)
             async with self.request_limiter:
-                json_resp: dict = await self.client.get_json(self.DOMAIN, api_url)
+                json_resp: Any = await self.client.get_json(self.DOMAIN, api_url)
             yield json_resp
 
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

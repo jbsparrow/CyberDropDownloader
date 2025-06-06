@@ -46,8 +46,8 @@ class IncestflixCrawler(Crawler):
             return
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        title: str = css.select_one(soup, _SELECTORS.TITLE).get_text(strip=True)
-        link_str = css.select_one_get_attr(soup, _SELECTORS.VIDEO, "mp4")
+        title: str = css.select_one_get_text(soup, _SELECTORS.TITLE)
+        link_str = css.select_one_get_attr(soup, _SELECTORS.VIDEO, "src")
         url = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(f"{title}.mp4")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=url)

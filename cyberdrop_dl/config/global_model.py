@@ -1,15 +1,15 @@
 import random
 from datetime import timedelta
 
-from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
+from pydantic import BaseModel, ByteSize, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
-from cyberdrop_dl.types import AliasModel, ByteSizeSerilized, HttpURL, NonEmptyStr
-from cyberdrop_dl.utils.converters import convert_to_byte_size
-from cyberdrop_dl.utils.validators import parse_duration_as_timedelta, parse_falsy_as
+from cyberdrop_dl.config._common import ConfigModel, Field
+from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, NonEmptyStr
+from cyberdrop_dl.models.validators import falsy_as, to_bytesize, to_timedelta
 
-MIN_REQUIRED_FREE_SPACE = convert_to_byte_size("512MB")
-DEFAULT_REQUIRED_FREE_SPACE = convert_to_byte_size("5GB")
+MIN_REQUIRED_FREE_SPACE = to_bytesize("512MB")
+DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
 
 
 class General(BaseModel):
@@ -25,12 +25,12 @@ class General(BaseModel):
 
     @field_serializer("flaresolverr", "proxy")
     def serialize(self, value: URL | str) -> str | None:
-        return parse_falsy_as(value, None, str)
+        return falsy_as(value, None, str)
 
     @field_validator("flaresolverr", "proxy", mode="before")
     @classmethod
     def convert_to_str(cls, value: URL | str) -> str | None:
-        return parse_falsy_as(value, None, str)
+        return falsy_as(value, None, str)
 
     @field_validator("required_free_space", mode="after")
     @classmethod
@@ -54,7 +54,7 @@ class RateLimiting(BaseModel):
     @field_validator("file_host_cache_expire_after", "forum_cache_expire_after", mode="before")
     @staticmethod
     def parse_cache_duration(input_date: timedelta | str | int) -> timedelta:
-        return parse_duration_as_timedelta(input_date)
+        return to_timedelta(input_date)
 
     @property
     def total_delay(self) -> NonNegativeFloat:
@@ -73,7 +73,7 @@ class UIOptions(BaseModel):
     vi_mode: bool = False
 
 
-class GlobalSettings(AliasModel):
-    general: General = Field(validation_alias="General", default=General())
-    rate_limiting_options: RateLimiting = Field(validation_alias="Rate_Limiting_Options", default=RateLimiting())
-    ui_options: UIOptions = Field(validation_alias="UI_Options", default=UIOptions())
+class GlobalSettings(ConfigModel):
+    general: General = Field(General(), "General")
+    rate_limiting_options: RateLimiting = Field(RateLimiting(), "Rate_Limiting_Options")
+    ui_options: UIOptions = Field(UIOptions(), "UI_Options")

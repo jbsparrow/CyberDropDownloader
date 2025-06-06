@@ -19,19 +19,25 @@ if TYPE_CHECKING:
 
 
 PRIMARY_URL = AbsoluteHttpURL("https://thisvid.com")
-# Selectors
-UNAUTHORIZED_SELECTOR = "div.video-holder:contains('This video is a private video')"
-JS_SELECTOR = "div.video-holder > script:contains('var flashvars')"
-USER_NAME_SELECTOR = "div.headline > h2"
-ALBUM_NAME_SELECTOR = "div.headline > h1"
-ALBUM_PICTURES_SELECTOR = "div.album-list > a"
-PICTURE_SELECTOR = "div.photo-holder > img"
-PUBLIC_VIDEOS_SELECTOR = "div#list_videos_public_videos_items"
-PRIVATE_VIDEOS_SELECTOR = "div#list_videos_private_videos_items"
-FAVOURITE_VIDEOS_SELECTOR = "div#list_videos_favourite_videos_items"
-COMMON_VIDEOS_TITLE_SELECTOR = "div#list_videos_common_videos_list"
-VIDEOS_SELECTOR = "a.tumbpu"
-ALBUM_ID_SELECTOR = "script:contains('album_id')"
+
+
+class Selectors:
+    UNAUTHORIZED = "div.video-holder:contains('This video is a private video')"
+    FLASHVARS = "div.video-holder > script:contains('var flashvars')"
+    USER_NAME = "div.headline > h2"
+    ALBUM_NAME = "div.headline > h1"
+    ALBUM_PICTURES = "div.album-list > a"
+    PICTURE = "div.photo-holder > img"
+    PUBLIC_VIDEOS = "div#list_videos_public_videos_items"
+    PRIVATE_VIDEOS = "div#list_videos_private_videos_items"
+    FAVOURITE_VIDEOS = "div#list_videos_favourite_videos_items"
+    COMMON_VIDEOS_TITLE = "div#list_videos_common_videos_list"
+    VIDEOS = "a.tumbpu"
+    ALBUM_ID = "script:contains('album_id')"
+    DATE_ADDED = ".tools-left > li:nth-child(4) > span:nth-child(2)"
+
+
+_SELECTORS = Selectors()
 
 # Regex
 VIDEO_RESOLUTION_PATTERN = re.compile(r"video_url_text:\s*'([^']+)'")
@@ -89,7 +95,7 @@ class ThisVidCrawler(Crawler):
         if search_query := scrape_item.url.query.get("q"):
             title = f"{search_query} [search]"
         else:
-            common_title = css.select_one_get_text(soup, COMMON_VIDEOS_TITLE_SELECTOR)
+            common_title = css.select_one_get_text(soup, _SELECTORS.COMMON_VIDEOS_TITLE)
             if common_title.startswith("New Videos Tagged"):
                 common_title = common_title.split("Showing")[0].split("Tagged with")[1].strip()
                 title = f"{common_title} [tag]"
@@ -106,22 +112,22 @@ class ThisVidCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        user_name: str = css.select_one_get_text(soup, USER_NAME_SELECTOR).split("'s Profile")[0].strip()
+        user_name: str = css.select_one_get_text(soup, _SELECTORS.USER_NAME).split("'s Profile")[0].strip()
         title = f"{user_name} [user]"
         title = self.create_title(title)
         scrape_item.setup_as_profile(title)
 
-        if soup.select(PUBLIC_VIDEOS_SELECTOR):
+        if soup.select(_SELECTORS.PUBLIC_VIDEOS):
             await self.iter_videos(scrape_item, "public_videos")
-        if soup.select(FAVOURITE_VIDEOS_SELECTOR):
+        if soup.select(_SELECTORS.FAVOURITE_VIDEOS):
             await self.iter_videos(scrape_item, "favourite_videos")
-        if soup.select(PRIVATE_VIDEOS_SELECTOR):
+        if soup.select(_SELECTORS.PRIVATE_VIDEOS):
             await self.iter_videos(scrape_item, "private_videos")
 
     async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
         url = scrape_item.url / video_category if video_category else scrape_item.url
         async for soup in self.web_pager(url):
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -132,9 +138,9 @@ class ThisVidCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        if soup.select_one(UNAUTHORIZED_SELECTOR):
+        if soup.select_one(_SELECTORS.UNAUTHORIZED):
             raise ScrapeError(401)
-        script = soup.select_one(JS_SELECTOR)
+        script = soup.select_one(_SELECTORS.FLASHVARS)
         if not script:
             raise ScrapeError(404)
 
@@ -142,6 +148,7 @@ class ThisVidCrawler(Crawler):
         title: str = css.select_one_get_text(soup, "title").split("- ThisVid.com")[0].strip()
         filename, ext = self.get_filename_and_ext(video.url.name)
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{video.id}] [{video.res}]{ext}")
+        scrape_item.possible_datetime = self.parse_date(css.select_one_get_text(soup, _SELECTORS.DATE_ADDED))
         await self.handle_file(
             scrape_item.url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
         )
@@ -151,13 +158,13 @@ class ThisVidCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        js_text: str = soup.select_one(ALBUM_ID_SELECTOR).text
+        js_text: str = css.select_one_get_text(soup, _SELECTORS.ALBUM_ID)
         album_id: str = get_text_between(js_text, "params['album_id'] =", ";").strip()
         results = await self.get_album_results(album_id)
-        title: str = css.select_one_get_text(soup, ALBUM_NAME_SELECTOR)
+        title: str = css.select_one_get_text(soup, _SELECTORS.ALBUM_NAME)
         title = self.create_title(f"{title} [album]", album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
-        for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_PICTURES_SELECTOR, results=results):
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM_PICTURES, results=results):
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -167,7 +174,7 @@ class ThisVidCrawler(Crawler):
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        url: URL = self.parse_url(css.select_one_get_attr(soup, PICTURE_SELECTOR, "src"))
+        url: URL = self.parse_url(css.select_one_get_attr(soup, _SELECTORS.PICTURE, "src"))
         filename, ext = self.get_filename_and_ext(url.name)
         await self.handle_file(url, scrape_item, filename, ext)
 

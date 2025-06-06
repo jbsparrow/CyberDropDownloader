@@ -5,7 +5,6 @@ import functools
 import inspect
 from collections.abc import Callable
 from contextlib import asynccontextmanager
-from dataclasses import Field, field
 from datetime import datetime
 from functools import wraps
 from json import dumps as json_dumps
@@ -20,9 +19,10 @@ from bs4 import BeautifulSoup
 
 import cyberdrop_dl.constants as constants
 from cyberdrop_dl import env
+from cyberdrop_dl.constants import NOT_DEFINED
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.logger import log_debug
-from cyberdrop_dl.utils.utilities import get_soup_no_error, sanitize_filename
+from cyberdrop_dl.utils.utilities import close_if_defined, get_soup_no_error, sanitize_filename
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -108,10 +108,10 @@ class ScraperClient:
         # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
         min_html_file_path_len = len(str(self._pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
         self._max_html_stem_len = 245 - min_html_file_path_len
-        self._session: CachedSession = field(init=False)
-        self._curl_session: AsyncSession = field(init=False)
+        self._session: CachedSession = NOT_DEFINED
+        self._curl_session: AsyncSession = NOT_DEFINED
 
-    def startup(self):
+    def startup(self) -> None:
         add_request_log_hooks(self._trace_configs)
         self._session = CachedSession(
             headers=self._headers,
@@ -135,9 +135,8 @@ class ScraperClient:
         )
 
     async def close(self) -> None:
-        await self._session.close()
-        if not isinstance(self._curl_session, Field):
-            await self._curl_session.close()
+        await close_if_defined(self._session)
+        await close_if_defined(self._curl_session)
 
     def is_ddos(self, soup: BeautifulSoup) -> bool:
         return self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
@@ -355,7 +354,7 @@ class ScraperClient:
         return BeautifulSoup(content, "html.parser")
 
     @limiter
-    async def get_head(
+    async def _get_head(
         self,
         domain: str,
         url: URL,
@@ -363,7 +362,7 @@ class ScraperClient:
         request_params: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
-    ) -> CIMultiDictProxy[str]:
+    ) -> aiohttp.ClientResponse:
         """
         Makes a GET request to an URL and returns its headers
 
@@ -378,6 +377,11 @@ class ScraperClient:
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response = await self._session.head(url, headers=headers, **request_params)
         await self.client_manager.check_http_status(response)
+        return response
+
+    @copy_signature(_get_head)
+    async def get_head(self, *args: Any, **kwargs: Any) -> CIMultiDictProxy[str]:
+        response = await self._get_head(*args, **kwargs)
         return response.headers
 
     async def write_soup_to_disk(

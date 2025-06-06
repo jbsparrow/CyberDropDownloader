@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import contextlib
 import re
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
@@ -76,22 +76,17 @@ class TokioMotionCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        with contextlib.suppress(AttributeError):
-            relative_date_str = soup.select_one(self.video_date_selector).text.strip()
-            scrape_item.possible_datetime = self.parse_date(relative_date_str)
+        scrape_item.possible_datetime = self.parse_date(css.select_one_get_text(soup, self.video_date_selector))
 
-        try:
-            srcSD = soup.select_one('source[title="SD"]')
-            srcHD = soup.select_one('source[title="HD"]')
-            src = srcHD or srcSD
-            link_str: str = src.get("src")
-            link = self.parse_url(link_str)
-        except AttributeError:
+        src = soup.select_one('source[title="SD"]') or soup.select_one('source[title="HD"]')
+        if not src:
             if "This is a private" in soup.text:
-                raise ScrapeError(401, "Private video") from None
-            raise ScrapeError(422, "Couldn't find video source") from None
+                raise ScrapeError(401, "Private video")
+            raise ScrapeError(422, "Couldn't find video source")
 
-        title = soup.select_one("title").text.rsplit(" - TOKYO Motion")[0].strip()
+        link_str: str = css.get_attr(src, "src")
+        link = self.parse_url(link_str)
+        title = css.select_one_get_text(soup, "title").rsplit(" - TOKYO Motion")[0].strip()
         filename, ext = f"{video_id}.mp4", ".mp4"
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
@@ -103,15 +98,15 @@ class TokioMotionCrawler(Crawler):
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        try:
-            img = soup.select_one(self.image_selector)
-            link_str: str = img.get("src")
-            link = self.parse_url(link_str)
-        except AttributeError:
-            if "This is a private" in soup.text:
-                raise ScrapeError(401, "Private Photo") from None
-            raise ScrapeError(422, "Couldn't find image source") from None
 
+        img = soup.select_one(self.image_selector)
+        if not img:
+            if "This is a private" in soup.text:
+                raise ScrapeError(401, "Private Photo")
+            raise ScrapeError(422, "Couldn't find image source")
+
+        link_str: str = css.get_attr(img, "src")
+        link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
@@ -206,7 +201,7 @@ class TokioMotionCrawler(Crawler):
             return scrape_item.url.parts[3]
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        return soup.select_one(self.album_title_selector).get_text()
+        return css.select_one_get_text(soup, self.album_title_selector)
 
     def add_user_title(self, scrape_item: ScrapeItem) -> None:
         try:

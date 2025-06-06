@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, with_suffix_encoded
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ class HotPicCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         album_id = scrape_item.url.parts[2]
-        title = self.create_title(soup.title.text.rsplit(" - ")[0], scrape_item.album_id)
+        title = self.create_title(css.select_one_get_text(soup, "title").rsplit(" - ")[0], scrape_item.album_id)
         scrape_item.setup_as_profile(title, album_id=album_id)
 
         for _, link in self.iter_tags(soup, ALBUM_ITEM_SELECTOR):
@@ -59,7 +60,7 @@ class HotPicCrawler(Crawler):
         file = soup.select_one(VIDEO_SELECTOR) or soup.select_one(IMAGE_SELECTOR)
         if not file:
             raise ScrapeError(422)
-        link_str: str = file.get("src")
+        link_str: str = css.get_attr(file, "src")
         link = self.parse_url(link_str)
         await self.handle_direct_link(scrape_item, link)
 

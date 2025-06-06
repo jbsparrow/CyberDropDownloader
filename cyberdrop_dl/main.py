@@ -15,11 +15,11 @@ def actual_main() -> None:
     sys.exit(run())
 
 
-def run() -> str | int:
+def run(args: tuple[str, ...] | None = None) -> str | int:
     try:
         from cyberdrop_dl.director import Director
 
-        director = Director()
+        director = Director(args)
         return director.run()
     except KeyboardInterrupt:
         return "\nKeyboardInterrupt"
