@@ -331,7 +331,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         else:
             absolute_link = link
         if self.is_confirmation_link(absolute_link):
-            absolute_link = await self.handle_confirmation_link(link)
+            absolute_link = await self.handle_confirmation_link(absolute_link)
         return absolute_link
 
     def str_to_url(self, link: str) -> AbsoluteHttpURL:
@@ -375,7 +375,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     @error_handling_wrapper
-    async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> AbsoluteHttpURL | None:
+    async def handle_confirmation_link(self, link: URL) -> AbsoluteHttpURL | None:
         """Handles link confirmation."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, link)
@@ -419,7 +419,7 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
-        link_str: str = css.get_attr(link_obj, self.selectors.posts.links.element)
+        link_str: str = css.get_attr_or_none(link_obj, self.selectors.posts.links.element)
         return not (is_image or self.is_attachment(link_str))
 
     def is_confirmation_link(self, link: URL) -> bool:
