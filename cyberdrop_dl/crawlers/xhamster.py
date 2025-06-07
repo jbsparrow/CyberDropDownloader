@@ -38,7 +38,7 @@ HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_
 
 class XhamsterCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Video": "/<video_title>",
+        "Video": "/videos/<video_title>",
         "User": "/users/<user_name>",
         "Creator": "/creatos/<creator_name>",
         "Gallery": "photos/gallery/<gallery_name>",
@@ -51,7 +51,7 @@ class XhamsterCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "gallery" in scrape_item.url.parts:
             return await self.gallery(scrape_item)
-        if any(p in scrape_item.url.parts for p in ("creators", "user")):
+        if any(p in scrape_item.url.parts for p in ("creators", "users")):
             return await self.profile(scrape_item)
         if any(p in scrape_item.url.parts for p in ("movies", "videos")):
             return await self.video(scrape_item)
