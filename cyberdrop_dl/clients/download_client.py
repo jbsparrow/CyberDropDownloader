@@ -217,17 +217,18 @@ class DownloadClient:
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
-                proceed, skip = await self.get_final_file_info(media_item, domain)
                 self.client_manager.check_bunkr_maint(resp.headers)
-                if skip:
+                if self.skip_by_config(media_item):
                     self.manager.progress_manager.download_progress.add_skipped()
                     return False
-                if not proceed:
+                downloaded = await self.previously_downloaded(media_item, domain)
+                media_item.download_filename = media_item.complete_file.name
+                await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
+                if downloaded:
                     log(f"Skipping {media_item.url} as it has already been downloaded", 10)
                     self.manager.progress_manager.download_progress.add_previously_completed(False)
                     await self.process_completed(media_item, domain)
                     await self.handle_media_item_completion(media_item, downloaded=False)
-
                     return False
 
             if resp.status != HTTPStatus.PARTIAL_CONTENT:
@@ -415,89 +416,52 @@ class DownloadClient:
         download_dir = self.get_download_dir(media_item)
         return download_dir / media_item.filename
 
-    async def get_final_file_info(self, media_item: MediaItem, domain: str) -> tuple[bool, bool]:
-        """Complicated checker for if a file already exists, and was already downloaded."""
+    def skip_by_config(self, media_item: MediaItem):
+        """checks if media item should be skipped based on config"""
+        if not self.check_filesize_limits(media_item):
+            log(f"Download Skip {media_item.url} due to filesize restrictions", 10)
+            return True
+
+    async def previously_downloaded(self, media_item: MediaItem, domain: str) -> tuple[bool, bool]:
+        """checker for if a file already exists, and was already downloaded."""
         media_item.complete_file = self.get_file_location(media_item)
         media_item.partial_file = media_item.complete_file.with_suffix(media_item.complete_file.suffix + ".part")
-
-        expected_size = media_item.filesize
-        proceed = True
-        skip = False
-
-        while True:
-            if expected_size:
-                file_size_check = self.check_filesize_limits(media_item)
-                if not file_size_check:
-                    log(f"Download Skip {media_item.url} due to filesize restrictions", 10)
-                    proceed = False
-                    skip = True
-                    return proceed, skip
-
-            if not media_item.complete_file.exists() and not media_item.partial_file.exists():
-                break
-
-            if media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
-                log(f"Found {media_item.complete_file.name} locally, skipping download")
-                proceed = False
-                break
-
+        if await self.check_file_completed(media_item):
+            return True
+        else:
             downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(
-                domain,
-                media_item,
+                domain, media_item
             )
             if not downloaded_filename:
                 media_item.complete_file, media_item.partial_file = await self.iterate_filename(
-                    media_item.complete_file,
-                    media_item,
+                    media_item.complete_file, media_item
                 )
-                break
 
-            if media_item.filename == downloaded_filename:
-                if media_item.partial_file.exists():
-                    log(f"Found {downloaded_filename} locally, trying to resume")
-                    if media_item.partial_file.stat().st_size >= media_item.filesize != 0:
-                        log(f"Deleting partial file {media_item.partial_file}")
-                        media_item.partial_file.unlink()
-                    if media_item.partial_file.stat().st_size == media_item.filesize:
-                        if media_item.complete_file.exists():
-                            log(
-                                f"Found conflicting complete file {media_item.complete_file} locally, iterating filename",
-                                30,
-                            )
-                            new_complete_filename, new_partial_file = await self.iterate_filename(
-                                media_item.complete_file,
-                                media_item,
-                            )
-                            media_item.partial_file.rename(new_complete_filename)
-                            proceed = False
+            else:
+                return await self.handle_partial_file(media_item)
 
-                            media_item.complete_file = new_complete_filename
-                            media_item.partial_file = new_partial_file
-                        else:
-                            proceed = False
-                            media_item.partial_file.rename(media_item.complete_file)
-                        log(
-                            f"Renaming found partial file {media_item.partial_file} to complete file {media_item.complete_file}"
-                        )
-                elif media_item.complete_file.exists():
-                    if media_item.complete_file.stat().st_size == media_item.filesize:
-                        log(f"Found complete file {media_item.complete_file} locally, skipping download")
-                        proceed = False
-                    else:
-                        log(
-                            f"Found conflicting complete file {media_item.complete_file} locally, iterating filename",
-                            30,
-                        )
-                        media_item.complete_file, media_item.partial_file = await self.iterate_filename(
-                            media_item.complete_file,
-                            media_item,
-                        )
-                break
-
-            media_item.filename = downloaded_filename
-        media_item.download_filename = media_item.complete_file.name
-        await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
-        return proceed, skip
+    async def handle_partial_file(self, media_item: MediaItem) -> tuple[bool, bool]:
+        """Handles the case where a partial file exists."""
+        if not media_item.partial_file.exists():
+            if media_item.complete_file.exists():
+                log(f"Found conflicting complete file {media_item.complete_file} locally, iterating filename", 30)
+                media_item.complete_file, media_item.partial_file = await self.iterate_filename(
+                    media_item.complete_file, media_item
+                )
+            return False
+        partial_size = media_item.partial_file.stat().st_size
+        if partial_size == media_item.filesize:
+            if media_item.complete_file.exists():
+                log(f"Found conflicting complete file {media_item.complete_file} locally, iterating filename", 30)
+                new_complete_filename, _ = await self.iterate_filename(media_item.complete_file, media_item)
+                media_item.complete_file = new_complete_filename
+            media_item.partial_file.rename(media_item.complete_file)
+            log(f"Renaming found partial file {media_item.partial_file} to complete file {media_item.complete_file}")
+            return True
+        if partial_size > media_item.filesize:
+            log(f"Deleting partial file {media_item.partial_file} (larger than expected size)")
+            media_item.partial_file.unlink()
+        return False
 
     async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path | None]:
         """Iterates the filename until it is unique."""
