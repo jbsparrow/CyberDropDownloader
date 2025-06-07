@@ -21,6 +21,7 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dates import TimeStamp, parse_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
+from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media, RenditionGroup
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
     get_download_path,
@@ -201,10 +202,10 @@ class Crawler(ABC):
         *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
-        m3u8_content: str = "",
+        m3u8_media: M3U8Media | None = None,
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
-        await self.manager.states.RUNNING.wait()
+
         if custom_filename:
             original_filename, filename = filename, custom_filename
         elif self.DOMAIN in ["cyberdrop"]:
@@ -217,17 +218,22 @@ class Crawler(ABC):
             assert is_absolute_http_url(debrid_link)
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
+        await self.handle_media_item(media_item, m3u8_media)
 
+    async def handle_media_item(self, media_item: MediaItem, m3u8_media: M3U8Media | None = None) -> None:
+        await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int. "
             msg += f"Please file a bug report at {NEW_ISSUE_URL}"
             log(msg, 30)
 
-        check_complete = await self.manager.db_manager.history_table.check_complete(self.DOMAIN, url, scrape_item.url)
+        check_complete = await self.manager.db_manager.history_table.check_complete(
+            self.DOMAIN, media_item.url, media_item.referer
+        )
         if check_complete:
             if media_item.album_id:
                 await self.manager.db_manager.history_table.set_album_id(self.DOMAIN, media_item)
-            log(f"Skipping {url} as it has already been downloaded", 10)
+            log(f"Skipping {media_item.url} as it has already been downloaded", 10)
             self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
@@ -235,11 +241,11 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if not m3u8_content:
+        if not m3u8_media:
             self.manager.task_group.create_task(self.downloader.run(media_item))
             return
 
-        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_content))
+        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_media))
 
     @final
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
@@ -399,7 +405,7 @@ class Crawler(ABC):
             """Checks if the link is an embedded image URL."""
             return link.startswith("data:image") or link.startswith("blob:")
 
-        for tag in soup.css.iselect(selector):
+        for tag in css.iselect(soup, selector):
             link_str: str | None = css.get_attr_or_none(tag, attribute)
             if not link_str:
                 continue
@@ -510,6 +516,21 @@ class Crawler(ABC):
         url: URL, filter_fn: Callable[[AnyResponse], bool] | Callable[[AnyResponse], Awaitable[bool]]
     ) -> None:
         filters.cache_filter_functions[url.host] = filter_fn
+
+    async def get_m3u8_playlist(self, m3u8_playlist_url: AbsoluteHttpURL, /) -> tuple[M3U8Media, RenditionGroup]:
+        m3u8_playlist = await self._get_m3u8(m3u8_playlist_url)
+        assert m3u8_playlist.is_variant
+        rendition_group = m3u8_playlist.as_variant().get_best_group(exclude="vp09")
+        video = await self._get_m3u8(rendition_group.urls.video)
+        audio = await self._get_m3u8(rendition_group.urls.audio) if rendition_group.urls.audio else None
+        subtitle = await self._get_m3u8(rendition_group.urls.subtitle) if rendition_group.urls.subtitle else None
+        return M3U8Media(video, audio, subtitle), rendition_group
+
+    async def _get_m3u8(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
+        headers = headers or {}
+        async with self.request_limiter:
+            content = await self.client.get_text(self.DOMAIN, url, headers)
+        return M3U8(content, url.parent)
 
 
 def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
