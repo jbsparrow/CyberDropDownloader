@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-import re
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils import css, kvs
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -38,22 +36,6 @@ class Selectors:
 
 
 _SELECTORS = Selectors()
-
-# Regex
-VIDEO_RESOLUTION_PATTERN = re.compile(r"video_url_text:\s*'([^']+)'")
-VIDEO_INFO_PATTTERN = re.compile(
-    r"video_id:\s*'(?P<video_id>[^']+)'[^}]*?"
-    r"license_code:\s*'(?P<license_code>[^']+)'[^}]*?"
-    r"video_url:\s*'(?P<video_url>[^']+)'[^}]*?"
-)
-
-HASH_LENGTH = 32
-
-
-class Video(NamedTuple):
-    id: str
-    url: AbsoluteHttpURL
-    res: str
 
 
 class ThisVidCrawler(Crawler):
@@ -144,7 +126,9 @@ class ThisVidCrawler(Crawler):
         if not script:
             raise ScrapeError(404)
 
-        video = get_video_info(script.text)
+        video = kvs.get_video_info(script.text)
+        if not video:
+            raise ScrapeError(404)
         title: str = css.select_one_get_text(soup, "title").split("- ThisVid.com")[0].strip()
         filename, ext = self.get_filename_and_ext(video.url.name)
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{video.id}] [{video.res}]{ext}")
@@ -174,61 +158,6 @@ class ThisVidCrawler(Crawler):
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        url: URL = self.parse_url(css.select_one_get_attr(soup, _SELECTORS.PICTURE, "src"))
+        url = self.parse_url(css.select_one_get_attr(soup, _SELECTORS.PICTURE, "src"))
         filename, ext = self.get_filename_and_ext(url.name)
         await self.handle_file(url, scrape_item, filename, ext)
-
-
-def get_video_info(flashvars: str) -> Video:
-    if match_id := VIDEO_INFO_PATTTERN.search(flashvars):
-        video_id, license_code, url = match_id.groups()
-        real_url = kvs_get_real_url(url, license_code)
-        if match_res := VIDEO_RESOLUTION_PATTERN.search(flashvars):
-            resolution = match_res.group(1)
-        else:
-            resolution = "Unknown"
-        return Video(video_id, real_url, resolution)
-    raise ScrapeError(404)
-
-
-# URL de-obfuscation code, borrowed from yt-dlp
-# https://github.com/yt-dlp/yt-dlp/blob/e1847535e28788414a25546a45bebcada2f34558/yt_dlp/extractor/generic.py
-
-
-def kvs_get_license_token(license_code: str) -> list[int]:
-    license_code = license_code.removeprefix("$")
-    license_values = [int(char) for char in license_code]
-    modlicense = license_code.replace("0", "1")
-    middle = len(modlicense) // 2
-    fronthalf = int(modlicense[: middle + 1])
-    backhalf = int(modlicense[middle:])
-    modlicense = str(4 * abs(fronthalf - backhalf))[: middle + 1]
-
-    return [
-        (license_values[index + offset] + current) % 10
-        for index, current in enumerate(map(int, modlicense))
-        for offset in range(4)
-    ]
-
-
-def kvs_get_real_url(video_url: str, license_code: str) -> AbsoluteHttpURL:
-    if not video_url.startswith("function/0/"):
-        return AbsoluteHttpURL(video_url)  # not obfuscated
-
-    parsed_url = AbsoluteHttpURL(video_url.removeprefix("function/0/"))
-    license_token = kvs_get_license_token(license_code)
-    hash, tail = parsed_url.parts[3][:HASH_LENGTH], parsed_url.parts[3][HASH_LENGTH:]
-    indices = list(range(HASH_LENGTH))
-
-    # Swap indices of hash according to the destination calculated from the license token
-    accum = 0
-    for src in reversed(range(HASH_LENGTH)):
-        accum += license_token[src]
-        dest = (src + accum) % HASH_LENGTH
-        indices[src], indices[dest] = indices[dest], indices[src]
-
-    new_parts = list(parsed_url.parts)
-    if not parsed_url.name:
-        new_parts.pop(-1)
-    new_parts[3] = "".join(hash[index] for index in indices) + tail
-    return parsed_url.with_path("/".join(new_parts[1:]), keep_query=True, keep_fragment=True)
