@@ -52,21 +52,19 @@ def ask_choice_fuzzy(choices: list[Choice], message: str, validate_empty: bool =
 
 
 def ask_path(message: str = "Select path", *, validator_options: dict | None = None, **kwargs) -> Path:
-    options = DEFAULT_OPTIONS | kwargs
+    options = DEFAULT_OPTIONS | {"default": str(Path.home())} | kwargs
     return Path(
-        inquirer.filepath(
-            message=message, default=str(Path.home()), validate=PathValidator(**(validator_options or {})), **options
-        ).execute()
+        inquirer.filepath(message=message, validate=PathValidator(**(validator_options or {})), **options).execute()
     )
 
 
-def ask_file_path(message: str = "Select file path", **kwargs):
+def ask_file_path(message: str = "Select file path", **kwargs) -> Path:
     options = DEFAULT_OPTIONS | kwargs
     validator_options = {"is_file": True, "message": "Input is not a file"}
     return ask_path(message, validator_options=validator_options, **options)
 
 
-def ask_dir_path(message: str = "Select dir path", **kwargs):
+def ask_dir_path(message: str = "Select dir path", **kwargs) -> Path:
     options = DEFAULT_OPTIONS | kwargs
     validator_options = {"is_dir": True, "message": "Input is not a directory"}
     return ask_path(message, validator_options=validator_options, **options)
