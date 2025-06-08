@@ -487,11 +487,14 @@ class Crawler(ABC):
         await self.handle_file(link, scrape_item, filename, ext)
 
     def parse_date(self, date_or_datetime: str, format: str | None = None, /) -> TimeStamp | None:
+        if parsed_date := self._parse_date(date_or_datetime, format):
+            return to_timestamp(parsed_date)
+
+    def _parse_date(self, date_or_datetime: str, format: str | None = None, /) -> datetime | None:
         msg = f"Date parsing for {self.DOMAIN} seems to be broken. Please report this as a bug at {NEW_ISSUE_URL}"
         if not date_or_datetime:
             log(f"{msg}: Unable to extract date from soup", 30)
             return None
-        parsed_date = None
         try:
             if format:
                 parsed_date = datetime.strptime(date_or_datetime, format)
@@ -500,10 +503,10 @@ class Crawler(ABC):
         except (ValueError, TypeError) as e:
             msg = f"{msg}: {e}"
 
-        if parsed_date is None:
-            log(msg, 30)
-            return None
-        return to_timestamp(parsed_date)
+        else:
+            return parsed_date
+
+        log(msg, 30)
 
     @staticmethod
     def register_cache_filter(
