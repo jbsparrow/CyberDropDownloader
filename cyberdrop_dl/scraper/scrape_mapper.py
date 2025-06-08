@@ -19,7 +19,7 @@ from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import JDownloaderError, NoExtensionError
 from cyberdrop_dl.scraper.filters import has_valid_extension, is_in_domain_list, is_outside_date_range, is_valid_url
 from cyberdrop_dl.scraper.jdownloader import JDownloader
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_trailing_slash
 
 if TYPE_CHECKING:
@@ -55,6 +55,28 @@ class ScrapeMapper:
         self.existing_crawlers = get_crawlers_mapping(self.manager)
         if not self.manager.config_manager.global_settings_data.general.enable_generic_crawler:
             _ = self.existing_crawlers.pop(".")
+
+        if crawlers_to_disable := self.manager.config_manager.global_settings_data.general.disable_crawlers:
+            new_crawlers_mapping = {
+                key: crawler
+                for key, crawler in self.existing_crawlers.items()
+                if crawler.DOMAIN not in crawlers_to_disable
+            }
+            disabled_crawlers = set(self.existing_crawlers.values()) - set(new_crawlers_mapping.values())
+            if len(disabled_crawlers) != len(crawlers_to_disable):
+                msg = (
+                    f"{len(crawlers_to_disable)} Crawler names where provided to disable"
+                    f", but only {len(disabled_crawlers)} {'is' if len(disabled_crawlers) == 1 else 'are'} a valid crawler's name."
+                )
+                log(msg, 30)
+            if disabled_crawlers:
+                self.existing_crawlers = new_crawlers_mapping
+                crawlers_info = "\n".join(
+                    str({info.site: info.supported_domains})
+                    for info in sorted(crawlers.INFO for crawlers in disabled_crawlers)
+                )
+                log(f"Crawlers disabled by config: \n{crawlers_info}")
+            log_spacer(10)
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""

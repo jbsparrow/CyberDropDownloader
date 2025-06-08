@@ -14,6 +14,7 @@ DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
 
 class General(BaseModel):
     allow_insecure_connections: bool = False
+    disable_crawlers: list[NonEmptyStr] = []
     enable_generic_crawler: bool = True
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
