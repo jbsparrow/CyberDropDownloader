@@ -202,10 +202,10 @@ class ScrapeMapper:
         if supported_domain and not is_generic:
             # get most restrictive domain if multiple domain matches
             supported_domain = max(supported_domain, key=len)
-            generic_crawler = self.existing_crawlers[supported_domain]
-            if not generic_crawler.ready:
-                await generic_crawler.startup()
-            self.manager.task_group.create_task(generic_crawler.run(scrape_item))
+            crawler = self.existing_crawlers[supported_domain]
+            if not crawler.ready:
+                await crawler.startup()
+            self.manager.task_group.create_task(crawler.run(scrape_item))
             return
 
         if self.manager.real_debrid_manager.enabled and self.manager.real_debrid_manager.is_supported(
