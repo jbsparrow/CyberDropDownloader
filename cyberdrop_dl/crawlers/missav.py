@@ -9,7 +9,7 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -41,14 +41,10 @@ class MissAVCrawler(Crawler):
 
         og_props = get_og_properties(soup)
         title = og_props.title.strip()
-
         if dvd_code_tag := soup.select_one(DVD_CODE_SELECTOR):
-            dvd_code = css.get_text(dvd_code_tag).upper()
-            for trash in (dvd_code, dvd_code.lower()):
-                title = title.replace(trash, "").strip()
-            title = f"{dvd_code} {title}"
+            title = fix_title(title, dvd_code_tag)
 
-        if date_str := og_props.video_release_date:
+        if date_str := og_props.get("video_release_date"):
             scrape_item.possible_datetime = self.parse_date(date_str, "%Y-%m-%d")
         elif date_tag := soup.select_one(DATE_SELECTOR):
             scrape_item.possible_datetime = self.parse_date(css.get_attr(date_tag, "datetime"))
@@ -68,3 +64,15 @@ def get_uuid(soup: BeautifulSoup) -> str:
     uuid_joined_parts = js_text.split("m3u8|", 1)[-1].split("|com|surrit", 1)[0]
     uuid_parts = reversed(uuid_joined_parts.split("|"))
     return "-".join(uuid_parts)
+
+
+def fix_title(title: str, dvd_code_tag: Tag) -> str:
+    dvd_code = css.get_text(dvd_code_tag).upper()
+    uncensored = "UNCENSORED" in dvd_code
+    leak = "LEAK" in dvd_code
+    for trash in ("-UNCENSORED", "-LEAK"):
+        dvd_code = dvd_code.replace(trash, "").removesuffix("-")
+
+    title = " ".join(word for word in title.split(" ") if dvd_code not in word.upper())
+    full_dvd_code = f"{dvd_code}{(uncensored and '-UNCENSORED') or ''}{(leak and '-LEAK') or ''}"
+    return f"{full_dvd_code} {title}"
