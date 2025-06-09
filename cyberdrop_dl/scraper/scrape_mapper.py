@@ -56,27 +56,9 @@ class ScrapeMapper:
         if not self.manager.config_manager.global_settings_data.general.enable_generic_crawler:
             _ = self.existing_crawlers.pop(".")
 
-        if crawlers_to_disable := self.manager.config_manager.global_settings_data.general.disable_crawlers:
-            new_crawlers_mapping = {
-                key: crawler
-                for key, crawler in self.existing_crawlers.items()
-                if crawler.DOMAIN not in crawlers_to_disable
-            }
-            disabled_crawlers = set(self.existing_crawlers.values()) - set(new_crawlers_mapping.values())
-            if len(disabled_crawlers) != len(crawlers_to_disable):
-                msg = (
-                    f"{len(crawlers_to_disable)} Crawler names where provided to disable"
-                    f", but only {len(disabled_crawlers)} {'is' if len(disabled_crawlers) == 1 else 'are'} a valid crawler's name."
-                )
-                log(msg, 30)
-            if disabled_crawlers:
-                self.existing_crawlers = new_crawlers_mapping
-                crawlers_info = "\n".join(
-                    str({info.site: info.supported_domains})
-                    for info in sorted(crawlers.INFO for crawlers in disabled_crawlers)
-                )
-                log(f"Crawlers disabled by config: \n{crawlers_info}")
-            log_spacer(10)
+        disable_crawlers_by_config(
+            self.existing_crawlers, self.manager.config_manager.global_settings_data.general.disable_crawlers
+        )
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
@@ -391,3 +373,28 @@ def get_crawlers_mapping(manager: Manager | None = None) -> dict[str, Crawler]:
 
 def get_unique_crawlers() -> list[Crawler]:
     return sorted(set(get_crawlers_mapping().values()), key=lambda x: x.FOLDER_DOMAIN)
+
+
+def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_to_disable: list[str]) -> None:
+    if not crawlers_to_disable:
+        return
+
+    new_crawlers_mapping = {
+        key: crawler for key, crawler in existing_crawlers.items() if crawler.INFO.site not in crawlers_to_disable
+    }
+    disabled_crawlers = set(existing_crawlers.values()) - set(new_crawlers_mapping.values())
+    if len(disabled_crawlers) != len(crawlers_to_disable):
+        msg = (
+            f"{len(crawlers_to_disable)} Crawler names where provided to disable"
+            f", but only {len(disabled_crawlers)} {'is' if len(disabled_crawlers) == 1 else 'are'} a valid crawler's name."
+        )
+        log(msg, 30)
+
+    if disabled_crawlers:
+        existing_crawlers.clear()
+        existing_crawlers.update(new_crawlers_mapping)
+        crawlers_info = "\n".join(
+            str({info.site: info.supported_domains}) for info in sorted(crawlers.INFO for crawlers in disabled_crawlers)
+        )
+        log(f"Crawlers disabled by config: \n{crawlers_info}")
+    log_spacer(10)
