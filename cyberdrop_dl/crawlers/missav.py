@@ -39,19 +39,22 @@ class MissAVCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
 
-        title = get_og_properties(soup).title.strip()
-        date_tag = soup.select_one(DATE_SELECTOR)
-        dvd_code_tag = soup.select_one(DVD_CODE_SELECTOR)
+        og_props = get_og_properties(soup)
+        title = og_props.title.strip()
 
-        date_str: str = css.get_attr(date_tag, "datetime") if date_tag else ""
-        dvd_code = css.get_text(dvd_code_tag).upper() if dvd_code_tag else None
-
-        if dvd_code:
-            for trash in (dvd_code.lower(), dvd_code.upper()):
+        if dvd_code_tag := soup.select_one(DVD_CODE_SELECTOR):
+            dvd_code = css.get_text(dvd_code_tag).upper()
+            for trash in (dvd_code, dvd_code.lower()):
                 title = title.replace(trash, "").strip()
             title = f"{dvd_code} {title}"
 
-        scrape_item.possible_datetime = self.parse_date(date_str)
+        if date_str := og_props.video_release_date:
+            scrape_item.possible_datetime = self.parse_date(date_str, "%Y-%m-%d")
+        elif date_tag := soup.select_one(DATE_SELECTOR):
+            scrape_item.possible_datetime = self.parse_date(css.get_attr(date_tag, "datetime"))
+        else:
+            _ = self.parse_date("")  # Trigger warning
+
         uuid = get_uuid(soup)
         m3u8_playlist_url = M3U8_SERVER / uuid / "playlist.m3u8"
         m3u8_media, rendition_group = await self.get_m3u8_playlist(m3u8_playlist_url)
