@@ -24,6 +24,16 @@ class General(BaseModel):
     user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
     pause_on_insufficient_space: bool = False
 
+    @field_validator("disable_crawlers", mode="before")
+    @classmethod
+    def as_list(cls, value: str | list[str]) -> list[str]:
+        return falsy_as(value, [])
+
+    @field_validator("disable_crawlers", mode="after")
+    @classmethod
+    def unique_list(cls, value: list[str]) -> list[str]:
+        return sorted(set(value))
+
     @field_serializer("flaresolverr", "proxy")
     def serialize(self, value: URL | str) -> str | None:
         return falsy_as(value, None, str)
