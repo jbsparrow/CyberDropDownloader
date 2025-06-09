@@ -155,6 +155,8 @@ class Downloader:
 
         media_item.complete_file = media_item.download_folder / media_item.filename
         self.update_queued_files()
+        task_id = self.manager.progress_manager.file_progress.add_task(domain=self.domain, filename=media_item.filename)
+        media_item.set_task_id(task_id)
         video, audio, subtitles = await self._process_m3u8_media(media_item, m3u8_media)
         if not subtitles and not audio:
             await asyncio.to_thread(video.rename, media_item.complete_file)
@@ -203,13 +205,14 @@ class Downloader:
         self, media_item: MediaItem, m3u8: M3U8, download_folder: Path
     ) -> tuple[list[MediaItem], list[Coroutine]]:
         seg_media_items: list[MediaItem] = []
+        padding = max(5, len(str(len(m3u8.segments))))
+        semaphore_hls = asyncio.Semaphore(10)
 
         def create_segments() -> Generator[HlsSegment]:
-            padding = max(5, len(m3u8.segments))
             for index, segment in enumerate(m3u8.segments, 1):
                 assert segment.uri
                 name = f"{index:0{padding}d}.cdl_hsl"
-                yield HlsSegment(segment.title, name, parse_url(segment.uri))
+                yield HlsSegment(segment.title, name, parse_url(segment.absolute_uri))
 
         def make_download_task(segment: HlsSegment) -> Coroutine:
             seg_media_item = MediaItem(
@@ -225,7 +228,12 @@ class Downloader:
                 # skip_hashing=True,
             )
             seg_media_items.append(seg_media_item)
-            return self.run(seg_media_item)
+
+            async def run() -> bool:
+                async with semaphore_hls:
+                    return await self.start_download(seg_media_item)
+
+            return run()
 
         return seg_media_items, [make_download_task(segment) for segment in create_segments()]
 
@@ -316,6 +324,8 @@ class Downloader:
 
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
+        if media_item.is_segment:
+            return
         if media_item.task_id is not None:
             try:
                 self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
@@ -345,21 +355,24 @@ class Downloader:
         try:
             await self.manager.states.RUNNING.wait()
             media_item.current_attempt = media_item.current_attempt or 1
-            media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
-            await self.check_file_can_download(media_item)
+            if not media_item.is_segment:
+                media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
+                await self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:
                 await asyncio.to_thread(Path.chmod, media_item.complete_file, 0o666)
-                await self.set_file_datetime(media_item, media_item.complete_file)
-                self.attempt_task_removal(media_item)
-                self.manager.progress_manager.download_progress.add_completed()
-                log(f"Download finished: {media_item.url}", 20)
+                if not media_item.is_segment:
+                    await self.set_file_datetime(media_item, media_item.complete_file)
+                    self.attempt_task_removal(media_item)
+                    self.manager.progress_manager.download_progress.add_completed()
+                    log(f"Download finished: {media_item.url}", 20)
             return downloaded
 
         except RestrictedFiletypeError:
-            log(f"Download skip {media_item.url} due to ignore_extension config ({media_item.ext})", 10)
-            self.manager.progress_manager.download_progress.add_skipped()
-            self.attempt_task_removal(media_item)
+            if not media_item.is_segment:
+                log(f"Download skip {media_item.url} due to ignore_extension config ({media_item.ext})", 10)
+                self.manager.progress_manager.download_progress.add_skipped()
+                self.attempt_task_removal(media_item)
 
         except (DownloadError, ClientResponseError, InvalidContentTypeError, ClientConnectorError):
             raise
