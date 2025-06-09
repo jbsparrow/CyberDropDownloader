@@ -379,8 +379,12 @@ def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_t
     if not crawlers_to_disable:
         return
 
+    crawlers_to_disable = sorted({name.casefold() for name in crawlers_to_disable})
+
     new_crawlers_mapping = {
-        key: crawler for key, crawler in existing_crawlers.items() if crawler.INFO.site not in crawlers_to_disable
+        key: crawler
+        for key, crawler in existing_crawlers.items()
+        if crawler.INFO.site.casefold() not in crawlers_to_disable
     }
     disabled_crawlers = set(existing_crawlers.values()) - set(new_crawlers_mapping.values())
     if len(disabled_crawlers) != len(crawlers_to_disable):
