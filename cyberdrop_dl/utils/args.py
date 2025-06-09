@@ -122,12 +122,7 @@ class CommandLineOnlyArgs(BaseModel):
         return value.lower()
 
 
-class DeprecatedArgs(BaseModel):
-    no_ui: bool = Field(
-        False,
-        description="disables the UI/progress view entirely",
-        deprecated="'--no-ui' is deprecated and will be removed in the future. Use '--ui disabled'",
-    )
+class DeprecatedArgs(BaseModel): ...
 
 
 class ParsedArgs(AliasModel):
