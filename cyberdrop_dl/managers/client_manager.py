@@ -121,6 +121,7 @@ class ClientManager:
 
     def load_cookie_files(self) -> None:
         if self.manager.config_manager.settings_data.browser_cookies.auto_import:
+            assert self.manager.config_manager.settings_data.browser_cookies.browser
             get_cookies_from_browsers(
                 self.manager, browser=self.manager.config_manager.settings_data.browser_cookies.browser
             )
