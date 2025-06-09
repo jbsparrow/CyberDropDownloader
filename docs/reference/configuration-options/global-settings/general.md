@@ -15,6 +15,18 @@ Setting this to `true` will allow the program to connect to websites without SSL
 This will make the connection insecure, and sensitive data may be exposed. You should only enable this option if you know what you are doing. For your safety, is recommended to always use a secure HTTPS connection to protect your privacy.
 {% endhint %}
 
+## `disable_crawlers`
+
+| Type                | Default | Additional Info                                                     |
+| ------------------- | ------- | ------------------------------------------------------------------- |
+| `list[NonEmptyStr]` | `[]`    | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs) |
+
+You can supply a list of crawlers to disable for the current run. This will make CDL completly ignore the crawler, as if the site was not supported. However, links from the site will still be proccesed by Real-Debrid (if enabled), Jdownloader (If enabled) and the Generic crawler (If enabled), in that order.
+
+The list should be valid crawlers names. The name of the crawler if the name of the primary site they support. ex: `4Chan`, `Bunkrr`, `Dropbox`
+Crawlers names correspond to the column `site` in the [supported sites page](https://script-ware.gitbook.io/cyberdrop-dl/reference/supported-websites#supported-sites).
+
+
 ## `enable_generic_crawler`
 
 | Type   | Default |
