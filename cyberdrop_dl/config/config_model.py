@@ -189,7 +189,7 @@ class Sorting(BaseModel):
 
 class BrowserCookies(BaseModel):
     auto_import: bool = False
-    browsers: list[BROWSERS] = [BROWSERS.chrome]
+    browser: BROWSERS = BROWSERS.firefox
     sites: list[NonEmptyStr] = SUPPORTED_SITES_DOMAINS
 
     @field_validator("browsers", mode="before")

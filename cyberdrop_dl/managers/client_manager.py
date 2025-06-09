@@ -121,7 +121,9 @@ class ClientManager:
 
     def load_cookie_files(self) -> None:
         if self.manager.config_manager.settings_data.browser_cookies.auto_import:
-            get_cookies_from_browsers(self.manager)
+            get_cookies_from_browsers(
+                self.manager, browser=self.manager.config_manager.settings_data.browser_cookies.browser
+            )
         cookie_files = sorted(self.manager.path_manager.cookies_dir.glob("*.txt"))
         if not cookie_files:
             return
