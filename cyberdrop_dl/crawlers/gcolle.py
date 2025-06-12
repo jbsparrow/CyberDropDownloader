@@ -32,7 +32,7 @@ from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator, Generator, Iterable
 
     from bs4 import Tag
 
@@ -41,11 +41,11 @@ if TYPE_CHECKING:
 _categories_mapping: dict[int, Category] = {}
 
 
-def _clean_img_url(url: AbsoluteHttpURL, keyword: str = "uploader") -> AbsoluteHttpURL:
-    if keyword not in url.parts or url.suffix in constants.FILE_FORMATS["Videos"]:
+def _clean_img_url(url: AbsoluteHttpURL, part: str = "uploader") -> AbsoluteHttpURL:
+    if part not in url.parts or url.suffix in constants.FILE_FORMATS["Videos"]:
         return url
 
-    index = url.parts.index(keyword)
+    index = url.parts.index(part)
     filtered_path = "/".join(url.parts[index:])
     return url.with_path(filtered_path, keep_fragment=True, keep_query=True)
 
@@ -126,9 +126,22 @@ class ProductSelectors:
     tags = "p#tags a"
     video_preview = "video.video-js source"
     file_name = "tr:has(th:contains('File name:')) td"
+
     _file_size_row = "tr:has(th:contains('File size:'))"
     file_size = f"{_file_size_row} td"
     file_size_bytes = f"{_file_size_row} small.text-muted"
+
+    _manufacturer = "div#manufacturer"
+    _product_dt = "dt:contains('Products:')"
+    trash = (
+        "ul[role='tablist']",
+        "div#questions p:contains('Ask a question')",
+        "button:contains('Put into the cart')",
+        f"{_manufacturer} span:contains('Consignor Data') + button[data-toggle=collapse]",
+        f"{_manufacturer} ~ *",
+        f"{_manufacturer} {_product_dt} ~ *",
+        _product_dt,
+    )
 
 
 class Selectors:
@@ -276,7 +289,7 @@ class GcolleCrawler(Crawler):
         async with self.request_limiter:
             response, _ = await self.client._get(self.DOMAIN, url, headers, cache_disabled=not mobile)
             content = await response.read()
-            text = normalize(content.decode(_ENCODING, errors=_ERROR_DECODER))
+            text = _normalize(content.decode(_ENCODING, errors=_ERROR_DECODER))
             return BeautifulSoup(text, "html.parser")
 
     @error_handling_wrapper
@@ -365,7 +378,7 @@ def parse_seller(soup: BeautifulSoup) -> GcolleSeller:
     # Only works with soup from the MOBILE version of the site
     # The desktop version of the site is just several tables without speficic attributes or names
     seller: dict[str, str | None] = {
-        "name": normalize(css.select_one_get_text(soup, _SELECTORS.SELLER.name)),
+        "name": _normalize(css.select_one_get_text(soup, _SELECTORS.SELLER.name)),
         "url": css.select_one_get_attr(soup, _SELECTORS.SELLER.url, "action"),
     }
 
@@ -391,7 +404,7 @@ def parse_categories(soup: BeautifulSoup) -> Generator[Category]:
     for category_tag in css.iselect(soup, _SELECTORS.CATEGORIES):
         n_of_parents = 0
         category_id = int(css.get_attr(category_tag, "value"))
-        name = normalize(category_tag.text)
+        name = _normalize(category_tag.text)
         if any(trash in name for trash in level_2_trash):
             n_of_parents = 2
 
@@ -403,26 +416,26 @@ def parse_categories(soup: BeautifulSoup) -> Generator[Category]:
         for trash in (*level_1_trash, "│ "):
             name = name.replace(trash, "")
 
-        joined_id = "_".join(map(str, current_parents[: n_of_parents + 1]))
+        joined_id = _fix_joined_id(x for x in current_parents[: n_of_parents + 1] if x is not None)
         yield Category(category_id, name.strip(), joined_id)
 
 
 def parse_product(soup: BeautifulSoup) -> GcolleProduct:
     # Only works with soup from the MOBILE version of the site
     # The desktop version of the site is just several tables without speficic attributes or names
-    product: dict[str, Any] = json.loads(normalize(css.select_one_get_text(soup, _SELECTORS.LD_JSON)))
+    product: dict[str, Any] = json.loads(_normalize(css.select_one_get_text(soup, _SELECTORS.LD_JSON)))
     main_section = css.select_one(soup, _SELECTORS.PRODUCT.main_section)
     info_table = css.select_one(main_section, _SELECTORS.PRODUCT.info_table)
     description_tag = css.select_one(main_section, _SELECTORS.PRODUCT.description)
-    product["title"] = normalize(css.select_one_get_text(main_section, "h1"))
-    product["description"] = normalize(description_tag.get_text(separator="\n").strip())
+    product["title"] = _normalize(css.select_one_get_text(main_section, "h1"))
+    product["description"] = _normalize(description_tag.get_text(separator="\n").strip())
 
     del description_tag, soup
 
     joined_id = _fix_joined_id(css.select_one_get_attr(main_section, _SELECTORS.PRODUCT.categories, "href"))
     product["category"] = _categories_mapping[int(joined_id.split("_")[-1])]
     product["price"] = _digits(css.select_one_get_text(main_section, _SELECTORS.PRODUCT.price))
-    product["tags_html"] = [normalize(css.get_text(tag)) for tag in main_section.select(_SELECTORS.PRODUCT.tags)]
+    product["tags_html"] = [_normalize(css.get_text(tag)) for tag in main_section.select(_SELECTORS.PRODUCT.tags)]
     product["file_name"] = css.select_one_get_text(info_table, _SELECTORS.PRODUCT.file_name)
     product["file_size_bytes"] = _digits(css.select_one_get_text(info_table, _SELECTORS.PRODUCT.file_size_bytes))
     product["file_size"] = (
@@ -441,7 +454,7 @@ def parse_product(soup: BeautifulSoup) -> GcolleProduct:
         product["video_preview"] = css.get_attr(video_preview_tag, "src")
 
     get_clean_html(main_section)
-    product["html"] = normalize(main_section.prettify())
+    product["html"] = _normalize(main_section.prettify())
     return GcolleProduct.model_validate(product, by_alias=True, by_name=True)
 
 
@@ -452,8 +465,13 @@ def _next_part(url: AbsoluteHttpURL, part: str) -> str | None:
         return
 
 
-def _fix_joined_id(joined_id: str) -> str:
-    return "_".join(sorted(joined_id.split("/")[-1].split("_"), key=int))
+def _fix_joined_id(joined_id: Iterable[int] | str) -> str:
+    if isinstance(joined_id, str):
+        id_list = joined_id.split("/")[-1].split("_")
+    else:
+        id_list = map(str, joined_id)
+
+    return "_".join(sorted(id_list, key=int))
 
 
 def _digits(string: str) -> int:
@@ -462,35 +480,20 @@ def _digits(string: str) -> int:
 
 def _dl_to_dict(html_content: Tag) -> dict[str, str]:
     return {
-        normalize(css.get_text(dt)): normalize(css.get_text(dd))
+        _normalize(css.get_text(dt)): _normalize(css.get_text(dd))
         for dt, dd in zip(css.iselect(html_content, "dt"), css.iselect(html_content, "dd"), strict=False)
     }
 
 
-def normalize(string: str) -> str:
+def _normalize(string: str) -> str:
     return unicodedata.normalize("NFKC", string)
 
 
-TRASH_SELECTORS = (
-    "ul[role='tablist']",
-    "div#questions p:contains('Ask a question')",
-    "div#manufacturer span:contains('Consignor Data') + button[data-toggle=collapse]",
-)
-
-
 def get_clean_html(main_section: Tag) -> None:
-    for selector in TRASH_SELECTORS:
-        css.select_one(main_section, selector).decompose()
-
-    for trash in main_section.select("button:contains('Put into the cart')"):
-        trash.decompose()
-
-    current_tag = main_section
-    for selector in ("div#manufacturer", "dt:contains('Products:')"):
-        for trash in current_tag.select(f"{selector} ~ *"):
+    for selector in _SELECTORS.PRODUCT.trash:
+        for trash in css.iselect(main_section, selector):
             trash.decompose()
-        current_tag = css.select_one(main_section, selector)
-    css.select_one(main_section, selector).decompose()
+
     make_links_absolute(main_section)
 
 
