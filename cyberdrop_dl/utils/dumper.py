@@ -6,6 +6,8 @@ import json
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
+from cyberdrop_dl.utils.utilities import Dataclass
+
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
@@ -55,11 +57,13 @@ class JSONStrEncoder(json.JSONEncoder):
     """Serialize incompatible objects as str"""
 
     def default(self, obj: Any) -> str:
-        if isinstance(obj, datetime.datetime):
-            obj = obj.isoformat()
         if isinstance(obj, enum.Enum):
             obj = obj.value
-        if isinstance(obj, set):
+        elif isinstance(obj, Dataclass):
+            obj = asdict(obj)
+        if isinstance(obj, datetime.datetime):
+            obj = obj.isoformat()
+        elif isinstance(obj, set):
             obj = sorted(obj)
         try:
             return super().default(obj)
