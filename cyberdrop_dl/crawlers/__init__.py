@@ -6,6 +6,7 @@ from cyberdrop_dl import env
 from .acidimg import AcidImgCrawler
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
+from .beeg import BeegComCrawler
 from .bestprettygirl import BestPrettyGirlCrawler
 from .box_dot_com import BoxDotComCrawler
 from .bunkrr import BunkrrCrawler
