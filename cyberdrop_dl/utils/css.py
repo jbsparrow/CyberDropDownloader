@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
     from bs4 import Tag
 
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -72,3 +74,12 @@ def select_one_get_attr_or_none(tag: Tag, selector: str, attribute: str) -> str 
 def iselect(tag: Tag, selector: str) -> Generator[Tag]:
     """Same as `tag.select(selector)`, but it returns a generator instead of a list."""
     yield from bs4.css.CSS(tag).iselect(selector)
+
+
+def make_links_absolute(tag: Tag, url_parser: Callable[[str], AbsoluteHttpURL]) -> None:
+    for attr in ("href", "src", "data-src"):
+        for inner_tag in iselect(tag, f"[{attr}^='/']"):
+            try:
+                inner_tag[attr] = str(url_parser(get_attr(inner_tag, attr)))
+            except Exception:
+                continue

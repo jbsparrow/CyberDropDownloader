@@ -61,9 +61,8 @@ class MetadataSideCard(Generic[_MetadataT]):
                 return content  # type: ignore
             if issubclass(self.sidecard.metadata_cls, BaseModel):
                 return self.sidecard.metadata_cls.model_validate_json(content, by_alias=True, by_name=True)  # type: ignore
-            content_dict = json.loads(content)
             if is_dataclass(self.sidecard.metadata_cls):
-                return self.sidecard.metadata_cls(**content_dict)  # type: ignore
+                return self.sidecard.metadata_cls(**json.loads(content))  # type: ignore
             raise ValueError
 
 

@@ -23,16 +23,16 @@ from pydantic import (
 from pydantic.alias_generators import to_camel
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.crawlers._metadata import make_factory
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.models.types import StrSerializer
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
+from cyberdrop_dl.utils.sidecard import make_factory
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Iterable
+    from collections.abc import AsyncIterable, Generator
 
     from bs4 import Tag
 
@@ -58,6 +58,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://gcolle.net/")
 IPHONE_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604"
 
 GcolleHttpURL = Annotated[AbsoluteHttpURL, PlainValidator(_parse_gcolle_url), StrSerializer]
+
 
 _ENCODING = "euc-jp"
 _ERROR_DECODER = "euc-jp + utf-8"
@@ -201,10 +202,8 @@ class GcolleCrawler(Crawler):
             return await self.seller(scrape_item, manufactured_id)
         if products_id := _next_part(scrape_item.url, "products_id"):
             return await self.product(scrape_item, products_id)
-        if (joined_id := _next_part(scrape_item.url, "cPath")) and (
-            (joined_id := _fix_joined_id(joined_id)) in _categories_mapping
-        ):
-            return await self.category(scrape_item, joined_id)
+        if joined_id := _next_part(scrape_item.url, "cPath"):
+            return await self.category(scrape_item, _fix_joined_id(joined_id))
         raise ValueError
 
     @error_handling_wrapper
@@ -259,7 +258,7 @@ class GcolleCrawler(Crawler):
         for preview_url in product.all_previews:
             await self.direct_file(new_scrape_item, preview_url)
 
-    async def web_pager(self, url: AbsoluteHttpURL) -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, url: AbsoluteHttpURL) -> AsyncIterable[BeautifulSoup]:
         page_url = url
         while True:
             soup = await self.get_soup_with_age_check(page_url)
@@ -382,7 +381,7 @@ class GcolleSeller(GcolleModel):
 
 def parse_seller(soup: BeautifulSoup) -> GcolleSeller:
     # Only works with soup from the MOBILE version of the site
-    # The desktop version of the site is just several tables without speficic attributes or names
+    # The desktop version of the site is just several tables without specific attributes or names
     seller: dict[str, str | None] = {
         "name": _normalize(css.select_one_get_text(soup, _SELECTORS.SELLER.name)),
         "url": css.select_one_get_attr(soup, _SELECTORS.SELLER.url, "action"),
@@ -404,7 +403,7 @@ def parse_seller(soup: BeautifulSoup) -> GcolleSeller:
 def parse_categories(soup: BeautifulSoup) -> Generator[Category]:
     # Only works with soup from the DESKTOP version of the site
     # Mobile version does not have any categories element
-    current_parents: list[int | None] = [None, None, None]
+    current_parents: list[int] = [-1] * 3
     level_1_trash = ("├ ", "└ ")
     level_2_trash = tuple("│ " + char for char in level_1_trash)
     for category_tag in css.iselect(soup, _SELECTORS.CATEGORIES):
@@ -422,13 +421,13 @@ def parse_categories(soup: BeautifulSoup) -> Generator[Category]:
         for trash in (*level_1_trash, "│ "):
             name = name.replace(trash, "")
 
-        joined_id = _fix_joined_id(x for x in current_parents[: n_of_parents + 1] if x is not None)
+        joined_id = _make_joined_id(current_parents[: n_of_parents + 1])
         yield Category(category_id, name.strip(), joined_id)
 
 
 def parse_product(soup: BeautifulSoup) -> GcolleProduct:
     # Only works with soup from the MOBILE version of the site
-    # The desktop version of the site is just several tables without speficic attributes or names
+    # The desktop version of the site is just several tables without specific attributes or names
     product: dict[str, Any] = json.loads(_normalize(css.select_one_get_text(soup, _SELECTORS.LD_JSON)))
     main_section = css.select_one(soup, _SELECTORS.PRODUCT.main_section)
     info_table = css.select_one(main_section, _SELECTORS.PRODUCT.info_table)
@@ -445,7 +444,7 @@ def parse_product(soup: BeautifulSoup) -> GcolleProduct:
     product["file_name"] = css.select_one_get_text(info_table, _SELECTORS.PRODUCT.file_name)
     product["file_size_bytes"] = _digits(css.select_one_get_text(info_table, _SELECTORS.PRODUCT.file_size_bytes))
     product["file_size"] = (
-        css.select_one_get_text(info_table, _SELECTORS.PRODUCT.file_size)
+        _normalize(css.select_one_get_text(info_table, _SELECTORS.PRODUCT.file_size))
         .replace("Total", "")
         .strip()
         .split("\n")[0]
@@ -459,7 +458,7 @@ def parse_product(soup: BeautifulSoup) -> GcolleProduct:
     if video_preview_tag := main_section.select_one(_SELECTORS.PRODUCT.video_preview):
         product["video_preview"] = css.get_attr(video_preview_tag, "src")
 
-    get_clean_html(main_section)
+    _get_clean_html(main_section)
     product["html"] = _normalize(main_section.prettify())
     return GcolleProduct.model_validate(product, by_alias=True, by_name=True)
 
@@ -471,13 +470,13 @@ def _next_part(url: AbsoluteHttpURL, part: str) -> str | None:
         return
 
 
-def _fix_joined_id(joined_id: Iterable[int] | str) -> str:
-    if isinstance(joined_id, str):
-        id_list = joined_id.split("/")[-1].split("_")
-    else:
-        id_list = map(str, joined_id)
+def _fix_joined_id(joined_id: str) -> str:
+    id_list = joined_id.split("/")[-1].split("_")
+    return _make_joined_id(id_list)
 
-    return "_".join(sorted(id_list, key=int))
+
+def _make_joined_id(id_list: list[int] | list[str]) -> str:
+    return "_".join(map(str, sorted(id_list, key=int)))
 
 
 def _digits(string: str) -> int:
@@ -495,18 +494,9 @@ def _normalize(string: str) -> str:
     return unicodedata.normalize("NFKC", string)
 
 
-def get_clean_html(main_section: Tag) -> None:
+def _get_clean_html(main_section: Tag) -> None:
     for selector in _SELECTORS.PRODUCT.trash:
         for trash in css.iselect(main_section, selector):
             trash.decompose()
 
-    make_links_absolute(main_section)
-
-
-def make_links_absolute(tag: Tag) -> None:
-    for attr in ("href", "src", "data-src"):
-        for inner_tag in css.iselect(tag, f"[{attr}^='/']"):
-            try:
-                inner_tag[attr] = str(_parse_gcolle_url(css.get_attr(inner_tag, attr)))
-            except Exception:
-                continue
+    css.make_links_absolute(main_section, _parse_gcolle_url)
