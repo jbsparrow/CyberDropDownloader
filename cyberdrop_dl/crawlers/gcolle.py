@@ -6,7 +6,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import datetime  # noqa: TC003
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar
 
 from bs4 import BeautifulSoup
@@ -63,6 +63,7 @@ _ENCODING = "euc-jp"
 _ERROR_DECODER = "euc-jp + utf-8"
 _NO_BREAK_SPACE = b"\xad"
 _3_BYTES_PREFIX = b"\xe2\x91"
+_AGE_CHECK_EXPIRES_AFTER = timedelta(minutes=10)
 
 
 def mixed_decoder(error: UnicodeError) -> tuple[str, int]:
@@ -183,7 +184,7 @@ class GcolleCrawler(Crawler):
     NEXT_PAGE_SELECTOR = _SELECTORS.NEXT_PAGE
 
     def __post_init__(self) -> None:
-        self.age_check_pass: bool = False
+        self.last_age_check: datetime | None = None
         self.age_check_lock = asyncio.Lock()
         self.product_sidecard_factory = make_factory(self, "product_info.json", GcolleProduct)
         self.product_html_sidecard_factory = make_factory(self, "product_info.html", str)
@@ -271,12 +272,17 @@ class GcolleCrawler(Crawler):
     async def get_soup_with_age_check(self, url: AbsoluteHttpURL) -> BeautifulSoup:
         soup = await self._get_soup(url)
         async with self.age_check_lock:
-            if not self.age_check_pass and (age_check := soup.select_one(_SELECTORS.AGE_CHECK)):
+            if age_check := soup.select_one(_SELECTORS.AGE_CHECK):
                 await self.client._session.cache.delete_url(url)
-                age_check_link = self.parse_url(css.select_one_get_attr(age_check, _SELECTORS.AGE_CHECK_LINK, "href"))
-                _ = await self.client._get(self.DOMAIN, age_check_link)
+                if not self.last_age_check or (
+                    ((now := datetime.now()) - self.last_age_check) > _AGE_CHECK_EXPIRES_AFTER
+                ):
+                    age_check_link = self.parse_url(
+                        css.select_one_get_attr(age_check, _SELECTORS.AGE_CHECK_LINK, "href")
+                    )
+                    _ = await self.client._get(self.DOMAIN, age_check_link)
+                    self.last_age_check = now
                 soup = await self._get_soup(url)
-                self.age_check_pass = True
 
         return soup
 
