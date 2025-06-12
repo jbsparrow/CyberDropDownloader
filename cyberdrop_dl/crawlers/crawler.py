@@ -364,7 +364,7 @@ class Crawler(ABC):
         id = default_if_none(id, "Unknown")
         title = default_if_none(title, "Untitled")
         date_str = default_if_none(date_str, "NO_DATE")
-        return title_format.format(id=id, date=date_str, title=title)
+        return title_format.format(id=id, number=id, date=date_str, title=title)
 
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> AbsoluteHttpURL:
         """Wrapper arround `utils.parse_url` to use `self.PRIMARY_URL` as base"""
