@@ -5,6 +5,12 @@ from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import bs4.css
 
+from cyberdrop_dl.exceptions import ScrapeError
+
+
+class SelectorError(ScrapeError): ...
+
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
@@ -18,7 +24,8 @@ def not_none(func: Callable[P, R | None]) -> Callable[P, R]:
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         result = func(*args, **kwargs)
-        assert result is not None
+        if result is None:
+            raise SelectorError(422) from None
         return result
 
     return wrapper
@@ -37,7 +44,8 @@ def select_one_get_text(tag: Tag, selector: str, strip: bool = True) -> str:
 def get_attr_or_none(tag: Tag, attribute: str) -> str | None:
     """Same as `tag.get(attribute)` but asserts the result is not multiple strings"""
     value = tag.get(attribute)
-    assert not isinstance(value, list)
+    if isinstance(value, list):
+        raise SelectorError(422) from None
     return value
 
 

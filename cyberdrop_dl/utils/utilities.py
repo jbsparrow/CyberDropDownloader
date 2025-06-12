@@ -15,7 +15,7 @@ from dataclasses import Field, dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
-from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, Protocol, TypeGuard, TypeVar, runtime_checkable
 
 import aiofiles
 import rich
@@ -47,6 +47,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
 
+    _CrawlerT = TypeVar("_CrawlerT", bound=Crawler | Downloader)
+
+else:
+    _CrawlerT = Any
+
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -58,6 +63,7 @@ ALLOWED_FILEPATH_PUNCTUATION = " .-_!#$%'()+,;=@[]^{}~"
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
+@runtime_checkable
 class Dataclass(Protocol):
     __dataclass_fields__: ClassVar[dict]
 
@@ -79,8 +85,8 @@ class OGProperties:
 
 
 def error_handling_wrapper(
-    func: Callable[..., Coroutine[None, None, R]],
-) -> Callable[..., Coroutine[None, None, R | None]]:
+    func: Callable[Concatenate[_CrawlerT, P], Coroutine[None, None, R]],
+) -> Callable[Concatenate[_CrawlerT, P], Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
@@ -474,7 +480,7 @@ def parse_url(link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim
         new_url = base.join(new_url)
     if not new_url.scheme:
         new_url = new_url.with_scheme(base.scheme or "https")
-    assert is_absolute_http_url(new_url)
+    assert is_absolute_http_url(new_url), f"{new_url} is not absolute, invalid input {link_str}"
     if not trim:
         return new_url
     return remove_trailing_slash(new_url)

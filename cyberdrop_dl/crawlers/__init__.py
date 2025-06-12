@@ -29,6 +29,7 @@ from .fikfap import FikFapCrawler
 from .fileditch import FileditchCrawler
 from .files_vc import FilesVcCrawler
 from .fourchan import FourChanCrawler
+from .gcolle import GcolleCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
