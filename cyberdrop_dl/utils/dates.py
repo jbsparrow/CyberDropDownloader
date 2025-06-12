@@ -1,11 +1,30 @@
+import asyncio
 import calendar
 import datetime
+import os
+import shutil
+import subprocess
+import sys
+from ctypes import wintypes
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal, NewType, TypeAlias, TypeVar
 
 import dateparser.date
 import dateutil
 import dateutil.parser
+
+WIN_EPOCH_OFFSET = 116444736e9
+MAC_OS_SET_FILE = None
+
+if sys.platform == "win32":
+    from ctypes import byref, windll, wintypes
+
+    import win32con
+
+elif sys.platform == "darwin":
+    # SetFile is non standard in macOS. Only users that have xcode installed will have SetFile
+    MAC_OS_SET_FILE = shutil.which("SetFile")
 
 TimeStamp = NewType("TimeStamp", int)
 MIDNIGHT_TIME = datetime.time.min
@@ -140,6 +159,77 @@ def to_timestamp(date: datetime.datetime) -> TimeStamp:
 @lru_cache(maxsize=10)
 def get_parser(parser_kind: ParserKind | None = None, date_order: DateOrder | None = None) -> DateParser:
     return DateParser(parser_kind, date_order)
+
+
+async def set_file_datetime(datetime_or_timestamp: datetime.datetime | TimeStamp, file: Path) -> None:
+    if isinstance(datetime_or_timestamp, datetime.datetime):
+        timestamp = to_timestamp(datetime_or_timestamp)
+    else:
+        timestamp = datetime_or_timestamp
+    try:
+        if sys.platform == "win32":
+            await _set_win_time(timestamp, file)
+
+        elif sys.platform == "darwin":
+            await _set_macos_time(timestamp, file)
+
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError, ValueError):
+        pass
+
+    # 2. try setting modification and access date
+    try:
+        await asyncio.to_thread(os.utime, file, (timestamp, timestamp))
+    except OSError:
+        pass
+
+
+async def _set_macos_time(timestamp: TimeStamp, file: Path) -> None:
+    if not MAC_OS_SET_FILE:
+        return
+    date_string = datetime.datetime.fromtimestamp(timestamp).strftime("%m/%d/%Y %H:%M:%S")
+    cmd = ["-d", date_string, file]
+    process = await asyncio.subprocess.create_subprocess_exec(
+        MAC_OS_SET_FILE, *cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+    _ = await process.wait()
+
+
+async def _set_win_time(timestamp: TimeStamp, file: Path) -> None:
+    def set_win_time() -> None:
+        nano_ts: float = timestamp * 1e7  # Windows uses nano seconds for dates
+        win_timestamp = int(nano_ts + WIN_EPOCH_OFFSET)
+
+        # Windows dates are 64bits, split into 2 32bits unsigned ints (dwHighDateTime , dwLowDateTime)
+        # XOR to get the date as bytes, then shift to get the first 32 bits (dwHighDateTime)
+        ctime = wintypes.FILETIME(win_timestamp & 0xFFFFFFFF, win_timestamp >> 32)
+        access_mode = 256  # FILE_WRITE_ATTRIBUTES
+        sharing_mode = 0  # Exclusive access
+        security_mode = None  # Use default security attributes
+        creation_disposition = win32con.OPEN_EXISTING
+
+        # FILE_FLAG_BACKUP_SEMANTICS allows access to directories
+        flags = win32con.FILE_ATTRIBUTE_NORMAL | win32con.FILE_FLAG_BACKUP_SEMANTICS
+        template_file = None
+
+        params = (
+            access_mode,
+            sharing_mode,
+            security_mode,
+            creation_disposition,
+            flags,
+            template_file,
+        )
+
+        handle = windll.kernel32.CreateFileW(str(file), *params)
+        windll.kernel32.SetFileTime(
+            handle,
+            byref(ctime),  # Creation time
+            None,  # Access time
+            None,  # Modification time
+        )
+        windll.kernel32.CloseHandle(handle)
+
+    await asyncio.to_thread(set_win_time)
 
 
 if __name__ == "__main__":
