@@ -45,6 +45,16 @@ class DownloadOptions(BaseModel):
     skip_referer_seen_before: bool = False
     maximum_thread_depth: NonNegativeInt = 0
 
+    @field_validator("separate_posts_format", mode="after")
+    @classmethod
+    def valid_format(cls, value: str) -> str:
+        valid_keys = ("default", "title", "id", "number", "date")
+        try:
+            value.format(**dict.fromkeys(valid_keys, "TEST"))
+        except KeyError as e:
+            msg = f"'{e.args[0]}' is not a valid key for this option. Valid keys: {valid_keys}"
+            raise ValueError(msg) from None
+
 
 class Files(PathAliasModel):
     download_folder: Path = Field(DEFAULT_DOWNLOAD_STORAGE, "d")
