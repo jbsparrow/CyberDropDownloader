@@ -88,6 +88,7 @@ from .tokyomotion import TokioMotionCrawler
 from .toonily import ToonilyCrawler
 from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
+from .vbulletin import ViperGirlsCrawler
 from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
 from .wordpress import WP_CRAWLERS
