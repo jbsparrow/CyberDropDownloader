@@ -39,6 +39,7 @@ class OneManagerCrawler(Crawler, is_abc=True):
     SKIP_PRE_CHECK = True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
+        scrape_item.url = scrape_item.url.with_query(None)
         if self.PRIMARY_URL not in scrape_item.parent_threads:
             self.init_item(scrape_item)
         await self.process_path(scrape_item)
