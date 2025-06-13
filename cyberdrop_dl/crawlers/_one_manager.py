@@ -71,7 +71,7 @@ class OneManagerCrawler(Crawler, is_abc=True):
         for folder in css.iselect(table, _SELECTORS.FOLDER):
             link = scrape_item.url / css.select_one_get_attr(folder, _SELECTORS.FOLDER_LINK, "href")
             new_scrape_item = scrape_item.create_child(link, new_title_part=link.name)
-            self.manager.task_group.create_task(self.process_path(new_scrape_item))
+            self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
     @error_handling_wrapper
