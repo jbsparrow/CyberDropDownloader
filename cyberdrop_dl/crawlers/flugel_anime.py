@@ -7,6 +7,6 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 
 class FlugelAnimeCrawler(OneManagerCrawler):
-    DOMAIN: ClassVar[str] = "flugelanime.com"
+    DOMAIN: ClassVar[str] = "flugel-anime"
     PRIMARY_URL: ClassVar = AbsoluteHttpURL("https://flugelanime.com")
     FOLDER_DOMAIN: ClassVar = "Flugel-Anime"
