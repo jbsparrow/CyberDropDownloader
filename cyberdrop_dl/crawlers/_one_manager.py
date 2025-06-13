@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.exceptions import InvalidContentTypeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from bs4 import Tag
 
     from cyberdrop_dl.crawlers.crawler import SupportedPaths
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
 class Selectors:
@@ -47,8 +48,14 @@ class OneManagerCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def process_path(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        try:
+            async with self.request_limiter:
+                soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        except InvalidContentTypeError:  # This is a file, not html
+            scrape_item.parent_title = scrape_item.parent_title.rsplit("/", 1)[0]
+            link = scrape_item.url
+            scrape_item.url = link.parent
+            return await self._process_file(scrape_item, link)
 
         # TODO: save readme as a sidecard
         if soup.select_one(_SELECTORS.README):
@@ -70,6 +77,9 @@ class OneManagerCrawler(Crawler, is_abc=True):
     async def process_file(self, scrape_item: ScrapeItem, file: Tag) -> None:
         datetime = self.parse_date(css.select_one_get_text(file, _SELECTORS.DATE))
         link = scrape_item.url / css.select_one_get_attr(file, _SELECTORS.FILE_LINK, "href")
+        await self._process_file(scrape_item, link, datetime)
+
+    async def _process_file(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL, datetime: int | None = None) -> None:
         preview_url = link.with_query("preview")  # The query param needs to be `?preview` exactly, with no value or `=`
         new_scrape_item = scrape_item.create_child(preview_url, possible_datetime=datetime)
         filename, ext = self.get_filename_and_ext(link.name)
