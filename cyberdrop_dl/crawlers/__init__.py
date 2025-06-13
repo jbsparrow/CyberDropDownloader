@@ -17,6 +17,7 @@ from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
 from .cyberfile import CyberfileCrawler
 from .dirtyship import DirtyShipCrawler
+from .discourse import DISCOURSE_CRAWLERS
 from .doodstream import DoodStreamCrawler
 from .dropbox import DropboxCrawler
 from .e621 import E621Crawler
@@ -107,7 +108,7 @@ from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler
 
 ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
-ALL_CRAWLERS = ALL_CRAWLERS - {Crawler}
+ALL_CRAWLERS = DISCOURSE_CRAWLERS.union(ALL_CRAWLERS - {Crawler})
 DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MissAVCrawler, MegaNzCrawler, FikFapCrawler}
 CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
