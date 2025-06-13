@@ -28,6 +28,7 @@ from .fapello import FapelloCrawler
 from .fikfap import FikFapCrawler
 from .fileditch import FileditchCrawler
 from .files_vc import FilesVcCrawler
+from .flugel_anime import FlugelAnimeCrawler
 from .fourchan import FourChanCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
