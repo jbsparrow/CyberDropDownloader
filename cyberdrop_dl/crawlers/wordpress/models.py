@@ -15,15 +15,19 @@ if TYPE_CHECKING:
 _ModelT = TypeVar("_ModelT", bound=BaseModel)
 
 
-def unescape_html(string: Html) -> str:
-    return BeautifulSoup(string, "html.parser").get_text(strip=True)
+def make_soup(string: str) -> BeautifulSoup:
+    return BeautifulSoup(string, "html.parser")
+
+
+def unescape_html(string: str) -> str:
+    return make_soup(string).get_text(strip=True)
 
 
 def add_utc_tz(parsed_date: datetime) -> datetime:
     return parsed_date.replace(tzinfo=UTC)
 
 
-UnescapedStr = Annotated[str, AfterValidator(unescape_html)]
+TitleFromHtml = Annotated[str, AfterValidator(unescape_html)]
 datetimeUTC = Annotated[datetime, AfterValidator(add_utc_tz)]  # noqa: N816
 
 
@@ -36,39 +40,30 @@ Html = NewType("Html", str)
 
 
 class WordPressModel(BaseModel):
-    id: int
+    id: int | None = None
     slug: str
     link: str
 
 
 class Post(WordPressModel):
-    date: datetime
-    title: UnescapedStr = Field(validation_alias=AliasPath("title", "rendered"))
+    title: TitleFromHtml = Field(validation_alias=AliasPath("title", "rendered"))
     content: Html = Field(validation_alias=AliasPath("content", "rendered"))
     thumbnail: str | None = Field(default=None, validation_alias=AliasPath("acf", "fifu_image_url"))
     date_gmt: datetimeUTC
 
-    # Not used at the moment
-    # A subclass may use it to add spscific logic on how to handle each post
-    modified: datetime
-    modified_gmt: datetimeUTC
-    status: Literal["publish", "future", "draft", "pending", "private"]
-    type: str
-    categories: list[int] = []
-    tags: list[int] = []
-    format: Literal["standard", "aside", "chat", "gallery", "link", "image", "quote", "status", "video", "audio"]
+
+class Collection(WordPressModel):
+    description: str = ""
+    taxonomy: str
 
 
-class Category(WordPressModel):
-    count: int
-    description: str
-    parent: int
-    taxonomy: Literal["category"]
+class Category(Collection):
+    taxonomy: Literal["category"] = "category"
     _type: ColletionType = ColletionType.CATEGORY
 
 
 class Tag(Category):
-    taxonomy: Literal["post_tag"]
+    taxonomy: Literal["post_tag"] = "post_tag"
     _type: ColletionType = ColletionType.TAG
 
 
@@ -94,3 +89,21 @@ class TagSequence(SequenceModel[Tag]): ...
 
 
 class CategorySequence(SequenceModel[Category]): ...
+
+
+class PostExtraData(Post):
+    # Not used at the moment
+    date: datetime
+    modified: datetime
+    modified_gmt: datetimeUTC
+    status: Literal["publish", "future", "draft", "pending", "private"]
+    type: str
+    categories: list[int] = []
+    tags: list[int] = []
+    format: Literal["standard", "aside", "chat", "gallery", "link", "image", "quote", "status", "video", "audio"]
+
+
+class CollectionExtraData(Collection):
+    # Not used at the moment
+    count: int
+    parent: int
