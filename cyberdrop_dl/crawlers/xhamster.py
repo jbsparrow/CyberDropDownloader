@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import json
 from functools import partial
-from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
 
 from pydantic import AliasPath, Field, PlainValidator
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AliasModel
-from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
@@ -16,31 +16,39 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
-PRIMARY_BASE_DOMAIN = URL("https://xhamster.com/")
-JS_VIDEO_INFO_SELECTOR = "script#initials-script"
-VIDEO_SELECTOR = "a.video-thumb__image-container"
-GALLERY_SELECTOR = "a.gallery-thumb__link"
+PRIMARY_URL = AbsoluteHttpURL("https://xhamster.com/")
 
 
-HttpURL = Annotated[URL, PlainValidator(partial(parse_url, relative_to=PRIMARY_BASE_DOMAIN))]
+class Selectors:
+    JS_VIDEO_INFO = "script#initials-script"
+    VIDEO = "a.video-thumb__image-container"
+    GALLERY = "a.gallery-thumb__link"
+    NEXT_PAGE = "a[data-page='next']"
+
+
+_SELECTORS = Selectors()
+
+
+HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_to=PRIMARY_URL))]
 
 
 class XhamsterCrawler(Crawler):
-    primary_base_domain = PRIMARY_BASE_DOMAIN
-    next_page_selector = "a[data-page='next']"
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Video": "/<video_title>",
+        "User": "/users/<user_name>",
+        "Creator": "/creatos/<creator_name>",
+        "Gallery": "photos/gallery/<gallery_name>",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
+    DOMAIN: ClassVar[str] = "xhamster"
+    FOLDER_DOMAIN: ClassVar[str] = "xHamster"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "xhamster", "xHamster")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "gallery" in scrape_item.url.parts:
             return await self.gallery(scrape_item)
         if any(p in scrape_item.url.parts for p in ("creators", "user")):
@@ -56,23 +64,24 @@ class XhamsterCrawler(Crawler):
         scrape_item.setup_as_profile(title)
         is_user = "users" in scrape_item.url.parts
         last_part = "videos" if is_user else "exclusive"
-        base_url = PRIMARY_BASE_DOMAIN / profile_type / username
+        base_url = PRIMARY_URL / profile_type / username
 
         all_paths = ("videos", "photos")
         paths_to_scrape = next(((p,) for p in all_paths if p in scrape_item.url.parts), all_paths)
 
-        async def process_children(url: URL, selector: str, name: str):
-            async for soup in self.web_pager(url):
-                for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
-
         if "videos" in paths_to_scrape:
             videos_url = base_url / last_part
-            await process_children(videos_url, VIDEO_SELECTOR, last_part)
+            await self.process_children(scrape_item, videos_url, _SELECTORS.VIDEO, last_part)
 
         if is_user and "photos" in paths_to_scrape:
             gallerys_url = base_url / "photos"
-            await process_children(gallerys_url, GALLERY_SELECTOR, "galleries")
+            await self.process_children(scrape_item, gallerys_url, _SELECTORS.GALLERY, "galleries")
+
+    @error_handling_wrapper
+    async def process_children(self, scrape_item: ScrapeItem, url: URL, selector: str, name: str) -> None:
+        async for soup in self.web_pager(url):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
@@ -101,7 +110,7 @@ class XhamsterCrawler(Crawler):
         scrape_item.url = video.page_url
         scrape_item.possible_datetime = video.created
         _, resolution, download_url = max(video.get_formats())
-        link = PRIMARY_BASE_DOMAIN / "movies" / video.id / "download" / resolution
+        link = PRIMARY_URL / "movies" / video.id / "download" / resolution
 
         filename, ext = self.get_filename_and_ext(f"{video.id}.mp4")
         custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}][{resolution}]{ext}")
@@ -113,7 +122,7 @@ class XhamsterCrawler(Crawler):
         model_names = model_name_choices or []
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
 
         json_info = get_window_initials_json(soup)
         del soup
@@ -132,10 +141,10 @@ class XhamsterCrawler(Crawler):
 
 
 def get_window_initials_json(soup: BeautifulSoup) -> dict[str, dict]:
-    js_script = soup.select_one(JS_VIDEO_INFO_SELECTOR)
+    js_script = soup.select_one(_SELECTORS.JS_VIDEO_INFO)
     js_code: str = str(js_script)
     json_text: str = get_text_between(js_code, "window.initials=", "</script>").removesuffix(";").strip()
-    return javascript.parse_json_to_dict(json_text)  # type: ignore
+    return json.loads(json_text)
 
 
 class Format(NamedTuple):
@@ -170,5 +179,5 @@ class Video(XHamsterItem):
         for resolution, details in self.mp4_sources.items():
             height = int(resolution.removesuffix("p"))
             link: str = details["link"] if isinstance(details, dict) else details
-            url = parse_url(link, relative_to=PRIMARY_BASE_DOMAIN)
+            url = parse_url(link, relative_to=PRIMARY_URL)
             yield Format(height, f"{height}p", url)

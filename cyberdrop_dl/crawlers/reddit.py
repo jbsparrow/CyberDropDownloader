@@ -6,21 +6,20 @@ from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict
 import asyncprawcore
 from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
-from yarl import URL
 
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Generator
 
     from asyncpraw.models import Redditor, Submission, Subreddit
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class MediaFile(TypedDict):
@@ -43,22 +42,28 @@ class MediaMetadata(TypedDict):
     s: MediaSource  # Source
 
 
-class RedditCrawler(Crawler):
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
-    DEFAULT_POST_TITLE_FORMAT = "{title}"
-    primary_base_domain = URL("https://www.reddit.com/")
+PRIMARY_URL = AbsoluteHttpURL("https://www.reddit.com/")
 
-    def __init__(self, manager: Manager, site: str) -> None:
-        super().__init__(manager, site, "Reddit")
+
+class RedditCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "User": ("/user/<user>", "/user/<user>/...", "/u/<user>"),
+        "Subreddit:": "/r/<subreddit>",
+        "Direct links": "",
+    }
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "reddit", "redd.it"
+    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{title}"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "reddit"
+
+    def __post_init__(self) -> None:
         self.reddit_personal_use_script = self.manager.config_manager.authentication_data.reddit.personal_use_script
         self.reddit_secret = self.manager.config_manager.authentication_data.reddit.secret
         self.request_limiter = AsyncLimiter(5, 1)
         self.logged_in = False
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def async_startup(self) -> None:
-        await self.check_login(self.primary_base_domain / "login")
+        await self.check_login(PRIMARY_URL / "login")
         if not self.logged_in:
             return
 
@@ -71,13 +76,9 @@ class RedditCrawler(Crawler):
             check_for_updates=False,
         )
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if not self.logged_in:
             return
-
-        assert scrape_item.url.host
 
         async with cache_control_manager(self._session):
             if any(part in scrape_item.url.parts for part in ("user", "u")):
@@ -90,7 +91,6 @@ class RedditCrawler(Crawler):
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes user pages."""
         username = scrape_item.url.parts[-2] if len(scrape_item.url.parts) > 3 else scrape_item.url.name
         title = self.create_title(username)
         scrape_item.setup_as_profile(title)
@@ -100,12 +100,11 @@ class RedditCrawler(Crawler):
 
     @error_handling_wrapper
     async def subreddit(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes subreddit pages."""
         subreddit_name: str = scrape_item.url.name or scrape_item.url.parts[-2]
         title = self.create_title(subreddit_name)
         scrape_item.setup_as_profile(title)
         subreddit: Subreddit = await self._reddit.subreddit(subreddit_name)
-        submissions: AsyncIterator[Submission] = subreddit.new(limit=None)  # type: ignore
+        submissions: AsyncIterator[Submission] = subreddit.new(limit=None)
         await self.get_posts(scrape_item, submissions)
 
     @error_handling_wrapper
@@ -118,8 +117,6 @@ class RedditCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, submission: Submission) -> None:
-        """Scrapes posts."""
-
         try:
             link_str: str = submission.media["reddit_video"]["fallback_url"]
         except (KeyError, TypeError):
@@ -150,10 +147,9 @@ class RedditCrawler(Crawler):
         msg = f"found on {parent}"
         if parent != origin:
             msg += f" from {origin}"
-        log(f"Skipping nested thread URL {link} {msg}")
+        self.log(f"Skipping nested thread URL {link} {msg}")
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission) -> None:
-        """Scrapes galleries."""
         media_metadata: dict[str, MediaMetadata] = getattr(submission, "media_metadata", {})
         if not media_metadata:
             return
@@ -177,8 +173,7 @@ class RedditCrawler(Crawler):
         try:
             filename, ext = self.get_filename_and_ext(url.name)
         except NoExtensionError:
-            url = await self.get_final_location(url)
-            scrape_item.url = url
+            scrape_item.url = url = await self.get_final_location(url)
             with asyncpraw_error_handle():
                 post = await self._reddit.submission(url=str(url))
 
@@ -186,18 +181,16 @@ class RedditCrawler(Crawler):
 
         await self.handle_file(url, scrape_item, filename, ext)
 
-    async def get_final_location(self, url) -> URL:
-        headers = await self.client.get_head(self.domain, url)
+    async def get_final_location(self, url) -> AbsoluteHttpURL:
+        headers = await self.client.get_head(self.DOMAIN, url)
         content_type = headers.get("Content-Type", "")
         if any(s in content_type.lower() for s in ("html", "text")):
-            response, _ = await self.client._get_response_and_soup(self.domain, url)
-            return response.url
+            response, _ = await self.client._get_response_and_soup(self.DOMAIN, url)
+            return AbsoluteHttpURL(response.url)
         location = headers.get("location")
         if not location:
             raise ScrapeError(422)
         return self.parse_url(location)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
     async def check_login(self, _) -> None:

@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -28,20 +27,23 @@ _SELECTORS = Selectors()
 
 COLLECTION_PARTS = "category", "tag", "date"
 
+PRIMARY_URL = AbsoluteHttpURL("https://bestprettygirl.com/")
+
 
 class BestPrettyGirlCrawler(Crawler):
-    primary_base_domain = URL("https://bestprettygirl.com/")
-    next_page = "a.page-numbers.next"
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Collection": COLLECTION_PARTS,
+        "Gallery": "/<gallery_name>/",
+    }
+    DOMAIN: ClassVar[str] = "bestprettygirl.com"
+    FOLDER_DOMAIN: ClassVar[str] = "BestPrettyGirl"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    NEXT_PAGE_SELECTOR = "a.page-numbers.next"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "bestprettygirl.com", "BestPrettyGirl")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 1)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         is_date = len(scrape_item.url.parts) > 3
         if any(p in scrape_item.url.parts for p in COLLECTION_PARTS) or is_date:
             return await self.collection(scrape_item)
@@ -67,7 +69,7 @@ class BestPrettyGirlCrawler(Crawler):
                     title = "-".join(date_parts)
 
                 else:
-                    title: str = title_tag.get_text(strip=True)  # type: ignore
+                    title: str = title_tag.get_text(strip=True)
                     title = title.removeprefix("Tag:").removeprefix("Category:").strip()
                     title = self.create_title(f"{title} [{collection_type}]")
 
@@ -79,10 +81,10 @@ class BestPrettyGirlCrawler(Crawler):
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        og_title: str = soup.select_one(_SELECTORS.TITLE)["content"]  # type: ignore
-        date_str: str = soup.select_one(_SELECTORS.DATE)["content"]  # type: ignore
+        og_title: str = soup.select_one(_SELECTORS.TITLE)["content"]
+        date_str: str = soup.select_one(_SELECTORS.DATE)["content"]
         title = self.create_title(og_title)
         scrape_item.setup_as_album(title)
         scrape_item.possible_datetime = self.parse_date(date_str)

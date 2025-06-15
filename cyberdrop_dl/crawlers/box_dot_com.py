@@ -4,21 +4,20 @@ import json
 from collections import defaultdict
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import Field
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AliasModel
+from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class ItemType(StrEnum):
@@ -42,37 +41,33 @@ class SharedFolder(AliasModel):
 
 
 APP_DOMAIN = "app.box.com"
-DOWNLOAD_URL_BASE = URL("https://app.box.com/index.php?rm=box_download_shared_file")
+DOWNLOAD_URL_BASE = AbsoluteHttpURL("https://app.box.com/index.php?rm=box_download_shared_file")
 JS_SELECTOR = "script:contains('Box.postStreamData')"
+
+PRIMARY_URL = AbsoluteHttpURL("https://www.box.com")
 
 
 class BoxDotComCrawler(Crawler):
-    scrape_mapper_domain = APP_DOMAIN
-    primary_base_domain = URL("https://box.com")
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (APP_DOMAIN,)
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File or Folder": "app.box.com/s?sh=<share_code>"}
+    DOMAIN: ClassVar[str] = "box.com"
+    FOLDER_DOMAIN: ClassVar[str] = "Box"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "box.com", "Box")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if scrape_item.url.host == APP_DOMAIN and ("s" in scrape_item.url.parts or scrape_item.url.query.get("s")):
             return await self.file_or_folder(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
     async def file_or_folder(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file or folder from a public (shared) URL."""
-
         if "file" in scrape_item.url.parts and await self.check_complete_from_referer(scrape_item):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        js_text: str = soup.select_one(JS_SELECTOR).text  # type: ignore
+        js_text: str = soup.select_one(JS_SELECTOR).text
         _, _, data = js_text.removesuffix(";").partition("=")
 
         if not data:
@@ -158,8 +153,8 @@ class BoxDotComCrawler(Crawler):
         return sorted_mapping
 
 
-def get_canonical_url(shared_name: str, id: str, is_folder: bool = False) -> URL:
-    base = URL(f"https://app.box.com/s/{shared_name}")
+def get_canonical_url(shared_name: str, id: str, is_folder: bool = False) -> AbsoluteHttpURL:
+    base = AbsoluteHttpURL(f"https://app.box.com/s/{shared_name}")
     if is_folder:
         return base / "folder" / id
     return base / "file" / id

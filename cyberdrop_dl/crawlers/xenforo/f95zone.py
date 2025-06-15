@@ -1,29 +1,27 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class F95ZoneCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://f95zone.to")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://f95zone.to")
     post_selectors = PostSelectors(
         date=Selector("time", "data-time"),
         number=Selector("a[class=u-concealed]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    domain = "f95zone"
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "F95Zone")
+    DOMAIN: ClassVar[str] = "f95zone"
+    FOLDER_DOMAIN: ClassVar[str] = "F95Zone"
 
     def is_confirmation_link(self, link: URL) -> bool:
         return "masked" in link.parts or super().is_confirmation_link(link)
@@ -33,7 +31,7 @@ class F95ZoneCrawler(XenforoCrawler):
         """Override to handle protected link confirmation."""
         async with self.request_limiter:
             data = ({"xhr": "1", "download": "1"},)
-            JSON_Resp = await self.client.post_data(self.domain, link, data=data)
+            JSON_Resp = await self.client.post_data(self.DOMAIN, link, data=data)
 
         if JSON_Resp["status"] == "ok":
             return self.parse_url(JSON_Resp["msg"])

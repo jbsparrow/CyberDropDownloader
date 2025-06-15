@@ -1,28 +1,25 @@
 from __future__ import annotations
 
 import asyncio
-import calendar
 import json
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, NewType
+from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths, TimeStamp
+from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
-
-
-TimeStamp = NewType("TimeStamp", int)
 
 
 class Selectors:
@@ -51,7 +48,7 @@ class Card:
     name: str
     number_str: str
     set: CardSet
-    download_url: URL
+    download_url: AbsoluteHttpURL
 
     @property
     def full_name(self) -> str:
@@ -78,7 +75,7 @@ class SimpleCard:
     number_str: str  # This can actually contain letters as well, but the oficial name is `number`
     set_name: str
     set_abbr: str
-    download_url: URL
+    download_url: AbsoluteHttpURL
 
 
 @dataclass(slots=True)
@@ -97,21 +94,20 @@ class CardSet:
         return f"{self.abbr}, {self.set_series_code}"
 
 
-class PkmncardsCrawler(Crawler):
-    primary_base_domain = URL("https://pkmncards.com")
-    next_page_selector = _SELECTORS.NEXT_PAGE
+PRIMARY_URL = AbsoluteHttpURL("https://pkmncards.com")
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "pkmncards", "Pkmncards")
+
+class PkmncardsCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Card": "/card/...", "Set": "/set/...", "Series": "/series/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
+    DOMAIN: ClassVar[str] = "pkmncards"
+
+    def __post_init__(self) -> None:
         self.known_sets: dict[str, CardSet] = {}
         self.set_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
-
         if len(scrape_item.url.parts) > 2:
             if "card" in scrape_item.url.parts:
                 return await self.card(scrape_item)
@@ -130,20 +126,20 @@ class PkmncardsCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         # This is just to set the max children limit. `handle_card` will add the actual title
         scrape_item.setup_as_profile("")
-        page_url = self.primary_base_domain / "series" / scrape_item.url.parts[2]
+        page_url = PRIMARY_URL / "series" / scrape_item.url.parts[2]
         await self._iter_from_url(scrape_item, page_url)
 
     @error_handling_wrapper
     async def card_set(self, scrape_item: ScrapeItem) -> None:
         scrape_item.setup_as_album("")
-        page_url = self.primary_base_domain / "set" / scrape_item.url.parts[2]
+        page_url = PRIMARY_URL / "set" / scrape_item.url.parts[2]
         await self._iter_from_url(scrape_item, page_url)
 
-    async def _iter_from_url(self, scrape_item: ScrapeItem, url: URL) -> None:
+    async def _iter_from_url(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL) -> None:
         page_url = url.with_query(sort="date", ord="auto", display="images")
         async for soup in self.web_pager(page_url):
             for thumb in soup.select(_SELECTORS.CARD):
-                parts: tuple[str, str, str] = thumb.select_one("img")["src"], thumb["href"], thumb["title"]  # type: ignore
+                parts: tuple[str, str, str] = thumb.select_one("img")["src"], thumb["href"], thumb["title"]
                 link_str, card_page_url_str, title = parts
                 card_page_url = self.parse_url(card_page_url_str)
                 download_url = self.parse_url(link_str)
@@ -155,11 +151,11 @@ class PkmncardsCrawler(Crawler):
     @error_handling_wrapper
     async def card(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        name = soup.select_one(_SELECTORS.CARD_NAME).text  # type: ignore
-        number = soup.select_one(_SELECTORS.CARD_NUMBER).text  # type: ignore
-        link_str: str = soup.select_one(_SELECTORS.CARD_DOWNLOAD)["href"]  # type: ignore
+        name = soup.select_one(_SELECTORS.CARD_NAME).text
+        number = soup.select_one(_SELECTORS.CARD_NUMBER).text
+        link_str: str = soup.select_one(_SELECTORS.CARD_DOWNLOAD)["href"]
         link = self.parse_url(link_str)
         card_set = create_set(soup)
         card = Card(name, number, card_set, link)
@@ -178,11 +174,10 @@ class PkmncardsCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def handle_simple_card(self, scrape_item: ScrapeItem, simple_card: SimpleCard):
-        @create_task_id
         @error_handling_wrapper
         async def get_card_set(self, scrape_item: ScrapeItem):
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
             return create_set(soup)
 
         async with self.set_locks[simple_card.set_abbr]:
@@ -199,7 +194,7 @@ class PkmncardsCrawler(Crawler):
         scrape_item.add_children()
 
 
-def create_simple_card(title: str, download_url: URL) -> SimpleCard:
+def create_simple_card(title: str, download_url: AbsoluteHttpURL) -> SimpleCard:
     """Over-complicated function to parse the information of a card from the title of a page or the alt-title of a thumbnail."""
 
     # ex: Fuecoco · Scarlet & Violet Promos (SVP) #002
@@ -227,16 +222,16 @@ def create_simple_card(title: str, download_url: URL) -> SimpleCard:
 def create_set(soup: Tag) -> CardSet:
     tag = soup.select_one(_SELECTORS.SET_SERIES_CODE)
     # Some sets do not have series code
-    set_series_code: str | None = tag.get_text(strip=True) if tag else None  # type: ignore
-    set_info: dict[str, list[dict]] = json.loads(soup.select_one(_SELECTORS.SET_INFO).text)  # type: ignore
+    set_series_code: str | None = tag.get_text(strip=True) if tag else None
+    set_info: dict[str, list[dict]] = json.loads(css.select_one(soup, _SELECTORS.SET_INFO).text)
     release_date: int | None = None
     for item in set_info["@graph"]:
         if iso_date := item.get("datePublished"):
-            release_date = calendar.timegm(datetime.fromisoformat(iso_date).timetuple())
+            release_date = to_timestamp(datetime.fromisoformat(iso_date))
             break
 
-    set_abbr = soup.select_one(_SELECTORS.SET_ABBR).text  # type: ignore
-    set_name = soup.select_one(_SELECTORS.SET_NAME).text  # type: ignore
+    set_abbr = css.select_one(soup, _SELECTORS.SET_ABBR).text
+    set_name = css.select_one(soup, _SELECTORS.SET_NAME).text
 
     if not release_date:
         raise ScrapeError(422)

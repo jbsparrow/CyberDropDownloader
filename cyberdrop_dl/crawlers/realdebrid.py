@@ -1,32 +1,31 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from multidict import MultiDict
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.managers.real_debrid.api import RATE_LIMIT
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
+
+PRIMARY_URL = AbsoluteHttpURL("https://real-debrid.com")
 
 
 class RealDebridCrawler(Crawler):
-    primary_base_domain = URL("https://real-debrid.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "real-debrid"
+    FOLDER_DOMAIN: ClassVar[str] = "RealDebrid"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "real-debrid", "RealDebrid")
+    def __post_init__(self) -> None:
         self.headers = {}
         self.request_limiter = AsyncLimiter(RATE_LIMIT, 60)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         scrape_item.url = await self.get_original_url(scrape_item)
         if self.manager.real_debrid_manager.is_supported_folder(scrape_item.url):
             return await self.folder(scrape_item)
@@ -34,10 +33,9 @@ class RealDebridCrawler(Crawler):
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a folder."""
-        log(f"Scraping folder with RealDebrid: {scrape_item.url}", 20)
+        self.log(f"Scraping folder with RealDebrid: {scrape_item.url}", 20)
         folder_id = self.manager.real_debrid_manager.guess_folder(scrape_item.url)
-        title = self.create_title(f"{folder_id} [{scrape_item.url.host.lower()}]", folder_id)  # type: ignore
+        title = self.create_title(f"{folder_id} [{scrape_item.url.host.lower()}]", folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)
 
         async with self.request_limiter:
@@ -50,7 +48,6 @@ class RealDebridCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file."""
         original_url = database_url = debrid_url = scrape_item.url
         password = original_url.query.get("password", "")
 
@@ -58,7 +55,7 @@ class RealDebridCrawler(Crawler):
             return
 
         self_hosted = self.is_self_hosted(original_url)
-        host = original_url.host.lower()  # type: ignore
+        host = original_url.host.lower()
 
         if not self_hosted:
             title = self.create_title(f"files [{host}]")
@@ -69,12 +66,12 @@ class RealDebridCrawler(Crawler):
         if await self.check_complete_from_referer(debrid_url):
             return
 
-        log(f"Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}", 10)
+        self.log(f"Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}", 10)
 
         if not self_hosted:
             # Some hosts use query params or fragment as id or password (ex: mega.nz)
             # This save the query and fragment as parts of the URL path since DB lookups only use url_path
-            database_url = self.primary_base_domain / host / original_url.path[1:]
+            database_url = PRIMARY_URL / host / original_url.path[1:]
             if original_url.query:
                 query_params_list = [item for pair in original_url.query.items() for item in pair]
                 database_url = database_url / "query" / "/".join(query_params_list)
@@ -85,15 +82,13 @@ class RealDebridCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(debrid_url.name)
         await self.handle_file(database_url, scrape_item, filename, ext, debrid_link=debrid_url)
 
-    def is_self_hosted(self, url: URL) -> bool:
-        assert url.host
-        return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.domain in url.host
+    def is_self_hosted(self, url: AbsoluteHttpURL) -> bool:
+        return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.DOMAIN in url.host
 
-    async def get_original_url(self, scrape_item: ScrapeItem) -> URL:
-        assert scrape_item.url.host
-        log(f"Input URL: {scrape_item.url}")
-        if not self.is_self_hosted(scrape_item.url) or self.domain not in scrape_item.url.host:
-            log(f"Parsed URL: {scrape_item.url}")
+    async def get_original_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:
+        self.log(f"Input URL: {scrape_item.url}")
+        if not self.is_self_hosted(scrape_item.url) or self.DOMAIN not in scrape_item.url.host:
+            self.log(f"Parsed URL: {scrape_item.url}")
             return scrape_item.url
 
         parts_dict: dict[str, list[str]] = {"parts": [], "query": [], "frag": []}
@@ -112,6 +107,10 @@ class RealDebridCrawler(Crawler):
             query[parts_dict["query"][i]] = parts_dict["query"][i + 1]
 
         frag = parts_dict["frag"][0] if parts_dict["frag"] else None
-        parsed_url = URL(f"https://{original_domain}/{path}", encoded="%" in path).with_query(query).with_fragment(frag)
-        log(f"Parsed URL: {parsed_url}")
+        parsed_url = (
+            AbsoluteHttpURL(f"https://{original_domain}/{path}", encoded="%" in path)
+            .with_query(query)
+            .with_fragment(frag)
+        )
+        self.log(f"Parsed URL: {parsed_url}")
         return parsed_url

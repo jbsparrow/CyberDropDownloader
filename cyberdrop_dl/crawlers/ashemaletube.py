@@ -3,20 +3,19 @@ from __future__ import annotations
 import json
 import re
 from enum import StrEnum
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -69,21 +68,25 @@ TITLE_SELECTOR_MAP = {
 }
 
 TITLE_TRASH = "Shemale Porn Videos - Trending"
+PRIMARY_URL = AbsoluteHttpURL("https://www.ashemaletube.com")
 
 
 class AShemaleTubeCrawler(Crawler):
-    primary_base_domain = URL("https://www.ashemaletube.com")
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Playlist": "/playlists/...",
+        "Video": "/videos/...",
+        "Model": ("/creators/...", "/model/...", "/pornstars/..."),
+        "User": "/profiles/...",
+    }
+    DOMAIN: ClassVar[str] = "ashemaletube"
+    FOLDER_DOMAIN: ClassVar[str] = "aShemaleTube"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "ashemaletube", "aShemaleTube")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
             if "galleries" in scrape_item.url.parts:
                 return await self.gallery(scrape_item)
@@ -136,7 +139,7 @@ class AShemaleTubeCrawler(Crawler):
         title_elem = soup.select_one(TITLE_SELECTOR_MAP[collection_type])
         if not title_elem:
             raise ScrapeError(401)
-        collection_title: str = title_elem.get_text(strip=True)  # type: ignore
+        collection_title: str = title_elem.get_text(strip=True)
         collection_title = collection_title.replace(TITLE_TRASH, "").strip()
         collection_title = self.create_title(f"{collection_title} [{collection_type}]")
         return collection_title
@@ -146,7 +149,7 @@ class AShemaleTubeCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item.url):
             return
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
         img_item = soup.select_one(_SELECTORS.IMAGE_ITEM)
         if not img_item:
             raise ScrapeError(404)
@@ -155,9 +158,9 @@ class AShemaleTubeCrawler(Crawler):
     @error_handling_wrapper
     async def proccess_image(self, scrape_item: ScrapeItem, img_tag: Tag) -> None:
         if image := img_tag.select_one("img"):
-            link_str: str = image["src"]  # type: ignore
+            link_str: str = image["src"]
         else:
-            style: str = img_tag.select_one("a")["style"]  # type: ignore
+            style: str = img_tag.select_one("a")["style"]
             link_str = get_text_between(style, "url('", "');")
         url = self.parse_url(link_str).with_query(None)
         filename, ext = self.get_filename_and_ext(url.name)
@@ -167,12 +170,12 @@ class AShemaleTubeCrawler(Crawler):
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         video_id: str = scrape_item.url.parts[2]
-        canonical_url = self.primary_base_domain / "videos" / video_id
+        canonical_url = PRIMARY_URL / "videos" / video_id
         if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
 
         if soup.select_one(_SELECTORS.LOGIN_REQUIRED):
             raise ScrapeError(401)
@@ -188,7 +191,7 @@ class AShemaleTubeCrawler(Crawler):
             if "uploadDate" in json_data:
                 scrape_item.possible_datetime = self.parse_date(json_data["uploadDate"])
 
-        title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()  # type: ignore
+        title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()
         link = self.parse_url(best_format.link_str)
 
         scrape_item.url = canonical_url
@@ -198,9 +201,6 @@ class AShemaleTubeCrawler(Crawler):
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
         )
-
-
-"""~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
 def get_best_quality(info_dict: dict) -> Format:
