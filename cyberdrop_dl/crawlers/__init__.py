@@ -6,7 +6,6 @@ from cyberdrop_dl import env
 from .acidimg import AcidImgCrawler
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
-from .bestprettygirl import BestPrettyGirlCrawler
 from .box_dot_com import BoxDotComCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
@@ -88,6 +87,7 @@ from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
 from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
+from .wordpress import *  # noqa: F403
 from .xbunkr import XBunkrCrawler
 from .xenforo import (
     AllPornComixCrawler,

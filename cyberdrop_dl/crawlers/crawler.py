@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import field
-from datetime import datetime
 from functools import partial, wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
@@ -144,6 +144,8 @@ class Crawler(ABC):
             if path_name != "Direct links":
                 assert paths, f"{cls.__name__} has not paths for {path_name}"
 
+            if path_name.startswith("*"):  # note
+                return
             if isinstance(paths, str):
                 paths = (paths,)
             for path in paths:
@@ -339,21 +341,25 @@ class Crawler(ABC):
                 break
         return title
 
+    @property
+    def separate_posts(self) -> bool:
+        return self.manager.config.download_options.separate_posts
+
     def create_separate_post_title(
         self,
         title: str | None = None,
         id: str | None = None,
-        date: datetime | int | None = None,
+        date: datetime.datetime | datetime.date | int | None = None,
         /,
     ) -> str:
-        if not self.manager.config.download_options.separate_posts:
+        if not self.separate_posts:
             return ""
         title_format = self.manager.config.download_options.separate_posts_format
         if title_format.strip().casefold() == "{default}":
             title_format = self.DEFAULT_POST_TITLE_FORMAT
         if isinstance(date, int):
-            date = datetime.fromtimestamp(date)
-        if isinstance(date, datetime):
+            date = datetime.datetime.fromtimestamp(date)
+        if isinstance(date, datetime.datetime | datetime.date):
             date_str = date.isoformat()
         else:
             date_str: str | None = date
