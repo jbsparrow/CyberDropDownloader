@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated, Literal, NewType, TypeVar
 
@@ -72,7 +73,7 @@ class Tag(Category):
 
 
 # TODO: Move to core `models.py`` module
-class SequenceModel(RootModel[list[_ModelT]]):
+class SequenceModel(RootModel[list[_ModelT]], Sequence[_ModelT]):
     def __len__(self) -> int:
         return len(self.root)
 

@@ -4,10 +4,10 @@ from typing import ClassVar
 
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
-from ._wordpress import WordPressGalleryCrawler
+from ._wordpress import WordPressBaseCrawler
 
 
-class BestPrettyGirlCrawler(WordPressGalleryCrawler):
+class BestPrettyGirlCrawler(WordPressBaseCrawler):
     DOMAIN: ClassVar[str] = "bestprettygirl.com"
     FOLDER_DOMAIN: ClassVar[str] = "BestPrettyGirl"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bestprettygirl.com/")

@@ -23,14 +23,15 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 from .models import Category, CategorySequence, ColletionType, Html, Post, PostSequence, Tag, TagSequence
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterable, Callable, Iterable
+    from collections.abc import AsyncGenerator, AsyncIterable, Callable, Iterable
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
 _POST_PER_REQUEST = 100
-_ModelT = TypeVar("_ModelT", bound=BaseModel)
+
 _T = TypeVar("_T")
+_ModelT = TypeVar("_ModelT", bound=BaseModel)
 _HTTP_URL_REGEX = re.compile(
     r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
 )  # Same as Xenforo
@@ -107,18 +108,18 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
 
     @final
     async def fetch_with_date_range(self, scrape_item: ScrapeItem, date_range: DateRange | None) -> None:
-        if scrape_item.url.path == "/posts":
-            return await self.all_posts(scrape_item, date_range)
-
-        if len(scrape_item.url.parts) == 3:
-            for collection_type in ColletionType:
-                if collection_type in scrape_item.url.parts:
-                    return await self.collection(scrape_item, collection_type, date_range)
-
-        return await self.post(scrape_item)
+        match scrape_item.url.parts[1:3]:
+            case ["posts"]:
+                return await self.all_posts(scrape_item, date_range)
+            case [ColletionType.CATEGORY.value, _]:
+                return await self.category_or_tag(scrape_item, ColletionType.CATEGORY, date_range)
+            case [ColletionType.TAG.value, _]:
+                return await self.category_or_tag(scrape_item, ColletionType.TAG, date_range)
+            case _:
+                return await self.post(scrape_item)
 
     @abstractmethod
-    async def collection(
+    async def category_or_tag(
         self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: DateRange | None = None
     ) -> None: ...
 
@@ -129,7 +130,7 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
     async def all_posts(self, scrape_item: ScrapeItem, date_range: DateRange | None = None) -> None: ...
 
     @abstractmethod
-    async def post_pager(self, api_url: AbsoluteHttpURL) -> AsyncIterable[Post]: ...
+    async def post_pager(self, api_url: AbsoluteHttpURL) -> AsyncGenerator[Post]: ...
 
     def extract_links(self, html: Html) -> Iterable[AbsoluteHttpURL]:
         soup = BeautifulSoup(html, "html.parser")
@@ -184,7 +185,7 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
 
     @final
     async def iter_posts(self, scrape_item: ScrapeItem, api_url: AbsoluteHttpURL) -> None:
-        async for post in self.post_pager(api_url):
+        async for post in self.post_pager(api_url):  # type: ignore
             new_scrape_item = scrape_item.create_child(self.parse_url(post.link))
             await self.handle_post(new_scrape_item, post)
             scrape_item.add_children()
@@ -209,7 +210,7 @@ class WordPressAPICrawler(WordPressBaseCrawler, is_abc=True):
         return model_cls.model_validate_json(json_text)
 
     @error_handling_wrapper
-    async def collection(
+    async def category_or_tag(
         self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: DateRange | None = None
     ) -> None:
         if colletion_type is ColletionType.CATEGORY:
@@ -265,7 +266,7 @@ class WordPressAPICrawler(WordPressBaseCrawler, is_abc=True):
 
 class WordPressSoupCrawler(WordPressBaseCrawler, is_abc=True):
     @abstractmethod
-    async def collection(
+    async def category_or_tag(
         self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: DateRange | None = None
     ) -> None: ...
 

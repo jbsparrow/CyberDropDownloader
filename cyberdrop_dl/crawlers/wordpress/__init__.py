@@ -6,13 +6,13 @@ from typing import NamedTuple, TypeVar
 from cyberdrop_dl.crawlers.crawler import SupportedDomains
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
-from ._wordpress import WordPressAPICrawler, WordPressCrawler
+from ._wordpress import WordPressAPICrawler, WordPressBaseCrawler
 from .bestprettygirl import BestPrettyGirlCrawler
 
-_CrawlerT = TypeVar("_CrawlerT", bound=WordPressCrawler)
+_CrawlerT = TypeVar("_CrawlerT", bound=WordPressBaseCrawler)
 _SITE_URLS = []
 
-CRAWLERS_MAP: dict[str, WordPressCrawler] = {}
+CRAWLERS_MAP: dict[str, type[WordPressBaseCrawler]] = {}
 
 
 class Site(NamedTuple):
