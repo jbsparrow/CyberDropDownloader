@@ -11,6 +11,7 @@ from .box_dot_com import BoxDotComCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
 from .buzzheavier import BuzzHeavierCrawler
+from .camwhores_dot_tv import CamwhoresTVCrawler
 from .catbox import CatboxCrawler
 from .coomer import CoomerCrawler
 from .crawler import Crawler
