@@ -33,7 +33,7 @@ class TitsInTopsCrawler(XenforoCrawler):
     def pre_filter_link(self, link: str) -> str:
         return link.replace("index.php?", "index.php/").replace("index.php%3F", "index.php/")
 
-    def is_valid_post_link(self, link_obj: Tag) -> bool:
+    def is_image_or_attachment(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
         text = css.get_text(link_obj)
         if "view attachment" in text.lower():
