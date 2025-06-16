@@ -61,14 +61,14 @@ VALID_RESOLUTION_NAMES = "4K", "8K", "Unknown"
 
 @dataclass(slots=True, frozen=True)
 class PlaceHolderConfig:
-    file_id: bool = True
-    video_codec: bool = True
-    audio_codec: bool = True
-    resolution: bool = True
-    hash: bool = True
+    include_file_id: bool = True
+    include_video_codec: bool = True
+    include_audio_codec: bool = True
+    include_resolution: bool = True
+    include_hash: bool = True
 
 
-config_include = PlaceHolderConfig()
+_placeholder_config = PlaceHolderConfig()
 
 
 class CrawlerInfo(NamedTuple):
@@ -570,14 +570,14 @@ class Crawler(ABC):
         stem = Path(clean_name).stem.removesuffix(".")  # remove extensions (if any)
         extra_info: list[str] = []
 
-        if config_include.file_id and file_id:
+        if _placeholder_config.include_file_id and file_id:
             extra_info.append(file_id)
-        if config_include.video_codec and video_codec:
+        if _placeholder_config.include_video_codec and video_codec:
             extra_info.append(video_codec)
-        if config_include.audio_codec and audio_codec:
+        if _placeholder_config.include_audio_codec and audio_codec:
             extra_info.append(audio_codec)
 
-        if config_include.resolution and resolution:
+        if _placeholder_config.include_resolution and resolution:
             if isinstance(resolution, str):
                 if not resolution.removesuffix("p").isdigit():
                     assert resolution in VALID_RESOLUTION_NAMES, f"Invalid: {resolution = }"
@@ -585,7 +585,7 @@ class Crawler(ABC):
             else:
                 extra_info.append(f"{resolution}p")
 
-        if config_include.hash and hash_string:
+        if _placeholder_config.include_hash and hash_string:
             assert any(hash_string.startswith(x) for x in HASH_PREFIXES), f"Invalid: {hash_string = }"
             extra_info.append(hash_string)
 
