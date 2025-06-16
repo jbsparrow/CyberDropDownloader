@@ -11,6 +11,7 @@ from .box_dot_com import BoxDotComCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
 from .buzzheavier import BuzzHeavierCrawler
+from .camwhores_dot_tv import CamwhoresTVCrawler
 from .catbox import CatboxCrawler
 from .coomer import CoomerCrawler
 from .crawler import Crawler
@@ -20,6 +21,7 @@ from .dirtyship import DirtyShipCrawler
 from .doodstream import DoodStreamCrawler
 from .dropbox import DropboxCrawler
 from .e621 import E621Crawler
+from .efukt import EfuktCrawler
 from .ehentai import EHentaiCrawler
 from .eightmuses import EightMusesCrawler
 from .eporner import EpornerCrawler
@@ -109,7 +111,7 @@ from .youjizz import YouJizzCrawler
 
 ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
 ALL_CRAWLERS = ALL_CRAWLERS - {Crawler}
-DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MissAVCrawler, MegaNzCrawler, FikFapCrawler}
+DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler, FikFapCrawler}
 CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":

@@ -16,7 +16,12 @@ from cyberdrop_dl.data_structures.url_objects import FORUM, AbsoluteHttpURL, Scr
 from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log, log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, is_absolute_http_url, remove_trailing_slash
+from cyberdrop_dl.utils.utilities import (
+    error_handling_wrapper,
+    get_text_between,
+    is_absolute_http_url,
+    remove_trailing_slash,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
@@ -57,6 +62,7 @@ class PostSelectors(Selector):
     links: Selector = Selector("a", "href")
     number: Selector = Selector("li[class=u-concealed] a", "href")
     videos: Selector = Selector("video source", "src")
+    redgifs: Selector = Selector("div[class*='iframe'][onclick*=\"loadMedia(this, '//redgifs\"]", "onclick")
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,7 +235,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         scrape_item.setup_as_post("")
         post_title = self.create_separate_post_title(None, str(post.number), post.date)
         scrape_item.add_to_parent_title(post_title)
-        posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]
+        posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos, self.hidden_redgifs]
         for scraper in posts_scrapers:
             await scraper(scrape_item, post)
 
@@ -260,6 +266,12 @@ class XenforoCrawler(Crawler, is_abc=True):
         selector = post.selectors.attachments
         attachments = post.content.select(selector.attribute)
         await self.process_children(scrape_item, attachments, selector.attribute)
+
+    async def hidden_redgifs(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+        selector = post.selectors.redgifs
+        for redgif in css.iselect(post.content, selector.element):
+            link_str = get_text_between(css.get_attr(redgif, selector.attribute), "loadMedia(this, '", "')")
+            await self.process_child(scrape_item, link_str)
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of forum thread pages."""
