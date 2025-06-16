@@ -204,13 +204,10 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
     domains, all_domains = domains_prompt(domain_message="Select site(s) to import cookies from:")
     if domains == []:
         return
-    browsers = browser_prompt()
-
-    if ALL_CHOICE.value in browsers:
-        browsers = list(BROWSERS)
+    browser = BROWSERS(browser_prompt())
 
     if dry_run:
-        manager.config_manager.settings_data.browser_cookies.browsers = browsers
+        manager.config_manager.settings_data.browser_cookies.browser = browser
         current_sites = set(manager.config_manager.settings_data.browser_cookies.sites)
         new_sites = current_sites - set(all_domains)
         if domains == supported_forums:
@@ -231,7 +228,7 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
         manager.config_manager.settings_data.browser_cookies.sites = sorted(new_sites)
         return
 
-    get_cookies_from_browsers(manager, browsers=browsers, domains=domains)
+    get_cookies_from_browsers(manager, browser=browser, domains=domains)
     console.print("Import finished", style="green")
     basic_prompts.enter_to_continue()
 
@@ -260,7 +257,7 @@ def browser_prompt() -> str:
         for browser in BROWSERS
         if browser not in unsupported_browsers
     ]
-    return basic_prompts.ask_checkbox(choices, message="Select the browser(s) for extraction:")
+    return basic_prompts.ask_choice(choices, message="Select the browser(s) for extraction:")
 
 
 """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CACHE PROMPTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

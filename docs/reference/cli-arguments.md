@@ -342,7 +342,4 @@ ui_options:
   --scraping-item-limit SCRAPING_ITEM_LIMIT
   --vi-mode, --no-vi-mode
 
-deprecated:
-  --no-ui                                                                       disables the UI/progress view entirely
-
 ```
