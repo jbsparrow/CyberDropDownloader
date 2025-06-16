@@ -267,6 +267,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         if next_page:
             return self.pre_filter_link(next_page)
 
+    @error_handling_wrapper
     async def process_children(
         self, scrape_item: ScrapeItem, links: list[Tag], selector: str, *, embeds: bool = False
     ) -> None:
