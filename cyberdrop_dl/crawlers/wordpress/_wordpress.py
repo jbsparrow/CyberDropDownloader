@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime
 import itertools
 import re
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeVar, final
 
 import bs4
@@ -18,14 +18,14 @@ from pydantic import BaseModel
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 from .models import Category, CategorySequence, ColletionType, Html, Post, PostSequence, Tag, TagSequence
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterable, Callable, Iterable
+    from collections.abc import AsyncIterable, Callable, Generator, Iterable
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
@@ -40,14 +40,91 @@ _P = ParamSpec("_P")
 _R = TypeVar("_R")
 
 
-def no_error(fc: Callable[_P, _R]) -> Callable[_P, _R | None]:
+def no_error(func: Callable[_P, _R]) -> Callable[_P, _R | None]:
     def call(*args, **kwargs) -> _R | None:
         try:
-            return fc(*args, **kwargs)
+            return func(*args, **kwargs)
         except Exception:
             return
 
     return call
+
+
+class CssMixin(ABC):
+    @abstractmethod
+    def iget(self, html: bs4.Tag) -> Generator[str]: ...
+
+    def __call__(self, html: bs4.Tag) -> str:
+        try:
+            return next(self.iget(html))
+        except StopIteration:
+            raise ValueError from None
+
+    get = no_error(__call__)
+
+
+class CssAttributeSelector(NamedTuple):
+    selector: str
+    attribute: str = "href"
+
+    @property
+    def full_match_selector(self) -> str:
+        return f"{self.selector}[{self.attribute}]"
+
+    def iget(self, html: bs4.Tag) -> Generator[str]:
+        for tag in css.iselect(html, self.full_match_selector):
+            yield css.get_attr(tag, self.attribute)
+
+
+class MultiCssAttributeSelector(NamedTuple):
+    selector: str
+    attributes: list[str]
+
+    def iget(self, html: bs4.Tag) -> Generator[str]:
+        if tag := html.select_one(self.selector):
+            for attr in self.attributes:
+                if value := css.get_attr_or_none(tag, attr):
+                    if value == "srcset":
+                        yield _parse_srcset(value)
+                    else:
+                        yield value
+
+
+class Selector(CssAttributeSelector, CssMixin): ...
+
+
+class MultiSelector(MultiCssAttributeSelector, CssMixin): ...
+
+
+class CssAttributeSelectorList(list[Selector], CssMixin):
+    def __init__(self, *selectors: list[str] | tuple[str] | tuple[str, str]) -> None:
+        selectors_ = [Selector(*s) for s in selectors]
+        super().__init__(selectors_)
+
+    def iget(self, html: bs4.Tag) -> Generator[str]:
+        for s in self:
+            if value := s.get(html):
+                yield value
+
+
+SelectorList = CssAttributeSelectorList
+
+
+class Selectors:
+    POST_CONTENT: ClassVar = Selector("#content, .entry-content [id*='post-']")
+    POST_ID: ClassVar = SelectorList(
+        ["[class*='postid-']", "class"],
+        ["[id*='post-']", "id"],
+    )
+    IMG: ClassVar = MultiSelector("img[class*='wp-image']", ["srcset", "src"])
+    POST_LINK_FROM_PAGE = Selector(".post a")
+    NEXT_PAGE = Selector("a.page-numbers.next")
+
+
+_SELECTORS = Selectors()
+_POST_ID_REGEX = re.compile(r"(?:postid-|post-)(\d+)")
+_iframes = Selector("iframe", "data-src")
+_images = MultiSelector("img", ["srcset", "data-src", "src"])
 
 
 class DateRange(NamedTuple):
@@ -137,10 +214,9 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
                 return await self.category_or_tag(scrape_item, ColletionType.TAG, date_range)
             case ["wp-json", *_]:
                 raise ValueError
-            case [year, month, day]:
-                date = no_error(datetime.datetime)(int(year), int(month), int(day))
-                if date:
-                    return await self.category_or_tag(scrape_item, ColletionType.TAG, date_range)
+
+        if _ := _match_date_from_path(scrape_item.url):
+            return await self.category_or_tag(scrape_item, ColletionType.TAG, date_range)
         return await self.post(scrape_item)
 
     @abstractmethod
@@ -302,7 +378,7 @@ class WordPressSoupCrawler(WordPressBaseCrawler, is_abc=True):
     ) -> None:
         title = self.create_title(f"{collection.description or collection.slug} [{collection._type}]")
         scrape_item.setup_as_profile(title)
-        await self.post_url_pager(scrape_item, 0, date_range)
+        await self.post_url_pager(scrape_item, date_range)
 
     async def post(self, scrape_item: ScrapeItem) -> None:
         soup = await self.__make_request(scrape_item.url)
@@ -311,38 +387,32 @@ class WordPressSoupCrawler(WordPressBaseCrawler, is_abc=True):
 
     def parse_post(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> Post:
         data = {
-            "post_id": 1,
+            "post_id": get_post_id(soup),
             "slug": scrape_item.url.name,
-            "title": css.select_one_get_text(soup, ".post-title"),
-            "date_gmt": css.select_one_get_text(soup, ".post-byline"),
+            "title": open_graph.get_title(soup),
+            "date_gmt": open_graph.get("published_time", soup),
             "link": str(scrape_item.url),
-            "content": str(css.select_one(soup, ".post-content")),
+            "content": _SELECTORS.POST_CONTENT(soup),
         }
         return Post.model_validate(data)
 
     async def all_posts(self, scrape_item: ScrapeItem, date_range: DateRange | None = None) -> None:
         scrape_item.setup_as_profile(self.create_title("Posts"))
-        await self.post_url_pager(scrape_item, 0, date_range)
+        await self.post_url_pager(scrape_item, date_range)
 
-    async def post_url_pager(
-        self, scrape_item: ScrapeItem, init_page: int | None = None, date_range: DateRange | None = None
-    ) -> None:
-        api_url = scrape_item.url.update_query(page=init_page or 1)
-        had_at_least_1_post = False
-        async for soup in self.web_pager(api_url):
-            n_post = 0
-            had_at_least_1_post = True
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, ""):
+    async def post_url_pager(self, scrape_item: ScrapeItem, date_range: DateRange | None = None) -> None:
+        async for soup in self.web_pager(scrape_item.url):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.POST_LINK_FROM_PAGE.selector):
+                if (
+                    date_range
+                    and (date_from_path := _match_date_from_path(new_scrape_item.url))
+                    and not date_range.is_in_range(date_from_path)
+                ):
+                    self.log(
+                        f"Skipping post {new_scrape_item.url} as it is out of date range. Post date: {date_from_path}"
+                    )
+                    continue
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-            if n_post < 10:
-                break
-        if not had_at_least_1_post:
-            raise ScrapeError(404)
-
-
-def _date_from_query_param(url: AbsoluteHttpURL, query_param: str) -> datetime.datetime | None:
-    if value := url.query.get(query_param):
-        return _parse_aware_datetime(value)
 
 
 @no_error
@@ -351,6 +421,20 @@ def _parse_aware_datetime(value: str) -> datetime.datetime:
     if parsed_date.tzinfo is None:
         parsed_date.replace(tzinfo=datetime.UTC)
     return parsed_date
+
+
+@no_error
+def _match_date_from_path(url: AbsoluteHttpURL) -> datetime.datetime | None:
+    match url.parts[1:]:
+        case [year, month, day]:
+            return datetime.datetime(int(year), int(month), int(day))
+        case _:
+            return
+
+
+def _date_from_query_param(url: AbsoluteHttpURL, query_param: str) -> datetime.datetime | None:
+    if value := url.query.get(query_param):
+        return _parse_aware_datetime(value)
 
 
 # TODO: Move to utils
@@ -381,19 +465,21 @@ def _parse_srcset(srcset: str) -> str:
     return [src.split(" ")[0] for src in srcset.split(", ")][-1]
 
 
-def _iter_img_src(soup: bs4.Tag) -> Iterable[str]:
-    for image in css.iselect(soup, "img"):
-        if srcset := css.get_attr_or_none(image, "srcset"):
-            yield _parse_srcset(srcset)
-        elif src := css.get_attr_or_none(image, "src"):
-            yield src
-
-
 def _iter_links(html: Html, use_regex: bool) -> itertools.chain[str]:
     soup = BeautifulSoup(html, "html.parser")
-    images = _iter_img_src(soup)
-    iframes = (css.get_attr(iframe, "data-src") for iframe in css.iselect(soup, "iframe[data-src]"))
+    images = _images.iget(soup)
+    iframes = _iframes.iget(soup)
     if use_regex:
         regex = (match.group() for match in re.finditer(_HTTP_URL_REGEX, html))
         return itertools.chain(images, iframes, regex)
     return itertools.chain(images, iframes)
+
+
+@no_error
+def get_post_id(soup: BeautifulSoup) -> int | None:
+    for id_text in _SELECTORS.POST_ID.iget(soup):
+        if id_text and (match := _POST_ID_REGEX.search(id_text)):
+            post_id = match.group(1)
+            for trash in ("post", "id", "-"):
+                post_id = post_id.removeprefix(trash)
+            return int(post_id)
