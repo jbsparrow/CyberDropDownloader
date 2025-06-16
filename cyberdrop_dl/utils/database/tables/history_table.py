@@ -228,6 +228,8 @@ class HistoryTable:
     async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str | None:
         """Returns the downloaded filename from the database."""
 
+        if media_item.is_segment:
+            return media_item.filename
         url_path = get_db_path(media_item.url, str(media_item.referer))
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(

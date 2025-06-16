@@ -122,12 +122,7 @@ class CommandLineOnlyArgs(BaseModel):
         return value.lower()
 
 
-class DeprecatedArgs(BaseModel):
-    no_ui: bool = Field(
-        False,
-        description="disables the UI/progress view entirely",
-        deprecated="'--no-ui' is deprecated and will be removed in the future. Use '--ui disabled'",
-    )
+class DeprecatedArgs(BaseModel): ...
 
 
 class ParsedArgs(AliasModel):
@@ -170,9 +165,7 @@ class ParsedArgs(AliasModel):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
-            if self.deprecated_args.no_ui:
-                add_warning_msg_from("no_ui")
-                self.cli_only_args.ui = UIOptions.DISABLED
+            pass
 
         return warnings_to_emit
 
