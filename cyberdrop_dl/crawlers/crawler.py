@@ -568,7 +568,6 @@ class Crawler(ABC):
         calling_args = {name: value for name, value in locals().items() if value is not None and name not in ("self",)}
         clean_name = sanitize_filename(Path(name).as_posix().replace("/", "-"))  # remove OS separators (if any)
         stem = Path(clean_name).stem.removesuffix(".")  # remove extensions (if any)
-        truncate_len = constants.MAX_NAME_LENGTHS["FILE"] - len(ext)
         extra_info: list[str] = []
 
         if config_include.file_id and file_id:
@@ -590,26 +589,15 @@ class Crawler(ABC):
             assert any(hash_string.startswith(x) for x in HASH_PREFIXES), f"Invalid: {hash_string = }"
             extra_info.append(hash_string)
 
-        if extra_info:
-            extra_info_str = "".join(f"[{info}]" for info in extra_info)
-            clean_extra_info_str = sanitize_filename(extra_info_str)
-            if clean_extra_info_str != extra_info_str:
-                msg = (
-                    f"Custom filename creation for {self.FOLDER_DOMAIN} seems to be broken. "
-                    f"Important information was removed while creating a filename. "
-                    f"Please report this as a bug at {NEW_ISSUE_URL}:\n{calling_args}"
-                )
-                log(msg, 30)
-
-            if only_truncate_stem and (new_truncate_len := truncate_len - len(clean_extra_info_str) - 1) > 0:
-                truncated_stem = f"{truncate_str(stem, new_truncate_len)} {clean_extra_info_str}"
-            else:
-                truncated_stem = truncate_str(f"{stem} {clean_extra_info_str}", truncate_len)
-
-        else:
-            truncated_stem = truncate_str(stem, truncate_len)
-
-        return f"{truncated_stem}{ext}"
+        filename, extra_info_had_invalid_chars = make_custom_filename(stem, ext, extra_info, only_truncate_stem)
+        if extra_info_had_invalid_chars:
+            msg = (
+                f"Custom filename creation for {self.FOLDER_DOMAIN} seems to be broken. "
+                f"Important information was removed while creating a filename. "
+                f"Please report this as a bug at {NEW_ISSUE_URL}:\n{calling_args}"
+            )
+            log(msg, 30)
+        return filename
 
 
 def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
@@ -626,3 +614,21 @@ def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
 def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
     if scrape_item.url.path == "/":
         raise ValueError
+
+
+def make_custom_filename(stem: str, ext: str, extra_info: list[str], only_truncate_stem: bool) -> tuple[str, bool]:
+    truncate_len = constants.MAX_NAME_LENGTHS["FILE"] - len(ext)
+    invalid_extra_info_chars = False
+    if extra_info:
+        extra_info_str = "".join(f"[{info}]" for info in extra_info)
+        clean_extra_info_str = sanitize_filename(extra_info_str)
+        invalid_extra_info_chars = clean_extra_info_str != extra_info_str
+        if only_truncate_stem and (new_truncate_len := truncate_len - len(clean_extra_info_str) - 1) > 0:
+            truncated_stem = f"{truncate_str(stem, new_truncate_len)} {clean_extra_info_str}"
+        else:
+            truncated_stem = truncate_str(f"{stem} {clean_extra_info_str}", truncate_len)
+
+    else:
+        truncated_stem = truncate_str(stem, truncate_len)
+
+    return f"{truncated_stem}{ext}", invalid_extra_info_chars
