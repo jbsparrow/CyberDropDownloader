@@ -103,9 +103,18 @@ class DiscourseCrawler(MessageBoardCrawler, is_abc=True):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
-        if topic_id := _get_topic_id(scrape_item.url):
-            return await self.topic_from_id(scrape_item, topic_id)
-        raise ValueError
+
+        match scrape_item.url.parts[1:]:
+            case ["t", topic_id]:
+                return await self.topic_from_id(scrape_item, topic_id)
+            case ["t", topic_id, post_id]:
+                return await self.topic_from_id(scrape_item, topic_id, post_id)
+            case ["c", category_id]:
+                return await self.topic_from_id(scrape_item, category_id)
+            case ["c", category_id, topic_id]:
+                return await self.topic_from_id(scrape_item, category_id)
+            case _:
+                raise ValueError
 
     async def make_request(self, model_cls: type[_ModelT], path: str, params: dict[str, Any] | None = None) -> _ModelT:
         api_url = self.PRIMARY_URL.joinpath(path)
@@ -114,8 +123,10 @@ class DiscourseCrawler(MessageBoardCrawler, is_abc=True):
         return model_cls.model_validate_json(json_text, by_alias=True, by_name=True)
 
     @error_handling_wrapper
-    async def topic_from_id(self, scrape_item: ScrapeItem, topic_id: int) -> None:
-        init_post_number = _get_post_number(scrape_item.url)
+    async def topic_from_id(
+        self, scrape_item: ScrapeItem, topic_id: str | int, post_id: str | int | None = None
+    ) -> None:
+        init_post_number = int(post_id) if post_id else None
         if init_post_number and self.manager.config_manager.settings_data.download_options.scrape_single_forum_post:
             pass  # TODO: scrape single post
 
@@ -236,8 +247,3 @@ def _make_url_part_parser(
                 return
 
     return get_id
-
-
-_get_topic_id = _make_url_part_parser("t", 3)
-_get_post_number = _make_url_part_parser("t", 4)
-_get_category_id = _make_url_part_parser("c", 3)
