@@ -170,11 +170,7 @@ class ProgressManager:
         log_yellow(f"  Sent to Jdownloader: {self.scrape_stats_progress.sent_to_jdownloader:,}")
         log_yellow(f"  Skipped: {self.scrape_stats_progress.unsupported_urls_skipped:,}")
 
-        log_spacer(20, "")
-        log_cyan("Dupe Stats:")
-        log_yellow(f"  Newly Hashed: {self.hash_progress.hashed_files:,} files")
-        log_yellow(f"  Previously Hashed: {self.hash_progress.prev_hashed_files:,} files")
-        log_yellow(f"  Removed (Downloads): {self.hash_progress.removed_files:,} files")
+        self.print_dedupe_stats()
 
         log_spacer(20, "")
         log_cyan("Sort Stats:")
@@ -185,6 +181,13 @@ class ProgressManager:
 
         last_padding = log_failures(self.scrape_stats_progress.return_totals(), "Scrape Failures:")
         log_failures(self.download_stats_progress.return_totals(), "Download Failures:", last_padding)
+
+    def print_dedupe_stats(self) -> None:
+        log_spacer(20, "")
+        log_cyan("Dupe Stats:")
+        log_yellow(f"  Newly Hashed: {self.hash_progress.hashed_files:,} files")
+        log_yellow(f"  Previously Hashed: {self.hash_progress.prev_hashed_files:,} files")
+        log_yellow(f"  Removed (Downloads): {self.hash_progress.removed_files:,} files")
 
 
 def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_padding: int = 0) -> int:

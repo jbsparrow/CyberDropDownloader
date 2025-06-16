@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -26,11 +25,10 @@ def hash_directory_scanner(manager: Manager, path: Path) -> None:
     enter_to_continue()
 
 
-async def _hash_directory_scanner_helper(manager: Manager, path: Path):
-    start_time = time.perf_counter()
+async def _hash_directory_scanner_helper(manager: Manager, path: Path) -> None:
     await manager.async_db_hash_startup()
     await manager.hash_manager.hash_client.hash_directory(path)
-    manager.progress_manager.print_stats(start_time)
+    manager.progress_manager.print_dedupe_stats()
     await manager.async_db_close()
 
 
