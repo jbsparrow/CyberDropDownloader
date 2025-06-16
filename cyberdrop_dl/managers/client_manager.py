@@ -38,6 +38,9 @@ DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
     "65b7753c-528a": "SC Scrape Image",
     "5c4fb843-ece": "PixHost Removed Image",
+    "637be5da-11d2b": "eFukt Video removed",
+    "63a05f27-11d2b": "eFukt Video removed",
+    "5a56b09d-1485eb": "eFukt Video removed",
 }
 
 
@@ -221,9 +224,14 @@ class ClientManager:
         raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
-    def check_bunkr_maint(headers: Mapping[str, Any]) -> None:
-        if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
+    def check_content_length(headers: Mapping[str, Any]) -> None:
+        content_length, content_type = headers.get("Content-Length"), headers.get("Content-Type")
+        if content_length is None or content_type is None:
+            return
+        if content_length == "322509" and content_type == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
+        if content_length == "73003" and content_type == "video/mp4":
+            raise DownloadError(410)  # Placeholder video with text "Video removed" (efukt)
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:

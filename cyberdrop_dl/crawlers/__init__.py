@@ -21,6 +21,7 @@ from .dirtyship import DirtyShipCrawler
 from .doodstream import DoodStreamCrawler
 from .dropbox import DropboxCrawler
 from .e621 import E621Crawler
+from .efukt import EfuktCrawler
 from .ehentai import EHentaiCrawler
 from .eightmuses import EightMusesCrawler
 from .eporner import EpornerCrawler
