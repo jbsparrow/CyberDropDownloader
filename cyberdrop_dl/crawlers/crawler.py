@@ -68,6 +68,9 @@ class PlaceHolderConfig:
     hash: bool = True
 
 
+config_include = PlaceHolderConfig()
+
+
 class CrawlerInfo(NamedTuple):
     site: str
     primary_url: URL
@@ -563,20 +566,19 @@ class Crawler(ABC):
         only_truncate_stem: bool = True,
     ) -> str:
         calling_args = {name: value for name, value in locals().items() if value is not None and name not in ("self",)}
-        include = PlaceHolderConfig()
         clean_name = sanitize_filename(Path(name).as_posix().replace("/", "-"))  # remove OS separators (if any)
         stem = Path(clean_name).stem.removesuffix(".")  # remove extensions (if any)
         truncate_len = constants.MAX_NAME_LENGTHS["FILE"] - len(ext)
         extra_info: list[str] = []
 
-        if include.file_id and file_id:
+        if config_include.file_id and file_id:
             extra_info.append(file_id)
-        if include.video_codec and video_codec:
+        if config_include.video_codec and video_codec:
             extra_info.append(video_codec)
-        if include.audio_codec and audio_codec:
+        if config_include.audio_codec and audio_codec:
             extra_info.append(audio_codec)
 
-        if include.resolution and resolution:
+        if config_include.resolution and resolution:
             if isinstance(resolution, str):
                 if not resolution.removesuffix("p").isdigit():
                     assert resolution in VALID_RESOLUTION_NAMES, f"Invalid: {resolution = }"
@@ -584,7 +586,7 @@ class Crawler(ABC):
             else:
                 extra_info.append(f"{resolution}p")
 
-        if include.hash and hash_string:
+        if config_include.hash and hash_string:
             assert any(hash_string.startswith(x) for x in HASH_PREFIXES), f"Invalid: {hash_string = }"
             extra_info.append(hash_string)
 
