@@ -19,6 +19,7 @@ from yarl import URL
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
 from cyberdrop_dl.utils.logger import log, log_debug
+from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Generator
@@ -174,12 +175,14 @@ class DownloadClient:
 
         downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain, media_item)
         download_dir = self.get_download_dir(media_item)
-        media_item.partial_file = download_dir / f"{downloaded_filename}.part"
+        if media_item.is_segment:
+            media_item.partial_file = media_item.complete_file = download_dir / media_item.filename
+        else:
+            media_item.partial_file = download_dir / f"{downloaded_filename}.part"
 
         resume_point = 0
-        if media_item.partial_file and media_item.partial_file.exists():
-            resume_point = media_item.partial_file.stat().st_size if media_item.partial_file.exists() else 0
-            download_headers["Range"] = f"bytes={resume_point}-"
+        if media_item.partial_file and (size := await asyncio.to_thread(get_size_or_none, media_item.partial_file)):
+            download_headers["Range"] = f"bytes={size}-"
 
         await asyncio.sleep(self.manager.config_manager.global_settings_data.rate_limiting_options.total_delay)
 
@@ -209,14 +212,14 @@ class DownloadClient:
         async def process_response(resp: aiohttp.ClientResponse) -> bool:
             nonlocal resume_point
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
-                media_item.partial_file.unlink()
+                await asyncio.to_thread(media_item.partial_file.unlink)
 
             await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
 
             _ = get_content_type(media_item.ext, resp.headers)
 
-            media_item.filesize = int(resp.headers.get("Content-Length", "0"))
-            if not media_item.complete_file:
+            media_item.filesize = int(resp.headers.get("Content-Length", "0")) or None
+            if not media_item.complete_file and not media_item.is_segment:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
                 self.client_manager.check_bunkr_maint(resp.headers)
                 if skip:
@@ -240,16 +243,13 @@ class DownloadClient:
 
             task_id = media_item.task_id
             if task_id is None:
+                size = (media_item.filesize + resume_point) if media_item.filesize is not None else None
                 task_id = self.manager.progress_manager.file_progress.add_task(
-                    domain=domain,
-                    filename=media_item.filename,
-                    expected_size=media_item.filesize + resume_point,
+                    domain=domain, filename=media_item.filename, expected_size=size
                 )
                 media_item.set_task_id(task_id)
 
-            if media_item.partial_file.is_file():
-                resume_point = media_item.partial_file.stat().st_size
-                self.manager.progress_manager.file_progress.advance_file(task_id, resume_point)
+            self.manager.progress_manager.file_progress.advance_file(task_id, resume_point)
 
             await save_content(resp.content)
             return True
@@ -337,7 +337,10 @@ class DownloadClient:
 
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file."""
-        if self.manager.config_manager.settings_data.download_options.skip_download_mark_completed:
+        if (
+            self.manager.config_manager.settings_data.download_options.skip_download_mark_completed
+            and not media_item.is_segment
+        ):
             log(f"Download Removed {media_item.url} due to mark completed option", 10)
             self.manager.progress_manager.download_progress.add_skipped()
             # set completed path
@@ -353,17 +356,18 @@ class DownloadClient:
 
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
-            media_item.partial_file.rename(media_item.complete_file)
-            proceed = check_file_duration(media_item, self.manager)
-            await self.manager.db_manager.history_table.add_duration(domain, media_item)
-            if not proceed:
-                log(f"Download Skip {media_item.url} due to runtime restrictions", 10)
-                media_item.complete_file.unlink()
-                await self.mark_incomplete(media_item, domain)
-                self.manager.progress_manager.download_progress.add_skipped()
-                return False
-            await self.process_completed(media_item, domain)
-            await self.handle_media_item_completion(media_item, downloaded=True)
+            await asyncio.to_thread(media_item.partial_file.rename, media_item.complete_file)
+            if not media_item.is_segment:
+                proceed = check_file_duration(media_item, self.manager)
+                await self.manager.db_manager.history_table.add_duration(domain, media_item)
+                if not proceed:
+                    log(f"Download Skip {media_item.url} due to runtime restrictions", 10)
+                    await asyncio.to_thread(media_item.complete_file.unlink)
+                    await self.mark_incomplete(media_item, domain)
+                    self.manager.progress_manager.download_progress.add_skipped()
+                    return False
+                await self.process_completed(media_item, domain)
+                await self.handle_media_item_completion(media_item, downloaded=True)
         return downloaded
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -525,6 +529,7 @@ class DownloadClient:
         max_other_filesize = file_size_limits.maximum_other_size or float("inf")
         min_other_filesize = file_size_limits.minimum_other_size
 
+        assert media.filesize is not None
         if media.ext in FILE_FORMATS["Images"]:
             proceed = min_image_filesize < media.filesize < max_image_filesize
         elif media.ext in FILE_FORMATS["Videos"]:
