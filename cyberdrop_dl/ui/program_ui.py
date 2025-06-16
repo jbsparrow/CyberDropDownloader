@@ -97,7 +97,7 @@ class ProgramUI:
 
     def _scan_and_create_hashes(self) -> None:
         """Scans a folder and creates hashes for all of its files."""
-        path = ask_dir_path("Select the directory to scan")
+        path = ask_dir_path("Select the directory to scan", default=str(self.manager.path_manager.download_folder))
         hash_directory_scanner(self.manager, path)
 
     def _sort_files(self) -> None:
