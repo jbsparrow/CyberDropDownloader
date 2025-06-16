@@ -189,16 +189,12 @@ class Sorting(BaseModel):
 
 class BrowserCookies(BaseModel):
     auto_import: bool = False
-    browsers: list[BROWSERS] = [BROWSERS.chrome]
+    browser: BROWSERS | None = BROWSERS.firefox
     sites: list[NonEmptyStr] = SUPPORTED_SITES_DOMAINS
 
-    @field_validator("browsers", mode="before")
-    @classmethod
-    def parse_browsers(cls, values: list) -> list:
-        values = falsy_as(values, [])
-        if isinstance(values, list):
-            return sorted(str(value).lower() for value in values)
-        return values
+    def model_post_init(self, *_) -> None:
+        if self.auto_import and not self.browser:
+            raise ValueError("You need to provide a browser for auto_import to work")
 
     @field_validator("sites", mode="before")
     @classmethod

@@ -9,7 +9,6 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.models import AliasModel
 from cyberdrop_dl.utils.dates import to_timestamp
-from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -134,12 +133,15 @@ class FikFapCrawler(Crawler):
 
     async def handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
         m3u8_playlist_url = self.parse_url(post.stream_url)
-        m3u8_media = self.get_m3u8_media(m3u8_playlist_url)
+        m3u8_media, rendition_group = await self.get_m3u8_playlist(m3u8_playlist_url)
+
         scrape_item.url = post.url
         scrape_item.possible_datetime = to_timestamp(post.created_at)
         scrape_item.setup_as_album(self.create_title(f"{post.user} [user]", post.user_id), album_id=post.user_id)
         filename, ext = self.get_filename_and_ext(f"{post.media_id}.mp4")
-        custom_filename, _ = self.get_filename_and_ext(f"{post.label} [{post.id}].mp4")
+        custom_filename, _ = self.get_filename_and_ext(
+            f"{post.label} [{post.id}][{rendition_group.resolution.name}].mp4"
+        )
 
         await self.handle_file(
             post.url,
@@ -150,23 +152,3 @@ class FikFapCrawler(Crawler):
             debrid_link=m3u8_playlist_url,
             m3u8_media=m3u8_media,
         )
-
-    async def get_m3u8_media(self, m3u8_url: AbsoluteHttpURL) -> M3U8Media:
-        main_m3u8 = await self._get_m3u8_from_url(m3u8_url)
-        if not main_m3u8.is_variant:
-            return M3U8Media(main_m3u8)
-
-        rendition_group = main_m3u8.as_variant().get_best_group(exclude="vp09")
-        audio = subtitle = None
-        video = await self._get_m3u8_from_url(rendition_group.urls.video)
-        if rendition_group.urls.audio:
-            audio = await self._get_m3u8_from_url(rendition_group.urls.audio)
-        if rendition_group.urls.subtitle:
-            subtitle = await self._get_m3u8_from_url(rendition_group.urls.subtitle)
-        return M3U8Media(video, audio, subtitle)
-
-    async def _get_m3u8_from_url(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
-        headers = headers or self.headers
-        async with self.request_limiter:
-            content = await self.client.get_text(self.DOMAIN, url, headers)
-        return M3U8(content, url.parent)

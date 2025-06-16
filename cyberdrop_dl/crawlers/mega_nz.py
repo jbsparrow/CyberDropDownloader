@@ -57,7 +57,7 @@ class MegaNzCrawler(Crawler):
             self.ready = True
 
     async def async_startup(self) -> None:
-        await self.login(self.user, self.password)
+        await self.login(PRIMARY_URL)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.fragment:  # Mega stores access key in fragment. We can't do anything without the key
@@ -150,4 +150,4 @@ class MegaNzCrawler(Crawler):
 
     @error_handling_wrapper
     async def login(self, *_):
-        await self.api.login()
+        await self.api.login(self.user, self.password)

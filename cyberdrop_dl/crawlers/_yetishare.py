@@ -185,13 +185,12 @@ class YetiShareCrawler(Crawler, is_abc=True):
         Returns a list with the `folder_id` of every subfolder"""
         folder_ids = []
         for item in soup.select(_SELECTOR.FOLDER_ITEM):
-            folder_id, file_id = item["folderid"], item["fileid"]
-            if folder_id:
-                folder_ids.append(folder_ids)
+            if folder_id := css.get_attr_or_none(item, "folderid"):
+                folder_ids.append(folder_id)
                 if not iter_subfolders:
                     continue
                 link_str = css.get_attr(item, "sharing-url")
-            elif file_id:
+            elif css.get_attr_or_none(item, "fileid"):
                 link_str = css.get_attr(item, "dtfullurl")
             else:
                 continue
