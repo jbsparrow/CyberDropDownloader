@@ -488,7 +488,10 @@ def parse_thread_info(
 
 
 def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
-    thread_name, thread_id_str = url.parts[thread_name_index].rsplit(".", 1)
+    try:
+        thread_name, thread_id_str = url.parts[thread_name_index].rsplit(".", 1)
+    except ValueError:
+        thread_id_str, thread_name = url.parts[thread_name_index].split("-", 1)
     thread_id = int(thread_id_str)
     return thread_name, thread_id
 
@@ -543,6 +546,9 @@ def get_post_title(soup: BeautifulSoup, selectors: XenforoSelectors) -> str:
         element.decompose()
 
     return title_block.get_text().replace("\n", "")
+
+
+HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
 
 
 def extract_embed_url(embed_str: str) -> str:
