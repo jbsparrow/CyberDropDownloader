@@ -128,7 +128,7 @@ class Crawler(ABC):
         if is_abc:
             return
 
-        if cls.DOMAIN != "generic":
+        if cls.DOMAIN not in ("generic", "real-debrid"):
             REQUIRED_FIELDS = "PRIMARY_URL", "DOMAIN", "SUPPORTED_PATHS"
             for field_name in REQUIRED_FIELDS:
                 assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
