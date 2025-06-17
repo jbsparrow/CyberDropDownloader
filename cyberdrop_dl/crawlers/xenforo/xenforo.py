@@ -509,7 +509,7 @@ def get_thread_page_and_post(url: URL, thread_name_index: int, page_name: str, p
     def find_number(search_value: str) -> int:
         for sec in sections:
             if search_value in sec:
-                return int(sec.replace(search_value, "").strip())
+                return int(sec.replace(search_value, "").replace("-", "").strip())
         return 0
 
     post_number = find_number(post_name)
