@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 
@@ -20,10 +18,10 @@ class TitsInTopsCrawler(XenforoCrawler):
     post_selectors = PostSelectors(
         images=Selector("a[class*=file-preview]", "href"),
     )
-    selectors = XenforoSelectors(posts=post_selectors)
+    XF_SELECTORS = XenforoSelectors(posts=post_selectors)
 
-    def filter_link(self, link: URL) -> URL:
-        return URL(
+    def filter_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        return AbsoluteHttpURL(
             str(link)
             .replace("index.php%3F", "index.php/")
             .replace("index.php?", "index.php/")
@@ -33,7 +31,7 @@ class TitsInTopsCrawler(XenforoCrawler):
     def pre_filter_link(self, link: str) -> str:
         return link.replace("index.php?", "index.php/").replace("index.php%3F", "index.php/")
 
-    def is_image_or_attachment(self, link_obj: Tag) -> bool:
+    def is_not_image_or_attachment(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
         text = css.get_text(link_obj)
         if "view attachment" in text.lower():
@@ -41,5 +39,5 @@ class TitsInTopsCrawler(XenforoCrawler):
         title: str | None = css.get_attr_or_none(link_obj, "title")
         if title and "permanent link" in title.lower():
             return False
-        link_str: str | None = css.get_attr_or_none(link_obj, self.selectors.posts.links.element)
+        link_str: str | None = css.get_attr_or_none(link_obj, self.XF_SELECTORS.posts.links.element)
         return not (is_image and self.is_attachment(link_str))

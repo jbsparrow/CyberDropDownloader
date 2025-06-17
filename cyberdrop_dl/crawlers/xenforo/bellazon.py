@@ -6,26 +6,29 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
+_post_selectors = PostSelectors(
+    element="div[class*=ipsComment_content]",
+    content=Selector("div.cPost_contentWrap"),
+    attachments=Selector("a[class*=ipsAttachLink]", "href"),
+    images=Selector("a[class*=ipsAttachLink_image]", "href"),
+    videos=Selector("video.ipsEmbeddedVideo source", "src"),
+    number=Selector("data-commentid", "data-commentid"),
+)
 
+
+# TODO: This is probably a diferenet version of xenforo. Selectors are complety diferent
+# Maybe crate a base crawler for Xenforo v1 and another for V2
 class BellazonCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.bellazon.com/main/")
     DOMAIN: ClassVar[str] = "bellazon"
     FOLDER_DOMAIN: ClassVar[str] = "Bellazon"
-    thread_url_part = "topic"
     login_required = False
-    post_selectors = PostSelectors(
-        element="div[class*=ipsComment_content]",
-        content=Selector("div[class=cPost_contentWrap]"),
-        attachments=Selector("a[class*=ipsAttachLink]", "href"),
-        images=Selector("a[class*=ipsAttachLink_image]", "href"),
-        videos=Selector("video[class=ipsEmbeddedVideo] source", "src"),
-        date=Selector("time", "datetime"),
-        number=Selector("data-commentid", "data-commentid"),
-    )
-    selectors = XenforoSelectors(
-        posts=post_selectors,
+
+    XF_THREAD_URL_PART = "topic"
+    XF_POST_URL_PART_NAME = "comment-"
+    XF_SELECTORS = XenforoSelectors(
+        posts=_post_selectors,
         title=Selector("span.ipsType_break.ipsContained span"),
-        next_page=Selector("li[class=ipsPagination_next] a", "href"),
-        post_name="comment-",
+        next_page=Selector("li.ipsPagination_next a[href]", "href"),
+        post_name=XF_POST_URL_PART_NAME,
     )
-    ATTACHMENT_URL_PARTS = "attachments", "uploads"
