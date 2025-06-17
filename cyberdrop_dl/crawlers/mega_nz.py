@@ -93,7 +93,7 @@ class MegaNzCrawler(Crawler):
             file_key[2] ^ file_key[6],
             file_key[3] ^ file_key[7],
         )
-        iv: tuple[int, ...] = file_key[4:6] + (0, 0)
+        iv: tuple[int, ...] = (*file_key[4:6], 0, 0)
         meta_mac: tuple[int, ...] = file_key[6:8]
         file = FileTuple(file_id, DecryptData(iv, k, meta_mac))
         await self.proccess_file(scrape_item, file)
