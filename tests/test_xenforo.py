@@ -1,11 +1,74 @@
-from collections.abc import AsyncGenerator
-from pathlib import Path
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+from unittest import mock
 
 import pytest
+from bs4 import BeautifulSoup
 
+from cyberdrop_dl.crawlers import xenforo as crawlers
 from cyberdrop_dl.crawlers.xenforo import xenforo
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.managers.manager import Manager
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+    from pathlib import Path
+
+
+def _item(url: str) -> ScrapeItem:
+    return ScrapeItem(url=AbsoluteHttpURL(url))
+
+
+class MockProgress:
+    scraping_progress = None
+
+
+manager = Manager()
+scrape_item = _item("https://xenforo.com/community")
+manager.progress_manager = MockProgress()  # type: ignore
+crawler_instances = {crawler: crawler(manager) for crawler in crawlers.XF_CRAWLERS}
+TEST_CRAWLER = crawler_instances[crawlers.CelebForumCrawler]
+
+
+def _html(string: str) -> str:
+    return f"""
+    <html>
+    <body>
+    {string}
+    </body>
+    </html>
+    """
+
+
+def _post(content: str, id: int = 12345, crawler: xenforo.XenforoCrawler | None = None) -> xenforo.ForumPost:
+    crawler = crawler or TEST_CRAWLER
+    html = _html(f"""
+    <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post-{id}" data-lb-caption-desc="duke7jordan · Jan 29, 2025 at 3:08 PM">
+        <article class="message-body js-selectToQuote">
+            <div itemprop="text">
+                {content}
+            </div>
+            <div class="js-selectToQuoteEnd">&nbsp;</div>
+        </article>
+    </div>
+    """)
+    soup = BeautifulSoup(html, "html.parser")
+    return xenforo.ForumPost.new(soup, crawler.XF_SELECTORS.posts)
+
+
+def _item_call(value: Any) -> mock._Call:
+    return mock.call(scrape_item, value)
+
+
+def _any_item_call(value: Any) -> mock._Call:
+    return mock.call(mock.ANY, value)
+
+
+def _amock(func: str = "process_child", crawler: xenforo.XenforoCrawler | None = None) -> mock._patch[mock.AsyncMock]:
+    crawler = crawler or TEST_CRAWLER
+    return mock.patch.object(crawler, func, new_callable=mock.AsyncMock)
 
 
 @pytest.fixture(name="manager")
@@ -21,10 +84,6 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     yield manager
     await manager.async_db_close()
     await manager.close()
-
-
-# "https://simpcity.su/watched/threads"
-# "https://simpcity.su/forums/simpcity-news-rules-and-faq.6/""
 
 
 @pytest.mark.parametrize(
@@ -48,7 +107,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
                 "infos-regelaenderungen",
                 18821,
                 3,
-                None,
+                0,
             ),
             "https://celebforum.to/threads/infos-regelaenderungen.18821",
         ],
@@ -59,7 +118,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
                 "the-official-victorias-secret-thread",
                 27120,
                 0,
-                None,
+                0,
             ),
             "https://www.bellazon.com/main/topic/27120-the-official-victorias-secret-thread",
         ],
@@ -110,9 +169,658 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     ],
 )
 def test_parse_thread_info(
-    manager: Manager, url: str, thread_part_name: str, result: tuple[str, int, int, int], canonical_url: str
+    url: str, thread_part_name: str, result: tuple[str, int, int, int], canonical_url: str
 ) -> None:
     url_, canonical_url_ = AbsoluteHttpURL(url), AbsoluteHttpURL(canonical_url)
     result_ = xenforo.ThreadInfo(*result, canonical_url_, url_)
     parsed = xenforo.parse_thread_info(url_, thread_part_name, "page", "post")
     assert result_ == parsed
+
+
+@pytest.mark.parametrize(
+    "link, out",
+    [
+        (
+            "https://media.imagepond.net/media/IMG_2153a940fb5680979a52.jpg",
+            "https://media.imagepond.net/media/IMG_2153a940fb5680979a52.jpg",
+        ),
+        (
+            "https://media.imagepond.net/media/IMG_2153a940fb5680979a52.th.jpg",
+            "https://media.imagepond.net/media/IMG_2153a940fb5680979a52.jpg",
+        ),
+        (
+            "https://media.imagepond.net/media/IMG_2153a940fb5680979a52.md.jpg",
+            "https://media.imagepond.net/media/IMG_2153a940fb5680979a52.jpg",
+        ),
+        (
+            "https://simp6.jpg5.su/images3/20250612_051526cd1f36d75c763fe4.md.jpg",
+            "https://simp6.jpg5.su/images3/20250612_051526cd1f36d75c763fe4.jpg",
+        ),
+        (
+            "https://jpg5.su/img/aDNRwDH",
+            "https://jpg5.su/img/aDNRwDH",
+        ),
+        (
+            "https://saint2.cr/embed/M8XwlvJUlW-",
+            "https://saint2.cr/embed/M8XwlvJUlW-",
+        ),
+        (
+            "https://saint2.cr/ifr/M8XwlvJUlW-",
+            "https://saint2.cr/watch/M8XwlvJUlW-",
+        ),
+    ],
+)
+def test_clean_link_url(link: str, out: str) -> None:
+    assert xenforo.clean_link_str(link) == out
+
+
+def test_parse_login_form_success() -> None:
+    html = _html("""
+    <form id="loginForm">
+        <input type="text" name="username" value="testuser">
+        <input type="password" name="password" value="testpass">
+        <input type="hidden" name="csrf_token" value="some_token_123">
+        <input type="submit" value="Login">
+        <input type="text" id="noName" value="shouldBeIgnored">
+        <input type="text" name="noValue">
+    </form>
+    <form id="anotherForm">
+        <input type="text" name="anotherField" value="anotherValue">
+    </form>
+    """)
+    expected_data = {
+        "username": "testuser",
+        "password": "testpass",
+        "csrf_token": "some_token_123",
+    }
+    parsed_data = xenforo.parse_login_form(html)
+    assert parsed_data == expected_data
+
+
+def test_parse_login_form_no_form_should_fail() -> None:
+    with pytest.raises(ScrapeError):
+        xenforo.parse_login_form("")
+
+
+def test_parse_login_form_inputs_without_name_or_value_should_be_ignored() -> None:
+    html = _html("""
+    <form>
+        <input type="text" value="somevalue">
+        <input type="text" name="someName">
+        <input type="text" name="validField" value="validValue">
+    </form>
+    """)
+    expected_data = {"validField": "validValue"}
+    parsed_data = xenforo.parse_login_form(html)
+    assert parsed_data == expected_data
+
+
+def test_parse_login_form_no_input_form_should_fail() -> None:
+    html = _html("""
+    <form>
+        <div>Some content</div>
+        <p>More content</p>
+    </form>
+    """)
+    with pytest.raises(ScrapeError):
+        xenforo.parse_login_form(html)
+
+
+@pytest.mark.parametrize(
+    "input_string, expected_output",
+    [
+        (
+            r"some_text_before \/\/simpcity.su/path/to/resource.mp4 some_text_after",
+            "https://simpcity.su/path/to/resource.mp4",
+        ),
+        (
+            r"prefix \/\/celebforum.to/search?q=test suffix",
+            "https://celebforum.to/search?q=test",
+        ),
+        (
+            r"only_url \/\/sub.domain.co.uk/file.pdf",
+            "https://sub.domain.co.uk/file.pdf",
+        ),
+        (
+            r"http://simpcity.su/some_page",
+            "http://simpcity.su/some_page",
+        ),
+        (
+            r"text with no slashes http://xenforo.com",
+            "http://xenforo.com",
+        ),
+        (
+            r"text with no slashes https://xenforo.com/path",
+            "https://xenforo.com/path",
+        ),
+        # Test cases where no URL is found
+        (
+            "just some plain text",
+            "just some plain text",
+        ),
+        ("", ""),
+        (
+            "no\\url\\here",
+            "nourlhere",
+        ),  # check if backslashes are removed
+        (
+            "//invalid.c",
+            "//invalid.c",
+        ),  # too short domain suffix
+        (
+            "ftp://simpcity.su/file",
+            "ftp://simpcity.su/file",
+        ),  # unsupported protocol
+        (
+            "www.simpcity.su",
+            "www.simpcity.su",
+        ),  # missing http/https
+        (
+            "simpcity.su",
+            "simpcity.su",
+        ),  # missing http/https
+        (
+            "text with https: //simpcity.su/ (space after colon)",
+            "text with https: //simpcity.su/ (space after colon)",
+        ),
+        (
+            "text with unicode \u00a9 characters",
+            "text with unicode \u00a9 characters",
+        ),
+    ],
+)
+def test_extract_embed_url(input_string: str, expected_output: str) -> None:
+    assert xenforo.extract_embed_url(input_string) == expected_output
+
+
+@pytest.mark.xfail  # regex can not handle URLs with commans in it (kvs)
+@pytest.mark.parametrize(
+    ("input_string", "expected_output"),
+    [
+        (
+            r"start \/\/media.jp5.net/videos/2023/clip_id-123.mp4?autoplay=true&loop=false#t=10s end",
+            "https://media.jp5.net/videos/2023/clip_id-123.mp4?autoplay=true&loop=false#t=10s",
+        ),
+        (
+            r"start \/\/jupiter4.thisvid.com/key=SEtXHaueMU2PByWg4GNMnw,end=1750179436/speed=1.4/buffer=5.0/12702000/12702535/12702535.mp4 other",
+            "https://jupiter4.thisvid.com/key=SEtXHaueMU2PByWg4GNMnw,end=1750179436/speed=1.4/buffer=5.0/12702000/12702535/12702535.mp4",
+        ),
+    ],
+)
+def test_extract_embed_url_complex_path(input_string: str, expected_output: str) -> None:
+    assert xenforo.extract_embed_url(input_string) == expected_output
+
+
+def test_extract_embed_url_should_extract_only_one_url() -> None:
+    input_str = r"first_url \/\/first.com/path second_url \/\/www.second.net/another"
+    expected_output = "https://first.com/path"
+    assert xenforo.extract_embed_url(input_str) == expected_output
+
+
+def test_extract_embed_url_with_escaped_backslashes_and_double_slashes() -> None:
+    input_str = r"some_path\\to\\file\/\/imagepond.net\/clip.mov"
+    expected_output = "https://imagepond.net/clip.mov"
+    assert xenforo.extract_embed_url(input_str) == expected_output
+
+
+def test_extract_embed_url_absolute_url_no_scheme() -> None:
+    input_str = r"\/\/jpg5.su"
+    expected_output = r"https://jpg5.su"
+    assert xenforo.extract_embed_url(input_str) == expected_output
+
+
+def test_extract_embed_url_should_not_modify_absolute_urls() -> None:
+    input_str = r"https://celebforum.to/maps"
+    expected_output = "https://celebforum.to/maps"
+    assert xenforo.extract_embed_url(input_str) == expected_output
+
+
+def test_extract_embed_url_string_ends_with_url() -> None:
+    input_str = r"some text https://www.reddit.com/"
+    expected_output = "https://reddit.com/"
+    assert xenforo.extract_embed_url(input_str) == expected_output
+
+
+async def test_test_hidden_redgifs() -> None:
+    post = _post("""
+    <div class="generic2wide-iframe-div" onclick="loadMedia(this, '//redgifs.com/ifr/downrightcluelesswirm');">
+        <span data-s9e-mediaembed="redgifs">
+            <span class="iframe-wrapper-redgifs" style="">
+                <span class="iframe-wrapper-redgifs-info">Click here to load redgifs media</span>
+            </span>
+        </span>
+    </div>""")
+    expected_output = "//redgifs.com/ifr/downrightcluelesswirm"
+    with _amock() as mocked:
+        await TEST_CRAWLER.hidden_redgifs(scrape_item, post)
+        mocked.assert_called_once_with(scrape_item, expected_output)
+
+
+@pytest.mark.parametrize(
+    ("cls", "post_content", "expected_result"),
+    [
+        (
+            crawlers.SimpCityCrawler,
+            """
+    <div class="bbWrapper">
+                <a href="https://jpg5.su/img/aqDYT6c" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        title="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+                <a href="https://jpg5.su/img/aqDYZAt" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        title="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+            </div>""",
+            [
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg",
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg",
+            ],
+        )
+    ],
+)
+async def test_post_images(cls: type[xenforo.XenforoCrawler], post_content: str, expected_result: list[str]) -> None:
+    crawler = crawler_instances[cls]
+    post = _post(post_content, crawler=crawler)
+    with _amock(crawler=crawler) as mocked:
+        await crawler.images(scrape_item, post)
+        count, expected_count = mocked.call_count, len(expected_result)
+        assert count == expected_count, f"Found {count} links, expected {expected_count} links"
+        for result, expected in zip(mocked.call_args_list, expected_result, strict=True):
+            assert result.args[1] == expected
+
+
+async def test_embeds_can_extract_google_drive_links() -> None:
+    # https://github.com/jbsparrow/CyberDropDownloader/issues/775
+    content = """
+        <div class="message-content js-messageContent">
+        <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post-891777" data-lb-caption-desc="onlyforprem · Aug 16, 2021 at 4:56 PM">
+            <article class="message-body js-selectToQuote">
+                <div class="bbWrapper">
+                    <div
+                        class="bbImageWrapper js-lbImage"
+                        title="E1qvEr2UcAcRexa.jpg"
+                        data-src="https://forums.socialmediagirls.com/attachments/e1qver2ucacrexa-jpg.1947904/"
+                        data-lb-sidebar-href=""
+                        data-lb-caption-extra-html=""
+                        data-single-image="1"
+                        data-fancybox="lb-thread-111099"
+                        style="cursor: pointer;"
+                        data-caption='<h4>E1qvEr2UcAcRexa.jpg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-891777" class="js-lightboxCloser">onlyforprem · Aug 16, 2021 at 4:56 PM</a></p>'
+                    >
+                        <img
+                            src="https://forums.socialmediagirls.com/attachments/e1qver2ucacrexa-jpg.1947904/"
+                            data-src="https://forums.socialmediagirls.com/attachments/e1qver2ucacrexa-jpg.1947904/"
+                            data-url=""
+                            class="bbImage ls-is-cached lazyloaded"
+                            data-zoom-target="1"
+                            style="width: 196px;"
+                            alt="E1qvEr2UcAcRexa.jpg"
+                            title="E1qvEr2UcAcRexa.jpg"
+                            width="960"
+                            height="1792"
+                            loading="lazy"
+                        />
+
+                        <noscript>
+                            <img
+                                src="https://forums.socialmediagirls.com/attachments/e1qver2ucacrexa-jpg.1947904/"
+                                data-url=""
+                                class="bbImage"
+                                data-zoom-target="1"
+                                style="width: 196px;"
+                                alt="E1qvEr2UcAcRexa.jpg"
+                                title="E1qvEr2UcAcRexa.jpg"
+                                width="960"
+                                height="1792"
+                            />
+                        </noscript>
+                    </div>
+                    <div
+                        class="bbImageWrapper js-lbImage"
+                        title="EyvXdu5UYAYFyd- (1).jpg"
+                        data-src="https://forums.socialmediagirls.com/attachments/eyvxdu5uyayfyd-1-jpg.1947906/"
+                        data-lb-sidebar-href=""
+                        data-lb-caption-extra-html=""
+                        data-single-image="1"
+                        data-fancybox="lb-thread-111099"
+                        style="cursor: pointer;"
+                        data-caption='<h4>EyvXdu5UYAYFyd- (1).jpg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-891777" class="js-lightboxCloser">onlyforprem · Aug 16, 2021 at 4:56 PM</a></p>'
+                    >
+                        <img
+                            src="https://forums.socialmediagirls.com/attachments/eyvxdu5uyayfyd-1-jpg.1947906/"
+                            data-src="https://forums.socialmediagirls.com/attachments/eyvxdu5uyayfyd-1-jpg.1947906/"
+                            data-url=""
+                            class="bbImage ls-is-cached lazyloaded"
+                            data-zoom-target="1"
+                            style="width: 484px;"
+                            alt="EyvXdu5UYAYFyd- (1).jpg"
+                            title="EyvXdu5UYAYFyd- (1).jpg"
+                            width="2048"
+                            height="1536"
+                            loading="lazy"
+                        />
+
+                        <noscript>
+                            <img
+                                src="https://forums.socialmediagirls.com/attachments/eyvxdu5uyayfyd-1-jpg.1947906/"
+                                data-url=""
+                                class="bbImage"
+                                data-zoom-target="1"
+                                style="width: 484px;"
+                                alt="EyvXdu5UYAYFyd- (1).jpg"
+                                title="EyvXdu5UYAYFyd- (1).jpg"
+                                width="2048"
+                                height="1536"
+                            />
+                        </noscript>
+                    </div>
+                    <br />
+                    <br />
+
+                    <div>
+                        <a href="https://twitter.com/Loalux" class="link link--external" target="_blank" rel="nofollow ugc noopener" data-proxy-href="">
+                            https://twitter.com/Loalux
+                        </a>
+                    </div>
+
+                    <div>
+                        <a href="https://twitter.com/loaluxnsfw" class="link link--external" target="_blank" rel="nofollow ugc noopener" data-proxy-href="">
+                            https://twitter.com/loaluxnsfw
+                        </a>
+                    </div>
+
+                    <div class="bbCodeBlock bbCodeBlock--unfurl js-unfurl fauxBlockLink" data-unfurl="true" data-result-id="354635" data-url="https://onlyfans.com/loaluxxx" data-host="onlyfans.com" data-pending="false">
+                        <div class="contentRow">
+                            <div class="contentRow-figure contentRow-figure--fixedSmall js-unfurl-figure">
+                                <img src="https://static2.onlyfans.com/static/prod/f/202506061345-bf5f05c732/images/of-logo-b.jpg" alt="onlyfans.com" data-onerror="hide-parent" />
+                            </div>
+
+                            <div class="contentRow-main">
+                                <h3 class="contentRow-header js-unfurl-title">
+                                    <a
+                                        href="/goto/link-confirmation?url=aHR0cHM6Ly9vbmx5ZmFucy5jb20vbG9hbHV4eHg%3D&amp;s=1de158e4089a87d9d37a1244d2abf85b"
+                                        class="link link--external fauxBlockLink-blockLink"
+                                        target="_blank"
+                                        rel="nofollow ugc noopener"
+                                        data-proxy-href=""
+                                    >
+                                        OnlyFans
+                                    </a>
+                                </h3>
+
+                                <div class="contentRow-snippet js-unfurl-desc">
+                                    OnlyFans is the social platform revolutionizing creator and fan connections. The site is inclusive of artists and content creators from all genres and allows them to monetize their content while developing
+                                    authentic relationships with their fanbase.
+                                </div>
+
+                                <div class="contentRow-minor contentRow-minor--hideLinks">
+                                    <span class="js-unfurl-favicon">
+                                        <img src="https://static2.onlyfans.com/static/prod/f/202506061345-bf5f05c732/icons/favicon-32x32.png" alt="onlyfans.com" class="bbCodeBlockUnfurl-icon" data-onerror="hide-parent" />
+                                    </span>
+                                    onlyfans.com
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="js-selectToQuoteEnd">&nbsp;</div>
+            </article>
+
+            <section class="message-attachments">
+                <h4 class="block-textHeader">Attachments</h4>
+                <ul class="attachmentList">
+                    <li class="file file--linked">
+                        <a class="u-anchorTarget" id="attachment-1947907"></a>
+
+                        <a
+                            class="file-preview js-lbImage"
+                            href="https://smgmedia.socialmediagirls.com/forum/2021/05/E1nkIkhVEAAc_k-_1978690.jpg"
+                            target="_blank"
+                            data-fancybox="lb-thread-111099"
+                            style="cursor: pointer;"
+                            data-caption='<h4>E1nkIkhVEAAc_k-.jpg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-891777" class="js-lightboxCloser">onlyforprem · Aug 16, 2021 at 4:56 PM</a></p>'
+                        >
+                            <img src="https://smgmedia.socialmediagirls.com/forum/2021/05/thumb/E1nkIkhVEAAc_k-_1978690.jpg" alt="E1nkIkhVEAAc_k-.jpg" width="134" height="250" loading="lazy" />
+                        </a>
+
+                        <div class="file-content">
+                            <div class="file-info">
+                                <span class="file-name" title="E1nkIkhVEAAc_k-.jpg">E1nkIkhVEAAc_k-.jpg</span>
+                                <div class="file-meta">
+                                    177.5 KB · Views: 0
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li class="file file--linked">
+                        <a class="u-anchorTarget" id="attachment-1947908"></a>
+
+                        <a
+                            class="file-preview js-lbImage"
+                            href="https://smgmedia.socialmediagirls.com/forum/2021/05/EzZK6U0VoAM4maP_1978691.jpg"
+                            target="_blank"
+                            data-fancybox="lb-thread-111099"
+                            style="cursor: pointer;"
+                            data-caption='<h4>EzZK6U0VoAM4maP.jpg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-891777" class="js-lightboxCloser">onlyforprem · Aug 16, 2021 at 4:56 PM</a></p>'
+                        >
+                            <img src="https://smgmedia.socialmediagirls.com/forum/2021/05/thumb/EzZK6U0VoAM4maP_1978691.jpg" alt="EzZK6U0VoAM4maP.jpg" width="250" height="180" loading="lazy" />
+                        </a>
+
+                        <div class="file-content">
+                            <div class="file-info">
+                                <span class="file-name" title="EzZK6U0VoAM4maP.jpg">EzZK6U0VoAM4maP.jpg</span>
+                                <div class="file-meta">
+                                    68.2 KB · Views: 0
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+
+    """
+    crawler = crawler_instances[crawlers.SimpCityCrawler]
+    post = _post(content, crawler=crawler)
+    expected_result = "https://drive.celebforum.to/file/d/1gfDjCbNXgJafY6ILQIrgbnuptSCFbM0J/preview"
+    with _amock(crawler=crawler) as mocked:
+        await crawler.embeds(scrape_item, post)
+        mocked.assert_called_once()
+        assert mocked.call_args.args[1] == expected_result
+
+
+async def test_post_smg_extract_attachments() -> None:
+    # https://agithub.com/jbsparrow/CyberDropDownloader/issues/1070
+    content = """
+        <article class="message-body js-selectToQuote">
+        <div class="bbWrapper">Here.</div>
+
+        <div class="js-selectToQuoteEnd">&nbsp;</div>
+    </article>
+
+    <section class="message-attachments">
+        <h4 class="block-textHeader">Attachments</h4>
+        <ul class="attachmentList">
+            <li class="file file--linked">
+                <a class="u-anchorTarget" id="attachment-3494354"></a>
+
+                <a
+                    class="file-preview js-lbImage"
+                    href="https://smgmedia2.socialmediagirls.com/forum/2022/04/33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4_3526918.jpeg"
+                    target="_blank"
+                    data-fancybox="lb-thread-111099"
+                    style="cursor: pointer;"
+                    data-caption='<h4>33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4.jpeg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-1707346" class="js-lightboxCloser">Ixvvxi · Apr 23, 2022 at 10:10 PM</a></p>'
+                >
+                    <img src="https://smgmedia2.socialmediagirls.com/forum/2022/04/thumb/33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4_3526918.jpeg" alt="33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4.jpeg" width="250" height="425" loading="lazy" />
+                </a>
+
+                <div class="file-content">
+                    <div class="file-info">
+                        <span class="file-name" title="33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4.jpeg">33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4.jpeg</span>
+                        <div class="file-meta">
+                            1.3 MB · Views: 0
+                        </div>
+                    </div>
+                </div>
+            </li>
+
+            <li class="file file--linked">
+                <a class="u-anchorTarget" id="attachment-3494355"></a>
+
+                <a
+                    class="file-preview js-lbImage"
+                    href="https://smgmedia2.socialmediagirls.com/forum/2022/04/3663188F-00C6-4C90-AB4D-D8C6E7859286_3526919.png"
+                    target="_blank"
+                    data-fancybox="lb-thread-111099"
+                    style="cursor: pointer;"
+                    data-caption='<h4>3663188F-00C6-4C90-AB4D-D8C6E7859286.png</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-1707346" class="js-lightboxCloser">Ixvvxi · Apr 23, 2022 at 10:10 PM</a></p>'
+                >
+                    <img src="https://smgmedia2.socialmediagirls.com/forum/2022/04/thumb/3663188F-00C6-4C90-AB4D-D8C6E7859286_3526919.png" alt="3663188F-00C6-4C90-AB4D-D8C6E7859286.png" width="364" height="250" loading="lazy" />
+                </a>
+
+                <div class="file-content">
+                    <div class="file-info">
+                        <span class="file-name" title="3663188F-00C6-4C90-AB4D-D8C6E7859286.png">3663188F-00C6-4C90-AB4D-D8C6E7859286.png</span>
+                        <div class="file-meta">
+                            1.6 MB · Views: 0
+                        </div>
+                    </div>
+                </div>
+            </li>
+        </ul>
+    </section>
+    """
+    crawler = crawler_instances[crawlers.SocialMediaGirlsCrawler]
+    post = _post(content, crawler=crawler)
+    expected_result = [
+        "https://smgmedia2.socialmediagirls.com/forum/2022/04/33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4_3526918.jpeg",
+        "https://smgmedia2.socialmediagirls.com/forum/2022/04/3663188F-00C6-4C90-AB4D-D8C6E7859286_3526919.png",
+    ]
+    with _amock(crawler=crawler) as mocked:
+        await crawler.attachments(scrape_item, post)
+        count, expected_count = mocked.call_count, len(expected_result)
+        assert count == expected_count, f"Found {count} links, expected {expected_count} links"
+        for result, expected in zip(mocked.call_args_list, expected_result, strict=True):
+            assert result.args[1] == expected
+
+
+def test_get_post_title_thread_w_prefixes() -> None:
+    html = _html("""
+    <div class="p-title ">
+        <h1 class="p-title-value">
+            <a href="/forums/requests.7/?prefix_id=2" class="labelLink" rel="nofollow">
+                 <span class="label label--requests" dir="auto">Request</span></a>
+                 <span class="label-append">&nbsp;</span><a href="/forums/requests.7/?prefix_id=8" class="labelLink" rel="nofollow">
+                 <span class="label label--youtube" dir="auto">Youtube</span></a><span class="label-append">&nbsp;</span>
+            <a href="/forums/requests.7/?prefix_id=3" class="labelLink" rel="nofollow">
+                 <span class="label label--onlyfans" dir="auto">OnlyFans</span></a>
+                 <span class="label-append">&nbsp;</span><a href="/forums/requests.7/?prefix_id=7" class="labelLink" rel="nofollow">
+                 <span class="label label--insta" dir="auto">Instagram</span></a>
+                 <span class="label-append">&nbsp;</span>GunplaMeli</h1>
+    </div>
+    """)
+    soup = BeautifulSoup(html, "html.parser")
+    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+    assert title == "GunplaMeli"
+
+
+def test_get_post_title_thread_w_no_prefixes() -> None:
+    html = """
+    <div class="p-title">
+        <h1 class="p-title-value">Staged/Fake Japanese Candid Videos from Gcolle/Pcolle or FC2</h1>
+    </div>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+    assert title == "Staged/Fake Japanese Candid Videos from Gcolle/Pcolle or FC2"
+
+
+def test_get_post_title_no_title_found() -> None:
+    html = _html("")
+    soup = BeautifulSoup(html, "html.parser")
+    with pytest.raises(ScrapeError) as exc_info:
+        xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+
+    assert exc_info.value.status == 429
+    assert exc_info.value.message == "Invalid response from forum. You may have been rate limited"
+
+
+def test_get_post_title_empty_title_block() -> None:
+    html = _html("""<h1 class="p-title-value"></h1>""")
+    soup = BeautifulSoup(html, "html.parser")
+    with pytest.raises(ScrapeError):
+        xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+
+
+def test_get_post_title_non_english_chars() -> None:
+    html = _html("""
+    <div class="p-title">
+        <h1 class="p-title-value">
+            ㊙️Hcupりおの極秘えち任務🙊💗 (りお❤️❤️❤️) / りお@Rio / rio_hcup_fantia
+        </h1>
+    </div>
+    """)
+    soup = BeautifulSoup(html, "html.parser")
+    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+    assert title == "㊙️Hcupりおの極秘えち任務🙊💗 (りお❤️❤️❤️) / りお@Rio / rio_hcup_fantia"
+
+
+def test_get_post_title_should_strip_new_lines() -> None:
+    html = _html("""
+    <div class="p-title">
+        <h1 class="p-title-value">
+            ㊙️Hcupりおの極秘えち任務🙊💗 (りお❤️❤️❤️)
+            / りお@Rio /
+              rio_hcup_fantia
+        </h1>
+    </div>
+    """)
+    soup = BeautifulSoup(html, "html.parser")
+    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+    assert title == "㊙️Hcupりおの極秘えち任務🙊💗 (りお❤️❤️❤️) / りお@Rio / rio_hcup_fantia"
+
+
+def test_is_attachment_should_handle_none() -> None:
+    assert TEST_CRAWLER.is_attachment(None) is False
+
+
+@pytest.mark.parametrize(
+    "link_str",
+    [
+        "https://media.imagepond.net/media/golden-hour86caaa9858726a64.jpg",
+        "https://simp6.jpg5.su/images3/1752x1172_a682e9c85a276121e82018b4031206b9be2e64efe5bc8004.md.jpg",
+        "https://jpg5.su/img/aDDJbdK",
+        "https://simp6.jpg5.su/attachment/1752x1172_a682e9c85a276121e82018b4031206b9be2e64efe5bc8004.md.jpg",  # No exact 'attachment' part
+        "http://celebforum.to/attachments",  # missing file slug
+    ],
+)
+def test_is_attachment_string_false(link_str: str) -> None:
+    assert TEST_CRAWLER.is_attachment(link_str) is False
+
+
+def test_is_attachment_empty_string_should_be_false() -> None:
+    assert TEST_CRAWLER.is_attachment("") is False
