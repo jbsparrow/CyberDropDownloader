@@ -7,7 +7,7 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 _post_selectors = PostSelectors(
-    element="div[class*=ipsComment_content]",
+    article="div[class*=ipsComment_content]",
     content=Selector("div.cPost_contentWrap"),
     attachments=Selector("a[class*=ipsAttachLink]", "href"),
     images=Selector("a[class*=ipsAttachLink_image]", "href"),

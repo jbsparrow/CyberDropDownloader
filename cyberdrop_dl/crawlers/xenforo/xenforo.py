@@ -41,25 +41,24 @@ Selector = css.CssAttributeSelector
 
 @dataclass(frozen=True, slots=True)
 class PostSelectors:
-    element: str = "div.message-main"
-    attachments: Selector = Selector("section.message-attachments a[href]", "href")
+    article: str = "article.message[id*=post]"
+
+    attachments: Selector = Selector("section[class*=message-attachments] a[href]", "href")
     date: Selector = Selector("time", "data-timestamp")
-    embeds: Selector = Selector("span[data-s9e-mediaembed-iframe]", "data-s9e-mediaembed-iframe")
-    saint_iframe: Selector = Selector(".saint-iframe", "href")
-    images: Selector = Selector("img.bbImage, a.js-lbImage", "src")
+    embeds: Selector = Selector("iframe[src]", "src")
+    images: Selector = Selector("img[class*=bbImage], a[class*=js-lbImage]", "src")
     links: Selector = Selector("a", "href")
-    number: Selector = Selector("li.u-concealed] a", "href")
+    number: Selector = Selector("li[class*='u-concealed'] a[href]", "href")
     videos: Selector = Selector("video source", "src")
-    redgifs_iframe: Selector = Selector('div.iframe[onclick*="loadMedia(this, \'//redgifs"]', "onclick")
-    content: Selector = Selector("article.message[id*='post']")  # Grabs everything (avatar, reactions and attachments)
-    content_old_selector: Selector = Selector("div.message-userContent")  # Only the content itself
+    lazy_load_embeds: Selector = Selector('[class*=iframe][onclick*="loadMedia(this, \'//"]', "onclick")
+    content: Selector = Selector("[class*=message-userContent]")  # Only the content itself
 
 
 @dataclass(frozen=True, slots=True)
 class XenforoSelectors:
     next_page: Selector = Selector("a.pageNav-jump--next", "href")
     posts: PostSelectors = PostSelectors()
-    title: Selector = Selector("h1.p-title-value]")
+    title: Selector = Selector("h1.p-title-value")
     title_trash: Selector = Selector("span")
     quotes: Selector = Selector("blockquote")
     post_name: str = "post-"
@@ -70,35 +69,39 @@ class ForumPost:
     content: Tag
     date: int
     number: int
+    main: Tag
 
     @staticmethod
     def new(soup: Tag, selectors: PostSelectors, post_name: str = "post") -> ForumPost:
         content = css.select_one(soup, selectors.content.element)
-        timestamp = int(css.select_one_get_attr(content, *selectors.date))
+        timestamp = int(css.select_one_get_attr(soup, *selectors.date))
         if selectors.number.element == selectors.number.attribute:
             number = int(css.get_attr(soup, selectors.number.element))
         else:
             number_str = css.select_one_get_attr(soup, *selectors.number)
             number = int(number_str.rsplit(post_name, 1)[-1].replace("-", ""))
-        return ForumPost(content, timestamp, number)
+        return ForumPost(content, timestamp, number, soup)
 
 
 @dataclass(frozen=True, slots=True)
-class ThreadInfo:
+class Thread:
     name: str
-    id_: int
+    id: int
     page: int
     post: int
     url: AbsoluteHttpURL
-    complete_url: URL
 
 
 class XenforoCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Attachments": ("/attachments/...", "/data/..."),
-        "Threads": ("/threads/<thread_name>", "/posts/<post_id>", "/goto/<post_id>"),
+        "Threads": (
+            "/threads/<thread_name>",
+            "/posts/<post_id>",
+            "/goto/<post_id>",
+        ),
     }
-    login_required = True
+
     XF_SELECTORS = XenforoSelectors()
     XF_POST_URL_PART_NAME = "post-"
     XF_PAGE_URL_PART_NAME = "page-"
@@ -106,6 +109,7 @@ class XenforoCrawler(Crawler, is_abc=True):
     XF_USER_COOKIE_NAME = "xf_user"
     XF_ATTACHMENT_URL_PARTS = "attachments", "data", "uploads"
     XF_ATTACHMENT_HOSTS = "smgmedia", "attachments.f95zone"
+    login_required = True
 
     def __post_init__(self) -> None:
         self.scraped_threads = set()
@@ -163,7 +167,7 @@ class XenforoCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
         scrape_item.setup_as_forum("")
-        thread = parse_thread_info(
+        thread = parse_thread(
             scrape_item.url, self.XF_THREAD_URL_PART, self.XF_PAGE_URL_PART_NAME, self.XF_POST_URL_PART_NAME
         )
         last_post_url = thread.url
@@ -175,19 +179,17 @@ class XenforoCrawler(Crawler, is_abc=True):
         self.scraped_threads.add(thread.url)
         async for soup in self.thread_pager(scrape_item):
             if not title:
-                title = self.create_title(get_post_title(soup, self.XF_SELECTORS), thread_id=thread.id_)
+                title = self.create_title(get_post_title(soup, self.XF_SELECTORS), thread_id=thread.id)
                 scrape_item.add_to_parent_title(title)
 
-            posts = soup.select(self.XF_SELECTORS.posts.element)
+            posts = soup.select(self.XF_SELECTORS.posts.article)
             continue_scraping, last_post_url = self.process_thread_page(scrape_item, thread, posts)
             if not continue_scraping:
                 break
 
         await self.write_last_forum_post(thread.url, last_post_url)
 
-    def process_thread_page(
-        self, scrape_item: ScrapeItem, thread: ThreadInfo, posts: Sequence[Tag]
-    ) -> tuple[bool, URL]:
+    def process_thread_page(self, scrape_item: ScrapeItem, thread: Thread, posts: Sequence[Tag]) -> tuple[bool, URL]:
         continue_scraping = False
         post_url = thread.url
         for post_soup in posts:
@@ -214,7 +216,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         scrape_item.setup_as_post("")
         post_title = self.create_separate_post_title(None, str(post.number), post.date)
         scrape_item.add_to_parent_title(post_title)
-        for scraper in (self.attachments, self.embeds, self.images, self.links, self.videos, self.hidden_redgifs):
+        for scraper in (self.attachments, self.embeds, self.images, self.links, self.videos, self.lazy_load_embeds):
             await scraper(scrape_item, post)
 
     async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
@@ -230,9 +232,7 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     async def videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.videos
-        iframe_selector = self.XF_SELECTORS.posts.saint_iframe
         videos = post.content.select(selector.element)
-        videos.extend(post.content.select(iframe_selector.element))
         await self.process_children(scrape_item, videos, selector.attribute)
 
     async def embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
@@ -242,11 +242,11 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.attachments
-        attachments = post.content.select(selector.attribute)
+        attachments = post.main.select(selector.element)
         await self.process_children(scrape_item, attachments, selector.attribute)
 
-    async def hidden_redgifs(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        selector = self.XF_SELECTORS.posts.redgifs_iframe
+    async def lazy_load_embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+        selector = self.XF_SELECTORS.posts.lazy_load_embeds
         for redgif in css.iselect(post.content, selector.element):
             link_str = get_text_between(css.get_attr(redgif, selector.attribute), "loadMedia(this, '", "')")
             await self.process_child(scrape_item, link_str)
@@ -264,8 +264,8 @@ class XenforoCrawler(Crawler, is_abc=True):
     async def process_children(
         self, scrape_item: ScrapeItem, links: list[Tag], attribute: str, *, embeds: bool = False
     ) -> None:
-        for link_obj in links:
-            link_str = parse_children_tag(link_obj, attribute)
+        for link_tag in links:
+            link_str = parse_children_tag(link_tag, attribute)
             if not link_str:
                 continue
             assert isinstance(link_str, str)
@@ -451,30 +451,26 @@ class XenforoCrawler(Crawler, is_abc=True):
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
 
-def parse_thread_info(
-    url: AbsoluteHttpURL, thread_part_name: str, page_part_name: str, post_part_name: str
-) -> ThreadInfo:
+def parse_thread(url: AbsoluteHttpURL, thread_part_name: str, page_part_name: str, post_part_name: str) -> Thread:
     name_index = url.parts.index(thread_part_name) + 1
     name, id_ = get_thread_name_and_id(url, name_index)
     thread_url = get_thread_canonical_url(url, name_index)
     page, post = get_thread_page_and_post(url, name_index, page_part_name, post_part_name)
-    return ThreadInfo(name, id_, page, post, thread_url, url)
+    return Thread(name, id_, page, post, thread_url)
 
 
 def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
     try:
-        thread_name, thread_id_str = url.parts[thread_name_index].rsplit(".", 1)
+        name, id_str = url.parts[thread_name_index].rsplit(".", 1)
     except ValueError:
-        thread_id_str, thread_name = url.parts[thread_name_index].split("-", 1)
-    thread_id = int(thread_id_str)
-    return thread_name, thread_id
+        id_str, name = url.parts[thread_name_index].split("-", 1)
+    return name, int(id_str)
 
 
 def get_thread_canonical_url(url: AbsoluteHttpURL, thread_name_index: int) -> AbsoluteHttpURL:
     new_parts = url.parts[1 : thread_name_index + 1]
     new_path = "/".join(new_parts)
-    thread_url = url.with_path(new_path).with_fragment(None).with_query(None)
-    return thread_url
+    return url.with_path(new_path).with_fragment(None).with_query(None)
 
 
 def get_thread_page_and_post(url: URL, thread_name_index: int, page_name: str, post_name: str) -> tuple[int, int]:

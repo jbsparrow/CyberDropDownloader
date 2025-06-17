@@ -42,18 +42,9 @@ def _html(string: str) -> str:
     """
 
 
-def _post(content: str, id: int = 12345, crawler: xenforo.XenforoCrawler | None = None) -> xenforo.ForumPost:
+def _post(message_body: str, id: int = 12345, crawler: xenforo.XenforoCrawler | None = None) -> xenforo.ForumPost:
     crawler = crawler or TEST_CRAWLER
-    html = _html(f"""
-    <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post-{id}" data-lb-caption-desc="duke7jordan · Jan 29, 2025 at 3:08 PM">
-        <article class="message-body js-selectToQuote">
-            <div itemprop="text">
-                {content}
-            </div>
-            <div class="js-selectToQuoteEnd">&nbsp;</div>
-        </article>
-    </div>
-    """)
+    html = _html(POST_TEMPLATE.format(id=id, message_body=message_body))
     soup = BeautifulSoup(html, "html.parser")
     return xenforo.ForumPost.new(soup, crawler.XF_SELECTORS.posts)
 
@@ -172,8 +163,8 @@ def test_parse_thread_info(
     url: str, thread_part_name: str, result: tuple[str, int, int, int], canonical_url: str
 ) -> None:
     url_, canonical_url_ = AbsoluteHttpURL(url), AbsoluteHttpURL(canonical_url)
-    result_ = xenforo.ThreadInfo(*result, canonical_url_, url_)
-    parsed = xenforo.parse_thread_info(url_, thread_part_name, "page", "post")
+    result_ = xenforo.Thread(*result, canonical_url_)
+    parsed = xenforo.parse_thread(url_, thread_part_name, "page", "post")
     assert result_ == parsed
 
 
@@ -392,7 +383,7 @@ async def test_test_hidden_redgifs() -> None:
     </div>""")
     expected_output = "//redgifs.com/ifr/downrightcluelesswirm"
     with _amock() as mocked:
-        await TEST_CRAWLER.hidden_redgifs(scrape_item, post)
+        await TEST_CRAWLER.lazy_load_embeds(scrape_item, post)
         mocked.assert_called_once_with(scrape_item, expected_output)
 
 
@@ -450,202 +441,21 @@ async def test_post_images(cls: type[xenforo.XenforoCrawler], post_content: str,
 
 async def test_embeds_can_extract_google_drive_links() -> None:
     # https://github.com/jbsparrow/CyberDropDownloader/issues/775
+    crawler = crawler_instances[crawlers.SimpCityCrawler]
     content = """
-        <div class="message-content js-messageContent">
-        <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post-891777" data-lb-caption-desc="onlyforprem · Aug 16, 2021 at 4:56 PM">
-            <article class="message-body js-selectToQuote">
-                <div class="bbWrapper">
-                    <div
-                        class="bbImageWrapper js-lbImage"
-                        title="E1qvEr2UcAcRexa.jpg"
-                        data-src="https://forums.socialmediagirls.com/attachments/e1qver2ucacrexa-jpg.1947904/"
-                        data-lb-sidebar-href=""
-                        data-lb-caption-extra-html=""
-                        data-single-image="1"
-                        data-fancybox="lb-thread-111099"
-                        style="cursor: pointer;"
-                        data-caption='<h4>E1qvEr2UcAcRexa.jpg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-891777" class="js-lightboxCloser">onlyforprem · Aug 16, 2021 at 4:56 PM</a></p>'
-                    >
-                        <img
-                            src="https://forums.socialmediagirls.com/attachments/e1qver2ucacrexa-jpg.1947904/"
-                            data-src="https://forums.socialmediagirls.com/attachments/e1qver2ucacrexa-jpg.1947904/"
-                            data-url=""
-                            class="bbImage ls-is-cached lazyloaded"
-                            data-zoom-target="1"
-                            style="width: 196px;"
-                            alt="E1qvEr2UcAcRexa.jpg"
-                            title="E1qvEr2UcAcRexa.jpg"
-                            width="960"
-                            height="1792"
-                            loading="lazy"
-                        />
-
-                        <noscript>
-                            <img
-                                src="https://forums.socialmediagirls.com/attachments/e1qver2ucacrexa-jpg.1947904/"
-                                data-url=""
-                                class="bbImage"
-                                data-zoom-target="1"
-                                style="width: 196px;"
-                                alt="E1qvEr2UcAcRexa.jpg"
-                                title="E1qvEr2UcAcRexa.jpg"
-                                width="960"
-                                height="1792"
-                            />
-                        </noscript>
-                    </div>
-                    <div
-                        class="bbImageWrapper js-lbImage"
-                        title="EyvXdu5UYAYFyd- (1).jpg"
-                        data-src="https://forums.socialmediagirls.com/attachments/eyvxdu5uyayfyd-1-jpg.1947906/"
-                        data-lb-sidebar-href=""
-                        data-lb-caption-extra-html=""
-                        data-single-image="1"
-                        data-fancybox="lb-thread-111099"
-                        style="cursor: pointer;"
-                        data-caption='<h4>EyvXdu5UYAYFyd- (1).jpg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-891777" class="js-lightboxCloser">onlyforprem · Aug 16, 2021 at 4:56 PM</a></p>'
-                    >
-                        <img
-                            src="https://forums.socialmediagirls.com/attachments/eyvxdu5uyayfyd-1-jpg.1947906/"
-                            data-src="https://forums.socialmediagirls.com/attachments/eyvxdu5uyayfyd-1-jpg.1947906/"
-                            data-url=""
-                            class="bbImage ls-is-cached lazyloaded"
-                            data-zoom-target="1"
-                            style="width: 484px;"
-                            alt="EyvXdu5UYAYFyd- (1).jpg"
-                            title="EyvXdu5UYAYFyd- (1).jpg"
-                            width="2048"
-                            height="1536"
-                            loading="lazy"
-                        />
-
-                        <noscript>
-                            <img
-                                src="https://forums.socialmediagirls.com/attachments/eyvxdu5uyayfyd-1-jpg.1947906/"
-                                data-url=""
-                                class="bbImage"
-                                data-zoom-target="1"
-                                style="width: 484px;"
-                                alt="EyvXdu5UYAYFyd- (1).jpg"
-                                title="EyvXdu5UYAYFyd- (1).jpg"
-                                width="2048"
-                                height="1536"
-                            />
-                        </noscript>
-                    </div>
-                    <br />
-                    <br />
-
-                    <div>
-                        <a href="https://twitter.com/Loalux" class="link link--external" target="_blank" rel="nofollow ugc noopener" data-proxy-href="">
-                            https://twitter.com/Loalux
-                        </a>
-                    </div>
-
-                    <div>
-                        <a href="https://twitter.com/loaluxnsfw" class="link link--external" target="_blank" rel="nofollow ugc noopener" data-proxy-href="">
-                            https://twitter.com/loaluxnsfw
-                        </a>
-                    </div>
-
-                    <div class="bbCodeBlock bbCodeBlock--unfurl js-unfurl fauxBlockLink" data-unfurl="true" data-result-id="354635" data-url="https://onlyfans.com/loaluxxx" data-host="onlyfans.com" data-pending="false">
-                        <div class="contentRow">
-                            <div class="contentRow-figure contentRow-figure--fixedSmall js-unfurl-figure">
-                                <img src="https://static2.onlyfans.com/static/prod/f/202506061345-bf5f05c732/images/of-logo-b.jpg" alt="onlyfans.com" data-onerror="hide-parent" />
-                            </div>
-
-                            <div class="contentRow-main">
-                                <h3 class="contentRow-header js-unfurl-title">
-                                    <a
-                                        href="/goto/link-confirmation?url=aHR0cHM6Ly9vbmx5ZmFucy5jb20vbG9hbHV4eHg%3D&amp;s=1de158e4089a87d9d37a1244d2abf85b"
-                                        class="link link--external fauxBlockLink-blockLink"
-                                        target="_blank"
-                                        rel="nofollow ugc noopener"
-                                        data-proxy-href=""
-                                    >
-                                        OnlyFans
-                                    </a>
-                                </h3>
-
-                                <div class="contentRow-snippet js-unfurl-desc">
-                                    OnlyFans is the social platform revolutionizing creator and fan connections. The site is inclusive of artists and content creators from all genres and allows them to monetize their content while developing
-                                    authentic relationships with their fanbase.
-                                </div>
-
-                                <div class="contentRow-minor contentRow-minor--hideLinks">
-                                    <span class="js-unfurl-favicon">
-                                        <img src="https://static2.onlyfans.com/static/prod/f/202506061345-bf5f05c732/icons/favicon-32x32.png" alt="onlyfans.com" class="bbCodeBlockUnfurl-icon" data-onerror="hide-parent" />
-                                    </span>
-                                    onlyfans.com
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="js-selectToQuoteEnd">&nbsp;</div>
-            </article>
-
-            <section class="message-attachments">
-                <h4 class="block-textHeader">Attachments</h4>
-                <ul class="attachmentList">
-                    <li class="file file--linked">
-                        <a class="u-anchorTarget" id="attachment-1947907"></a>
-
-                        <a
-                            class="file-preview js-lbImage"
-                            href="https://smgmedia.socialmediagirls.com/forum/2021/05/E1nkIkhVEAAc_k-_1978690.jpg"
-                            target="_blank"
-                            data-fancybox="lb-thread-111099"
-                            style="cursor: pointer;"
-                            data-caption='<h4>E1nkIkhVEAAc_k-.jpg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-891777" class="js-lightboxCloser">onlyforprem · Aug 16, 2021 at 4:56 PM</a></p>'
-                        >
-                            <img src="https://smgmedia.socialmediagirls.com/forum/2021/05/thumb/E1nkIkhVEAAc_k-_1978690.jpg" alt="E1nkIkhVEAAc_k-.jpg" width="134" height="250" loading="lazy" />
-                        </a>
-
-                        <div class="file-content">
-                            <div class="file-info">
-                                <span class="file-name" title="E1nkIkhVEAAc_k-.jpg">E1nkIkhVEAAc_k-.jpg</span>
-                                <div class="file-meta">
-                                    177.5 KB · Views: 0
-                                </div>
-                            </div>
-                        </div>
-                    </li>
-
-                    <li class="file file--linked">
-                        <a class="u-anchorTarget" id="attachment-1947908"></a>
-
-                        <a
-                            class="file-preview js-lbImage"
-                            href="https://smgmedia.socialmediagirls.com/forum/2021/05/EzZK6U0VoAM4maP_1978691.jpg"
-                            target="_blank"
-                            data-fancybox="lb-thread-111099"
-                            style="cursor: pointer;"
-                            data-caption='<h4>EzZK6U0VoAM4maP.jpg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-891777" class="js-lightboxCloser">onlyforprem · Aug 16, 2021 at 4:56 PM</a></p>'
-                        >
-                            <img src="https://smgmedia.socialmediagirls.com/forum/2021/05/thumb/EzZK6U0VoAM4maP_1978691.jpg" alt="EzZK6U0VoAM4maP.jpg" width="250" height="180" loading="lazy" />
-                        </a>
-
-                        <div class="file-content">
-                            <div class="file-info">
-                                <span class="file-name" title="EzZK6U0VoAM4maP.jpg">EzZK6U0VoAM4maP.jpg</span>
-                                <div class="file-meta">
-                                    68.2 KB · Views: 0
-                                </div>
-                            </div>
-                        </div>
-                    </li>
-                </ul>
-            </section>
+    <div itemprop="text">
+        <div class="bbWrapper">
+            Got this video From her.<br />
+            <span data-s9e-mediaembed="googledrive">
+                <iframe allowfullscreen="" scrolling="no" src="//drive.google.com/file/d/1gfDjCbNXgJafY6ILQIrgbnuptSCFbM0J/preview" loading="eager"></iframe></span>
+            </span>
         </div>
     </div>
 
-
+    <div class="js-selectToQuoteEnd">&nbsp;</div>
     """
-    crawler = crawler_instances[crawlers.SimpCityCrawler]
     post = _post(content, crawler=crawler)
-    expected_result = "https://drive.celebforum.to/file/d/1gfDjCbNXgJafY6ILQIrgbnuptSCFbM0J/preview"
+    expected_result = "//drive.google.com/file/d/1gfDjCbNXgJafY6ILQIrgbnuptSCFbM0J/preview"
     with _amock(crawler=crawler) as mocked:
         await crawler.embeds(scrape_item, post)
         mocked.assert_called_once()
@@ -655,12 +465,6 @@ async def test_embeds_can_extract_google_drive_links() -> None:
 async def test_post_smg_extract_attachments() -> None:
     # https://agithub.com/jbsparrow/CyberDropDownloader/issues/1070
     content = """
-        <article class="message-body js-selectToQuote">
-        <div class="bbWrapper">Here.</div>
-
-        <div class="js-selectToQuoteEnd">&nbsp;</div>
-    </article>
-
     <section class="message-attachments">
         <h4 class="block-textHeader">Attachments</h4>
         <ul class="attachmentList">
@@ -824,3 +628,121 @@ def test_is_attachment_string_false(link_str: str) -> None:
 
 def test_is_attachment_empty_string_should_be_false() -> None:
     assert TEST_CRAWLER.is_attachment("") is False
+
+
+POST_TEMPLATE = """
+<article class="message message--post js-post js-inlineModContainer" data-author="MrSpike" data-content="post{id}" id="js-post{id}" itemscope="" itemtype="https://schema.org/Comment" itemid="https://xenforo.com/posts/23549340/">
+    <meta itemprop="parentItem" itemscope="" itemid="https://xenforo.com/threads/fanfan.33077/" />
+
+    <span class="u-anchorTarget" id="post{id}"></span>
+
+    <div class="message-inner">
+        <div class="message-cell message-cell--main">
+            <div class="message-main js-quickEditTarget">
+                <header class="message-attribution message-attribution--split">
+                    <ul class="message-attribution-main listInline">
+                        <li class="u-concealed">
+                            <a href="/threads/fanfan.33077/post{id}" rel="nofollow" itemprop="url">
+                                <time
+                                    class="u-dt"
+                                    dir="auto"
+                                    datetime="2025-06-09T17:30:10-0500"
+                                    data-timestamp="1749508210"
+                                    data-date="Jun 9, 2025"
+                                    data-time="5:30 PM"
+                                    data-short="7d"
+                                    title="Jun 9, 2025 at 5:30 PM"
+                                    itemprop="datePublished"
+                                >
+                                    Jun 9, 2025
+                                </time>
+                            </a>
+                        </li>
+                    </ul>
+                </header>
+
+                <div class="message-content js-messageContent">
+                    <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post{id}" data-lb-caption-desc="MrSpike · Jun 9, 2025 at 5:30 PM">
+                        <article class="message-body js-selectToQuote">
+                            {message_body}
+                            <div class="js-selectToQuoteEnd">&nbsp;</div>
+                        </article>
+                    </div>
+
+                    <aside class="message-signature">
+                        <div class="bbWrapper">Can't post to Bunkr. Mirrors are always appreciated.</div>
+                    </aside>
+                </div>
+
+                <footer class="message-footer">
+                    <div class="message-microdata" itemprop="interactionStatistic" itemtype="https://schema.org/InteractionCounter" itemscope="">
+                        <meta itemprop="userInteractionCount" content="154" />
+                        <meta itemprop="interactionType" content="https://schema.org/LikeAction" />
+                    </div>
+
+                    <div class="message-actionBar actionBar">
+                        <div class="actionBar-set actionBar-set--external">
+                            <a
+                                href="/posts/23549340/react?reaction_id=1"
+                                class="reaction reaction--small actionBar-action actionBar-action--reaction reaction--imageHidden reaction--1"
+                                data-reaction-id="1"
+                                data-xf-init="reaction"
+                                data-reaction-list="< .js-post | .js-reactionsList"
+                                id="js-XFUniqueId13"
+                            >
+                                <i aria-hidden="true"></i><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" class="reaction-sprite js-reaction" alt="Like" title="Like" />
+                                <span class="reaction-text js-reactionText"><bdi>Like</bdi></span>
+                            </a>
+
+                            <a href="/threads/fanfan.33077/reply?quote=23549340" class="actionBar-action actionBar-action--mq u-jsOnly js-multiQuote" title="Toggle multi-quote" rel="nofollow" data-message-id="23549340" data-mq-action="add">
+                                Quote
+                            </a>
+
+                            <a
+                                href="/threads/fanfan.33077/reply?quote=23549340"
+                                class="actionBar-action actionBar-action--reply"
+                                title="Reply, quoting this message"
+                                rel="nofollow"
+                                data-xf-click="quote"
+                                data-quote-href="/posts/23549340/quote"
+                            >
+                                Reply
+                            </a>
+                        </div>
+
+                        <div class="actionBar-set actionBar-set--internal">
+                            <a href="/posts/23549340/report" class="actionBar-action actionBar-action--report" data-xf-click="overlay" data-cache="false">Report</a>
+                        </div>
+                    </div>
+
+                    <div class="reactionsBar js-reactionsList is-active">
+                        <ul class="reactionSummary">
+                            <li>
+                                <span class="reaction reaction--small reaction--1" data-reaction-id="1">
+                                    <i aria-hidden="true"></i><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" class="reaction-sprite js-reaction" alt="Like" title="Like" />
+                                </span>
+                            </li>
+                            <li>
+                                <span class="reaction reaction--small reaction--33" data-reaction-id="33">
+                                    <i aria-hidden="true"></i><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" class="reaction-sprite js-reaction" alt="PeepoLove" title="PeepoLove" />
+                                </span>
+                            </li>
+                            <li>
+                                <span class="reaction reaction--small reaction--91" data-reaction-id="91">
+                                    <i aria-hidden="true"></i><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" class="reaction-sprite js-reaction" alt="PepeClown" title="PepeClown" />
+                                </span>
+                            </li>
+                        </ul>
+
+                        <span class="u-srOnly">Reactions:</span>
+                        <a class="reactionsBar-link" href="/posts/23549340/reactions" data-xf-click="overlay" data-cache="false" rel="nofollow"><bdi>xigxagxion</bdi>, <bdi>Feistee</bdi>, <bdi>kradpmis</bdi> and 140 others</a>
+                    </div>
+
+                    <div class="js-historyTarget message-historyTarget toggleTarget" data-href="trigger-href"></div>
+                </footer>
+            </div>
+        </div>
+    </div>
+</article>
+
+"""
