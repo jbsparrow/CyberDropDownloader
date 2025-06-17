@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, NamedTuple, ParamSpec, TypeVar
 
 import bs4.css
 
@@ -12,6 +12,14 @@ if TYPE_CHECKING:
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+class CssAttributeSelector(NamedTuple):
+    element: str
+    attribute: str = ""
+
+    def __call__(self, soup: Tag) -> str:
+        return select_one_get_attr(soup, self.element, self.attribute)
 
 
 def not_none(func: Callable[P, R | None]) -> Callable[P, R]:

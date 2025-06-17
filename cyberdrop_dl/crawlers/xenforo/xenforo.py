@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from dataclasses import astuple, dataclass
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Literal, overload
 
 from bs4 import BeautifulSoup, Tag
@@ -36,18 +36,11 @@ FINAL_PAGE_SELECTOR = "li.pageNav-page a"
 CURRENT_PAGE_SELECTOR = "li.pageNav-page.pageNav-page--current a"
 
 
-@dataclass(frozen=True, slots=True)
-class Selector:
-    element: str
-    attribute: str = ""
-
-    @property
-    def astuple(self) -> tuple[str, str]:
-        return astuple(self)
+Selector = css.CssAttributeSelector
 
 
 @dataclass(frozen=True, slots=True)
-class PostSelectors(Selector):
+class PostSelectors:
     element: str = "div.message-main"
     attachments: Selector = Selector("section.message-attachments a[href]", "href")
     date: Selector = Selector("time", "data-timestamp")
@@ -58,7 +51,7 @@ class PostSelectors(Selector):
     number: Selector = Selector("li.u-concealed] a", "href")
     videos: Selector = Selector("video source", "src")
     redgifs_iframe: Selector = Selector('div.iframe[onclick*="loadMedia(this, \'//redgifs"]', "onclick")
-    content: Selector = Selector("article.message[id*='post']")  # Grabs everything (avatar, reations and attachments)
+    content: Selector = Selector("article.message[id*='post']")  # Grabs everything (avatar, reactions and attachments)
     content_old_selector: Selector = Selector("div.message-userContent")  # Only the content itself
 
 
@@ -81,11 +74,11 @@ class ForumPost:
     @staticmethod
     def new(soup: Tag, selectors: PostSelectors, post_name: str = "post") -> ForumPost:
         content = css.select_one(soup, selectors.content.element)
-        timestamp = int(css.select_one_get_attr(content, *selectors.date.astuple))
+        timestamp = int(css.select_one_get_attr(content, *selectors.date))
         if selectors.number.element == selectors.number.attribute:
             number = int(css.get_attr(soup, selectors.number.element))
         else:
-            number_str = css.select_one_get_attr(soup, *selectors.number.astuple)
+            number_str = css.select_one_get_attr(soup, *selectors.number)
             number = int(number_str.rsplit(post_name, 1)[-1].replace("-", ""))
         return ForumPost(content, timestamp, number)
 
@@ -263,7 +256,7 @@ class XenforoCrawler(Crawler, is_abc=True):
             yield soup
 
     def get_next_page(self, soup: BeautifulSoup) -> str | None:
-        next_page = css.select_one_get_attr_or_none(soup, *self.XF_SELECTORS.next_page.astuple)
+        next_page = css.select_one_get_attr_or_none(soup, *self.XF_SELECTORS.next_page)
         if next_page:
             return self.pre_filter_link(next_page)
 
