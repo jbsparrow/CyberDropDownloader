@@ -127,6 +127,10 @@ class XenforoCrawler(Crawler, is_abc=True):
     def __post_init__(self) -> None:
         self.scraped_threads = set()
 
+    @property
+    def scrape_single_forum_post(self) -> bool:
+        return self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
+
     async def async_startup(self) -> None:
         if not self.logged_in:
             login_url = self.PRIMARY_URL / "login"
@@ -143,7 +147,7 @@ class XenforoCrawler(Crawler, is_abc=True):
             return await self.handle_internal_link(scrape_item)
         if self.thread_url_part in scrape_item.url.parts:
             return await self.thread(scrape_item)
-        if self.is_confirmation_link(scrape_item.url):
+        if is_confirmation_link(scrape_item.url):
             return await self.process_confirmation_link(scrape_item)
         if any(p in scrape_item.url.parts for p in ("goto", "posts")):
             return await self.redirect_from_get(scrape_item)
@@ -203,7 +207,11 @@ class XenforoCrawler(Crawler, is_abc=True):
         post_url = thread.url
         for post in posts:
             current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
-            continue_scraping, scrape_post = self.check_post_number(thread.post, current_post.number)
+            continue_scraping, scrape_post = check_post_number(
+                thread.post,
+                current_post.number,
+                self.scrape_single_forum_post,
+            )
             date = current_post.date
             post_string = f"{self.POST_NAME}{current_post.number}"
             post_url = thread.url / post_string
@@ -314,7 +322,7 @@ class XenforoCrawler(Crawler, is_abc=True):
             absolute_link = self.parse_url(clean_link_str(link))
         else:
             absolute_link = link
-        if self.is_confirmation_link(absolute_link):
+        if is_confirmation_link(absolute_link):
             absolute_link = await self.handle_confirmation_link(absolute_link)
         return absolute_link
 
@@ -358,30 +366,16 @@ class XenforoCrawler(Crawler, is_abc=True):
         new_link = self.parse_url(link_str)
         return await self.get_absolute_link(new_link)
 
+    @property
+    def max_thread_depth(self) -> int:
+        return self.manager.config_manager.settings_data.download_options.maximum_thread_depth
+
     def stop_thread_recursion(self, scrape_item: ScrapeItem) -> bool:
-        max_thread_depth = self.manager.config_manager.settings_data.download_options.maximum_thread_depth
-        if not max_thread_depth:
+        if not self.max_thread_depth:
             return True
-        if len(scrape_item.parent_threads) > max_thread_depth:
+        if len(scrape_item.parent_threads) > self.max_thread_depth:
             return True
         return False
-
-    def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
-        """Checks if the program should scrape the current post.
-
-        Returns (continue_scraping, scrape_post)"""
-        scrape_single_forum_post = self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
-        scrape_post = continue_scraping = True
-        if scrape_single_forum_post:
-            if not post_number or post_number == current_post_number:
-                continue_scraping = False
-            else:
-                scrape_post = False
-
-        elif post_number and post_number > current_post_number:
-            scrape_post = False
-
-        return continue_scraping, scrape_post
 
     async def write_last_forum_post(self, thread_url: URL, last_post_url: URL | None) -> None:
         if not last_post_url or last_post_url == thread_url:
@@ -393,16 +387,11 @@ class XenforoCrawler(Crawler, is_abc=True):
         link_str: str | None = css.get_attr_or_none(link_obj, self.selectors.posts.links.element)
         return not (is_image or self.is_attachment(link_str))
 
-    def is_confirmation_link(self, link: URL) -> bool:
-        return any(keyword in link.path for keyword in ("link-confirmation",))
-
     def pre_filter_link(self, link: str) -> str:
         return link
 
     def filter_link(self, link: URL | None) -> URL | None:
         return link
-
-    """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
     async def login_setup(self, login_url: URL) -> None:
@@ -548,9 +537,6 @@ def get_post_title(soup: BeautifulSoup, selectors: XenforoSelectors) -> str:
     return title_block.get_text().replace("\n", "")
 
 
-HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
-
-
 def extract_embed_url(embed_str: str) -> str:
     embed_str = embed_str.replace(r"\/\/", "https://www.").replace("\\", "")
     if match := re.search(HTTP_URL_REGEX, embed_str):
@@ -586,3 +572,24 @@ def parse_login_form(resp_text: str) -> dict[str, str]:
         for elem in inputs
         if (name := css.get_attr(elem, "name")) and (value := css.get_attr(elem, "value"))
     }
+
+
+def is_confirmation_link(link: URL) -> bool:
+    return any(keyword in link.path for keyword in ("link-confirmation", "masked"))
+
+
+def check_post_number(post_number: int, current_post_number: int, scrape_single_forum_post: bool) -> tuple[bool, bool]:
+    """Checks if the program should scrape the current post.
+
+    Returns (continue_scraping, scrape_post)"""
+    scrape_post = continue_scraping = True
+    if scrape_single_forum_post:
+        if not post_number or post_number == current_post_number:
+            continue_scraping = False
+        else:
+            scrape_post = False
+
+    elif post_number and post_number > current_post_number:
+        scrape_post = False
+
+    return continue_scraping, scrape_post
