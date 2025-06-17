@@ -27,6 +27,7 @@ from cyberdrop_dl.utils.utilities import (
     get_download_path,
     get_filename_and_ext,
     is_absolute_http_url,
+    is_blob_or_svg,
     parse_url,
     remove_file_id,
     sort_dict,
@@ -73,7 +74,7 @@ def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, C
         try:
             if not self.SKIP_PRE_CHECK:
                 pre_check_scrape_item(scrape_item)
-            return await func(scrape_item, **kwargs)
+            return await func(scrape_item, **kwargs)  # type: ignore
         except ValueError:
             log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
             self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
@@ -189,7 +190,7 @@ class Crawler(ABC):
             if item.url.path_qs not in self.scraped_items:
                 log(f"{scrape_prefix}: {item.url}", 20)
                 self.scraped_items.append(item.url.path_qs)
-                await create_task_id(self.fetch)(self, item)
+                await create_task_id(self.fetch)(self, item)  # type: ignore
             else:
                 log(f"Skipping {item.url} as it has already been scraped", 10)
 
@@ -401,10 +402,6 @@ class Crawler(ABC):
         If provided, it will be used as a filter, to only yield items that has not been downloaded before"""
         album_results = results or {}
 
-        def is_embedded_image(link: str) -> bool:
-            """Checks if the link is an embedded image URL."""
-            return link.startswith("data:image") or link.startswith("blob:")
-
         for tag in css.iselect(soup, selector):
             link_str: str | None = css.get_attr_or_none(tag, attribute)
             if not link_str:
@@ -416,7 +413,7 @@ class Crawler(ABC):
                 thumb_str: str | None = css.get_attr_or_none(t_tag, "src")
             else:
                 thumb_str = None
-            thumb = self.parse_url(thumb_str) if thumb_str and not is_embedded_image(thumb_str) else None
+            thumb = self.parse_url(thumb_str) if thumb_str and not is_blob_or_svg(thumb_str) else None
             yield thumb, link
 
     def iter_children(

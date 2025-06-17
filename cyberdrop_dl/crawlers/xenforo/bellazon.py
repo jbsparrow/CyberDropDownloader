@@ -30,5 +30,4 @@ class BellazonCrawler(XenforoCrawler):
         posts=_post_selectors,
         title=Selector("span.ipsType_break.ipsContained span"),
         next_page=Selector("li.ipsPagination_next a[href]", "href"),
-        post_name=XF_POST_URL_PART_NAME,
     )

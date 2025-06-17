@@ -18,6 +18,7 @@ from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
     get_text_between,
     is_absolute_http_url,
+    is_blob_or_svg,
     remove_trailing_slash,
 )
 
@@ -56,12 +57,11 @@ class PostSelectors:
 
 @dataclass(frozen=True, slots=True)
 class XenforoSelectors:
-    next_page: Selector = Selector("a.pageNav-jump--next", "href")
+    next_page: Selector = Selector("a[class*=pageNav-jump--next]", "href")
     posts: PostSelectors = PostSelectors()
-    title: Selector = Selector("h1.p-title-value")
+    title: Selector = Selector("h1[class*=p-title-value]")
     title_trash: Selector = Selector("span")
     quotes: Selector = Selector("blockquote")
-    post_name: str = "post-"
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,7 +272,7 @@ class XenforoCrawler(Crawler, is_abc=True):
             if embeds:
                 link_str = extract_embed_url(link_str)
 
-            if link_str.startswith("data:image/svg"):
+            if is_blob_or_svg(link_str):
                 continue
 
             await self.process_child(scrape_item, link_str)
