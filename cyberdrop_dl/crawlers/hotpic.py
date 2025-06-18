@@ -13,11 +13,16 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-IMAGE_SELECTOR = "img[id*=main-image]"
-VIDEO_SELECTOR = "video > source"
-ALBUM_ITEM_SELECTOR = "a[class*=spotlight]"
+
+class Selectors:
+    IMAGE = "img[id*=main-image]"
+    VIDEO = "video > source"
+    ALBUM_ITEM = "a[class*=spotlight]"
+    IMAGE_OR_VIDEO = f"{IMAGE}, {VIDEO}"
+
 
 PRIMARY_URL = AbsoluteHttpURL("https://hotpic.cc")
+_SELECTORS = Selectors()
 
 
 class HotPicCrawler(Crawler):
@@ -49,7 +54,7 @@ class HotPicCrawler(Crawler):
         title = self.create_title(css.select_one_get_text(soup, "title").rsplit(" - ")[0], scrape_item.album_id)
         scrape_item.setup_as_profile(title, album_id=album_id)
 
-        for _, link in self.iter_tags(soup, ALBUM_ITEM_SELECTOR):
+        for _, link in self.iter_tags(soup, _SELECTORS.ALBUM_ITEM):
             await self.handle_direct_link(scrape_item, link)
 
     @error_handling_wrapper
@@ -60,7 +65,7 @@ class HotPicCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        file = soup.select_one(VIDEO_SELECTOR) or soup.select_one(IMAGE_SELECTOR)
+        file = soup.select_one(_SELECTORS.IMAGE_OR_VIDEO)
         if not file:
             raise ScrapeError(422)
         link_str: str = css.get_attr(file, "src")
