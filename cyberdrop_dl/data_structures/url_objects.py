@@ -6,7 +6,7 @@ from dataclasses import InitVar, dataclass, field
 from enum import IntEnum
 from functools import partialmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NamedTuple, ParamSpec, Self, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, ParamSpec, Self, TypeVar, overload
 
 import yarl
 
@@ -17,6 +17,7 @@ R = TypeVar("R")
 T = TypeVar("T")
 
 if TYPE_CHECKING:
+    import datetime
     import functools
     import inspect
     from collections.abc import Callable
@@ -311,3 +312,32 @@ class ScrapeItem:
     def copy(self) -> Self:
         """Returns a deep copy of this scrape_item"""
         return copy.deepcopy(self)
+
+
+class QueryDatetimeRange(NamedTuple):
+    before: datetime.datetime | None = None
+    after: datetime.datetime | None = None
+
+    @staticmethod
+    def from_url(url: AbsoluteHttpURL) -> QueryDatetimeRange | None:
+        self = QueryDatetimeRange(_date_from_query_param(url, "before"), _date_from_query_param(url, "after"))
+        if self == (None, None):
+            return None
+        if (self.before and self.after) and (self.before <= self.after):
+            raise ValueError
+        return self
+
+    def is_in_range(self, other: datetime.datetime) -> bool:
+        if (self.before and other >= self.before) or (self.after and other <= self.after):
+            return False
+        return True
+
+    def as_query(self) -> dict[str, Any]:
+        return {name: value.isoformat() for name, value in self._asdict().items() if value}
+
+
+def _date_from_query_param(url: AbsoluteHttpURL, query_param: str) -> datetime.datetime | None:
+    from cyberdrop_dl.utils.dates import parse_aware_iso_datetime
+
+    if value := url.query.get(query_param):
+        return parse_aware_iso_datetime(value)

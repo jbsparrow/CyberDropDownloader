@@ -9,16 +9,17 @@ import datetime
 import itertools
 import re
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeVar, final
+from typing import TYPE_CHECKING, ClassVar, ParamSpec, TypeVar, final
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 
 from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.data_structures.url_objects import QueryDatetimeRange
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css, open_graph
-from cyberdrop_dl.utils.dates import parse_aware_iso_datetime, to_timestamp
+from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, no_error, unique
 
 from .models import Category, CategorySequence, ColletionType, Html, Post, PostSequence, Tag, TagSequence
@@ -55,28 +56,6 @@ _SELECTORS = Selectors()
 _POST_ID_REGEX = re.compile(r"(?:postid-|post-)(\d+)")
 
 
-class DateRange(NamedTuple):
-    before: datetime.datetime | None = None
-    after: datetime.datetime | None = None
-
-    @staticmethod
-    def from_url(url: AbsoluteHttpURL) -> DateRange | None:
-        self = DateRange(_date_from_query_param(url, "before"), _date_from_query_param(url, "after"))
-        if self == (None, None):
-            return None
-        if (self.before and self.after) and (self.before <= self.after):
-            raise ValueError
-        return self
-
-    def is_in_range(self, other: datetime.datetime) -> bool:
-        if (self.before and other >= self.before) or (self.after and other <= self.after):
-            return False
-        return True
-
-    def as_query(self) -> dict[str, Any]:
-        return {name: value.isoformat() for name, value in self._asdict().items() if value}
-
-
 class WordPressBaseCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Category": "/category/<category_slug>",
@@ -110,7 +89,7 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
 
     @final
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        date_range = DateRange.from_url(scrape_item.url)
+        date_range = QueryDatetimeRange.from_url(scrape_item.url)
         scrape_item.url = scrape_item.url.with_query(None)
         if date_range:
             self.log(f"Scraping {scrape_item.url} with date range: {date_range.as_query()}")
@@ -128,7 +107,7 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
         return "wp-content" in url.parts and bool(url.suffix)
 
     @final
-    async def fetch_with_date_range(self, scrape_item: ScrapeItem, date_range: DateRange | None) -> None:
+    async def fetch_with_date_range(self, scrape_item: ScrapeItem, date_range: QueryDatetimeRange | None) -> None:
         match scrape_item.url.parts[1:]:
             case ["posts"]:
                 return await self.all_posts(scrape_item, date_range)
@@ -145,17 +124,19 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
 
     @abstractmethod
     async def category_or_tag(
-        self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: DateRange | None = None
+        self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: QueryDatetimeRange | None = None
     ) -> None: ...
 
     @abstractmethod
     async def post(self, scrape_item: ScrapeItem) -> None: ...
 
     @abstractmethod
-    async def all_posts(self, scrape_item: ScrapeItem, date_range: DateRange | None = None) -> None: ...
+    async def all_posts(self, scrape_item: ScrapeItem, date_range: QueryDatetimeRange | None = None) -> None: ...
 
     @final
-    async def filter_post(self, scrape_item: ScrapeItem, post: Post, date_range: DateRange | None = None) -> None:
+    async def filter_post(
+        self, scrape_item: ScrapeItem, post: Post, date_range: QueryDatetimeRange | None = None
+    ) -> None:
         if date_range and not date_range.is_in_range(post.date_gmt):
             self.log(f"Skipping post {post.link} as it is out of date range. Post date: {[post.date_gmt]}")
             return
@@ -223,7 +204,7 @@ class WordPressAPICrawler(WordPressBaseCrawler, is_abc=True):
 
     @error_handling_wrapper
     async def category_or_tag(
-        self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: DateRange | None = None
+        self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: QueryDatetimeRange | None = None
     ) -> None:
         if colletion_type is ColletionType.CATEGORY:
             model, api_url = CategorySequence, self.WP_API_CATEGORIES_URL.with_query(slug=scrape_item.url.name)
@@ -242,7 +223,7 @@ class WordPressAPICrawler(WordPressBaseCrawler, is_abc=True):
         return await self.handle_post(scrape_item, posts[0], is_single_post=True)
 
     @error_handling_wrapper
-    async def all_posts(self, scrape_item: ScrapeItem, date_range: DateRange | None = None) -> None:
+    async def all_posts(self, scrape_item: ScrapeItem, date_range: QueryDatetimeRange | None = None) -> None:
         api_url = self.WP_API_POSTS_URL
         if date_range:
             api_url = api_url.update_query(date_range.as_query())
@@ -256,7 +237,7 @@ class WordPressAPICrawler(WordPressBaseCrawler, is_abc=True):
         return model_cls.model_validate_json(json_text)
 
     async def __handle_collection(
-        self, scrape_item: ScrapeItem, collection: Category | Tag, date_range: DateRange | None = None
+        self, scrape_item: ScrapeItem, collection: Category | Tag, date_range: QueryDatetimeRange | None = None
     ) -> None:
         title = self.create_title(f"{collection.description or collection.slug} [{collection._type}]")
         scrape_item.setup_as_profile(title)
@@ -288,7 +269,7 @@ class WordPressSoupCrawler(WordPressBaseCrawler, is_abc=True):
             return await self.client.get_soup(self.DOMAIN, api_url)
 
     async def category_or_tag(
-        self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: DateRange | None = None
+        self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: QueryDatetimeRange | None = None
     ) -> None:
         if colletion_type is ColletionType.CATEGORY:
             collection = Category(slug=scrape_item.url.name, link=str(scrape_item.url))
@@ -297,7 +278,7 @@ class WordPressSoupCrawler(WordPressBaseCrawler, is_abc=True):
         await self.__handle_collection(scrape_item, collection, date_range)
 
     async def __handle_collection(
-        self, scrape_item: ScrapeItem, collection: Category | Tag, date_range: DateRange | None = None
+        self, scrape_item: ScrapeItem, collection: Category | Tag, date_range: QueryDatetimeRange | None = None
     ) -> None:
         title = self.create_title(f"{collection.description or collection.slug} [{collection._type}]")
         scrape_item.setup_as_profile(title)
@@ -319,11 +300,11 @@ class WordPressSoupCrawler(WordPressBaseCrawler, is_abc=True):
         }
         return Post.model_validate(data)
 
-    async def all_posts(self, scrape_item: ScrapeItem, date_range: DateRange | None = None) -> None:
+    async def all_posts(self, scrape_item: ScrapeItem, date_range: QueryDatetimeRange | None = None) -> None:
         scrape_item.setup_as_profile(self.create_title("Posts"))
         await self.post_url_pager(scrape_item, date_range)
 
-    async def post_url_pager(self, scrape_item: ScrapeItem, date_range: DateRange | None = None) -> None:
+    async def post_url_pager(self, scrape_item: ScrapeItem, date_range: QueryDatetimeRange | None = None) -> None:
         async for soup in self.web_pager(scrape_item.url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.POST_LINK_FROM_PAGE.element):
                 if (
@@ -345,11 +326,6 @@ def _match_date_from_path(url: AbsoluteHttpURL) -> datetime.datetime | None:
             return datetime.datetime(int(year), int(month), int(day))
         case _:
             return
-
-
-def _date_from_query_param(url: AbsoluteHttpURL, query_param: str) -> datetime.datetime | None:
-    if value := url.query.get(query_param):
-        return parse_aware_iso_datetime(value)
 
 
 def _get_original_quality_link(link: str) -> str:
