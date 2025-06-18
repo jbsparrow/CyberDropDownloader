@@ -144,10 +144,7 @@ class PornHubCrawler(Crawler):
     async def _get_profile_title(self, url: AbsoluteHttpURL) -> str:
         async with self.request_limiter:
             soup = await self.client.get_soup(self.DOMAIN, url)
-        title_tag = css.select_one(soup, _SELECTORS.PROFILE_NAME)
-        for span in css.iselect(title_tag, "span"):
-            span.decompose()
-        return title_tag.get_text(strip=True)
+        return css.select_one_get_text(soup, _SELECTORS.PROFILE_NAME, decompose="span")
 
     @error_handling_wrapper
     async def _profile_pages(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL, selector: str) -> None:

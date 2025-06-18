@@ -29,9 +29,13 @@ def select_one(tag: Tag, selector: str) -> Tag:
     return not_none(tag.select_one)(selector)
 
 
-def select_one_get_text(tag: Tag, selector: str, strip: bool = True) -> str:
+def select_one_get_text(tag: Tag, selector: str, strip: bool = True, *, decompose: str | None = None) -> str:
     """Same as `tag.select_one.get_text(strip=strip)` but asserts the result is not `None`"""
-    return get_text(select_one(tag, selector), strip)
+    inner_tag = select_one(tag, selector)
+    if decompose:
+        for trash in iselect(inner_tag, decompose):
+            trash.decompose()
+    return get_text(inner_tag, strip)
 
 
 def get_attr_or_none(tag: Tag, attribute: str) -> str | None:
