@@ -8,10 +8,11 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import Field
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -67,7 +68,7 @@ class BoxDotComCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        js_text: str = soup.select_one(JS_SELECTOR).text
+        js_text: str = css.select_one_get_text(soup, JS_SELECTOR)
         _, _, data = js_text.removesuffix(";").partition("=")
 
         if not data:

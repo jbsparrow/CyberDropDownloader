@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
 
 from pydantic import AliasPath, Field, PlainValidator
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
@@ -38,7 +38,7 @@ HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_
 
 class XhamsterCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Video": "/<video_title>",
+        "Video": "/videos/<video_title>",
         "User": "/users/<user_name>",
         "Creator": "/creatos/<creator_name>",
         "Gallery": "photos/gallery/<gallery_name>",
@@ -51,14 +51,14 @@ class XhamsterCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "gallery" in scrape_item.url.parts:
             return await self.gallery(scrape_item)
-        if any(p in scrape_item.url.parts for p in ("creators", "user")):
+        if any(p in scrape_item.url.parts for p in ("creators", "users")):
             return await self.profile(scrape_item)
         if any(p in scrape_item.url.parts for p in ("movies", "videos")):
             return await self.video(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
-    async def profile(self, scrape_item: ScrapeItem, paths_to_scrape) -> None:
+    async def profile(self, scrape_item: ScrapeItem) -> None:
         profile_type, username = scrape_item.url.parts[1:3]
         title = self.create_title(f"{username} [{profile_type.removesuffix('s')}]")
         scrape_item.setup_as_profile(title)

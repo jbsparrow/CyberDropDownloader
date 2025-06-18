@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -158,9 +159,9 @@ class AShemaleTubeCrawler(Crawler):
     @error_handling_wrapper
     async def proccess_image(self, scrape_item: ScrapeItem, img_tag: Tag) -> None:
         if image := img_tag.select_one("img"):
-            link_str: str = image["src"]
+            link_str: str = css.get_attr(image, "src")
         else:
-            style: str = img_tag.select_one("a")["style"]
+            style: str = css.select_one_get_attr(img_tag, "a", "style")
             link_str = get_text_between(style, "url('", "');")
         url = self.parse_url(link_str).with_query(None)
         filename, ext = self.get_filename_and_ext(url.name)
@@ -191,7 +192,7 @@ class AShemaleTubeCrawler(Crawler):
             if "uploadDate" in json_data:
                 scrape_item.possible_datetime = self.parse_date(json_data["uploadDate"])
 
-        title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()
+        title: str = css.select_one_get_text(soup, "title").split("- aShemaletube.com")[0].strip()
         link = self.parse_url(best_format.link_str)
 
         scrape_item.url = canonical_url

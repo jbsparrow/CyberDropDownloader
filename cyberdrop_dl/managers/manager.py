@@ -4,7 +4,7 @@ import asyncio
 import json
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar
 
 from pydantic import BaseModel
 
@@ -33,7 +33,6 @@ if TYPE_CHECKING:
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
-    from cyberdrop_dl.types import AnyDict
 
 
 class AsyncioEvents(NamedTuple):
@@ -193,12 +192,17 @@ class Manager:
             self.progress_manager.startup()
 
     def process_additive_args(self) -> None:
+        cli_global_options = self.parsed_args.global_settings
         cli_ignore_options = self.parsed_args.config_settings.ignore_options
         config_skip_hosts = self.config_manager.settings_data.ignore_options.skip_hosts
         config_only_hosts = self.config_manager.settings_data.ignore_options.only_hosts
+        config_disable_crawlers = self.config_manager.global_settings_data.general.disable_crawlers
 
         cli_ignore_options.skip_hosts = add_or_remove_lists(config_skip_hosts, cli_ignore_options.skip_hosts)
         cli_ignore_options.only_hosts = add_or_remove_lists(config_only_hosts, cli_ignore_options.only_hosts)
+        cli_global_options.general.disable_crawlers = add_or_remove_lists(
+            config_disable_crawlers, cli_global_options.general.disable_crawlers
+        )
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
@@ -295,7 +299,7 @@ def add_or_remove_lists(old_list: list[str], new_list: list[str]) -> list[str]:
     return new_list
 
 
-def merge_dicts(dict1: AnyDict, dict2: AnyDict) -> AnyDict:
+def merge_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, Any]:
     for key, val in dict1.items():
         if isinstance(val, dict):
             if key in dict2 and isinstance(dict2[key], dict):

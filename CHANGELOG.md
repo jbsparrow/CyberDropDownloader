@@ -38,14 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-
-
-## [6.10.1] - 2025-06-06
+## [6.10.1] - 2025-06-15
 
 ### Changed
 
 - CDL will try to parse upload dates from human expresions. ex: "Last friday at 10:55", "3 hours, 50 minutes ago",
-- Improve DDosCheck performance
 - Scrape errors from the generic crawler will be logged as "Unsupported" instead of "Unknown"
 - Normalize posix paths
 

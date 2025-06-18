@@ -1,17 +1,13 @@
 import calendar
 import datetime
 from functools import lru_cache
-from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar
+from typing import Literal, NewType, TypeAlias, TypeVar
 
 import dateparser.date
 import dateutil
 import dateutil.parser
 
-if TYPE_CHECKING:
-    from cyberdrop_dl.types import TimeStamp
-else:
-    TimeStamp = int
-
+TimeStamp = NewType("TimeStamp", int)
 MIDNIGHT_TIME = datetime.time.min
 DATE_NOT_FOUND = dateparser.date.DateData(date_obj=None, period="day")
 DateOrder: TypeAlias = Literal["DMY", "DYM", "MDY", "MYD", "YDM", "YMD"]
@@ -144,6 +140,16 @@ def to_timestamp(date: datetime.datetime) -> TimeStamp:
 @lru_cache(maxsize=10)
 def get_parser(parser_kind: ParserKind | None = None, date_order: DateOrder | None = None) -> DateParser:
     return DateParser(parser_kind, date_order)
+
+
+def parse_aware_iso_datetime(value: str) -> datetime.datetime | None:
+    try:
+        parsed_date = datetime.datetime.fromisoformat(value)
+        if parsed_date.tzinfo is None:
+            parsed_date.replace(tzinfo=datetime.UTC)
+        return parsed_date
+    except Exception:
+        return
 
 
 if __name__ == "__main__":

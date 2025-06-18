@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
-from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
+from .xenforo import XenforoCrawler
 
 
 class AllPornComixCrawler(XenforoCrawler):
@@ -12,10 +12,3 @@ class AllPornComixCrawler(XenforoCrawler):
     DOMAIN: ClassVar[str] = "allporncomix"
     FOLDER_DOMAIN: ClassVar[str] = "AllPornComix"
     login_required = False
-    post_selectors = PostSelectors(
-        content=Selector("div[class=bbWrapper]"),
-        images=Selector("img[class*=bbImage]", "data-src"),
-        date=Selector("time", "datetime"),
-        attachments=Selector("section[class=message-attachments] .attachmentList .file .file-preview", "href"),
-    )
-    selectors = XenforoSelectors(posts=post_selectors)

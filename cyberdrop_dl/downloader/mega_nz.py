@@ -58,11 +58,12 @@ import random
 import string
 import struct
 import time
+from collections.abc import Sequence
 from enum import IntEnum
 from functools import partial
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypeAlias, TypedDict, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypeAlias, TypedDict, TypeVar, cast
 
 import aiofiles
 import aiohttp
@@ -75,16 +76,24 @@ from Crypto.Util import Counter
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import CDLBaseError, DownloadError, SlowDownloadError
-from cyberdrop_dl.types import AnyDict, U32Int, U32IntArray, U32IntSequence
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator, Generator, Mapping
 
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
+
+T = TypeVar("T")
+Array: TypeAlias = list[T] | tuple[T, ...]
+CMD: TypeAlias = Array[str]
+U32Int: TypeAlias = int
+U32IntArray: TypeAlias = Array[U32Int]
+U32IntSequence: TypeAlias = Sequence[U32Int]
+U32IntTupleArray: TypeAlias = tuple[U32Int, ...]
+AnyDict: TypeAlias = dict[str, Any]
 
 
 class MegaNzError(CDLBaseError): ...
@@ -143,9 +152,6 @@ class RequestError(MegaNzError):
 
 CHUNK_BLOCK_LEN = 16  # Hexadecimal
 EMPTY_IV = b"\0" * CHUNK_BLOCK_LEN
-
-
-U32IntTupleArray: TypeAlias = tuple[U32Int, ...]
 
 
 class Chunk(NamedTuple):
@@ -636,7 +642,7 @@ class MegaApi:
                 if file["t"] == NodeType.FILE:
                     file = cast("File", file)
                     k = (key[0] ^ key[4], key[1] ^ key[5], key[2] ^ key[6], key[3] ^ key[7])
-                    file["iv"] = key[4:6] + (0, 0)
+                    file["iv"] = (*key[4:6], 0, 0)
                     file["meta_mac"] = key[6:8]
                 # folder
                 else:
@@ -729,7 +735,7 @@ class MegaApi:
                 elif node["t"] == NodeType.FOLDER:
                     k = key
 
-                iv: U32IntSequence = key[4:6] + (0, 0)
+                iv: U32IntSequence = (*key[4:6], 0, 0)
                 meta_mac: U32IntTupleArray = key[6:8]
 
                 attrs = decrypt_attr(base64_url_decode(node["a"]), k)
@@ -742,7 +748,7 @@ class MegaApi:
         nodes = {node["h"]: node async for node in prepare_nodes()}
         return nodes
 
-    async def _build_file_system(self, nodes_map: dict[str, Node], root_ids: list[str]) -> dict[Path, Node]:
+    async def _build_file_system(self, nodes_map: Mapping[str, Node], root_ids: list[str]) -> dict[Path, Node]:
         """Builds a flattened dictionary representing a file system from a list of items.
 
         Returns:

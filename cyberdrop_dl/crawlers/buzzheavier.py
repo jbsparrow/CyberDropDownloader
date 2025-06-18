@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -29,11 +29,10 @@ class BuzzHeavierCrawler(Crawler):
         url = scrape_item.url / "download"
         headers = {"HX-Current-URL": str(scrape_item.url), "HX-Request": "true"}
         async with self.request_limiter:
-            headers = await self.client.get_head(self.DOMAIN, url, headers=headers)
-            redirect = headers["hx-redirect"]
-            filename = get_filename_from_headers(headers)
+            response = await self.client._get_head(self.DOMAIN, url, headers=headers)
 
-        assert filename
-        link = self.parse_url(redirect)
-        filename, ext = self.get_filename_and_ext(filename, assume_ext=".zip")
+        assert response.content_disposition
+        assert response.content_disposition.filename
+        link = self.parse_url(response.headers["hx-redirect"])
+        filename, ext = self.get_filename_and_ext(response.content_disposition.filename, assume_ext=".zip")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=link)

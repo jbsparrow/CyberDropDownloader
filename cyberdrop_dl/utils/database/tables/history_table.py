@@ -129,7 +129,7 @@ class HistoryTable:
             (domain, str(referer)),
         )
         sql_file_check = await result.fetchone()
-        return sql_file_check and sql_file_check[0] != 0
+        return bool(sql_file_check and sql_file_check[0] != 0)
 
     async def insert_incompleted(self, domain: str, media_item: MediaItem) -> None:
         """Inserts an uncompleted file into the database."""
@@ -198,7 +198,7 @@ class HistoryTable:
         )
         await self.db_conn.commit()
 
-    async def get_duration(self, domain: str, media_item: MediaItem) -> float:
+    async def get_duration(self, domain: str, media_item: MediaItem) -> float | None:
         """Returns the duration from the database."""
         if media_item.is_segment:
             return
@@ -225,9 +225,11 @@ class HistoryTable:
         sql_file_check = await result.fetchone()
         return sql_file_check == 1
 
-    async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
+    async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str | None:
         """Returns the downloaded filename from the database."""
 
+        if media_item.is_segment:
+            return media_item.filename
         url_path = get_db_path(media_item.url, str(media_item.referer))
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(

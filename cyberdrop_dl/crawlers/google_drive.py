@@ -37,11 +37,11 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DownloadError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -119,7 +119,7 @@ class GoogleDriveCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, download_url)
 
-        title: str = soup.title.text.strip()
+        title: str = css.select_one_get_text(soup, "title")
         children = []
         for item in soup.select(ITEM_SELECTOR):
             link = item.get("href")
@@ -139,31 +139,25 @@ class GoogleDriveCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        download_url = get_download_url(file_id)
-        link, headers = await self.get_file_url_and_headers(download_url, file_id)
         scrape_item.url = canonical_url
-
-        filename = get_filename_from_headers(headers) or link.name
-        filename, ext = self.get_filename_and_ext(filename)
+        download_url = get_download_url(file_id)
+        link, filename = await self.get_file_url_and_name(download_url, file_id)
+        filename, ext = self.get_filename_and_ext(filename or link.name)
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
-    async def get_file_url_and_headers(
-        self, url: AbsoluteHttpURL, file_id: str
-    ) -> tuple[AbsoluteHttpURL, Mapping[str, str]]:
+    async def get_file_url_and_name(self, url: AbsoluteHttpURL, file_id: str) -> tuple[AbsoluteHttpURL, str | None]:
         soup = last_error = None
         current_url: AbsoluteHttpURL | None = url
         try_file_open_url = True
 
-        headers = {}
         while current_url:
-            current_url, headers = await self.add_headers(current_url)
-            if are_valid_headers(headers):
-                return current_url, headers
+            current_url, filename = await self.add_filename(current_url)
+            if filename:
+                return current_url, filename
 
             try:
                 async with self.request_limiter:
                     response, soup = await self.client._get_response_and_soup(self.DOMAIN, current_url)
-                    headers = response.headers
 
             except DownloadError as e:
                 last_error = e
@@ -179,24 +173,27 @@ class GoogleDriveCrawler(Crawler):
                 current_url = docs_url
                 continue
 
-            if are_valid_headers(headers):
-                return current_url, headers
+            if response.content_disposition and response.content_disposition.filename:
+                return current_url, response.content_disposition.filename
 
             current_url = self.get_url_from_download_button(soup)
             if not current_url:
                 break
-            return await self.add_headers(current_url)
+
+            return await self.add_filename(current_url)
 
         raise ScrapeError(422)
 
-    async def add_headers(self, url: AbsoluteHttpURL) -> tuple[AbsoluteHttpURL, Mapping[str, str]]:
+    async def add_filename(self, url: AbsoluteHttpURL) -> tuple[AbsoluteHttpURL, str | None]:
         async with self.request_limiter:
-            headers = await self.client.get_head(self.DOMAIN, url)
-        location = headers.get("location")
+            response = await self.client._get_head(self.DOMAIN, url)
+        location = response.headers.get("location")
         if location:
             link = self.parse_url(location)
-            return await self.add_headers(link)
-        return url, headers
+            return await self.add_filename(link)
+        if response.content_disposition and response.content_disposition.filename:
+            return url, response.content_disposition.filename
+        return url, None
 
     def get_url_from_download_button(self, soup: BeautifulSoup) -> AbsoluteHttpURL | None:
         form = soup.select_one("#download-form")
@@ -218,7 +215,7 @@ class GoogleDriveCrawler(Crawler):
 
 
 def get_docs_url(soup: BeautifulSoup, file_id: str) -> AbsoluteHttpURL | None:
-    title: str = soup.title.text
+    title: str = css.select_one_get_text(soup, "title")
     if title.endswith(" - Google Docs"):
         return AbsoluteHttpURL(f"https://docs.google.com/document/d/{file_id}/export?format=docx")
     if title.endswith(" - Google Sheets"):
@@ -228,16 +225,14 @@ def get_docs_url(soup: BeautifulSoup, file_id: str) -> AbsoluteHttpURL | None:
 
 
 def get_id_from_query(url: AbsoluteHttpURL) -> str | None:
-    item_id = url.query.get("id")
-    if item_id:
+    if item_id := url.query.get("id"):
         if len(item_id) == 1:
             return item_id[1]
         return item_id
 
 
 def get_file_id(url: AbsoluteHttpURL) -> str:
-    file_id = get_id_from_query(url)
-    if file_id:
+    if file_id := get_id_from_query(url):
         return file_id
 
     if "d" in url.parts and any(p in url.parts for p in VALID_FILE_URL_PARTS):

@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
 
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+
 
 class TempRefererTable:
     def __init__(self, db_conn: aiosqlite.Connection) -> None:
@@ -42,19 +44,19 @@ class TempRefererTable:
         await self.db_conn.execute("""DROP TABLE IF EXISTS temp_referer""")
         await self.db_conn.commit()
 
-    async def check_referer(self, referer: URL) -> bool:
+    async def check_referer(self, referer: AbsoluteHttpURL) -> bool:
         """Checks whether an individual referer url has already been recorded in the database."""
         if self.ignore_history:
             return False
 
-        referer = str(referer)
+        referer_str = str(referer)
 
         cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT url_path FROM media WHERE referer = ? """, (referer,))
+        result = await cursor.execute("""SELECT url_path FROM media WHERE referer = ? """, (referer_str,))
         sql_referer_check = await result.fetchone()
         sql_referer_check_current_run = await self._check_temp_referer(referer)
         if not sql_referer_check:
-            await self.sql_insert_temp_referer(referer)
+            await self.sql_insert_temp_referer(referer_str)
             return False
         return not sql_referer_check_current_run
 
@@ -63,8 +65,7 @@ class TempRefererTable:
         if self.ignore_history:
             return False
 
-        referer = str(referer)
         cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT referer FROM temp_referer WHERE referer = ? """, (referer,))
+        result = await cursor.execute("""SELECT referer FROM temp_referer WHERE referer = ? """, (str(referer),))
         sql_referer_check = await result.fetchone()
         return bool(sql_referer_check)

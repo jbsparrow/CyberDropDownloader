@@ -1,39 +1,45 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import re
 from abc import ABC, abstractmethod
-from dataclasses import field
-from datetime import datetime
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
 
 from aiolimiter import AsyncLimiter
-from dateutil import parser
 from yarl import URL
 
+from cyberdrop_dl import constants
 from cyberdrop_dl.constants import NEW_ISSUE_URL
-from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
-from cyberdrop_dl.utils.dates import parse_date, to_timestamp
+from cyberdrop_dl.utils.dates import TimeStamp, parse_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
+from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media, RenditionGroup
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
     get_download_path,
     get_filename_and_ext,
     is_absolute_http_url,
+    is_blob_or_svg,
     parse_url,
     remove_file_id,
+    sanitize_filename,
     sort_dict,
+    truncate_str,
 )
 
 P = ParamSpec("P")
 R = TypeVar("R")
+T = TypeVar("T")
+
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
@@ -43,9 +49,27 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths, TimeStamp
+
+
+OneOrTuple: TypeAlias = T | tuple[T, ...]
+SupportedPaths: TypeAlias = Mapping[str, OneOrTuple[str]]
+SupportedDomains: TypeAlias = OneOrTuple[str]
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
+HASH_PREFIXES = "md5:", "sha1:", "sha256:", "xxh128:"
+VALID_RESOLUTION_NAMES = "4K", "8K", "Unknown"
+
+
+@dataclass(slots=True, frozen=True)
+class PlaceHolderConfig:
+    include_file_id: bool = True
+    include_video_codec: bool = True
+    include_audio_codec: bool = True
+    include_resolution: bool = True
+    include_hash: bool = True
+
+
+_placeholder_config = PlaceHolderConfig()
 
 
 class CrawlerInfo(NamedTuple):
@@ -67,7 +91,7 @@ def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, C
         try:
             if not self.SKIP_PRE_CHECK:
                 pre_check_scrape_item(scrape_item)
-            return await func(*args, **kwargs)
+            return await func(scrape_item, **kwargs)  # type: ignore
         except ValueError:
             log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
             self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
@@ -122,7 +146,7 @@ class Crawler(ABC):
         if is_abc:
             return
 
-        if cls.DOMAIN != "generic":
+        if cls.DOMAIN not in ("generic", "real-debrid"):
             REQUIRED_FIELDS = "PRIMARY_URL", "DOMAIN", "SUPPORTED_PATHS"
             for field_name in REQUIRED_FIELDS:
                 assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
@@ -139,6 +163,8 @@ class Crawler(ABC):
             if path_name != "Direct links":
                 assert paths, f"{cls.__name__} has not paths for {path_name}"
 
+            if path_name.startswith("*"):  # note
+                return
             if isinstance(paths, str):
                 paths = (paths,)
             for path in paths:
@@ -183,13 +209,9 @@ class Crawler(ABC):
             if item.url.path_qs not in self.scraped_items:
                 log(f"{scrape_prefix}: {item.url}", 20)
                 self.scraped_items.append(item.url.path_qs)
-                await self.queue_fetch_task(item)
+                await create_task_id(self.fetch)(self, item)  # type: ignore
             else:
                 log(f"Skipping {item.url} as it has already been scraped", 10)
-
-    @create_task_id
-    async def queue_fetch_task(self, scrape_item: ScrapeItem) -> None:
-        await self.fetch(scrape_item)
 
     async def handle_file(
         self,
@@ -200,10 +222,10 @@ class Crawler(ABC):
         *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
-        m3u8_content: str = "",
+        m3u8_media: M3U8Media | None = None,
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
-        await self.manager.states.RUNNING.wait()
+
         if custom_filename:
             original_filename, filename = filename, custom_filename
         elif self.DOMAIN in ["cyberdrop"]:
@@ -216,17 +238,22 @@ class Crawler(ABC):
             assert is_absolute_http_url(debrid_link)
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
+        await self.handle_media_item(media_item, m3u8_media)
 
+    async def handle_media_item(self, media_item: MediaItem, m3u8_media: M3U8Media | None = None) -> None:
+        await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int. "
             msg += f"Please file a bug report at {NEW_ISSUE_URL}"
             log(msg, 30)
 
-        check_complete = await self.manager.db_manager.history_table.check_complete(self.DOMAIN, url, scrape_item.url)
+        check_complete = await self.manager.db_manager.history_table.check_complete(
+            self.DOMAIN, media_item.url, media_item.referer
+        )
         if check_complete:
             if media_item.album_id:
                 await self.manager.db_manager.history_table.set_album_id(self.DOMAIN, media_item)
-            log(f"Skipping {url} as it has already been downloaded", 10)
+            log(f"Skipping {media_item.url} as it has already been downloaded", 10)
             self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
@@ -234,11 +261,11 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if not m3u8_content:
+        if not m3u8_media:
             self.manager.task_group.create_task(self.downloader.run(media_item))
             return
 
-        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_content))
+        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_media))
 
     @final
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
@@ -338,21 +365,25 @@ class Crawler(ABC):
                 break
         return title
 
+    @property
+    def separate_posts(self) -> bool:
+        return self.manager.config.download_options.separate_posts
+
     def create_separate_post_title(
         self,
         title: str | None = None,
         id: str | None = None,
-        date: datetime | int | None = None,
+        date: datetime.datetime | datetime.date | int | None = None,
         /,
     ) -> str:
-        if not self.manager.config.download_options.separate_posts:
+        if not self.separate_posts:
             return ""
         title_format = self.manager.config.download_options.separate_posts_format
         if title_format.strip().casefold() == "{default}":
             title_format = self.DEFAULT_POST_TITLE_FORMAT
         if isinstance(date, int):
-            date = datetime.fromtimestamp(date)
-        if isinstance(date, datetime):
+            date = datetime.datetime.fromtimestamp(date)
+        if isinstance(date, datetime.datetime | datetime.date):
             date_str = date.isoformat()
         else:
             date_str: str | None = date
@@ -363,7 +394,7 @@ class Crawler(ABC):
         id = default_if_none(id, "Unknown")
         title = default_if_none(title, "Untitled")
         date_str = default_if_none(date_str, "NO_DATE")
-        return title_format.format(id=id, date=date_str, title=title)
+        return title_format.format(id=id, number=id, date=date_str, title=title)
 
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> AbsoluteHttpURL:
         """Wrapper arround `utils.parse_url` to use `self.PRIMARY_URL` as base"""
@@ -394,11 +425,7 @@ class Crawler(ABC):
         If provided, it will be used as a filter, to only yield items that has not been downloaded before"""
         album_results = results or {}
 
-        def is_embedded_image(link: str) -> bool:
-            """Checks if the link is an embedded image URL."""
-            return link.startswith("data:image") or link.startswith("blob:")
-
-        for tag in soup.css.iselect(selector):
+        for tag in css.iselect(soup, selector):
             link_str: str | None = css.get_attr_or_none(tag, attribute)
             if not link_str:
                 continue
@@ -409,7 +436,7 @@ class Crawler(ABC):
                 thumb_str: str | None = css.get_attr_or_none(t_tag, "src")
             else:
                 thumb_str = None
-            thumb = self.parse_url(thumb_str) if thumb_str and not is_embedded_image(thumb_str) else None
+            thumb = self.parse_url(thumb_str) if thumb_str and not is_blob_or_svg(thumb_str) else None
             yield thumb, link
 
     def iter_children(
@@ -422,7 +449,7 @@ class Crawler(ABC):
         *,
         results: dict[str, int] | None = None,
         **kwargs: Any,
-    ) -> Generator[tuple[URL | None, ScrapeItem]]:
+    ) -> Generator[tuple[AbsoluteHttpURL | None, ScrapeItem]]:
         """Generates tuples with an URL from the `src` value of the first image tag (AKA the thumbnail) and a new scrape item from the value of `attribute`
 
         :param results: must be the output of `self.get_album_results`.
@@ -486,29 +513,103 @@ class Crawler(ABC):
         await self.handle_file(link, scrape_item, filename, ext)
 
     def parse_date(self, date_or_datetime: str, format: str | None = None, /) -> TimeStamp | None:
+        if parsed_date := self._parse_date(date_or_datetime, format):
+            return to_timestamp(parsed_date)
+
+    def parse_iso_date(self, date_or_datetime: str, /) -> TimeStamp | None:
+        if parsed_date := self._parse_date(date_or_datetime, None, iso=True):
+            return to_timestamp(parsed_date)
+
+    def _parse_date(
+        self, date_or_datetime: str, format: str | None = None, /, *, iso: bool = False
+    ) -> datetime.datetime | None:
+        assert not (iso and format)
         msg = f"Date parsing for {self.DOMAIN} seems to be broken. Please report this as a bug at {NEW_ISSUE_URL}"
         if not date_or_datetime:
-            log(f"{msg}: Unable to extract date from soup", 40)
+            log(f"{msg}: Unable to extract date from soup", 30)
             return None
-        parsed_date = None
         try:
-            if format:
-                parsed_date = datetime.strptime(date_or_datetime, format)
+            if iso:
+                parsed_date = datetime.datetime.fromisoformat(date_or_datetime)
+            elif format:
+                parsed_date = datetime.datetime.strptime(date_or_datetime, format)
             else:
                 parsed_date = parse_date(date_or_datetime)
-        except (ValueError, TypeError, parser.ParserError) as e:
+        except (ValueError, TypeError) as e:
             msg = f"{msg}: {e}"
 
-        if parsed_date is None:
-            log(msg, 40)
-            return None
-        return to_timestamp(parsed_date)
+        else:
+            return parsed_date
+
+        log(msg, 30)
 
     @staticmethod
     def register_cache_filter(
         url: URL, filter_fn: Callable[[AnyResponse], bool] | Callable[[AnyResponse], Awaitable[bool]]
     ) -> None:
         filters.cache_filter_functions[url.host] = filter_fn
+
+    async def get_m3u8_playlist(self, m3u8_playlist_url: AbsoluteHttpURL, /) -> tuple[M3U8Media, RenditionGroup]:
+        m3u8_playlist = await self._get_m3u8(m3u8_playlist_url)
+        assert m3u8_playlist.is_variant
+        rendition_group = m3u8_playlist.as_variant().get_best_group(exclude="vp09")
+        video = await self._get_m3u8(rendition_group.urls.video)
+        audio = await self._get_m3u8(rendition_group.urls.audio) if rendition_group.urls.audio else None
+        subtitle = await self._get_m3u8(rendition_group.urls.subtitle) if rendition_group.urls.subtitle else None
+        return M3U8Media(video, audio, subtitle), rendition_group
+
+    async def _get_m3u8(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
+        headers = headers or {}
+        async with self.request_limiter:
+            content = await self.client.get_text(self.DOMAIN, url, headers)
+        return M3U8(content, url.parent)
+
+    def create_custom_filename(
+        self,
+        name: str,
+        ext: str,
+        /,
+        *,
+        file_id: str | None = None,
+        video_codec: str | None = None,
+        audio_codec: str | None = None,
+        resolution: str | int | None = None,
+        hash_string: str | None = None,
+        only_truncate_stem: bool = True,
+    ) -> str:
+        calling_args = {name: value for name, value in locals().items() if value is not None and name not in ("self",)}
+        clean_name = sanitize_filename(Path(name).as_posix().replace("/", "-"))  # remove OS separators (if any)
+        stem = Path(clean_name).stem.removesuffix(".")  # remove extensions (if any)
+        extra_info: list[str] = []
+
+        if _placeholder_config.include_file_id and file_id:
+            extra_info.append(file_id)
+        if _placeholder_config.include_video_codec and video_codec:
+            extra_info.append(video_codec)
+        if _placeholder_config.include_audio_codec and audio_codec:
+            extra_info.append(audio_codec)
+
+        if _placeholder_config.include_resolution and resolution:
+            if isinstance(resolution, str):
+                if not resolution.removesuffix("p").isdigit():
+                    assert resolution in VALID_RESOLUTION_NAMES, f"Invalid: {resolution = }"
+                extra_info.append(resolution)
+            else:
+                extra_info.append(f"{resolution}p")
+
+        if _placeholder_config.include_hash and hash_string:
+            assert any(hash_string.startswith(x) for x in HASH_PREFIXES), f"Invalid: {hash_string = }"
+            extra_info.append(hash_string)
+
+        filename, extra_info_had_invalid_chars = make_custom_filename(stem, ext, extra_info, only_truncate_stem)
+        if extra_info_had_invalid_chars:
+            msg = (
+                f"Custom filename creation for {self.FOLDER_DOMAIN} seems to be broken. "
+                f"Important information was removed while creating a filename. "
+                f"Please report this as a bug at {NEW_ISSUE_URL}:\n{calling_args}"
+            )
+            log(msg, 30)
+        return filename
 
 
 def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
@@ -525,3 +626,51 @@ def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
 def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
     if scrape_item.url.path == "/":
         raise ValueError
+
+
+def make_custom_filename(stem: str, ext: str, extra_info: list[str], only_truncate_stem: bool) -> tuple[str, bool]:
+    truncate_len = constants.MAX_NAME_LENGTHS["FILE"] - len(ext)
+    invalid_extra_info_chars = False
+    if extra_info:
+        extra_info_str = "".join(f"[{info}]" for info in extra_info)
+        clean_extra_info_str = sanitize_filename(extra_info_str)
+        invalid_extra_info_chars = clean_extra_info_str != extra_info_str
+        if only_truncate_stem and (new_truncate_len := truncate_len - len(clean_extra_info_str) - 1) > 0:
+            truncated_stem = f"{truncate_str(stem, new_truncate_len)} {clean_extra_info_str}"
+        else:
+            truncated_stem = truncate_str(f"{stem} {clean_extra_info_str}", truncate_len)
+
+    else:
+        truncated_stem = truncate_str(stem, truncate_len)
+
+    return f"{truncated_stem}{ext}", invalid_extra_info_chars
+
+
+class Site(NamedTuple):
+    PRIMARY_URL: AbsoluteHttpURL
+    DOMAIN: str
+    SUPPORTED_DOMAINS: SupportedDomains = ()
+    FOLDER_DOMAIN: str = ""
+
+
+_CrawlerT = TypeVar("_CrawlerT", bound=Crawler)
+
+
+def _create_subclass(url_string: str, base_class: type[_CrawlerT]) -> type[_CrawlerT]:
+    primary_url = AbsoluteHttpURL(url_string)
+    domain = primary_url.host.removeprefix("www.")
+    class_name = _make_crawler_name(domain)
+    class_attributes = Site(primary_url, domain)._asdict()
+    return type(class_name, (base_class,), class_attributes)  # type: ignore[reportReturnType]
+
+
+def _make_crawler_name(input_string: str) -> str:
+    clean_string = re.sub(r"[^a-zA-Z0-9]+", " ", input_string).strip()
+    cap_name = clean_string.title().replace(" ", "")
+    assert cap_name and cap_name.isalnum(), (
+        f"Can not generate a valid class name from {input_string}. Needs to be defined as a concrete class"
+    )
+    if cap_name[0].isdigit():
+        cap_name = "_" + cap_name
+
+    return f"{cap_name}Crawler"

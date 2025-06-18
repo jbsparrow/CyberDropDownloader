@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader.mega_nz import (
     DecryptData,
     File,
@@ -14,7 +15,6 @@ from cyberdrop_dl.downloader.mega_nz import (
     decrypt_attr,
 )
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -57,7 +57,7 @@ class MegaNzCrawler(Crawler):
             self.ready = True
 
     async def async_startup(self) -> None:
-        await self.login(self.user, self.password)
+        await self.login(PRIMARY_URL)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.fragment:  # Mega stores access key in fragment. We can't do anything without the key
@@ -93,7 +93,7 @@ class MegaNzCrawler(Crawler):
             file_key[2] ^ file_key[6],
             file_key[3] ^ file_key[7],
         )
-        iv: tuple[int, ...] = file_key[4:6] + (0, 0)
+        iv: tuple[int, ...] = (*file_key[4:6], 0, 0)
         meta_mac: tuple[int, ...] = file_key[6:8]
         file = FileTuple(file_id, DecryptData(iv, k, meta_mac))
         await self.proccess_file(scrape_item, file)
@@ -150,4 +150,4 @@ class MegaNzCrawler(Crawler):
 
     @error_handling_wrapper
     async def login(self, *_):
-        await self.api.login()
+        await self.api.login(self.user, self.password)

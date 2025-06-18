@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -69,10 +69,9 @@ class DropboxCrawler(Crawler):
     async def get_folder_name(self, url: URL) -> str | None:
         url = await self.get_redict_url(url)
         async with self.request_limiter:
-            headers = await self.client.get_head(self.DOMAIN, url)
-        if not ("Content-Disposition" in headers and not is_html(headers)):
-            raise ScrapeError(422)
-        return get_filename_from_headers(headers)
+            response = await self.client._get_head(self.DOMAIN, url)
+        if response.content_disposition:
+            return response.content_disposition.filename
 
     async def get_redict_url(self, url: URL) -> AbsoluteHttpURL:
         async with self.request_limiter:

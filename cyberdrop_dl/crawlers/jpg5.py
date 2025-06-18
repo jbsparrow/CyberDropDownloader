@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 from ._chevereto import CheveretoCrawler
 
 if TYPE_CHECKING:
+    from cyberdrop_dl.crawlers.crawler import SupportedDomains, SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.types import SupportedDomains, SupportedPaths
 
 JPG5_REPLACE_HOST_REGEX = re.compile(r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)")
 DECRYPTION_KEY = b"seltilovessimpcity@simpcityhatesscrapers"

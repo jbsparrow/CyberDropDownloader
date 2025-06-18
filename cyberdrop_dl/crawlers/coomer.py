@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 from ._kemono_base import KemonoBaseCrawler, UserPost
 

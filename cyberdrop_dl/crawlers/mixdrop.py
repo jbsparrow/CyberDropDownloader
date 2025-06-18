@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -67,7 +67,7 @@ class MixDropCrawler(Crawler):
     @staticmethod
     def create_download_link(soup: BeautifulSoup) -> AbsoluteHttpURL:
         # Defined as a method to simplify subclasses calls
-        js_text = soup.select_one(_SELECTOR.JS).text
+        js_text = css.select_one_get_text(soup, _SELECTOR.JS)
         file_id = get_text_between(js_text, "|v2||", "|")
         parts = get_text_between(js_text, "MDCore||", "|thumbs").split("|")
         secure_key = get_text_between(js_text, f"{file_id}|", "|")

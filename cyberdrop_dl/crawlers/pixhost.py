@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ class PixHostCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         album_id = scrape_item.url.name
-        title = soup.select_one(GALLERY_TITLE_SELECTOR).text
+        title = css.select_one_get_text(soup, GALLERY_TITLE_SELECTOR)
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
@@ -65,7 +66,7 @@ class PixHostCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        link_str: str = soup.select_one(IMAGE_SELECTOR).get("src")
+        link_str: str = css.select_one_get_attr(soup, IMAGE_SELECTOR, "src")
         link = self.parse_url(link_str)
         await self.handle_direct_link(scrape_item, link)
 

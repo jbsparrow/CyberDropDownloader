@@ -14,9 +14,9 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from aiohttp import ClientConnectorError
 
 from cyberdrop_dl.constants import FILE_FORMATS
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
@@ -156,7 +156,7 @@ class BunkrrCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         soup: BeautifulSoup = await self.get_soup_lenient(scrape_item.url)
         album_id = scrape_item.url.parts[2]
-        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
+        title = css.select_one_get_text(soup, "title").rsplit(" | Bunkr")[0].strip()
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
@@ -211,7 +211,7 @@ class BunkrrCrawler(Crawler):
 
         # Try image first to not make any aditional request
         if image_container:
-            link_str: str = image_container.get("src")
+            link_str: str = css.get_attr(image_container, "src")
             link = self.parse_url(link_str)
 
         # Try to get downloadd URL from streaming API. Should work for most files, even none video files
@@ -223,7 +223,7 @@ class BunkrrCrawler(Crawler):
 
         # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
         if not link and download_link_container:
-            link_str: str = download_link_container.get("href")
+            link_str: str = css.get_attr(download_link_container, "href")
             link = self.parse_url(link_str)
 
         # Everything failed, abort
@@ -241,7 +241,7 @@ class BunkrrCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("h1").text.strip()
+        title: str = css.select_one_get_text(soup, "h1")
         link: URL | None = await self.get_download_url_from_api(scrape_item.url)
         if not link:
             raise ScrapeError(422)

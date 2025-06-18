@@ -14,12 +14,12 @@ from yarl import URL
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.crawlers import CRAWLERS
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import JDownloaderError, NoExtensionError
 from cyberdrop_dl.scraper.filters import has_valid_extension, is_in_domain_list, is_outside_date_range, is_valid_url
 from cyberdrop_dl.scraper.jdownloader import JDownloader
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_trailing_slash
 
 if TYPE_CHECKING:
@@ -56,6 +56,10 @@ class ScrapeMapper:
         if not self.manager.config_manager.global_settings_data.general.enable_generic_crawler:
             _ = self.existing_crawlers.pop(".")
 
+        disable_crawlers_by_config(
+            self.existing_crawlers, self.manager.config_manager.global_settings_data.general.disable_crawlers
+        )
+
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
         if self.jdownloader.enabled and isinstance(self.jdownloader.jdownloader_agent, Field):
@@ -69,8 +73,8 @@ class ScrapeMapper:
         if self.manager.real_debrid_manager.enabled:
             from cyberdrop_dl.crawlers.realdebrid import RealDebridCrawler
 
-            self.existing_crawlers["real-debrid"] = RealDebridCrawler(self.manager)
-            await self.existing_crawlers["real-debrid"].startup()
+            self.existing_crawlers["real-debrid"] = real = RealDebridCrawler(self.manager)
+            await real.startup()
 
     async def start(self) -> None:
         """Starts the orchestra."""
@@ -113,7 +117,7 @@ class ScrapeMapper:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[URL]]]:
+    async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[AbsoluteHttpURL]]]:
         """Split URLs from input file by their groups."""
         input_file = self.manager.path_manager.input_file
         if not await asyncio.to_thread(input_file.is_file):
@@ -186,7 +190,7 @@ class ScrapeMapper:
     async def filter_and_send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Send scrape_item to a supported crawler."""
         if not isinstance(scrape_item.url, URL):
-            scrape_item.url = URL(scrape_item.url)
+            scrape_item.url = AbsoluteHttpURL(scrape_item.url)
         if self.filter_items(scrape_item):
             await self.send_to_crawler(scrape_item)
 
@@ -202,10 +206,10 @@ class ScrapeMapper:
         if supported_domain and not is_generic:
             # get most restrictive domain if multiple domain matches
             supported_domain = max(supported_domain, key=len)
-            generic_crawler = self.existing_crawlers[supported_domain]
-            if not generic_crawler.ready:
-                await generic_crawler.startup()
-            self.manager.task_group.create_task(generic_crawler.run(scrape_item))
+            crawler = self.existing_crawlers[supported_domain]
+            if not crawler.ready:
+                await crawler.startup()
+            self.manager.task_group.create_task(crawler.run(scrape_item))
             return
 
         if self.manager.real_debrid_manager.enabled and self.manager.real_debrid_manager.is_supported(
@@ -316,7 +320,7 @@ class ScrapeMapper:
         return False
 
 
-def regex_links(line: str) -> list[URL]:
+def regex_links(line: str) -> list[AbsoluteHttpURL]:
     """Regex grab the links from the URLs.txt file.
 
     This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt.
@@ -329,18 +333,18 @@ def regex_links(line: str) -> list[URL]:
     all_links = [x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line)]
     for link in all_links:
         encoded = "%" in link
-        yarl_links.append(URL(link, encoded=encoded))
+        yarl_links.append(AbsoluteHttpURL(link, encoded=encoded))
     return yarl_links
 
 
 def create_item_from_entry(entry: Sequence) -> ScrapeItem:
-    url = URL(entry[0])
+    url = AbsoluteHttpURL(entry[0])
     retry_path = Path(entry[1])
     item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
     completed_at = entry[2]
     created_at = entry[3]
     if not isinstance(item.url, URL):
-        item.url = URL(item.url)
+        item.url = AbsoluteHttpURL(item.url)
     item.completed_at = completed_at
     item.created_at = created_at
     return item
@@ -369,3 +373,32 @@ def get_crawlers_mapping(manager: Manager | None = None) -> dict[str, Crawler]:
 
 def get_unique_crawlers() -> list[Crawler]:
     return sorted(set(get_crawlers_mapping().values()), key=lambda x: x.FOLDER_DOMAIN)
+
+
+def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_to_disable: list[str]) -> None:
+    if not crawlers_to_disable:
+        return
+
+    crawlers_to_disable = sorted({name.casefold() for name in crawlers_to_disable})
+
+    new_crawlers_mapping = {
+        key: crawler
+        for key, crawler in existing_crawlers.items()
+        if crawler.INFO.site.casefold() not in crawlers_to_disable
+    }
+    disabled_crawlers = set(existing_crawlers.values()) - set(new_crawlers_mapping.values())
+    if len(disabled_crawlers) != len(crawlers_to_disable):
+        msg = (
+            f"{len(crawlers_to_disable)} Crawler names where provided to disable"
+            f", but only {len(disabled_crawlers)} {'is' if len(disabled_crawlers) == 1 else 'are'} a valid crawler's name."
+        )
+        log(msg, 30)
+
+    if disabled_crawlers:
+        existing_crawlers.clear()
+        existing_crawlers.update(new_crawlers_mapping)
+        crawlers_info = "\n".join(
+            str({info.site: info.supported_domains}) for info in sorted(crawlers.INFO for crawlers in disabled_crawlers)
+        )
+        log(f"Crawlers disabled by config: \n{crawlers_info}")
+    log_spacer(10)

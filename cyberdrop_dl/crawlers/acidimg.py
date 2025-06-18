@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.imx_to import ImxToCrawler
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 if TYPE_CHECKING:
     from yarl import URL
 
+    from cyberdrop_dl.crawlers.crawler import SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://acidimg.cc")
