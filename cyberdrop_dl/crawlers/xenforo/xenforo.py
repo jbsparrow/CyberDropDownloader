@@ -22,7 +22,7 @@ from cyberdrop_dl.utils.utilities import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Iterable
 
     from aiohttp_client_cache.response import AnyResponse
 
@@ -100,18 +100,23 @@ class Thread:
 
 DEFAULT_XF_SELECTORS = XenforoSelectors()
 KNOWN_THREAD_PART_NAMES = "thread", "topic", "tema"
-KNOWN_THREAD_PART_NAMES = [f"{part}s" for part in KNOWN_THREAD_PART_NAMES]
+KNOWN_THREAD_PART_NAMES = ",".join(f"{part},{part}s" for part in KNOWN_THREAD_PART_NAMES).split(",")
+
+
+def _escape(strings: Iterable[str]) -> str:
+    return r"\|".join(strings)
 
 
 class XenforoCrawler(ForumCrawler, is_abc=True):
     XF_ATTACHMENT_URL_PARTS = "attachments", "data", "uploads"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Attachments": f"/{'|'.join(XF_ATTACHMENT_URL_PARTS)}/...",
+        "Attachments": f"/({_escape(XF_ATTACHMENT_URL_PARTS)})/...",
         "Threads": (
-            f"/{'|'.join(KNOWN_THREAD_PART_NAMES)}/<thread_name_and_id>",
+            f"/({_escape(KNOWN_THREAD_PART_NAMES)})/<thread_name_and_id>",
             "/posts/<post_id>",
             "/goto/<post_id>",
         ),
+        "**NOTE**": "base crawler: Xenforo",
     }
     SUPPORTS_THREAD_RECURSION: ClassVar[bool] = True
     XF_SELECTORS = DEFAULT_XF_SELECTORS
