@@ -6,26 +6,28 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
+_post_selectors = PostSelectors(
+    article="div[class*=ipsComment_content]",
+    attachments=Selector("a[class*=ipsAttachLink]", "href"),
+    content=Selector("div.cPost_contentWrap"),
+    id=Selector("data-commentid", "data-commentid"),
+    images=Selector("a[class*=ipsAttachLink_image]", "href"),
+    videos=Selector("video.ipsEmbeddedVideo source", "src"),
+)
 
+
+# TODO: Bellazon uses Invision, not Xenforo. The selectors are completely different.
+# See: https://github.com/jbsparrow/CyberDropDownloader/pull/1079#issuecomment-2982845352
 class BellazonCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.bellazon.com/main/")
     DOMAIN: ClassVar[str] = "bellazon"
     FOLDER_DOMAIN: ClassVar[str] = "Bellazon"
-    thread_url_part = "topic"
     login_required = False
-    post_selectors = PostSelectors(
-        element="div[class*=ipsComment_content]",
-        content=Selector("div[class=cPost_contentWrap]"),
-        attachments=Selector("a[class*=ipsAttachLink]", "href"),
-        images=Selector("a[class*=ipsAttachLink_image]", "href"),
-        videos=Selector("video[class=ipsEmbeddedVideo] source", "src"),
-        date=Selector("time", "datetime"),
-        number=Selector("data-commentid", "data-commentid"),
-    )
-    selectors = XenforoSelectors(
-        posts=post_selectors,
+
+    XF_THREAD_URL_PART = "topic"
+    XF_POST_URL_PART_NAME = "comment-"
+    XF_SELECTORS = XenforoSelectors(
+        posts=_post_selectors,
         title=Selector("span.ipsType_break.ipsContained span"),
-        next_page=Selector("li[class=ipsPagination_next] a", "href"),
-        post_name="comment-",
+        next_page=Selector("li.ipsPagination_next a[href]", "href"),
     )
-    ATTACHMENT_URL_PARTS = "attachments", "uploads"

@@ -22,6 +22,24 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.10.1] - 2025-06-15
+
+### Changed
+
+- CDL will try to parse upload dates from human expresions. ex: "Last friday at 10:55", "3 hours, 50 minutes ago",
+- Scrape errors from the generic crawler will be logged as "Unsupported" instead of "Unknown"
+- Normalize posix paths
+
+### Fixed
+
+- Download individual posts (Kemono, Coomer, Nekohouse)
+- Pagination (Kemono, Coomer, Nekohouse)
+- Handling of redirects (Xenforo)
+- Date parsing (Cyberfile)
+- Remove invalid characters from filenames (Cyberfile)
+- Discord server name (Kemono)
+
+
 ## [6.10.0] - 2025-05-30
 
 ### Added
@@ -50,7 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Download entire discord server (Kemono)
 - Download favorites (Kemono)
 - `jitter` option to wait a random extra number of seconds in between downloads: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/rate-limiting-options#jitter>
-- Graceful shutdown: Pressing `Ctrl` + `C` will cancel scraping, print stats and send notifications instead of just quitting
 
 ### Changed
 

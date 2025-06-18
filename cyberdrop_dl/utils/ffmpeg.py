@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 FFPROBE_CALL_PREFIX = "ffprobe", "-hide_banner", "-loglevel", "error", "-show_streams", "-print_format", "json"
 FFMPEG_CALL_PREFIX = "ffmpeg", "-y", "-loglevel", "error"
+MERGE_INPUT_ARGS = "-map", "0"
 CONCAT_INPUT_ARGS = "-f", "concat", "-safe", "0", "-i"
 CODEC_COPY = "-c", "copy"
 
@@ -52,6 +53,15 @@ class FFmpeg:
                 await asyncio.to_thread(shutil.rmtree, folder, True)
             else:
                 await async_delete_files(concat_file_path, *input_files)
+        return result
+
+    async def merge(self, *input_files: Path, output_file: Path) -> SubProcessResult:
+        if not self.is_available:
+            raise RuntimeError("ffmpeg is not available")
+
+        result = await _merge(*input_files, output_file=output_file)
+        if result.success:
+            await async_delete_files(*input_files)
         return result
 
     @overload
@@ -98,8 +108,14 @@ async def _create_concat_input_file(*input: Path, file_path: Path) -> None:
             await f.write(f"file '{file}'\n")
 
 
-async def _concat(concat_input_file: Path, output_file: Path):
+async def _concat(concat_input_file: Path, output_file: Path) -> SubProcessResult:
     command = *FFMPEG_CALL_PREFIX, *CONCAT_INPUT_ARGS, str(concat_input_file), *CODEC_COPY, str(output_file)
+    return await _run_command(command)
+
+
+async def _merge(*input_files: Path, output_file: Path) -> SubProcessResult:
+    input_args = sum([("-i", str(path)) for path in input_files], ())
+    command = *FFMPEG_CALL_PREFIX, *input_args, *MERGE_INPUT_ARGS, *CODEC_COPY, str(output_file)
     return await _run_command(command)
 
 
