@@ -106,9 +106,9 @@ KNOWN_THREAD_PART_NAMES = [f"{part}s" for part in KNOWN_THREAD_PART_NAMES]
 class XenforoCrawler(ForumCrawler, is_abc=True):
     XF_ATTACHMENT_URL_PARTS = "attachments", "data", "uploads"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Attachments": tuple(f"/{name}/..." for name in XF_ATTACHMENT_URL_PARTS),
+        "Attachments": f"/{'|'.join(XF_ATTACHMENT_URL_PARTS)}/...",
         "Threads": (
-            "/threads/<thread_name>",
+            f"/{'|'.join(KNOWN_THREAD_PART_NAMES)}/<thread_name_and_id>",
             "/posts/<post_id>",
             "/goto/<post_id>",
         ),
