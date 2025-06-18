@@ -1,31 +1,10 @@
 from __future__ import annotations
 
 import dataclasses
-import inspect
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
-
     import bs4
-
-V = TypeVar("V")
-R = TypeVar("R")
-
-
-def get_valid_kwargs(func: Callable[..., Any], kwargs: Mapping[str, V], accept_kwargs: bool = True) -> Mapping[str, V]:
-    """Get the subset of ``kwargs`` that are valid params for ``func`` and their values are not `None`
-
-    If func takes **kwargs, returns everything"""
-    params = inspect.signature(func).parameters
-    if accept_kwargs and any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
-        return kwargs
-
-    return {k: v for k, v in kwargs.items() if k in params.keys() and v is not None}
-
-
-def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
-    return cls(**get_valid_kwargs(cls, kwargs))
 
 
 @dataclasses.dataclass(frozen=True, slots=True)

@@ -643,6 +643,21 @@ def unique(iterable: Iterable[T], *, hashable: bool = True) -> Iterable[T]:
             yield value
 
 
+def get_valid_kwargs(func: Callable[..., Any], kwargs: Mapping[str, T], accept_kwargs: bool = True) -> Mapping[str, T]:
+    """Get the subset of ``kwargs`` that are valid params for ``func`` and their values are not `None`
+
+    If func takes **kwargs, returns everything"""
+    params = inspect.signature(func).parameters
+    if accept_kwargs and any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return kwargs
+
+    return {k: v for k, v in kwargs.items() if k in params.keys() and v is not None}
+
+
+def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
+    return cls(**get_valid_kwargs(cls, kwargs))
+
+
 log_cyan = partial(log_with_color, style="cyan", level=20)
 log_yellow = partial(log_with_color, style="yellow", level=20)
 log_green = partial(log_with_color, style="green", level=20)
