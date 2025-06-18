@@ -177,13 +177,17 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         thread = parse_thread(
             scrape_item.url, self.XF_THREAD_URL_PART, self.XF_PAGE_URL_PART_NAME, self.XF_POST_URL_PART_NAME
         )
-        last_post_url = thread.url
         if thread.url in self.scraped_threads:
             return
 
-        title: str = ""
         scrape_item.parent_threads.add(thread.url)
+        if self.scrape_single_forum_post and not thread.post_id:
+            msg = "`--scrape-single-forum-post` is `True`, but the provided URL has no post id"
+            raise ScrapeError("User Error", msg)
+
+        title: str = ""
         self.scraped_threads.add(thread.url)
+        last_post_url = thread.url
         async for soup in self.thread_pager(scrape_item):
             if not title:
                 title = self.create_title(get_post_title(soup, self.XF_SELECTORS), thread_id=thread.id)
@@ -425,6 +429,7 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
 
+# TODO: Handle any post part name
 def parse_thread(url: AbsoluteHttpURL, thread_part_name: str, page_part_name: str, post_part_name: str) -> Thread:
     name_index = url.parts.index(thread_part_name) + 1
     name, id_ = get_thread_name_and_id(url, name_index)
@@ -551,13 +556,9 @@ def check_post_id(init_post_id: int | None, current_post_id: int, scrape_single_
         else:
             scrape_this_post, continue_scraping = not scrape_single_forum_post, not scrape_single_forum_post
 
-    elif scrape_single_forum_post:
-        msg = "`--scrape-single-forum-post` is `True`, but the provided URL has no post id"
-        raise ScrapeError("User Error", msg)
-    else:
-        scrape_this_post, continue_scraping = True, True
-
-    return continue_scraping, scrape_this_post
+        return continue_scraping, scrape_this_post
+    assert not scrape_single_forum_post  # We should have raise an exception early
+    return True, True
 
 
 def pre_process_child(link_str: str, embeds: bool = False) -> str | None:

@@ -674,12 +674,8 @@ class TestCheckPostId:
         current_post_id = 100
         scrape_single_forum_post = True
 
-        with pytest.raises(ScrapeError) as exc_info:
+        with pytest.raises(AssertionError):
             xenforo.check_post_id(init_post_id, current_post_id, scrape_single_forum_post)
-
-        assert exc_info.value.status == "User Error"
-        expected_msg = "`--scrape-single-forum-post` is `True`, but the provided URL has no post id"
-        assert exc_info.value.message == expected_msg
 
 
 # og_post_id = 23549340
