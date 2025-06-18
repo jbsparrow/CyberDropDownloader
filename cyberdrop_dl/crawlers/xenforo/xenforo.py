@@ -49,10 +49,10 @@ class PostSelectors:
     content: Selector = Selector("[class*=message-userContent]")  # text, links and images (NO attachments)
     date: Selector = Selector("time", "data-timestamp")
     embeds: Selector = Selector("iframe[src]", "src")
+    id: Selector = Selector("li[class*='u-concealed'] a[href]", "href")
     images: Selector = Selector("img[class*=bbImage], a[class*=js-lbImage]", "src")
     lazy_load_embeds: Selector = Selector('[class*=iframe][onclick*="loadMedia(this, \'//"]', "onclick")
     links: Selector = Selector("a", "href")
-    number: Selector = Selector("li[class*='u-concealed'] a[href]", "href")
     videos: Selector = Selector("video source", "src")
 
 
@@ -70,7 +70,7 @@ class XenforoSelectors:
 
 @dataclasses.dataclass(frozen=True, slots=True, order=True)
 class ForumPost:
-    number: int
+    id: int
     date: TimeStamp
     article: Tag = dataclasses.field(compare=False)
     content: Tag = dataclasses.field(compare=False)
@@ -79,12 +79,12 @@ class ForumPost:
     def new(article: Tag, selectors: PostSelectors, post_name: str = "post") -> ForumPost:
         content = css.select_one(article, selectors.content.element)
         date = TimeStamp(int(css.select_one_get_attr(article, *selectors.date)))
-        if selectors.number.element == selectors.number.attribute:
-            number = int(css.get_attr(article, selectors.number.element))
+        if selectors.id.element == selectors.id.attribute:
+            post_id = int(css.get_attr(article, selectors.id.element))
         else:
-            number_str = css.select_one_get_attr(article, *selectors.number)
-            number = int(number_str.rsplit(post_name, 1)[-1].replace("-", ""))
-        return ForumPost(number, date, article, content)
+            id_str = css.select_one_get_attr(article, *selectors.id)
+            post_id = int(id_str.rsplit(post_name, 1)[-1].replace("-", ""))
+        return ForumPost(post_id, date, article, content)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -92,7 +92,7 @@ class Thread:
     id: int
     name: str
     page: int
-    post: int
+    post_id: int
     url: AbsoluteHttpURL
 
 
@@ -203,15 +203,15 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         post_url = thread.url
         for post_soup in posts:
             current_post = ForumPost.new(post_soup, self.XF_SELECTORS.posts, self.XF_POST_URL_PART_NAME)
-            continue_scraping, scrape_post = check_post_number(
-                thread.post,
-                current_post.number,
+            continue_scraping, scrape_this_post = check_post_id(
+                thread.post_id,
+                current_post.id,
                 self.scrape_single_forum_post,
             )
             date = current_post.date
-            post_string = f"{self.XF_POST_URL_PART_NAME}{current_post.number}"
+            post_string = f"{self.XF_POST_URL_PART_NAME}{current_post.id}"
             post_url = thread.url / post_string
-            if scrape_post:
+            if scrape_this_post:
                 new_scrape_item = scrape_item.create_new(thread.url, possible_datetime=date, add_parent=post_url)
                 self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
                 scrape_item.add_children()
@@ -223,7 +223,7 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         scrape_item.setup_as_post("")
-        post_title = self.create_separate_post_title(None, str(post.number), post.date)
+        post_title = self.create_separate_post_title(None, str(post.id), post.date)
         scrape_item.add_to_parent_title(post_title)
         for scraper in (
             self._attachments,
@@ -428,9 +428,9 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
 def parse_thread(url: AbsoluteHttpURL, thread_part_name: str, page_part_name: str, post_part_name: str) -> Thread:
     name_index = url.parts.index(thread_part_name) + 1
     name, id_ = get_thread_name_and_id(url, name_index)
-    page, post = get_thread_page_and_post(url, name_index, page_part_name, post_part_name)
+    page, post_id = get_thread_page_and_post(url, name_index, page_part_name, post_part_name)
     canonical_url = get_thread_canonical_url(url, name_index)
-    return Thread(id_, name, page, post, canonical_url)
+    return Thread(id_, name, page, post_id, canonical_url)
 
 
 def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
@@ -459,9 +459,9 @@ def get_thread_page_and_post(url: URL, thread_name_index: int, page_name: str, p
                 return int(sec.replace(search_value, "").replace("-", "").strip())
         return 0
 
-    post_number = find_number(post_name)
+    post_id = find_number(post_name)
     page_number = find_number(page_name)
-    return page_number, post_number
+    return page_number, post_id
 
 
 async def check_is_not_last_page(response: AnyResponse) -> bool:
@@ -539,21 +539,25 @@ def is_confirmation_link(link: URL) -> bool:
     return any(keyword in link.path for keyword in ("link-confirmation", "masked"))
 
 
-def check_post_number(post_number: int, current_post_number: int, scrape_single_forum_post: bool) -> tuple[bool, bool]:
+def check_post_id(init_post_id: int | None, current_post_id: int, scrape_single_forum_post: bool) -> tuple[bool, bool]:
     """Checks if the program should scrape the current post.
 
-    Returns (continue_scraping, scrape_post)"""
-    scrape_post = continue_scraping = True
-    if scrape_single_forum_post:
-        if not post_number or post_number == current_post_number:
-            scrape_post, continue_scraping = False, True
+    Returns (continue_scraping, scrape_this_post)"""
+    if init_post_id:
+        if init_post_id > current_post_id:
+            scrape_this_post, continue_scraping = False, True
+        elif init_post_id == current_post_id:
+            scrape_this_post, continue_scraping = True, not scrape_single_forum_post
         else:
-            scrape_post, continue_scraping = True, False
+            scrape_this_post, continue_scraping = not scrape_single_forum_post, not scrape_single_forum_post
 
-    elif post_number and post_number > current_post_number:
-        scrape_post, continue_scraping = False, True
+    elif scrape_single_forum_post:
+        msg = "`--scrape-single-forum-post` is `True`, but the provided URL has no post id"
+        raise ScrapeError("User Error", msg)
+    else:
+        scrape_this_post, continue_scraping = True, True
 
-    return continue_scraping, scrape_post
+    return continue_scraping, scrape_this_post
 
 
 def pre_process_child(link_str: str, embeds: bool = False) -> str | None:

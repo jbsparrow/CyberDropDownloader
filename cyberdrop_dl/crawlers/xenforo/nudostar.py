@@ -7,7 +7,7 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 _post_selectors = PostSelectors(
-    number=Selector("a[class=u-concealed]", "href"),
+    id=Selector("a[class=u-concealed]", "href"),
 )
 
 

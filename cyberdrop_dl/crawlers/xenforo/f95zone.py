@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
 
-_post_selectors = PostSelectors(date=Selector("time", "data-time"), number=Selector("a[class=u-concealed]", "href"))
+_post_selectors = PostSelectors(date=Selector("time", "data-time"), id=Selector("a[class=u-concealed]", "href"))
 _confirmation_data = ({"xhr": "1", "download": "1"},)
 
 

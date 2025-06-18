@@ -8,11 +8,11 @@ from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 _post_selectors = PostSelectors(
     article="div[class*=ipsComment_content]",
-    content=Selector("div.cPost_contentWrap"),
     attachments=Selector("a[class*=ipsAttachLink]", "href"),
+    content=Selector("div.cPost_contentWrap"),
+    id=Selector("data-commentid", "data-commentid"),
     images=Selector("a[class*=ipsAttachLink_image]", "href"),
     videos=Selector("video.ipsEmbeddedVideo source", "src"),
-    number=Selector("data-commentid", "data-commentid"),
 )
 
 
