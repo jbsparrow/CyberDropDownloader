@@ -21,7 +21,10 @@ PRIMARY_URL = AbsoluteHttpURL("https://hotpic.cc")
 
 
 class HotPicCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/album/...", "Image": "/i/..."}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/album/...",
+        "Image": "/i/...",
+    }
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "hotpic", "2385290.xyz"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     UPDATE_UNSUPPORTED: ClassVar[bool] = True
@@ -65,8 +68,8 @@ class HotPicCrawler(Crawler):
         await self.handle_direct_link(scrape_item, link)
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
-        link = thumbnail_to_img(scrape_item.url)
+    async def handle_direct_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL | None = None) -> None:
+        link = thumbnail_to_img(link or scrape_item.url)
         canonical_url = link.with_host("hotpic.cc")
         filename, ext = self.get_filename_and_ext(canonical_url.name)
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
