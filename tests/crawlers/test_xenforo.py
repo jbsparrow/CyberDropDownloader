@@ -630,8 +630,61 @@ def test_is_attachment_empty_string_should_be_false() -> None:
     assert TEST_CRAWLER.is_attachment("") is False
 
 
+class TestCheckPostId:
+    @pytest.mark.parametrize(
+        "init_post_id, current_post_id, scrape_single_forum_post, expected_continue_scraping, expected_scrape_this_post",
+        [
+            # init_post_id > current_post_id
+            (100, 90, True, True, False),
+            (100, 90, False, True, False),
+            # init_post_id == current_post_id
+            (100, 100, True, False, True),
+            (100, 100, False, True, True),
+            # init_post_id < current_post_id
+            (100, 110, True, False, False),
+            (100, 110, False, True, True),
+        ],
+    )
+    def test_init_post_id_was_provided(
+        self,
+        init_post_id: int,
+        current_post_id: int,
+        scrape_single_forum_post: bool,
+        expected_continue_scraping: bool,
+        expected_scrape_this_post: bool,
+    ) -> None:
+        continue_scraping, scrape_this_post = xenforo.check_post_id(
+            init_post_id, current_post_id, scrape_single_forum_post
+        )
+        assert continue_scraping == expected_continue_scraping
+        assert scrape_this_post == expected_scrape_this_post
+
+    def test_no_init_post_id_and_scrape_single_post_false(self) -> None:
+        init_post_id = None
+        current_post_id = 100
+        scrape_single_forum_post = False
+        continue_scraping, scrape_this_post = xenforo.check_post_id(
+            init_post_id, current_post_id, scrape_single_forum_post
+        )
+        assert continue_scraping is True
+        assert scrape_this_post is True
+
+    def test_no_init_post_id_and_scrape_single_post_true_raises_error(self) -> None:
+        init_post_id = None
+        current_post_id = 100
+        scrape_single_forum_post = True
+
+        with pytest.raises(ScrapeError) as exc_info:
+            xenforo.check_post_id(init_post_id, current_post_id, scrape_single_forum_post)
+
+        assert exc_info.value.status == "User Error"
+        expected_msg = "`--scrape-single-forum-post` is `True`, but the provided URL has no post id"
+        assert exc_info.value.message == expected_msg
+
+
+# og_post_id = 23549340
 POST_TEMPLATE = """
-<article class="message message--post js-post js-inlineModContainer" data-author="MrSpike" data-content="post{id}" id="js-post{id}" itemscope="" itemtype="https://schema.org/Comment" itemid="https://xenforo.com/posts/23549340/">
+<article class="message message--post js-post js-inlineModContainer" data-author="cyberdrop-dl-patched" data-content="post{id}" id="js-post{id}" itemscope="" itemtype="https://schema.org/Comment" itemid="https://xenforo.com/posts/{id}/">
     <meta itemprop="parentItem" itemscope="" itemid="https://xenforo.com/threads/fanfan.33077/" />
 
     <span class="u-anchorTarget" id="post{id}"></span>
@@ -662,7 +715,7 @@ POST_TEMPLATE = """
                 </header>
 
                 <div class="message-content js-messageContent">
-                    <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post{id}" data-lb-caption-desc="MrSpike · Jun 9, 2025 at 5:30 PM">
+                    <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post{id}" data-lb-caption-desc="cyberdrop-dl-patched · Jun 9, 2025 at 5:30 PM">
                         <article class="message-body js-selectToQuote">
                             {message_body}
                             <div class="js-selectToQuoteEnd">&nbsp;</div>
@@ -683,7 +736,7 @@ POST_TEMPLATE = """
                     <div class="message-actionBar actionBar">
                         <div class="actionBar-set actionBar-set--external">
                             <a
-                                href="/posts/23549340/react?reaction_id=1"
+                                href="/posts/{id}/react?reaction_id=1"
                                 class="reaction reaction--small actionBar-action actionBar-action--reaction reaction--imageHidden reaction--1"
                                 data-reaction-id="1"
                                 data-xf-init="reaction"
@@ -694,24 +747,24 @@ POST_TEMPLATE = """
                                 <span class="reaction-text js-reactionText"><bdi>Like</bdi></span>
                             </a>
 
-                            <a href="/threads/fanfan.33077/reply?quote=23549340" class="actionBar-action actionBar-action--mq u-jsOnly js-multiQuote" title="Toggle multi-quote" rel="nofollow" data-message-id="23549340" data-mq-action="add">
+                            <a href="/threads/fanfan.33077/reply?quote={id}" class="actionBar-action actionBar-action--mq u-jsOnly js-multiQuote" title="Toggle multi-quote" rel="nofollow" data-message-id="{id}" data-mq-action="add">
                                 Quote
                             </a>
 
                             <a
-                                href="/threads/fanfan.33077/reply?quote=23549340"
+                                href="/threads/fanfan.33077/reply?quote={id}"
                                 class="actionBar-action actionBar-action--reply"
                                 title="Reply, quoting this message"
                                 rel="nofollow"
                                 data-xf-click="quote"
-                                data-quote-href="/posts/23549340/quote"
+                                data-quote-href="/posts/{id}/quote"
                             >
                                 Reply
                             </a>
                         </div>
 
                         <div class="actionBar-set actionBar-set--internal">
-                            <a href="/posts/23549340/report" class="actionBar-action actionBar-action--report" data-xf-click="overlay" data-cache="false">Report</a>
+                            <a href="/posts/{id}/report" class="actionBar-action actionBar-action--report" data-xf-click="overlay" data-cache="false">Report</a>
                         </div>
                     </div>
 
@@ -735,7 +788,7 @@ POST_TEMPLATE = """
                         </ul>
 
                         <span class="u-srOnly">Reactions:</span>
-                        <a class="reactionsBar-link" href="/posts/23549340/reactions" data-xf-click="overlay" data-cache="false" rel="nofollow"><bdi>xigxagxion</bdi>, <bdi>Feistee</bdi>, <bdi>kradpmis</bdi> and 140 others</a>
+                        <a class="reactionsBar-link" href="/posts/{id}/reactions" data-xf-click="overlay" data-cache="false" rel="nofollow"><bdi>xigxagxion</bdi>, <bdi>Feistee</bdi>, <bdi>kradpmis</bdi> and 140 others</a>
                     </div>
 
                     <div class="js-historyTarget message-historyTarget toggleTarget" data-href="trigger-href"></div>
