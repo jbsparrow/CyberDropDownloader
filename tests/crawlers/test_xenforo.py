@@ -383,8 +383,8 @@ async def test_test_hidden_redgifs() -> None:
     </div>""")
     expected_output = "//redgifs.com/ifr/downrightcluelesswirm"
     with _amock() as mocked:
-        await TEST_CRAWLER.lazy_load_embeds(scrape_item, post)
-        mocked.assert_called_once_with(scrape_item, expected_output)
+        await TEST_CRAWLER._lazy_load_embeds(scrape_item, post)
+        mocked.assert_called_once_with(scrape_item, expected_output, embeds=True)
 
 
 @pytest.mark.parametrize(
@@ -432,7 +432,7 @@ async def test_post_images(cls: type[xenforo.XenforoCrawler], post_content: str,
     crawler = crawler_instances[cls]
     post = _post(post_content, crawler=crawler)
     with _amock(crawler=crawler) as mocked:
-        await crawler.images(scrape_item, post)
+        await crawler._images(scrape_item, post)
         count, expected_count = mocked.call_count, len(expected_result)
         assert count == expected_count, f"Found {count} links, expected {expected_count} links"
         for result, expected in zip(mocked.call_args_list, expected_result, strict=True):
@@ -457,7 +457,7 @@ async def test_embeds_can_extract_google_drive_links() -> None:
     post = _post(content, crawler=crawler)
     expected_result = "//drive.google.com/file/d/1gfDjCbNXgJafY6ILQIrgbnuptSCFbM0J/preview"
     with _amock(crawler=crawler) as mocked:
-        await crawler.embeds(scrape_item, post)
+        await crawler._embeds(scrape_item, post)
         mocked.assert_called_once()
         assert mocked.call_args.args[1] == expected_result
 
@@ -525,7 +525,7 @@ async def test_post_smg_extract_attachments() -> None:
         "https://smgmedia2.socialmediagirls.com/forum/2022/04/3663188F-00C6-4C90-AB4D-D8C6E7859286_3526919.png",
     ]
     with _amock(crawler=crawler) as mocked:
-        await crawler.attachments(scrape_item, post)
+        await crawler._attachments(scrape_item, post)
         count, expected_count = mocked.call_count, len(expected_result)
         assert count == expected_count, f"Found {count} links, expected {expected_count} links"
         for result, expected in zip(mocked.call_args_list, expected_result, strict=True):

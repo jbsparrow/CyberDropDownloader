@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import re
+from abc import abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, Literal, overload
+from typing import TYPE_CHECKING, ClassVar, Literal, final, overload
 
 from bs4 import BeautifulSoup, Tag
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
+from cyberdrop_dl.exceptions import LoginError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import (
@@ -19,7 +20,6 @@ from cyberdrop_dl.utils.utilities import (
     get_text_between,
     is_absolute_http_url,
     is_blob_or_svg,
-    remove_trailing_slash,
 )
 
 if TYPE_CHECKING:
@@ -62,6 +62,7 @@ class XenforoSelectors:
     title: Selector = Selector("h1[class*=p-title-value]")
     title_trash: Selector = Selector("span")
     quotes: Selector = Selector("blockquote")
+    confirmation_button: Selector = Selector("a[class*=button--cta]", "href")
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,7 +93,72 @@ class Thread:
     url: AbsoluteHttpURL
 
 
-class XenforoCrawler(Crawler, is_abc=True):
+class MessageBoardCrawler(Crawler, is_abc=True):
+    SUPPORTS_THREAD_RECURSION: ClassVar[bool] = False
+
+    @property
+    def scrape_single_forum_post(self) -> bool:
+        return self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
+
+    @property
+    def max_thread_depth(self) -> int:
+        return self.manager.config_manager.settings_data.download_options.maximum_thread_depth
+
+    @classmethod
+    @abstractmethod
+    def is_attachment(cls, url: AbsoluteHttpURL) -> bool: ...
+
+    @abstractmethod
+    async def forum(self, scrape_item: ScrapeItem) -> None: ...
+
+    @abstractmethod
+    async def thread(self, scrape_item: ScrapeItem) -> None: ...
+
+    @abstractmethod
+    async def post(self, scrape_item: ScrapeItem) -> None: ...
+
+    @error_handling_wrapper
+    async def handle_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL) -> None:
+        if link == self.PRIMARY_URL:
+            return
+        if self.is_attachment(link):
+            return await self.handle_internal_link(scrape_item.create_new(link))
+        if self.PRIMARY_URL.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):
+            origin = scrape_item.origin()
+            return self.log(f"Skipping nested thread URL {scrape_item.url} found on {origin}", 10)
+        new_scrape_item = scrape_item.copy()
+        new_scrape_item.type = None
+        new_scrape_item.reset_childen()
+        self.handle_external_links(new_scrape_item)
+        scrape_item.add_children()
+
+    @error_handling_wrapper
+    async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
+        if len(scrape_item.url.parts) < 5 and not scrape_item.url.suffix:
+            return
+        filename, ext = self.get_filename_and_ext(scrape_item.url.name)
+        scrape_item.add_to_parent_title("Attachments")
+        scrape_item.part_of_album = True
+        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+
+    @final
+    def stop_thread_recursion(self, scrape_item: ScrapeItem) -> bool:
+        if (
+            not self.SUPPORTS_THREAD_RECURSION
+            or not self.max_thread_depth
+            or (len(scrape_item.parent_threads) > self.max_thread_depth)
+        ):
+            return True
+        return False
+
+    @final
+    async def write_last_forum_post(self, thread_url: AbsoluteHttpURL, last_post_url: AbsoluteHttpURL | None) -> None:
+        if not last_post_url or last_post_url == thread_url:
+            return
+        await self.manager.log_manager.write_last_post_log(last_post_url)
+
+
+class XenforoCrawler(MessageBoardCrawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Attachments": ("/attachments/...", "/data/..."),
         "Threads": (
@@ -109,14 +175,11 @@ class XenforoCrawler(Crawler, is_abc=True):
     XF_USER_COOKIE_NAME = "xf_user"
     XF_ATTACHMENT_URL_PARTS = "attachments", "data", "uploads"
     XF_ATTACHMENT_HOSTS = "smgmedia", "attachments.f95zone"
+    SUPPORTS_THREAD_RECURSION: ClassVar[bool] = True
     login_required = True
 
     def __post_init__(self) -> None:
         self.scraped_threads = set()
-
-    @property
-    def scrape_single_forum_post(self) -> bool:
-        return self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
 
     async def async_startup(self) -> None:
         if not self.logged_in:
@@ -124,6 +187,9 @@ class XenforoCrawler(Crawler, is_abc=True):
             await self.login_setup(login_url)
 
         self.register_cache_filter(self.PRIMARY_URL, check_is_not_last_page)
+
+    def get_filename_and_ext(self, filename: str) -> tuple[str, str]:
+        return super().get_filename_and_ext(filename, forum=True)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in and self.login_required:
@@ -164,6 +230,9 @@ class XenforoCrawler(Crawler, is_abc=True):
         scrape_item.url = self.parse_url(redirect)
         self.manager.task_group.create_task(self.run(scrape_item))
 
+    async def forum(self, scrape_item: ScrapeItem) -> None:
+        raise NotImplementedError
+
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
         scrape_item.setup_as_forum("")
@@ -189,7 +258,9 @@ class XenforoCrawler(Crawler, is_abc=True):
 
         await self.write_last_forum_post(thread.url, last_post_url)
 
-    def process_thread_page(self, scrape_item: ScrapeItem, thread: Thread, posts: Sequence[Tag]) -> tuple[bool, URL]:
+    def process_thread_page(
+        self, scrape_item: ScrapeItem, thread: Thread, posts: Sequence[Tag]
+    ) -> tuple[bool, AbsoluteHttpURL]:
         continue_scraping = False
         post_url = thread.url
         for post_soup in posts:
@@ -216,48 +287,54 @@ class XenforoCrawler(Crawler, is_abc=True):
         scrape_item.setup_as_post("")
         post_title = self.create_separate_post_title(None, str(post.number), post.date)
         scrape_item.add_to_parent_title(post_title)
-        for scraper in (self.attachments, self.embeds, self.images, self.links, self.videos, self.lazy_load_embeds):
+        for scraper in (
+            self._attachments,
+            self._embeds,
+            self._images,
+            self._links,
+            self._videos,
+            self._lazy_load_embeds,
+        ):
             await scraper(scrape_item, post)
 
-    async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    async def _links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.links
         links = post.content.select(selector.element)
         links = [link for link in links if self.is_not_image_or_attachment(link)]
         await self.process_children(scrape_item, links, selector.attribute)
 
-    async def images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    async def _images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.images
         images = post.content.select(selector.element)
         await self.process_children(scrape_item, images, selector.attribute)
 
-    async def videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    async def _videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.videos
         videos = post.content.select(selector.element)
         await self.process_children(scrape_item, videos, selector.attribute)
 
-    async def embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    async def _embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.embeds
         embeds = post.content.select(selector.element)
         await self.process_children(scrape_item, embeds, selector.attribute, embeds=True)
 
-    async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    async def _attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.attachments
         attachments = post.main.select(selector.element)
         await self.process_children(scrape_item, attachments, selector.attribute)
 
-    async def lazy_load_embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    async def _lazy_load_embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.lazy_load_embeds
         for redgif in css.iselect(post.content, selector.element):
             link_str = get_text_between(css.get_attr(redgif, selector.attribute), "loadMedia(this, '", "')")
-            await self.process_child(scrape_item, link_str)
+            await self.process_child(scrape_item, link_str, embeds=True)
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         async for soup in self._web_pager(scrape_item.url, self.get_next_page):
             yield soup
 
     def get_next_page(self, soup: BeautifulSoup) -> str | None:
-        next_page = css.select_one_get_attr_or_none(soup, *self.XF_SELECTORS.next_page)
-        if next_page:
+        if next_page := css.select_one_get_attr_or_none(soup, *self.XF_SELECTORS.next_page):
             return self.pre_filter_link(next_page)
 
     @error_handling_wrapper
@@ -266,26 +343,19 @@ class XenforoCrawler(Crawler, is_abc=True):
     ) -> None:
         for link_tag in links:
             link_str = parse_children_tag(link_tag, attribute)
-            if not link_str:
-                continue
-            assert isinstance(link_str, str)
-            if embeds:
-                link_str = extract_embed_url(link_str)
-
-            if is_blob_or_svg(link_str):
-                continue
-
-            await self.process_child(scrape_item, link_str)
+            await self.process_child(scrape_item, link_str, embeds=embeds)
 
     @error_handling_wrapper
     async def process_child(self, scrape_item: ScrapeItem, link_str: str) -> None:
-        link = await self.get_absolute_link(link_str)
+        link_str_ = pre_process_child(link_str)
+        if not link_str_:
+            return
+        link = await self.get_absolute_link(link_str_)
         link = self.filter_link(link)
         if not link:
             return
         new_scrape_item = scrape_item.create_new(link)
         await self.handle_link(new_scrape_item)
-        scrape_item.add_children()
 
     @overload
     def is_attachment(self, link: None) -> Literal[False]: ...
@@ -312,60 +382,26 @@ class XenforoCrawler(Crawler, is_abc=True):
         return absolute_link
 
     @error_handling_wrapper
-    async def handle_link(self, scrape_item: ScrapeItem) -> None:
-        if not scrape_item.url or scrape_item.url == self.PRIMARY_URL:
-            return
-        if not scrape_item.url.host:
-            raise InvalidURLError("url has no host")
-        if self.is_attachment(scrape_item.url):
-            return await self.handle_internal_link(scrape_item)
-        if self.PRIMARY_URL.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):
-            origin = scrape_item.parents[0]
-            return log(f"Skipping nested thread URL {scrape_item.url} found on {origin}", 10)
-        scrape_item.type = None
-        scrape_item.reset_childen()
-        self.handle_external_links(scrape_item)
-
-    @error_handling_wrapper
-    async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
-        """Handles internal links."""
-        scrape_item.url = remove_trailing_slash(scrape_item.url)
-        if scrape_item.url.name.isdigit():
-            return await self.redirect_from_head(scrape_item)
-
-        filename, ext = self.get_filename_and_ext(scrape_item.url.name, forum=True)
-        scrape_item.add_to_parent_title("Attachments")
-        scrape_item.part_of_album = True
-        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
-
-    @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL) -> AbsoluteHttpURL | None:
         """Handles link confirmation."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, link)
-        confirm_button = soup.select_one("a[class*=button--cta]")
+        selector = self.XF_SELECTORS.confirmation_button
+        confirm_button = soup.select_one(selector.element)
         if not confirm_button:
             return
-        link_str: str = css.get_attr(confirm_button, "href")
+        link_str: str = css.get_attr(confirm_button, selector.attribute)
         link_str = link_str.split('" class="link link--internal', 1)[0]
         new_link = self.parse_url(link_str)
         return await self.get_absolute_link(new_link)
 
-    @property
-    def max_thread_depth(self) -> int:
-        return self.manager.config_manager.settings_data.download_options.maximum_thread_depth
+    async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
+        """Handles internal links."""
+        slug = scrape_item.url.name or scrape_item.url.parent.name
+        if slug.isdigit():
+            return await self.redirect_from_head(scrape_item)
 
-    def stop_thread_recursion(self, scrape_item: ScrapeItem) -> bool:
-        if not self.max_thread_depth:
-            return True
-        if len(scrape_item.parent_threads) > self.max_thread_depth:
-            return True
-        return False
-
-    async def write_last_forum_post(self, thread_url: URL, last_post_url: URL | None) -> None:
-        if not last_post_url or last_post_url == thread_url:
-            return
-        await self.manager.log_manager.write_last_post_log(last_post_url)
+        return await super().handle_internal_link(scrape_item)
 
     def is_not_image_or_attachment(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
@@ -400,7 +436,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         log(msg, 30)
 
     @error_handling_wrapper
-    async def forum_login(self, login_url: AbsoluteHttpURL, session_cookie: str, username: str, password: str) -> None:
+    async def xf_login(self, login_url: AbsoluteHttpURL, session_cookie: str, username: str, password: str) -> None:
         """Logs in to a forum."""
         manual_login = username and password
         missing_credentials = not (manual_login or session_cookie)
@@ -413,9 +449,9 @@ class XenforoCrawler(Crawler, is_abc=True):
             self.update_cookies(cookies)
 
         credentials = {"login": username, "password": password, "_xfRedirect": str(self.PRIMARY_URL)}
-        await self.try_login(login_url, credentials, retries=5)
+        await self.xf_try_login(login_url, credentials, retries=5)
 
-    async def try_login(
+    async def xf_try_login(
         self,
         login_url: AbsoluteHttpURL,
         credentials: dict[str, str],
@@ -580,3 +616,15 @@ def check_post_number(post_number: int, current_post_number: int, scrape_single_
         scrape_post = False
 
     return continue_scraping, scrape_post
+
+
+def pre_process_child(link_str: str, embeds: bool = False) -> str | None:
+    assert isinstance(link_str, str)
+    if embeds:
+        link_str = extract_embed_url(link_str)
+
+    if is_blob_or_svg(link_str):
+        return
+
+    if link_str:
+        return link_str
