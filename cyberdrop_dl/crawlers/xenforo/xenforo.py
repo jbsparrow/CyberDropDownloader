@@ -102,8 +102,9 @@ DEFAULT_XF_SELECTORS = XenforoSelectors()
 
 
 class XenforoCrawler(MessageBoardCrawler, is_abc=True):
+    XF_ATTACHMENT_URL_PARTS = "attachments", "data", "uploads"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Attachments": ("/attachments/...", "/data/..."),
+        "Attachments": tuple(f"/{name}/..." for name in XF_ATTACHMENT_URL_PARTS),
         "Threads": (
             "/threads/<thread_name>",
             "/posts/<post_id>",
@@ -111,13 +112,11 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         ),
     }
     SUPPORTS_THREAD_RECURSION: ClassVar[bool] = True
-
     XF_SELECTORS = DEFAULT_XF_SELECTORS
     XF_POST_URL_PART_NAME = "post-"
     XF_PAGE_URL_PART_NAME = "page-"
     XF_THREAD_URL_PART = "threads"
     XF_USER_COOKIE_NAME = "xf_user"
-    XF_ATTACHMENT_URL_PARTS = "attachments", "data", "uploads"
     XF_ATTACHMENT_HOSTS = "smgmedia", "attachments.f95zone"
     login_required = True
 
@@ -457,13 +456,12 @@ def get_thread_canonical_url(url: AbsoluteHttpURL, thread_name_index: int) -> Ab
 def get_thread_page_and_post(
     url: AbsoluteHttpURL, thread_name_index: int, page_name: str, post_name: str
 ) -> tuple[int, int | None]:
-    post_or_page_index = thread_name_index + 1
-    sections = set(url.parts[post_or_page_index:])
+    extra_parts = set(url.parts[thread_name_index + 1 :])
     if url.fragment:
-        sections.update({url.fragment})
+        extra_parts.update({url.fragment})
 
     def find_number(search_value: str) -> int | None:
-        for sec in sections:
+        for sec in extra_parts:
             if search_value in sec:
                 return int(sec.replace(search_value, "").replace("-", "").strip())
 
@@ -537,15 +535,13 @@ def check_post_id(init_post_id: int | None, current_post_id: int, scrape_single_
     Returns (continue_scraping, scrape_this_post)"""
     if init_post_id:
         if init_post_id > current_post_id:
-            scrape_this_post, continue_scraping = False, True
+            return (True, False)
         elif init_post_id == current_post_id:
-            scrape_this_post, continue_scraping = True, not scrape_single_forum_post
+            return (not scrape_single_forum_post, True)
         else:
-            scrape_this_post, continue_scraping = not scrape_single_forum_post, not scrape_single_forum_post
+            return (not scrape_single_forum_post, not scrape_single_forum_post)
 
-        return continue_scraping, scrape_this_post
-
-    assert not scrape_single_forum_post  # We should have raise an exception early
+    assert not scrape_single_forum_post  # We should have raised an exception early
     return True, True
 
 
