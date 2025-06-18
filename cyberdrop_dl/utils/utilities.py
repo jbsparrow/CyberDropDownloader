@@ -56,6 +56,7 @@ R = TypeVar("R")
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 ALLOWED_FILEPATH_PUNCTUATION = " .-_!#$%'()+,;=@[]^{}~"
+_BLOB_OR_SVG = ("data:", "blob:", "javascript:")
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
@@ -82,8 +83,8 @@ class OGProperties(dict[str, str]):
 
 
 def error_handling_wrapper(
-    func: Callable[..., Coroutine[None, None, R]],
-) -> Callable[..., Coroutine[None, None, R | None]]:
+    func: Callable[P, Coroutine[None, None, R]],
+) -> Callable[P, Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
@@ -611,6 +612,10 @@ def get_os_common_name() -> str:
     if system == "Windows" and (edition := platform.win32_edition()):
         return f"{default} {edition}"
     return default
+
+
+def is_blob_or_svg(link: str) -> bool:
+    return any(link.startswith(x) for x in _BLOB_OR_SVG)
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
