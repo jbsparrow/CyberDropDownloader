@@ -35,7 +35,7 @@ def parse_js_vars(js_text: str, use_regex: bool = False) -> dict:
     return data
 
 
-def parse_json_to_dict(js_text: str, use_regex: bool = False) -> dict[str, Any] | list[Any]:
+def parse_json_to_dict(js_text: str, use_regex: bool = False) -> Any:
     json_str = js_text.replace("\t", "").replace("\n", "").strip()
     json_str = replace_quotes(json_str)
     if use_regex:

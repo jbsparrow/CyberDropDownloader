@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from aiolimiter import AsyncLimiter
 from mediafire import MediaFireApi, api
@@ -23,7 +23,10 @@ PRIMARY_URL = AbsoluteHttpURL("https://www.mediafire.com/")
 
 
 class MediaFireCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/file/...", "Folder": "/folder/..."}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "File": "/file/...",
+        "Folder": "/folder/...",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "mediafire"
 
@@ -40,7 +43,7 @@ class MediaFireCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         folder_key = scrape_item.url.parts[2]
         try:
-            folder_details: dict[str, dict] = self.api.folder_get_info(folder_key=folder_key)
+            folder_details: dict[str, dict] = self.api.folder_get_info(folder_key=folder_key)  # type: ignore
         except api.MediaFireApiError as e:
             raise MediaFireError(status=e.code, message=e.message) from None
 
@@ -49,7 +52,9 @@ class MediaFireCrawler(Crawler):
 
         for chunk in itertools.count(1):
             try:
-                folder_contents: dict = self.api.folder_get_content(folder_key, "files", chunk=chunk, chunk_size=100)
+                folder_contents: dict[str, Any] = self.api.folder_get_content(
+                    folder_key, "files", chunk=chunk, chunk_size=100
+                )  # type: ignore
             except api.MediaFireApiError as e:
                 raise MediaFireError(status=e.code, message=e.message) from None
 

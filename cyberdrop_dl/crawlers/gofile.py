@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import http
 import re
 from datetime import UTC, datetime, timedelta
@@ -15,8 +16,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-
-    from yarl import URL
 
 
 WT_REGEX = re.compile(r'appdata\.wt\s=\s"([^"]+)"')
@@ -97,9 +96,7 @@ class GoFileCrawler(Crawler):
         self._website_token_date = datetime.now(UTC) - timedelta(days=7)
 
     async def async_startup(self) -> None:
-        get_website_token = error_handling_wrapper(self.get_website_token)
         await self.get_account_token(API_ENTRYPOINT)
-        await get_website_token(self, PRIMARY_URL)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "d" in scrape_item.url.parts:
@@ -147,11 +144,11 @@ class GoFileCrawler(Crawler):
 
     async def handle_children(self, children: Mapping[str, Node], scrape_item: ScrapeItem) -> None:
         """Sends files to downloader and adds subfolder to scrape queue."""
-        subfolders: list[URL] = []
-        unavailable: list[URL] = []
-        dangerous: list[URL] = []
+        subfolders: list[AbsoluteHttpURL] = []
+        unavailable: list[AbsoluteHttpURL] = []
+        dangerous: list[AbsoluteHttpURL] = []
 
-        def get_website_url(node: Node) -> URL:
+        def get_website_url(node: Node) -> AbsoluteHttpURL:
             if node["type"] == "folder":
                 return PRIMARY_URL / "d" / (node.get("code") or node["id"])
             return scrape_item.url.with_fragment(file["id"])
@@ -194,16 +191,17 @@ class GoFileCrawler(Crawler):
             subfolder = scrape_item.create_child(url)
             self.manager.task_group.create_task(self.run(subfolder))
 
+        tasks = []
         for url in unavailable:
-            new_scrape_item = scrape_item.create_new(url)
-            await self.raise_error(new_scrape_item, 403)
+            tasks.append(self.raise_error(url, 403))
 
         for url in dangerous:
-            new_scrape_item = scrape_item.create_new(url)
-            await self.raise_error(new_scrape_item, "Dangerous File")
+            tasks.append(self.raise_error(url, "Dangerous File"))
+
+        await asyncio.gather(*tasks)
 
     @error_handling_wrapper
-    async def raise_error(self, scrape_item: ScrapeItem | URL, status: str | int, message: str | None = None) -> None:
+    async def raise_error(self, url: AbsoluteHttpURL, status: str | int, message: str | None = None) -> None:
         raise ScrapeError(status, message)
 
     @error_handling_wrapper
@@ -213,6 +211,7 @@ class GoFileCrawler(Crawler):
         self.headers["Authorization"] = f"Bearer {self.api_key}"
         cookies = {"accountToken": self.api_key}
         self.update_cookies(cookies)
+        await self.get_website_token()
 
     async def _get_new_api_key(self) -> str:
         api_url = API_ENTRYPOINT / "accounts"
@@ -223,7 +222,7 @@ class GoFileCrawler(Crawler):
 
         return json_resp["data"]["token"]
 
-    async def get_website_token(self, _: ScrapeItem | URL | None = None, update: bool = False) -> None:
+    async def get_website_token(self, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
         if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
             return

@@ -3,133 +3,129 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
+import dataclasses
 import re
-from dataclasses import astuple, dataclass
-from functools import cached_property, singledispatchmethod
 from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup, Tag
 
-from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.data_structures.url_objects import FORUM, AbsoluteHttpURL, ScrapeItem
-from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
+from cyberdrop_dl.crawlers._forum import ForumCrawler
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.logger import log, log_debug
+from cyberdrop_dl.utils.dates import TimeStamp
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
     get_text_between,
     is_absolute_http_url,
-    remove_trailing_slash,
+    is_blob_or_svg,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Sequence
+    from collections.abc import AsyncGenerator, Iterable
 
     from aiohttp_client_cache.response import AnyResponse
-    from yarl import URL
 
-    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.crawlers.crawler import SupportedPaths
-
-HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
-HTTP_URL_REGEX = re.compile(HTTP_URL_REGEX_STR)
+    from cyberdrop_dl.crawlers.crawler import SupportedPaths
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
-FINAL_PAGE_SELECTOR = "li.pageNav-page a"
-CURRENT_PAGE_SELECTOR = "li.pageNav-page.pageNav-page--current a"
+HTTP_URL_REGEX = re.compile(r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)")
+LINK_TRASH_MAPPING = {
+    ".th.": ".",
+    ".md.": ".",
+    "ifr": "watch",
+}
+
+Selector = css.CssAttributeSelector
+
+LAST_PAGE_SELECTOR = Selector("li.pageNav-page a:last-of-type", "href")
+CURRENT_PAGE_SELECTOR = Selector("li.pageNav-page.pageNav-page--current a", "href")
 
 
-@dataclass(frozen=True, slots=True)
-class Selector:
-    element: str
-    attribute: str = ""
+@dataclasses.dataclass(frozen=True, slots=True)
+class PostSelectors:
+    article: str = "article.message[id*=post]"  # the entire html of the post (comments, attachments, user avatar, signature, etc...)
 
-    @property
-    def astuple(self) -> tuple[str, str]:
-        return astuple(self)
-
-
-@dataclass(frozen=True, slots=True)
-class PostSelectors(Selector):
-    element: str = "div[class*=message-main]"
-    attachments: Selector = Selector("section[class=message-attachments] a ", "href")
-    content: Selector = Selector("div[class*=message-userContent]")
+    attachments: Selector = Selector(".message-attachments a[href]", "href")
+    content: Selector = Selector(".message-userContent")  # text, links and images (NO attachments)
     date: Selector = Selector("time", "data-timestamp")
-    embeds: Selector = Selector("span[data-s9e-mediaembed-iframe]", "data-s9e-mediaembed-iframe")
-    iframe: Selector = Selector("iframe[class=saint-iframe]", "href")
-    images: Selector = Selector("img[class*=bbImage]", "src")
-    links: Selector = Selector("a", "href")
-    number: Selector = Selector("li[class=u-concealed] a", "href")
+    embeds: Selector = Selector("iframe", "src")
+    id: Selector = Selector(".u-concealed a[href]", "href")  # TODO: This needs a better selector
+    images: Selector = Selector("img.bbImage", "src")
+    lazy_load_embeds: Selector = Selector('[class*=iframe][onclick*="loadMedia(this, \'//"]', "onclick")
+    links: Selector = Selector(":any-link", "href")
     videos: Selector = Selector("video source", "src")
-    redgifs: Selector = Selector("div[class*='iframe'][onclick*=\"loadMedia(this, '//redgifs\"]", "onclick")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class XenforoSelectors:
-    next_page: Selector = Selector("a[class*=pageNav-jump--next]", "href")
+    confirmation_button: Selector = Selector("a[class*=button--cta][href]", "href")
+    next_page: Selector = Selector("a[class*=pageNav-jump--next][href]", "href")
     posts: PostSelectors = PostSelectors()
-    title: Selector = Selector("h1[class=p-title-value]")
-    title_trash: Selector = Selector("span")
     quotes: Selector = Selector("blockquote")
-    post_name: str = "post-"
+    title_trash: Selector = Selector("span")
+    title: Selector = Selector("h1[class*=p-title-value]")
+    last_page: Selector = LAST_PAGE_SELECTOR
+    current_page: Selector = CURRENT_PAGE_SELECTOR
 
 
-@dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, slots=True, order=True)
 class ForumPost:
-    soup: Tag
-    selectors: PostSelectors
-    post_name: str = "post-"
+    id: int
+    date: TimeStamp
+    article: Tag = dataclasses.field(compare=False)
+    content: Tag = dataclasses.field(compare=False)
 
-    @cached_property
-    def content(self) -> Tag:
-        return css.select_one(self.soup, self.selectors.content.element)
-
-    @cached_property
-    def date(self) -> int | None:
-        if date_str := css.select_one_get_attr_or_none(self.content, *self.selectors.date.astuple):
-            return int(date_str)
-
-    @cached_property
-    def number(self) -> int:
-        if self.selectors.number.element == self.selectors.number.attribute:
-            number_str: str = css.get_attr(self.soup, self.selectors.number.element)
-            return int(number_str)
-
-        number_str = css.select_one_get_attr(self.soup, *self.selectors.number.astuple)
-        return int(number_str.split("/")[-1].split(self.post_name)[-1])
+    @staticmethod
+    def new(article: Tag, selectors: PostSelectors, post_name: str = "post") -> ForumPost:
+        content = css.select_one(article, selectors.content.element)
+        date = TimeStamp(int(css.select_one_get_attr(article, *selectors.date)))
+        if selectors.id.element == selectors.id.attribute:
+            post_id = int(css.get_attr(article, selectors.id.element))
+        else:
+            id_str = css.select_one_get_attr(article, *selectors.id)
+            post_id = int(id_str.rsplit(post_name, 1)[-1].replace("-", ""))
+        return ForumPost(post_id, date, article, content)
 
 
-@dataclass(frozen=True, slots=True)
-class ThreadInfo:
+@dataclasses.dataclass(frozen=True, slots=True)
+class Thread:
+    id: int
     name: str
-    id_: int
     page: int
-    post: int
+    post_id: int | None
     url: AbsoluteHttpURL
-    complete_url: URL
 
 
-@dataclass(frozen=True, slots=True)
-class ForumThreadPage:
-    thread: ThreadInfo
-    posts: Sequence[Tag]
+DEFAULT_XF_SELECTORS = XenforoSelectors()
+KNOWN_THREAD_PART_NAMES = "thread", "topic", "tema"
+KNOWN_THREAD_PART_NAMES = ",".join(f"{part},{part}s" for part in KNOWN_THREAD_PART_NAMES).split(",")
 
 
-class XenforoCrawler(Crawler, is_abc=True):
+def _escape(strings: Iterable[str]) -> str:
+    return r"\|".join(strings)
+
+
+class XenforoCrawler(ForumCrawler, is_abc=True):
+    XF_ATTACHMENT_URL_PARTS = "attachments", "data", "uploads"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Attachments": ("/attachments/...", "/data/..."),
-        "Threads": ("/threads/<thread_name>", "/posts/<post_id>", "/goto/<post_id>"),
+        "Attachments": f"/({_escape(XF_ATTACHMENT_URL_PARTS)})/...",
+        "Threads": (
+            f"/({_escape(KNOWN_THREAD_PART_NAMES)})/<thread_name_and_id>",
+            "/posts/<post_id>",
+            "/goto/<post_id>",
+        ),
+        "**NOTE**": "base crawler: Xenforo",
     }
+    SUPPORTS_THREAD_RECURSION: ClassVar[bool] = True
+    XF_SELECTORS = DEFAULT_XF_SELECTORS
+    XF_POST_URL_PART_NAME = "post-"
+    XF_PAGE_URL_PART_NAME = "page-"
+    XF_THREAD_URL_PART = "threads"
+    XF_USER_COOKIE_NAME = "xf_user"
+    XF_ATTACHMENT_HOSTS = "smgmedia", "attachments.f95zone"
     login_required = True
-    selectors = XenforoSelectors()
-    POST_NAME = "post-"
-    PAGE_NAME = "page-"
-    thread_url_part = "threads"
-    session_cookie_name = "xf_user"
-
-    ATTACHMENT_URL_PARTS = "attachments", "data"
-    ATTACHMENT_HOSTS = "smgmedia", "attachments.f95zone"
 
     def __post_init__(self) -> None:
         self.scraped_threads = set()
@@ -139,16 +135,10 @@ class XenforoCrawler(Crawler, is_abc=True):
             login_url = self.PRIMARY_URL / "login"
             await self.login_setup(login_url)
 
-        async def is_not_last_page(response: AnyResponse) -> bool:
-            soup = BeautifulSoup(await response.text(), "html.parser")
-            try:
-                last_page = int(soup.select(FINAL_PAGE_SELECTOR)[-1].text.split("page-")[-1])
-                current_page = int(soup.select(CURRENT_PAGE_SELECTOR)[0].text.split("page-")[-1])
-            except (AttributeError, IndexError):
-                return False
-            return current_page != last_page
+        self.register_cache_filter(self.PRIMARY_URL, check_is_not_last_page)
 
-        self.register_cache_filter(self.PRIMARY_URL, is_not_last_page)
+    def get_filename_and_ext(self, filename: str) -> tuple[str, str]:
+        return super().get_filename_and_ext(filename, forum=True)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in and self.login_required:
@@ -157,21 +147,27 @@ class XenforoCrawler(Crawler, is_abc=True):
         scrape_item.url = self.parse_url(url)
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
-        if self.thread_url_part in scrape_item.url.parts:
-            return await self.thread(scrape_item)
-        if self.is_confirmation_link(scrape_item.url):
-            url = await self.handle_confirmation_link(scrape_item.url)
-            if url:  # If there was an error, this will be None
-                # This could end up back in here if the URL goes to another thread
-                scrape_item.url = url
-                return self.handle_external_links(scrape_item)
-        if any(p in scrape_item.url.parts for p in ("goto", "posts")):
-            return await self.redirect(scrape_item)
+        if is_confirmation_link(scrape_item.url):
+            return await self.follow_confirmation_link(scrape_item)
+
+        thread_part_index = len(self.PRIMARY_URL.parts)
+        match scrape_item.url.parts[thread_part_index:]:
+            case [thread_part, thread_name_and_id, *_] if thread_part in KNOWN_THREAD_PART_NAMES:
+                return await self.thread(scrape_item, thread_name_and_id)
+            case ["goto" | "posts", *_]:
+                return await self.follow_redirect_w_get(scrape_item)
 
         raise ValueError
 
+    async def follow_confirmation_link(self, scrape_item: ScrapeItem) -> None:
+        url = await self.resolve_confirmation_link(scrape_item.url)
+        if url:  # If there was an error, this will be None
+            scrape_item.url = url
+            # This could end up back in here if the URL goes to another thread
+            return self.handle_external_links(scrape_item)
+
     @error_handling_wrapper
-    async def redirect(self, scrape_item: ScrapeItem) -> None:
+    async def follow_redirect_w_get(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             response, _ = await self.client._get_response_and_soup(self.DOMAIN, scrape_item.url)
         assert is_absolute_http_url(response.url)
@@ -179,52 +175,69 @@ class XenforoCrawler(Crawler, is_abc=True):
         self.manager.task_group.create_task(self.run(scrape_item))
 
     @error_handling_wrapper
-    async def thread(self, scrape_item: ScrapeItem) -> None:
-        scrape_item.set_type(FORUM, self.manager)
-        thread = self.get_thread_info(scrape_item.url)
-        title = None
-        last_post_url = thread.url
+    async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
+        head = await self.client.get_head(self.DOMAIN, scrape_item.url)
+        redirect = head.get("location")
+        if not redirect:
+            raise ScrapeError(422)
+        scrape_item.url = self.parse_url(redirect)
+        self.manager.task_group.create_task(self.run(scrape_item))
+
+    async def forum(self, scrape_item: ScrapeItem) -> None:
+        raise NotImplementedError
+
+    @error_handling_wrapper
+    async def thread(self, scrape_item: ScrapeItem, thread_name_and_id: str) -> None:
+        scrape_item.setup_as_forum("")
+        thread = parse_thread(
+            scrape_item.url, thread_name_and_id, self.XF_PAGE_URL_PART_NAME, self.XF_POST_URL_PART_NAME
+        )
         if thread.url in self.scraped_threads:
             return
+
         scrape_item.parent_threads.add(thread.url)
+        if self.scrape_single_forum_post and not thread.post_id:
+            msg = "`--scrape-single-forum-post` is `True`, but the provided URL has no post id"
+            raise ScrapeError("User Error", msg)
+
+        title: str = ""
         self.scraped_threads.add(thread.url)
+        last_post_url = thread.url
         async for soup in self.thread_pager(scrape_item):
             if not title:
-                title_block = css.select_one(soup, self.selectors.title.element)
                 try:
-                    trash = title_block.select(self.selectors.title_trash.element)
-                except AttributeError as e:
-                    log_debug("Got an unprocessable soup", 40, exc_info=e)
-                    raise ScrapeError(429, message="Invalid response from forum. You may have been rate limited") from e
-
-                for element in trash:
-                    element.decompose()
-
-                title = self.create_title(title_block.get_text().replace("\n", ""), thread_id=thread.id_)
+                    title = self.create_title(get_post_title(soup, self.XF_SELECTORS), thread_id=thread.id)
+                except ScrapeError as e:
+                    self.log_debug("Got an unprocessable soup", 40, exc_info=e)
+                    raise
                 scrape_item.add_to_parent_title(title)
 
-            posts = soup.select(self.selectors.posts.element)
-            forum_thread_page = ForumThreadPage(thread, posts)
-            continue_scraping, last_post_url = self.process_thread_page(scrape_item, forum_thread_page)
+            continue_scraping, last_post_url = self.process_thread_page(scrape_item, thread, soup)
             if not continue_scraping:
                 break
 
         await self.write_last_forum_post(thread.url, last_post_url)
 
-    def process_thread_page(self, scrape_item: ScrapeItem, forum_page: ForumThreadPage) -> tuple[bool, URL]:
+    def process_thread_page(
+        self, scrape_item: ScrapeItem, thread: Thread, soup: BeautifulSoup
+    ) -> tuple[bool, AbsoluteHttpURL]:
         continue_scraping = False
-        thread = forum_page.thread
         post_url = thread.url
-        for post in forum_page.posts:
-            current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
-            continue_scraping, scrape_post = self.check_post_number(thread.post, current_post.number)
-            date = current_post.date
-            post_string = f"{self.POST_NAME}{current_post.number}"
-            post_url = thread.url / post_string
-            if scrape_post:
-                new_scrape_item = scrape_item.create_new(thread.url, possible_datetime=date, add_parent=post_url)
+        for article in soup.select(self.XF_SELECTORS.posts.article):
+            current_post = ForumPost.new(article, self.XF_SELECTORS.posts, self.XF_POST_URL_PART_NAME)
+            continue_scraping, scrape_this_post = check_post_id(
+                thread.post_id, current_post.id, self.scrape_single_forum_post
+            )
+            if scrape_this_post:
+                post_url = thread.url / f"{self.XF_POST_URL_PART_NAME}{current_post.id}"
+                new_scrape_item = scrape_item.create_new(
+                    thread.url, possible_datetime=current_post.date, add_parent=post_url
+                )
                 self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
-                scrape_item.add_children()
+                try:
+                    scrape_item.add_children()
+                except MaxChildrenError:
+                    break
 
             if not continue_scraping:
                 break
@@ -233,228 +246,132 @@ class XenforoCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         scrape_item.setup_as_post("")
-        post_title = self.create_separate_post_title(None, str(post.number), post.date)
+        post_title = self.create_separate_post_title(None, str(post.id), post.date)
         scrape_item.add_to_parent_title(post_title)
-        posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos, self.hidden_redgifs]
-        for scraper in posts_scrapers:
+        for scraper in (
+            self._attachments,
+            self._embeds,
+            self._images,
+            self._links,
+            self._videos,
+            self._lazy_load_embeds,
+        ):
             await scraper(scrape_item, post)
 
-    async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        selector = post.selectors.links
+    async def _links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+        selector = self.XF_SELECTORS.posts.links
         links = post.content.select(selector.element)
-        links = [link for link in links if self.is_valid_post_link(link)]
+        links = [link for link in links if self.is_not_image_or_attachment(link)]
         await self.process_children(scrape_item, links, selector.attribute)
 
-    async def images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        selector = post.selectors.images
+    async def _images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+        selector = self.XF_SELECTORS.posts.images
         images = post.content.select(selector.element)
         await self.process_children(scrape_item, images, selector.attribute)
 
-    async def videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        selector = post.selectors.videos
-        iframe_selector = post.selectors.iframe
+    async def _videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+        selector = self.XF_SELECTORS.posts.videos
         videos = post.content.select(selector.element)
-        videos.extend(post.content.select(iframe_selector.element))
         await self.process_children(scrape_item, videos, selector.attribute)
 
-    async def embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        selector = post.selectors.embeds
+    async def _embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+        selector = self.XF_SELECTORS.posts.embeds
         embeds = post.content.select(selector.element)
         await self.process_children(scrape_item, embeds, selector.attribute, embeds=True)
 
-    async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        selector = post.selectors.attachments
-        attachments = post.content.select(selector.attribute)
+    async def _attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+        selector = self.XF_SELECTORS.posts.attachments
+        attachments = post.article.select(selector.element)
         await self.process_children(scrape_item, attachments, selector.attribute)
 
-    async def hidden_redgifs(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        selector = post.selectors.redgifs
+    async def _lazy_load_embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+        selector = self.XF_SELECTORS.posts.lazy_load_embeds
         for redgif in css.iselect(post.content, selector.element):
             link_str = get_text_between(css.get_attr(redgif, selector.attribute), "loadMedia(this, '", "')")
-            await self.process_child(scrape_item, link_str)
+            await self.process_child(scrape_item, link_str, embeds=True)
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
-        """Generator of forum thread pages."""
-
-        def get_next_page(soup: BeautifulSoup) -> str | None:
-            select, attr = self.selectors.next_page.astuple
-            next_page = css.select_one_get_attr_or_none(soup, selector=select, attribute=attr)
-            if next_page:
-                return self.pre_filter_link(next_page)
-
-        async for soup in self._web_pager(scrape_item.url, get_next_page):
+        async for soup in self._web_pager(scrape_item.url, self.get_next_page):
             yield soup
 
-    async def process_children(
-        self, scrape_item: ScrapeItem, links: list[Tag], selector: str, *, embeds: bool = False
-    ) -> None:
-        for link_obj in links:
-            link_tag = link_obj.get(selector)
-            if isinstance(link_tag, Tag):
-                if link_tag.parent and (data_simp := link_tag.parent.get("data-simp")) and "init" in data_simp:
-                    continue
-
-                link_str: str | None = css.get_attr_or_none(link_obj, "href")
-            elif isinstance(link_tag, str):
-                link_str = link_tag
-            else:
-                continue
-
-            if not link_str:
-                continue
-
-            assert isinstance(link_str, str)
-            if embeds:
-                link_str = self.extract_embed_url(link_str)
-
-            if not link_str or link_str.startswith("data:image/svg"):
-                continue
-
-            await self.process_child(scrape_item, link_str)
+    def get_next_page(self, soup: BeautifulSoup) -> str | None:
+        if next_page := css.select_one_get_attr_or_none(soup, *self.XF_SELECTORS.next_page):
+            return self.pre_filter_link(next_page)
 
     @error_handling_wrapper
-    async def process_child(self, scrape_item: ScrapeItem, link_str: str) -> None:
-        link = await self.get_absolute_link(link_str)
+    async def process_children(
+        self, scrape_item: ScrapeItem, links: list[Tag], attribute: str, *, embeds: bool = False
+    ) -> None:
+        for link_tag in links:
+            if link_str := css.get_attr_no_error(link_tag, attribute):
+                await self.process_child(scrape_item, link_str, embeds=embeds)
+
+    @error_handling_wrapper
+    async def process_child(self, scrape_item: ScrapeItem, link_str: str, *, embeds: bool = False) -> None:
+        link_str_ = pre_process_child(link_str, embeds)
+        if not link_str_:
+            return
+        link = await self.get_absolute_link(link_str_)
         link = self.filter_link(link)
         if not link:
             return
-        new_scrape_item = scrape_item.create_new(link)
-        await self.handle_link(new_scrape_item)
-        scrape_item.add_children()
+        await self.handle_link(scrape_item, link)
 
-    @singledispatchmethod
-    def is_attachment(self, link: AbsoluteHttpURL) -> bool:
+    def is_attachment(self, link: AbsoluteHttpURL | str) -> bool:
         if not link:
             return False
-        parts = self.ATTACHMENT_URL_PARTS
-        hosts = self.ATTACHMENT_HOSTS
-        return any(p in link.parts for p in parts) or any(h in link.host for h in hosts)
-
-    @is_attachment.register
-    def _(self, link_str: str) -> bool:
-        if not link_str:
-            return False
-        link = self.parse_url(link_str)
-        return self.is_attachment(link)
+        if isinstance(link, str):
+            link = self.parse_url(link)
+        by_parts = len(link.parts) > 2 and any(p in link.parts for p in self.XF_ATTACHMENT_URL_PARTS)
+        by_host = any(host in link.host for host in self.XF_ATTACHMENT_HOSTS)
+        return by_parts or by_host
 
     async def get_absolute_link(self, link: str | AbsoluteHttpURL) -> AbsoluteHttpURL | None:
         if isinstance(link, str):
-            absolute_link = self.str_to_url(link)
+            absolute_link = self.parse_url(clean_link_str(link))
         else:
             absolute_link = link
-        if self.is_confirmation_link(absolute_link):
-            absolute_link = await self.handle_confirmation_link(absolute_link)
+        if is_confirmation_link(absolute_link):
+            return await self.resolve_confirmation_link(absolute_link)
         return absolute_link
 
-    def str_to_url(self, link: str) -> AbsoluteHttpURL:
-        link_str = link
-        text_to_replace = [(".th.", "."), (".md.", "."), ("ifr", "watch")]
-        for old, new in text_to_replace:
-            link_str = link_str.replace(old, new)
-        return self.parse_url(link_str)
-
     @error_handling_wrapper
-    async def handle_link(self, scrape_item: ScrapeItem) -> None:
-        if not scrape_item.url or scrape_item.url == self.PRIMARY_URL:
-            return
-        if not scrape_item.url.host:
-            raise InvalidURLError("url has no host")
-        if self.is_attachment(scrape_item.url):
-            return await self.handle_internal_link(scrape_item)
-        if self.PRIMARY_URL.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):
-            origin = scrape_item.parents[0]
-            return log(f"Skipping nested thread URL {scrape_item.url} found on {origin}", 10)
-        scrape_item.set_type(None, self.manager)
-        self.handle_external_links(scrape_item)
-
-    @error_handling_wrapper
-    async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
-        """Handles internal links."""
-        scrape_item.url = remove_trailing_slash(scrape_item.url)
-
-        if scrape_item.url.name.isdigit():
-            head = await self.client.get_head(self.DOMAIN, scrape_item.url)
-            redirect = head.get("location")
-            if not redirect:
-                raise ScrapeError(422)
-            scrape_item.url = self.parse_url(redirect)
-            self.manager.task_group.create_task(self.run(scrape_item))
-            return
-
-        filename, ext = self.get_filename_and_ext(scrape_item.url.name, forum=True)
-        scrape_item.add_to_parent_title("Attachments")
-        scrape_item.part_of_album = True
-        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
-
-    @error_handling_wrapper
-    async def handle_confirmation_link(self, link: URL) -> AbsoluteHttpURL | None:
-        """Handles link confirmation."""
+    async def resolve_confirmation_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, link)
-        confirm_button = soup.select_one("a[class*=button--cta]")
+        selector = self.XF_SELECTORS.confirmation_button
+        confirm_button = soup.select_one(selector.element)
         if not confirm_button:
             return
-        link_str: str = css.get_attr(confirm_button, "href")
+        link_str: str = css.get_attr(confirm_button, selector.attribute)
         link_str = link_str.split('" class="link link--internal', 1)[0]
         new_link = self.parse_url(link_str)
         return await self.get_absolute_link(new_link)
 
-    def stop_thread_recursion(self, scrape_item: ScrapeItem) -> bool:
-        max_thread_depth = self.manager.config_manager.settings_data.download_options.maximum_thread_depth
-        if not max_thread_depth:
-            return True
-        if len(scrape_item.parent_threads) > max_thread_depth:
-            return True
-        return False
+    async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
+        """Handles internal links."""
+        slug = scrape_item.url.name or scrape_item.url.parent.name
+        if slug.isdigit():
+            return await self.follow_redirect_w_head(scrape_item)
 
-    def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
-        """Checks if the program should scrape the current post.
+        return await super().handle_internal_link(scrape_item)
 
-        Returns (continue_scraping, scrape_post)"""
-        scrape_single_forum_post = self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
-        scrape_post = continue_scraping = True
-        if scrape_single_forum_post:
-            if not post_number or post_number == current_post_number:
-                continue_scraping = False
-            else:
-                scrape_post = False
-
-        elif post_number and post_number > current_post_number:
-            scrape_post = False
-
-        return continue_scraping, scrape_post
-
-    async def write_last_forum_post(self, thread_url: URL, last_post_url: URL | None) -> None:
-        if not last_post_url or last_post_url == thread_url:
-            return
-        await self.manager.log_manager.write_last_post_log(last_post_url)
-
-    def is_valid_post_link(self, link_obj: Tag) -> bool:
+    def is_not_image_or_attachment(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
-        link_str: str = css.get_attr_or_none(link_obj, self.selectors.posts.links.element)
-        return not (is_image or self.is_attachment(link_str))
-
-    def is_confirmation_link(self, link: URL) -> bool:
-        return any(keyword in link.path for keyword in ("link-confirmation",))
-
-    def extract_embed_url(self, embed_str: str) -> str | None:
-        embed_str = embed_str.replace(r"\/\/", "https://www.").replace("\\", "")
-        if match := re.search(HTTP_URL_REGEX, embed_str):
-            return match.group(0).replace("www.", "")
-        return embed_str
+        if link_str := css.get_attr_no_error(link_obj, self.XF_SELECTORS.posts.links.element):
+            return not (is_image or self.is_attachment(link_str))
+        return not is_image
 
     def pre_filter_link(self, link: str) -> str:
         return link
 
-    def filter_link(self, link: URL | None) -> URL | None:
+    def filter_link(self, link: AbsoluteHttpURL | None) -> AbsoluteHttpURL | None:
         return link
 
-    """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     @error_handling_wrapper
-    async def login_setup(self, login_url: URL) -> None:
+    async def login_setup(self, login_url: AbsoluteHttpURL) -> None:
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.PRIMARY_URL)
-        session_cookie = host_cookies.get(self.session_cookie_name)
+        session_cookie = host_cookies.get(self.XF_USER_COOKIE_NAME)
         session_cookie = session_cookie.value if session_cookie else None
         msg = f"No cookies found for {self.FOLDER_DOMAIN}"
         if not session_cookie and self.login_required:
@@ -470,14 +387,11 @@ class XenforoCrawler(Crawler, is_abc=True):
             raise LoginError(message=msg)
 
         msg += " Scraping without an account"
-        log(msg, 30)
+        self.log(msg, 30)
 
     @error_handling_wrapper
-    async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str) -> None:
+    async def xf_login(self, login_url: AbsoluteHttpURL, session_cookie: str, username: str, password: str) -> None:
         """Logs in to a forum."""
-
-        attempt = 0
-        retries = wait_time = 5
         manual_login = username and password
         missing_credentials = not (manual_login or session_cookie)
         if missing_credentials:
@@ -488,73 +402,163 @@ class XenforoCrawler(Crawler, is_abc=True):
             cookies = {"xf_user": session_cookie}
             self.update_cookies(cookies)
 
+        credentials = {"login": username, "password": password, "_xfRedirect": str(self.PRIMARY_URL)}
+        await self.xf_try_login(login_url, credentials, retries=5)
+
+    async def xf_try_login(
+        self,
+        login_url: AbsoluteHttpURL,
+        credentials: dict[str, str],
+        retries: int,
+        wait_time: int | None = None,
+    ) -> None:
+        # Try from cookies
         text, logged_in = await self.check_login_with_request(login_url)
         if logged_in:
             self.logged_in = True
             return
 
-        credentials = {"login": username, "password": password, "_xfRedirect": str(self.PRIMARY_URL)}
-
-        def prepare_login_data(resp_text) -> dict:
-            soup = BeautifulSoup(resp_text, "html.parser")
-            inputs = soup.select("form input")
-            data: dict = {elem["name"]: elem["value"] for elem in inputs if elem.get("name") and elem.get("value")}
-            return data | credentials
-
+        wait_time = wait_time or retries
+        attempt = 0
         while attempt < retries:
-            with contextlib.suppress(TimeoutError):
+            try:
                 attempt += 1
                 await asyncio.sleep(wait_time)
-                data = prepare_login_data(text)
+                data = parse_login_form(text) | credentials
                 _ = await self.client._post_data(self.DOMAIN, login_url / "login", data=data, cache_disabled=True)
                 await asyncio.sleep(wait_time)
                 text, logged_in = await self.check_login_with_request(login_url)
                 if logged_in:
                     self.logged_in = True
                     return
-
+            except TimeoutError:
+                continue
         msg = f"Failed to login on {self.FOLDER_DOMAIN} after {retries} attempts"
         raise LoginError(message=msg)
 
-    async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
+    async def check_login_with_request(self, login_url: AbsoluteHttpURL) -> tuple[str, bool]:
         text = await self.client.get_text(self.DOMAIN, login_url, cache_disabled=True)
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_thread_info(self, url: AbsoluteHttpURL) -> ThreadInfo:
-        name_index = url.parts.index(self.thread_url_part) + 1
-        name, id_ = get_thread_name_and_id(url, name_index)
-        thread_url = get_thread_canonical_url(url, name_index)
-        page, post = get_thread_page_and_post(url, name_index, self.PAGE_NAME, self.POST_NAME)
-        return ThreadInfo(name, id_, page, post, thread_url, url)
+def parse_thread(url: AbsoluteHttpURL, thread_name_and_id: str, page_part_name: str, post_part_name: str) -> Thread:
+    name_index = url.parts.index(thread_name_and_id)
+    name, id_ = parse_thread_name_and_id(thread_name_and_id)
+    page, post_id = get_thread_page_and_post(url, name_index, page_part_name, post_part_name)
+    canonical_url = get_thread_canonical_url(url, name_index)
+    return Thread(id_, name, page, post_id, canonical_url)
 
 
-def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
-    thread_name, thread_id_str = url.parts[thread_name_index].rsplit(".", 1)
-    thread_id = int(thread_id_str)
-    return thread_name, thread_id
+def parse_thread_name_and_id(thread_name_and_id: str) -> tuple[str, int]:
+    try:
+        name, id_str = thread_name_and_id.rsplit(".", 1)
+    except ValueError:
+        id_str, name = thread_name_and_id.split("-", 1)
+    return name, int(id_str)
 
 
 def get_thread_canonical_url(url: AbsoluteHttpURL, thread_name_index: int) -> AbsoluteHttpURL:
     new_parts = url.parts[1 : thread_name_index + 1]
     new_path = "/".join(new_parts)
-    thread_url = url.with_path(new_path).with_fragment(None).with_query(None)
-    return thread_url
+    return url.with_path(new_path)
 
 
-def get_thread_page_and_post(url: URL, thread_name_index: int, page_name: str, post_name: str) -> tuple[int, int]:
-    post_or_page_index = thread_name_index + 1
-    extra_parts = set(url.parts[post_or_page_index:])
-    sections = {url.fragment} if url.fragment else set()
-    sections.update(extra_parts)
+def get_thread_page_and_post(
+    url: AbsoluteHttpURL, thread_name_index: int, page_name: str, post_name: str
+) -> tuple[int, int | None]:
+    extra_parts = url.parts[thread_name_index + 1 :]
+    if url.fragment:
+        extra_parts = *extra_parts, url.fragment
 
-    def find_number(search_value: str) -> int:
-        for sec in sections:
+    def find_number(search_value: str) -> int | None:
+        for sec in extra_parts:
             if search_value in sec:
-                return int(sec.replace(search_value, "").strip())
-        return 0
+                return int(sec.replace(search_value, "").replace("-", "").strip())
 
-    post_number = find_number(post_name)
-    page_number = find_number(page_name)
-    return page_number, post_number
+    post_id = find_number(post_name)
+    page_number = find_number(page_name) or 1
+    return page_number, post_id
+
+
+async def check_is_not_last_page(response: AnyResponse) -> bool:
+    soup = BeautifulSoup(await response.text(), "html.parser")
+    return not is_last_page(soup)
+
+
+def is_last_page(soup: BeautifulSoup) -> bool:
+    try:
+        last_page = css.select_one_get_attr(soup, *LAST_PAGE_SELECTOR)
+        current_page = css.select_one_get_attr(soup, *CURRENT_PAGE_SELECTOR)
+    except (AttributeError, IndexError, css.SelectorError):
+        return True
+    return current_page == last_page
+
+
+def get_post_title(soup: BeautifulSoup, selectors: XenforoSelectors) -> str:
+    try:
+        title_block = css.select_one(soup, selectors.title.element)
+        trash = title_block.select(selectors.title_trash.element)
+        for element in trash:
+            element.decompose()
+    except (AttributeError, AssertionError, css.SelectorError) as e:
+        raise ScrapeError(429, message="Invalid response from forum. You may have been rate limited") from e
+
+    if title := " ".join(css.get_text(title_block).split()):
+        return title
+    raise ScrapeError(422)
+
+
+def extract_embed_url(embed_str: str) -> str:
+    embed_str = embed_str.replace(r"\/\/", "https://www.").replace("\\", "")
+    if match := re.search(HTTP_URL_REGEX, embed_str):
+        return match.group(0).replace("www.", "")
+    return embed_str
+
+
+# TODO: move to parse_url
+def clean_link_str(link: str) -> str:
+    for old, new in LINK_TRASH_MAPPING.items():
+        link = link.replace(old, new)
+    return link
+
+
+def parse_login_form(resp_text: str) -> dict[str, str]:
+    soup = BeautifulSoup(resp_text, "html.parser")
+    inputs = soup.select("form:first-of-type input")
+    data = {
+        name: value
+        for elem in inputs
+        if (name := css.get_attr_or_none(elem, "name")) and (value := css.get_attr_or_none(elem, "value"))
+    }
+    if data:
+        return data
+    raise ScrapeError(422)
+
+
+def is_confirmation_link(link: AbsoluteHttpURL) -> bool:
+    return "masked" in link.parts or "link-confirmation" in link.path
+
+
+def check_post_id(init_post_id: int | None, current_post_id: int, scrape_single_forum_post: bool) -> tuple[bool, bool]:
+    """Checks if the program should scrape the current post.
+
+    Returns (continue_scraping, scrape_this_post)"""
+    if init_post_id:
+        if init_post_id > current_post_id:
+            return (True, False)
+        elif init_post_id == current_post_id:
+            return (not scrape_single_forum_post, True)
+        else:
+            return (not scrape_single_forum_post, not scrape_single_forum_post)
+
+    assert not scrape_single_forum_post  # We should have raised an exception early
+    return True, True
+
+
+def pre_process_child(link_str: str, embeds: bool = False) -> str | None:
+    assert isinstance(link_str, str)
+    if embeds:
+        link_str = extract_embed_url(link_str)
+
+    if link_str and not is_blob_or_svg(link_str):
+        return link_str

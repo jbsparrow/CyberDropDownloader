@@ -38,7 +38,7 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine, Mapping
+    from collections.abc import Callable, Coroutine, Iterable, Mapping
 
     from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
@@ -56,6 +56,7 @@ R = TypeVar("R")
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 ALLOWED_FILEPATH_PUNCTUATION = " .-_!#$%'()+,;=@[]^{}~"
+_BLOB_OR_SVG = ("data:", "blob:", "javascript:")
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
@@ -82,8 +83,8 @@ class OGProperties(dict[str, str]):
 
 
 def error_handling_wrapper(
-    func: Callable[..., Coroutine[None, None, R]],
-) -> Callable[..., Coroutine[None, None, R | None]]:
+    func: Callable[P, Coroutine[None, None, R]],
+) -> Callable[P, Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
@@ -611,6 +612,50 @@ def get_os_common_name() -> str:
     if system == "Windows" and (edition := platform.win32_edition()):
         return f"{default} {edition}"
     return default
+
+
+def is_blob_or_svg(link: str) -> bool:
+    return any(link.startswith(x) for x in _BLOB_OR_SVG)
+
+
+def no_error(func: Callable[P, R]) -> Callable[P, R | None]:
+    def call(*args, **kwargs) -> R | None:
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            return
+
+    return call
+
+
+def unique(iterable: Iterable[T], *, hashable: bool = True) -> Iterable[T]:
+    """Yields unique values from iterable, keeping original order"""
+    if hashable:
+        seen: set[T] | list[T] = set()
+        add: Callable[[T], None] = seen.add
+    else:
+        seen = []
+        add = seen.append
+
+    for value in iterable:
+        if value not in seen:
+            add(value)
+            yield value
+
+
+def get_valid_kwargs(func: Callable[..., Any], kwargs: Mapping[str, T], accept_kwargs: bool = True) -> Mapping[str, T]:
+    """Get the subset of ``kwargs`` that are valid params for ``func`` and their values are not `None`
+
+    If func takes **kwargs, returns everything"""
+    params = inspect.signature(func).parameters
+    if accept_kwargs and any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return kwargs
+
+    return {k: v for k, v in kwargs.items() if k in params.keys() and v is not None}
+
+
+def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
+    return cls(**get_valid_kwargs(cls, kwargs))
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

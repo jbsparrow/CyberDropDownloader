@@ -73,8 +73,8 @@ class ScrapeMapper:
         if self.manager.real_debrid_manager.enabled:
             from cyberdrop_dl.crawlers.realdebrid import RealDebridCrawler
 
-            self.existing_crawlers["real-debrid"] = RealDebridCrawler(self.manager)
-            await self.existing_crawlers["real-debrid"].startup()
+            self.existing_crawlers["real-debrid"] = real = RealDebridCrawler(self.manager)
+            await real.startup()
 
     async def start(self) -> None:
         """Starts the orchestra."""

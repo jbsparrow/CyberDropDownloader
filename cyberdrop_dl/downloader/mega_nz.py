@@ -642,7 +642,7 @@ class MegaApi:
                 if file["t"] == NodeType.FILE:
                     file = cast("File", file)
                     k = (key[0] ^ key[4], key[1] ^ key[5], key[2] ^ key[6], key[3] ^ key[7])
-                    file["iv"] = key[4:6] + (0, 0)
+                    file["iv"] = (*key[4:6], 0, 0)
                     file["meta_mac"] = key[6:8]
                 # folder
                 else:
@@ -735,7 +735,7 @@ class MegaApi:
                 elif node["t"] == NodeType.FOLDER:
                     k = key
 
-                iv: U32IntSequence = key[4:6] + (0, 0)
+                iv: U32IntSequence = (*key[4:6], 0, 0)
                 meta_mac: U32IntTupleArray = key[6:8]
 
                 attrs = decrypt_attr(base64_url_decode(node["a"]), k)

@@ -22,13 +22,17 @@ PRIMARY_URL = AbsoluteHttpURL("https://www.imagebam.com/")
 
 
 class ImageBamCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/view/...", "Image": "/view/...", "Direct links": ""}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/view/...",
+        "Image": "/view/...",
+        "Direct links": "",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "imagebam"
     FOLDER_DOMAIN: ClassVar[str] = "ImageBam"
 
     async def async_startup(self) -> None:
-        self.set_cookies()
+        self.update_cookies({"nsfw_inter": "1"})
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_cdn(scrape_item.url):
@@ -55,7 +59,7 @@ class ImageBamCrawler(Crawler):
 
         for _, new_scrape_item in self.iter_children(scrape_item, soup, IMAGES_SELECTOR):
             if not self.check_album_results(new_scrape_item.url, results):
-                self.manager.task_group.create_task(self.image(new_scrape_item))
+                self.manager.task_group.create_task(self.image(new_scrape_item, soup))
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
@@ -77,11 +81,6 @@ class ImageBamCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(title)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
-
-    def set_cookies(self) -> None:
-        """Set cookies to bypass confirmation."""
-        cookies = {"nsfw_inter": "1"}
-        self.update_cookies(cookies)
 
 
 def is_cdn(url: AbsoluteHttpURL) -> bool:

@@ -58,7 +58,7 @@ class XhamsterCrawler(Crawler):
         raise ValueError
 
     @error_handling_wrapper
-    async def profile(self, scrape_item: ScrapeItem, paths_to_scrape) -> None:
+    async def profile(self, scrape_item: ScrapeItem) -> None:
         profile_type, username = scrape_item.url.parts[1:3]
         title = self.create_title(f"{username} [{profile_type.removesuffix('s')}]")
         scrape_item.setup_as_profile(title)
