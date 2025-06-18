@@ -516,14 +516,23 @@ class Crawler(ABC):
         if parsed_date := self._parse_date(date_or_datetime, format):
             return to_timestamp(parsed_date)
 
-    def _parse_date(self, date_or_datetime: str, format: str | None = None, /) -> datetime | None:
+    def parse_iso_date(self, date_or_datetime: str, /) -> TimeStamp | None:
+        if parsed_date := self._parse_date(date_or_datetime, None, iso=True):
+            return to_timestamp(parsed_date)
+
+    def _parse_date(
+        self, date_or_datetime: str, format: str | None = None, /, *, iso: bool = False
+    ) -> datetime.datetime | None:
+        assert not (iso and format)
         msg = f"Date parsing for {self.DOMAIN} seems to be broken. Please report this as a bug at {NEW_ISSUE_URL}"
         if not date_or_datetime:
             log(f"{msg}: Unable to extract date from soup", 30)
             return None
         try:
-            if format:
-                parsed_date = datetime.strptime(date_or_datetime, format)
+            if iso:
+                parsed_date = datetime.datetime.fromisoformat(date_or_datetime)
+            elif format:
+                parsed_date = datetime.datetime.strptime(date_or_datetime, format)
             else:
                 parsed_date = parse_date(date_or_datetime)
         except (ValueError, TypeError) as e:
