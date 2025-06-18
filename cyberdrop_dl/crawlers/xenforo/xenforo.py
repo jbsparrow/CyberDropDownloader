@@ -96,7 +96,7 @@ class Thread:
     id: int
     name: str
     page: int
-    post_id: int
+    post_id: int | None
     url: AbsoluteHttpURL
 
 
@@ -449,20 +449,21 @@ def get_thread_canonical_url(url: AbsoluteHttpURL, thread_name_index: int) -> Ab
     return url.with_path(new_path)
 
 
-def get_thread_page_and_post(url: URL, thread_name_index: int, page_name: str, post_name: str) -> tuple[int, int]:
+def get_thread_page_and_post(
+    url: URL, thread_name_index: int, page_name: str, post_name: str
+) -> tuple[int, int | None]:
     post_or_page_index = thread_name_index + 1
     sections = set(url.parts[post_or_page_index:])
     if url.fragment:
         sections.update({url.fragment})
 
-    def find_number(search_value: str) -> int:
+    def find_number(search_value: str) -> int | None:
         for sec in sections:
             if search_value in sec:
                 return int(sec.replace(search_value, "").replace("-", "").strip())
-        return 0
 
     post_id = find_number(post_name)
-    page_number = find_number(page_name)
+    page_number = find_number(page_name) or 1
     return page_number, post_id
 
 

@@ -98,7 +98,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
                 18821,
                 "infos-regelaenderungen",
                 3,
-                0,
+                None,
             ),
             "https://celebforum.to/threads/infos-regelaenderungen.18821",
         ],
@@ -108,8 +108,8 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             (
                 27120,
                 "the-official-victorias-secret-thread",
-                0,
-                0,
+                1,
+                None,
             ),
             "https://www.bellazon.com/main/topic/27120-the-official-victorias-secret-thread",
         ],
@@ -119,7 +119,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             (
                 14,
                 "forum-rules",
-                0,
+                1,
                 34,
             ),
             "https://forums.socialmediagirls.com/threads/forum-rules.14",
@@ -130,7 +130,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             (
                 436901,
                 "should-we-ban-gofile-76-5-say-no",
-                0,
+                1,
                 3942103,
             ),
             "https://forums.socialmediagirls.com/threads/should-we-ban-gofile-76-5-say-no.436901",
@@ -152,7 +152,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             (
                 9236,
                 "mod-uploading-rules-12-02-2018",
-                0,
+                1,
                 2726083,
             ),
             "https://f95zone.to/threads/mod-uploading-rules-12-02-2018.9236",
@@ -609,7 +609,7 @@ def test_get_post_title_should_strip_new_lines() -> None:
 
 
 def test_is_attachment_should_handle_none() -> None:
-    assert TEST_CRAWLER.is_attachment(None) is False
+    assert TEST_CRAWLER.is_attachment(None) is False  # type: ignore
 
 
 @pytest.mark.parametrize(
