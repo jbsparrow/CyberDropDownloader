@@ -14,7 +14,6 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import TimeStamp
-from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
     get_text_between,
@@ -26,7 +25,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from aiohttp_client_cache.response import AnyResponse
-    from yarl import URL
 
     from cyberdrop_dl.crawlers.crawler import SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
@@ -47,23 +45,23 @@ CURRENT_PAGE_SELECTOR = Selector("li.pageNav-page.pageNav-page--current a", "hre
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class PostSelectors:
-    article: str = "article.message[id*=post]"  # the entire html of the post (comments, attachments, user avater, signature, etc...)
+    article: str = "article.message[id*=post]"  # the entire html of the post (comments, attachments, user avatar, signature, etc...)
 
-    attachments: Selector = Selector("section[class*=message-attachments] a[href]", "href")
-    content: Selector = Selector("[class*=message-userContent]")  # text, links and images (NO attachments)
+    attachments: Selector = Selector("section.message-attachments a[href]", "href")
+    content: Selector = Selector(".message-userContent")  # text, links and images (NO attachments)
     date: Selector = Selector("time", "data-timestamp")
-    embeds: Selector = Selector("iframe[src]", "src")
-    id: Selector = Selector("li[class*='u-concealed'] a[href]", "href")
-    images: Selector = Selector("img[class*=bbImage], a[class*=js-lbImage]", "src")
+    embeds: Selector = Selector("iframe", "src")
+    id: Selector = Selector("li.u-concealed a[href]", "href")  # TODO: This needs a better selector
+    images: Selector = Selector("img.bbImage", "src")
     lazy_load_embeds: Selector = Selector('[class*=iframe][onclick*="loadMedia(this, \'//"]', "onclick")
-    links: Selector = Selector("a", "href")
+    links: Selector = Selector(":any-link", "href")
     videos: Selector = Selector("video source", "src")
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class XenforoSelectors:
-    confirmation_button: Selector = Selector("a[class*=button--cta]", "href")
-    next_page: Selector = Selector("a[class*=pageNav-jump--next]", "href")
+    confirmation_button: Selector = Selector("a[class*=button--cta][href]", "href")
+    next_page: Selector = Selector("a[class*=pageNav-jump--next][href]", "href")
     posts: PostSelectors = PostSelectors()
     quotes: Selector = Selector("blockquote")
     title_trash: Selector = Selector("span")
@@ -100,6 +98,9 @@ class Thread:
     url: AbsoluteHttpURL
 
 
+DEFAULT_XF_SELECTORS = XenforoSelectors()
+
+
 class XenforoCrawler(MessageBoardCrawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Attachments": ("/attachments/...", "/data/..."),
@@ -111,7 +112,7 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
     }
     SUPPORTS_THREAD_RECURSION: ClassVar[bool] = True
 
-    XF_SELECTORS = XenforoSelectors()
+    XF_SELECTORS = DEFAULT_XF_SELECTORS
     XF_POST_URL_PART_NAME = "post-"
     XF_PAGE_URL_PART_NAME = "page-"
     XF_THREAD_URL_PART = "threads"
@@ -194,7 +195,11 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         last_post_url = thread.url
         async for soup in self.thread_pager(scrape_item):
             if not title:
-                title = self.create_title(get_post_title(soup, self.XF_SELECTORS), thread_id=thread.id)
+                try:
+                    title = self.create_title(get_post_title(soup, self.XF_SELECTORS), thread_id=thread.id)
+                except ScrapeError as e:
+                    self.log_debug("Got an unprocessable soup", 40, exc_info=e)
+                    raise
                 scrape_item.add_to_parent_title(title)
 
             continue_scraping, last_post_url = self.process_thread_page(scrape_item, thread, soup)
@@ -321,7 +326,7 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         return absolute_link
 
     @error_handling_wrapper
-    async def resolve_confirmation_link(self, link: URL) -> AbsoluteHttpURL | None:
+    async def resolve_confirmation_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, link)
         selector = self.XF_SELECTORS.confirmation_button
@@ -354,7 +359,7 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         return link
 
     @error_handling_wrapper
-    async def login_setup(self, login_url: URL) -> None:
+    async def login_setup(self, login_url: AbsoluteHttpURL) -> None:
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.PRIMARY_URL)
         session_cookie = host_cookies.get(self.XF_USER_COOKIE_NAME)
         session_cookie = session_cookie.value if session_cookie else None
@@ -372,7 +377,7 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
             raise LoginError(message=msg)
 
         msg += " Scraping without an account"
-        log(msg, 30)
+        self.log(msg, 30)
 
     @error_handling_wrapper
     async def xf_login(self, login_url: AbsoluteHttpURL, session_cookie: str, username: str, password: str) -> None:
@@ -421,7 +426,7 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         msg = f"Failed to login on {self.FOLDER_DOMAIN} after {retries} attempts"
         raise LoginError(message=msg)
 
-    async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
+    async def check_login_with_request(self, login_url: AbsoluteHttpURL) -> tuple[str, bool]:
         text = await self.client.get_text(self.DOMAIN, login_url, cache_disabled=True)
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
@@ -435,7 +440,7 @@ def parse_thread(url: AbsoluteHttpURL, thread_part_name: str, page_part_name: st
     return Thread(id_, name, page, post_id, canonical_url)
 
 
-def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
+def get_thread_name_and_id(url: AbsoluteHttpURL, thread_name_index: int) -> tuple[str, int]:
     try:
         name, id_str = url.parts[thread_name_index].rsplit(".", 1)
     except ValueError:
@@ -450,7 +455,7 @@ def get_thread_canonical_url(url: AbsoluteHttpURL, thread_name_index: int) -> Ab
 
 
 def get_thread_page_and_post(
-    url: URL, thread_name_index: int, page_name: str, post_name: str
+    url: AbsoluteHttpURL, thread_name_index: int, page_name: str, post_name: str
 ) -> tuple[int, int | None]:
     post_or_page_index = thread_name_index + 1
     sections = set(url.parts[post_or_page_index:])
@@ -469,16 +474,16 @@ def get_thread_page_and_post(
 
 async def check_is_not_last_page(response: AnyResponse) -> bool:
     soup = BeautifulSoup(await response.text(), "html.parser")
-    return is_not_last_page(soup)
+    return not is_last_page(soup)
 
 
-def is_not_last_page(soup: BeautifulSoup) -> bool:
+def is_last_page(soup: BeautifulSoup) -> bool:
     try:
-        last_page = css.select_one_get_text(soup, LAST_PAGE_SELECTOR.element)
-        current_page = css.select_one_get_text(soup, CURRENT_PAGE_SELECTOR.element)
-    except (AttributeError, IndexError):
-        return False
-    return current_page != last_page
+        last_page = css.select_one_get_attr(soup, *LAST_PAGE_SELECTOR)
+        current_page = css.select_one_get_attr(soup, *CURRENT_PAGE_SELECTOR)
+    except (AttributeError, IndexError, css.SelectorError):
+        return True
+    return current_page == last_page
 
 
 def get_post_title(soup: BeautifulSoup, selectors: XenforoSelectors) -> str:
@@ -488,11 +493,9 @@ def get_post_title(soup: BeautifulSoup, selectors: XenforoSelectors) -> str:
         for element in trash:
             element.decompose()
     except (AttributeError, AssertionError, css.SelectorError) as e:
-        log_debug("Got an unprocessable soup", 40, exc_info=e)
         raise ScrapeError(429, message="Invalid response from forum. You may have been rate limited") from e
 
-    title = title_block.get_text(strip=True).replace("\n", "")
-    if title := " ".join(title.split()):
+    if title := " ".join(css.get_text(title_block).split()):
         return title
     raise ScrapeError(422)
 
@@ -524,7 +527,7 @@ def parse_login_form(resp_text: str) -> dict[str, str]:
     raise ScrapeError(422)
 
 
-def is_confirmation_link(link: URL) -> bool:
+def is_confirmation_link(link: AbsoluteHttpURL) -> bool:
     return "masked" in link.parts or "link-confirmation" in link.path
 
 
