@@ -30,6 +30,7 @@ from .fapello import FapelloCrawler
 from .fikfap import FikFapCrawler
 from .fileditch import FileditchCrawler
 from .files_vc import FilesVcCrawler
+from .flugel_anime import FlugelAnimeCrawler
 from .fourchan import FourChanCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
@@ -91,18 +92,7 @@ from .twpornstars import TwPornstarsCrawler
 from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
 from .xbunkr import XBunkrCrawler
-from .xenforo import (
-    AllPornComixCrawler,
-    BellazonCrawler,
-    CelebForumCrawler,
-    F95ZoneCrawler,
-    LeakedModelsCrawler,
-    NudoStarCrawler,
-    SimpCityCrawler,
-    SocialMediaGirlsCrawler,
-    TitsInTopsCrawler,
-    XBunkerCrawler,
-)
+from .xenforo import XF_CRAWLERS, SimpCityCrawler
 from .xhamster import XhamsterCrawler
 from .xxxbunker import XXXBunkerCrawler
 from .yandex_disk import YandexDiskCrawler
@@ -110,6 +100,7 @@ from .youjizz import YouJizzCrawler
 
 ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
 ALL_CRAWLERS = ALL_CRAWLERS - {Crawler}
+ALL_CRAWLERS.update(XF_CRAWLERS)
 DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler, FikFapCrawler}
 CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
