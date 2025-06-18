@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated, Literal, NewType, TypeVar
+from typing import Annotated, Literal, NewType, TypeVar
 
 from bs4 import BeautifulSoup
-from pydantic import AfterValidator, AliasPath, BaseModel, Field, RootModel
+from pydantic import AfterValidator, AliasPath, BaseModel, Field
 
 from cyberdrop_dl.compat import StrEnum
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
+from cyberdrop_dl.models.base_models import SequenceModel
 
 _ModelT = TypeVar("_ModelT", bound=BaseModel)
 
@@ -36,7 +33,7 @@ class ColletionType(StrEnum):
     CATEGORY = "category"
 
 
-Html = NewType("Html", str)
+HTML = NewType("HTML", str)
 
 
 class WordPressModel(BaseModel):
@@ -47,7 +44,7 @@ class WordPressModel(BaseModel):
 
 class Post(WordPressModel):
     title: TitleFromHtml = Field(validation_alias=AliasPath("title", "rendered"))
-    content: Html = Field(validation_alias=AliasPath("content", "rendered"))
+    content: HTML = Field(validation_alias=AliasPath("content", "rendered"))
     thumbnail: str | None = Field(default=None, validation_alias=AliasPath("acf", "fifu_image_url"))
     date_gmt: datetimeUTC
 
@@ -65,21 +62,6 @@ class Category(Collection):
 class Tag(Category):
     taxonomy: Literal["post_tag"] = "post_tag"
     _type: ColletionType = ColletionType.TAG
-
-
-# TODO: Move to core `models.py`` module
-class SequenceModel(RootModel[list[_ModelT]], Sequence[_ModelT]):
-    def __len__(self) -> int:
-        return len(self.root)
-
-    def __iter__(self) -> Iterator[_ModelT]:
-        yield from self.root
-
-    def __getitem__(self, index: int) -> _ModelT:
-        return self.root[index]
-
-    def __bool__(self) -> bool:
-        return bool(len(self))
 
 
 class PostSequence(SequenceModel[Post]): ...

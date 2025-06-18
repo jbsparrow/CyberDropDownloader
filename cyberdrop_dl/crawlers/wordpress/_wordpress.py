@@ -22,7 +22,7 @@ from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, no_error, unique
 
-from .models import Category, CategorySequence, ColletionType, Html, Post, PostSequence, Tag, TagSequence
+from .models import HTML, Category, CategorySequence, ColletionType, Post, PostSequence, Tag, TagSequence
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterable, Iterable
@@ -336,7 +336,7 @@ def _get_original_quality_link(link: str) -> str:
     return link
 
 
-def _iter_links(html: Html, use_regex: bool) -> itertools.chain[str]:
+def _iter_links(html: HTML, use_regex: bool) -> itertools.chain[str]:
     soup = BeautifulSoup(html, "html.parser")
     images = css.iget(soup, *css.images)
     iframes = css.iget(soup, *css.iframes)
