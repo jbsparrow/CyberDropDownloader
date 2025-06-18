@@ -23,5 +23,5 @@ XF_CRAWLERS: set[type[XenforoCrawler]] = {
     XBunkerCrawler,
 }
 
-CRAWLERS_MAP = {c.__name__: c for c in XF_CRAWLERS}
-__all__ = list(CRAWLERS_MAP.keys())  # type: ignore[reportUnsupportedDunderAll]
+XF_CRAWLERS_MAP = {c.__name__: c for c in XF_CRAWLERS}
+__all__ = list(XF_CRAWLERS_MAP.keys())  # type: ignore[reportUnsupportedDunderAll]

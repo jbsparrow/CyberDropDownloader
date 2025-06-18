@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime
 from functools import partial, wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
@@ -163,6 +163,8 @@ class Crawler(ABC):
             if path_name != "Direct links":
                 assert paths, f"{cls.__name__} has not paths for {path_name}"
 
+            if path_name.startswith("*"):  # note
+                return
             if isinstance(paths, str):
                 paths = (paths,)
             for path in paths:
@@ -363,21 +365,25 @@ class Crawler(ABC):
                 break
         return title
 
+    @property
+    def separate_posts(self) -> bool:
+        return self.manager.config.download_options.separate_posts
+
     def create_separate_post_title(
         self,
         title: str | None = None,
         id: str | None = None,
-        date: datetime | int | None = None,
+        date: datetime.datetime | datetime.date | int | None = None,
         /,
     ) -> str:
-        if not self.manager.config.download_options.separate_posts:
+        if not self.separate_posts:
             return ""
         title_format = self.manager.config.download_options.separate_posts_format
         if title_format.strip().casefold() == "{default}":
             title_format = self.DEFAULT_POST_TITLE_FORMAT
         if isinstance(date, int):
-            date = datetime.fromtimestamp(date)
-        if isinstance(date, datetime):
+            date = datetime.datetime.fromtimestamp(date)
+        if isinstance(date, datetime.datetime | datetime.date):
             date_str = date.isoformat()
         else:
             date_str: str | None = date
@@ -510,14 +516,23 @@ class Crawler(ABC):
         if parsed_date := self._parse_date(date_or_datetime, format):
             return to_timestamp(parsed_date)
 
-    def _parse_date(self, date_or_datetime: str, format: str | None = None, /) -> datetime | None:
+    def parse_iso_date(self, date_or_datetime: str, /) -> TimeStamp | None:
+        if parsed_date := self._parse_date(date_or_datetime, None, iso=True):
+            return to_timestamp(parsed_date)
+
+    def _parse_date(
+        self, date_or_datetime: str, format: str | None = None, /, *, iso: bool = False
+    ) -> datetime.datetime | None:
+        assert not (iso and format)
         msg = f"Date parsing for {self.DOMAIN} seems to be broken. Please report this as a bug at {NEW_ISSUE_URL}"
         if not date_or_datetime:
             log(f"{msg}: Unable to extract date from soup", 30)
             return None
         try:
-            if format:
-                parsed_date = datetime.strptime(date_or_datetime, format)
+            if iso:
+                parsed_date = datetime.datetime.fromisoformat(date_or_datetime)
+            elif format:
+                parsed_date = datetime.datetime.strptime(date_or_datetime, format)
             else:
                 parsed_date = parse_date(date_or_datetime)
         except (ValueError, TypeError) as e:
@@ -629,3 +644,33 @@ def make_custom_filename(stem: str, ext: str, extra_info: list[str], only_trunca
         truncated_stem = truncate_str(stem, truncate_len)
 
     return f"{truncated_stem}{ext}", invalid_extra_info_chars
+
+
+class Site(NamedTuple):
+    PRIMARY_URL: AbsoluteHttpURL
+    DOMAIN: str
+    SUPPORTED_DOMAINS: SupportedDomains = ()
+    FOLDER_DOMAIN: str = ""
+
+
+_CrawlerT = TypeVar("_CrawlerT", bound=Crawler)
+
+
+def _create_subclass(url_string: str, base_class: type[_CrawlerT]) -> type[_CrawlerT]:
+    primary_url = AbsoluteHttpURL(url_string)
+    domain = primary_url.host.removeprefix("www.")
+    class_name = _make_crawler_name(domain)
+    class_attributes = Site(primary_url, domain)._asdict()
+    return type(class_name, (base_class,), class_attributes)  # type: ignore[reportReturnType]
+
+
+def _make_crawler_name(input_string: str) -> str:
+    clean_string = re.sub(r"[^a-zA-Z0-9]+", " ", input_string).strip()
+    cap_name = clean_string.title().replace(" ", "")
+    assert cap_name and cap_name.isalnum(), (
+        f"Can not generate a valid class name from {input_string}. Needs to be defined as a concrete class"
+    )
+    if cap_name[0].isdigit():
+        cap_name = "_" + cap_name
+
+    return f"{cap_name}Crawler"

@@ -51,6 +51,7 @@ class DownloadOptions(BaseModel):
         valid_keys = ("default", "title", "id", "number", "date")
         try:
             value.format(**dict.fromkeys(valid_keys, "TEST"))
+            return value
         except KeyError as e:
             msg = f"'{e.args[0]}' is not a valid key for this option. Valid keys: {valid_keys}"
             raise ValueError(msg) from None

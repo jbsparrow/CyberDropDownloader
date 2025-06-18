@@ -6,7 +6,7 @@ from dataclasses import InitVar, dataclass, field
 from enum import IntEnum
 from functools import partialmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NamedTuple, ParamSpec, Self, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, ParamSpec, Self, TypeVar, overload
 
 import yarl
 
@@ -17,6 +17,7 @@ R = TypeVar("R")
 T = TypeVar("T")
 
 if TYPE_CHECKING:
+    import datetime
     import functools
     import inspect
     from collections.abc import Callable
@@ -269,13 +270,13 @@ class ScrapeItem:
 
     def create_new(
         self,
-        url: yarl.URL,
+        url: AbsoluteHttpURL,
         *,
         new_title_part: str = "",
         part_of_album: bool = False,
         album_id: str | None = None,
         possible_datetime: int | None = None,
-        add_parent: yarl.URL | bool | None = None,
+        add_parent: AbsoluteHttpURL | bool | None = None,
     ) -> ScrapeItem:
         """Creates a scrape item."""
         from cyberdrop_dl.utils.utilities import is_absolute_http_url
@@ -284,7 +285,7 @@ class ScrapeItem:
         assert is_absolute_http_url(url)
         scrape_item.url = url
         if add_parent:
-            new_parent = add_parent if isinstance(add_parent, yarl.URL) else self.url
+            new_parent = add_parent if isinstance(add_parent, AbsoluteHttpURL) else self.url
             assert is_absolute_http_url(new_parent)
             scrape_item.parents.append(new_parent)
         if new_title_part:
@@ -300,14 +301,43 @@ class ScrapeItem:
     setup_as_forum = partialmethod(setup_as, type=FORUM)
     setup_as_post = partialmethod(setup_as, type=FORUM_POST)
 
-    def origin(self) -> yarl.URL | None:
+    def origin(self) -> AbsoluteHttpURL | None:
         if self.parents:
             return self.parents[0]
 
-    def parent(self) -> yarl.URL | None:
+    def parent(self) -> AbsoluteHttpURL | None:
         if self.parents:
             return self.parents[-1]
 
     def copy(self) -> Self:
         """Returns a deep copy of this scrape_item"""
         return copy.deepcopy(self)
+
+
+class QueryDatetimeRange(NamedTuple):
+    before: datetime.datetime | None = None
+    after: datetime.datetime | None = None
+
+    @staticmethod
+    def from_url(url: AbsoluteHttpURL) -> QueryDatetimeRange | None:
+        self = QueryDatetimeRange(_date_from_query_param(url, "before"), _date_from_query_param(url, "after"))
+        if self == (None, None):
+            return None
+        if (self.before and self.after) and (self.before <= self.after):
+            raise ValueError
+        return self
+
+    def is_in_range(self, other: datetime.datetime) -> bool:
+        if (self.before and other >= self.before) or (self.after and other <= self.after):
+            return False
+        return True
+
+    def as_query(self) -> dict[str, Any]:
+        return {name: value.isoformat() for name, value in self._asdict().items() if value}
+
+
+def _date_from_query_param(url: AbsoluteHttpURL, query_param: str) -> datetime.datetime | None:
+    from cyberdrop_dl.utils.dates import parse_aware_iso_datetime
+
+    if value := url.query.get(query_param):
+        return parse_aware_iso_datetime(value)
