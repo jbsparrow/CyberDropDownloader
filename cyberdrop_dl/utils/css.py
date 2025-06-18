@@ -8,7 +8,7 @@ import bs4.css
 from cyberdrop_dl.exceptions import ScrapeError
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable, Generator, Iterable
 
     from bs4 import Tag
 
@@ -59,10 +59,16 @@ def select_one_get_text(tag: Tag, selector: str, strip: bool = True, *, decompos
 # get_attr_no_error should be get_attr_or_none. `or_none` implies no error
 def get_attr_or_none(tag: Tag, attribute: str) -> str | None:
     """Same as `tag.get(attribute)` but asserts the result is a single str"""
-    if attribute == "src":
-        value = tag.get("data-src") or tag.get(attribute)
+    attribute_ = attribute
+    if attribute_ == "srcset" and (srcset := tag.get(attribute_)):
+        if isinstance(srcset, str):
+            return _parse_srcset(srcset)
+        attribute_ = "src"
+
+    if attribute_ == "src":
+        value = tag.get("data-src") or tag.get(attribute_)
     else:
-        value = tag.get(attribute)
+        value = tag.get(attribute_)
     if isinstance(value, list):
         raise SelectorError(f"Expected a single value for {attribute = !r}, got multiple")
     return value
@@ -99,3 +105,17 @@ def select_one_get_attr_or_none(tag: Tag, selector: str, attribute: str) -> str 
 def iselect(tag: Tag, selector: str) -> Generator[Tag]:
     """Same as `tag.select(selector)`, but it returns a generator instead of a list."""
     yield from bs4.css.CSS(tag).iselect(selector)
+
+
+def _parse_srcset(srcset: str) -> str:
+    # The best src is the last one (usually)
+    return [src.split(" ")[0] for src in srcset.split(", ")][-1]
+
+
+def iget(tag: Tag, selector: str, attribute: str) -> Iterable[str]:
+    for inner_tag in iselect(tag, selector):
+        yield get_attr(inner_tag, attribute)
+
+
+iframes = CssAttributeSelector("iframe", "src")
+images = CssAttributeSelector("img", "srcset")

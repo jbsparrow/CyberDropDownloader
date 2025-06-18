@@ -7,7 +7,6 @@ from .acidimg import AcidImgCrawler
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
 from .beeg import BeegComCrawler
-from .bestprettygirl import BestPrettyGirlCrawler
 from .box_dot_com import BoxDotComCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
@@ -92,6 +91,7 @@ from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
 from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
+from .wordpress import WP_CRAWLERS
 from .xbunkr import XBunkrCrawler
 from .xenforo import XF_CRAWLERS, SimpCityCrawler
 from .xhamster import XhamsterCrawler
@@ -101,11 +101,11 @@ from .youjizz import YouJizzCrawler
 
 ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
 ALL_CRAWLERS = ALL_CRAWLERS - {Crawler}
-ALL_CRAWLERS.update(XF_CRAWLERS)
+ALL_CRAWLERS.update(XF_CRAWLERS, WP_CRAWLERS)
 DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler, FikFapCrawler}
-CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
-
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
-    CRAWLERS.update(DEBUG_CRAWLERS)
+    CRAWLERS = ALL_CRAWLERS
+else:
+    CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
 __all__ = ["ALL_CRAWLERS", "CRAWLERS", "DEBUG_CRAWLERS", "Crawler"]

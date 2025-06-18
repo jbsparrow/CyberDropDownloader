@@ -142,6 +142,16 @@ def get_parser(parser_kind: ParserKind | None = None, date_order: DateOrder | No
     return DateParser(parser_kind, date_order)
 
 
+def parse_aware_iso_datetime(value: str) -> datetime.datetime | None:
+    try:
+        parsed_date = datetime.datetime.fromisoformat(value)
+        if parsed_date.tzinfo is None:
+            parsed_date.replace(tzinfo=datetime.UTC)
+        return parsed_date
+    except Exception:
+        return
+
+
 if __name__ == "__main__":
     print(parse_date("today at noon"))  # noqa: T201
     print(parse_date("today"))  # noqa: T201
