@@ -276,13 +276,6 @@ class PornHubCrawler(Crawler):
         return max(Format.new(media) for media in mp4_media)
 
 
-def get_video_id(url: AbsoluteHttpURL) -> str | None:
-    if "embed" in url.parts and len(url.parts) > 2:
-        return url.parts[2]
-    if viewkey := url.query.get("viewkey"):
-        return viewkey
-
-
 def get_upload_date_str(soup: BeautifulSoup) -> str:
     date_text = css.select_one(soup, _SELECTORS.DATE).text
     return get_text_between(date_text, 'uploadDate": "', '",')
