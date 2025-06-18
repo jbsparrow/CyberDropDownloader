@@ -9,7 +9,7 @@ import datetime
 import itertools
 import re
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, ParamSpec, TypeVar, final
+from typing import TYPE_CHECKING, ClassVar, TypeVar, final
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -37,8 +37,6 @@ _HTTP_URL_REGEX = re.compile(
     r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
 )  # Same as Xenforo
 _EXT_REGEX = re.compile(r"\d{2,}x\d{2,}(\.\w+)?")
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
 
 
 Selector = css.CssAttributeSelector
