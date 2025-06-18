@@ -24,8 +24,8 @@ def add_utc_tz(parsed_date: datetime) -> datetime:
     return parsed_date.replace(tzinfo=UTC)
 
 
-TitleFromHtml = Annotated[str, AfterValidator(unescape_html)]
-datetimeUTC = Annotated[datetime, AfterValidator(add_utc_tz)]  # noqa: N816
+TitleFromHTML = Annotated[str, AfterValidator(unescape_html)]
+AwareDatetimeUTC = Annotated[datetime, AfterValidator(add_utc_tz)]
 
 
 class ColletionType(StrEnum):
@@ -43,10 +43,10 @@ class WordPressModel(BaseModel):
 
 
 class Post(WordPressModel):
-    title: TitleFromHtml = Field(validation_alias=AliasPath("title", "rendered"))
+    title: TitleFromHTML = Field(validation_alias=AliasPath("title", "rendered"))
     content: HTML = Field(validation_alias=AliasPath("content", "rendered"))
     thumbnail: str | None = Field(default=None, validation_alias=AliasPath("acf", "fifu_image_url"))
-    date_gmt: datetimeUTC
+    date_gmt: AwareDatetimeUTC
 
 
 class Collection(WordPressModel):
@@ -77,7 +77,7 @@ class PostExtraData(Post):
     # Not used at the moment
     date: datetime
     modified: datetime
-    modified_gmt: datetimeUTC
+    modified_gmt: AwareDatetimeUTC
     status: Literal["publish", "future", "draft", "pending", "private"]
     type: str
     categories: list[int] = []
