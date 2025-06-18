@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
     from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
@@ -62,7 +61,7 @@ class UserURL(NamedTuple):
     post_id: str | None = None
 
     @staticmethod
-    def parse(url: URL) -> UserURL:
+    def parse(url: AbsoluteHttpURL) -> UserURL:
         if (n_parts := len(url.parts)) > 3:
             post_id = url.parts[5] if n_parts > 5 else None
             return UserURL(url.parts[1], url.parts[3], post_id)
@@ -74,7 +73,7 @@ class UserPostURL(UserURL):
     post_id: str
 
     @staticmethod
-    def parse(url: URL) -> UserPostURL:
+    def parse(url: AbsoluteHttpURL) -> UserPostURL:
         result = UserURL.parse(url)
         assert result.post_id, "Individual posts must have a post_id"
         return cast("UserPostURL", result)
@@ -87,7 +86,7 @@ class DiscordURL(NamedTuple):
     channel_id: str | None = None  # Only present for individual channels URLs
 
     @staticmethod
-    def parse(url: URL) -> DiscordURL:
+    def parse(url: AbsoluteHttpURL) -> DiscordURL:
         return DiscordURL(*url.parts[3:5])
 
 
@@ -459,7 +458,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     """~~~~~~~~  PRIVATE METHODS, should never be overriden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def __handle_post(self, scrape_item: ScrapeItem, post: Post):
+    async def __handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
         # Process files if the post was generated from an API call
         for file in post.all_files:
             file_url = self.__make_file_url(file)
@@ -473,12 +472,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
         self._handle_post_content(scrape_item, post)
 
-    def __make_file_url(self, file: File) -> URL:
+    def __make_file_url(self, file: File) -> AbsoluteHttpURL:
         server = self.__known_attachment_servers.get(file["path"], "")
         url = server + f"/data{file['path']}"
         return self.parse_url(url).with_query(f=file["name"])
 
-    def __make_api_url_w_offset(self, path: str, og_url: URL) -> URL:
+    def __make_api_url_w_offset(self, path: str, og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         api_url = self.API_ENTRYPOINT / path
         offset = int(og_url.query.get("o", 0))
         if query := og_url.query.get("q"):
@@ -519,7 +518,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             self.__known_discord_servers[server_id] = server = DiscordServer(name, server_id, channels)
             return server
 
-    async def __iter_user_posts_from_url(self, scrape_item: ScrapeItem, url: URL) -> None:
+    async def __iter_user_posts_from_url(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL) -> None:
         async for json_resp in self.__api_pager(url):
             n_posts = 0
 
@@ -545,7 +544,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if n_posts < MAX_OFFSET_PER_CALL:
                 break
 
-    async def __api_pager(self, url: URL, step_size: int | None = None) -> AsyncGenerator[Any, None]:
+    async def __api_pager(self, url: AbsoluteHttpURL, step_size: int | None = None) -> AsyncGenerator[Any, None]:
         """Yields JSON responses from API calls, with configurable increments."""
         current_step_size = step_size if step_size is not None else MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
@@ -599,7 +598,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         if not post.title or not post.user_name:
             raise ScrapeError(422)
 
-        files: list[URL] = []
+        files: list[AbsoluteHttpURL] = []
         for selector in (_POST.VIDEOS, _POST.IMAGES, _POST.ATTACHMENTS):
             for file in soup.select(selector):
                 files.append(self.parse_url(css.get_attr(file, "href")))

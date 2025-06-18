@@ -39,7 +39,7 @@ class BestPrettyGirlCrawler(Crawler):
     DOMAIN: ClassVar[str] = "bestprettygirl.com"
     FOLDER_DOMAIN: ClassVar[str] = "BestPrettyGirl"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    next_page = "a.page-numbers.next"
+    NEXT_PAGE_SELECTOR = "a.page-numbers.next"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 1)

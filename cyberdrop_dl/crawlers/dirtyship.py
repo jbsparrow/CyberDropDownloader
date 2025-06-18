@@ -44,6 +44,8 @@ class DirtyShipCrawler(Crawler):
         "Categorie": "/category/...",
         "Tag": "/tag/...",
         "Video": "/<video_name>",
+        "Gallery": "/gallery/...",
+        "Photo": "/gallery/.../...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a.page-next"

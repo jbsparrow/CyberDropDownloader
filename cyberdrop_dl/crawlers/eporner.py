@@ -221,8 +221,8 @@ def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
 
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
-    info_js_script = soup.select_one(_SELECTORS.DATE_JS)
-    info_dict: dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)
+    info_js_script = css.select_one_get_text(soup, _SELECTORS.DATE_JS)
+    info_dict: dict = javascript.parse_json_to_dict(info_js_script, use_regex=False)
     javascript.clean_dict(info_dict)
     return info_dict
 

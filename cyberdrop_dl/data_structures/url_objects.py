@@ -6,7 +6,7 @@ from dataclasses import InitVar, dataclass, field
 from enum import IntEnum
 from functools import partialmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NamedTuple, ParamSpec, TypeVar, overload
+from typing import TYPE_CHECKING, Literal, NamedTuple, ParamSpec, Self, TypeVar, overload
 
 import yarl
 
@@ -308,6 +308,6 @@ class ScrapeItem:
         if self.parents:
             return self.parents[-1]
 
-    def copy(self) -> ScrapeItem:
+    def copy(self) -> Self:
         """Returns a deep copy of this scrape_item"""
         return copy.deepcopy(self)
