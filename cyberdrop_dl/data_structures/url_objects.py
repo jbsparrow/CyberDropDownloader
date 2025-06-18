@@ -270,13 +270,13 @@ class ScrapeItem:
 
     def create_new(
         self,
-        url: yarl.URL,
+        url: AbsoluteHttpURL,
         *,
         new_title_part: str = "",
         part_of_album: bool = False,
         album_id: str | None = None,
         possible_datetime: int | None = None,
-        add_parent: yarl.URL | bool | None = None,
+        add_parent: AbsoluteHttpURL | bool | None = None,
     ) -> ScrapeItem:
         """Creates a scrape item."""
         from cyberdrop_dl.utils.utilities import is_absolute_http_url
@@ -285,7 +285,7 @@ class ScrapeItem:
         assert is_absolute_http_url(url)
         scrape_item.url = url
         if add_parent:
-            new_parent = add_parent if isinstance(add_parent, yarl.URL) else self.url
+            new_parent = add_parent if isinstance(add_parent, AbsoluteHttpURL) else self.url
             assert is_absolute_http_url(new_parent)
             scrape_item.parents.append(new_parent)
         if new_title_part:
@@ -301,11 +301,11 @@ class ScrapeItem:
     setup_as_forum = partialmethod(setup_as, type=FORUM)
     setup_as_post = partialmethod(setup_as, type=FORUM_POST)
 
-    def origin(self) -> yarl.URL | None:
+    def origin(self) -> AbsoluteHttpURL | None:
         if self.parents:
             return self.parents[0]
 
-    def parent(self) -> yarl.URL | None:
+    def parent(self) -> AbsoluteHttpURL | None:
         if self.parents:
             return self.parents[-1]
 
