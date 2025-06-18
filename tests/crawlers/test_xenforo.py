@@ -42,9 +42,14 @@ def _html(string: str) -> str:
     """
 
 
-def _post(message_body: str, id: int = 12345, crawler: xenforo.XenforoCrawler | None = None) -> xenforo.ForumPost:
+def _post(
+    message_body: str = "",
+    message_attachments: str = "",
+    id: int = 12345,
+    crawler: xenforo.XenforoCrawler | None = None,
+) -> xenforo.ForumPost:
     crawler = crawler or TEST_CRAWLER
-    html = _html(POST_TEMPLATE.format(id=id, message_body=message_body))
+    html = _html(POST_TEMPLATE.format(id=id, message_body=message_body, message_attachments=message_attachments))
     soup = BeautifulSoup(html, "html.parser")
     return xenforo.ForumPost.new(soup, crawler.XF_SELECTORS.posts)
 
@@ -464,9 +469,8 @@ async def test_embeds_can_extract_google_drive_links() -> None:
 
 async def test_post_smg_extract_attachments() -> None:
     # https://agithub.com/jbsparrow/CyberDropDownloader/issues/1070
-    content = """
-    <section class="message-attachments">
-        <h4 class="block-textHeader">Attachments</h4>
+    attachments = """
+    <h4 class="block-textHeader">Attachments</h4>
         <ul class="attachmentList">
             <li class="file file--linked">
                 <a class="u-anchorTarget" id="attachment-3494354"></a>
@@ -479,7 +483,13 @@ async def test_post_smg_extract_attachments() -> None:
                     style="cursor: pointer;"
                     data-caption='<h4>33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4.jpeg</h4><p><a href="https:&amp;#x2F;&amp;#x2F;forums.socialmediagirls.com&amp;#x2F;threads&amp;#x2F;loalux.111099&amp;#x2F;#post-1707346" class="js-lightboxCloser">Ixvvxi · Apr 23, 2022 at 10:10 PM</a></p>'
                 >
-                    <img src="https://smgmedia2.socialmediagirls.com/forum/2022/04/thumb/33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4_3526918.jpeg" alt="33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4.jpeg" width="250" height="425" loading="lazy" />
+                    <img
+                        src="https://smgmedia2.socialmediagirls.com/forum/2022/04/thumb/33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4_3526918.jpeg"
+                        alt="33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4.jpeg"
+                        width="250"
+                        height="425"
+                        loading="lazy"
+                    />
                 </a>
 
                 <div class="file-content">
@@ -516,10 +526,9 @@ async def test_post_smg_extract_attachments() -> None:
                 </div>
             </li>
         </ul>
-    </section>
     """
     crawler = crawler_instances[crawlers.SocialMediaGirlsCrawler]
-    post = _post(content, crawler=crawler)
+    post = _post(message_attachments=attachments, crawler=crawler)
     expected_result = [
         "https://smgmedia2.socialmediagirls.com/forum/2022/04/33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4_3526918.jpeg",
         "https://smgmedia2.socialmediagirls.com/forum/2022/04/3663188F-00C6-4C90-AB4D-D8C6E7859286_3526919.png",
@@ -709,6 +718,9 @@ POST_TEMPLATE = """
                         </li>
                     </ul>
                 </header>
+                <div class="message-attachments">
+                    {message_attachments}
+                </div>
 
                 <div class="message-content js-messageContent">
                     <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post{id}" data-lb-caption-desc="cyberdrop-dl-patched · Jun 9, 2025 at 5:30 PM">
@@ -747,14 +759,7 @@ POST_TEMPLATE = """
                                 Quote
                             </a>
 
-                            <a
-                                href="/threads/fanfan.33077/reply?quote={id}"
-                                class="actionBar-action actionBar-action--reply"
-                                title="Reply, quoting this message"
-                                rel="nofollow"
-                                data-xf-click="quote"
-                                data-quote-href="/posts/{id}/quote"
-                            >
+                            <a href="/threads/fanfan.33077/reply?quote={id}" class="actionBar-action actionBar-action--reply" title="Reply, quoting this message" rel="nofollow" data-xf-click="quote" data-quote-href="/posts/{id}/quote">
                                 Reply
                             </a>
                         </div>

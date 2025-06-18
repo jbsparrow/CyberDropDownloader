@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup, Tag
 
-from cyberdrop_dl.crawlers._forum import MessageBoardCrawler
+from cyberdrop_dl.crawlers._forum import ForumCrawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
 from cyberdrop_dl.utils import css
@@ -47,7 +47,7 @@ CURRENT_PAGE_SELECTOR = Selector("li.pageNav-page.pageNav-page--current a", "hre
 class PostSelectors:
     article: str = "article.message[id*=post]"  # the entire html of the post (comments, attachments, user avatar, signature, etc...)
 
-    attachments: Selector = Selector("section.message-attachments a[href]", "href")
+    attachments: Selector = Selector(".message-attachments a[href]", "href")
     content: Selector = Selector(".message-userContent")  # text, links and images (NO attachments)
     date: Selector = Selector("time", "data-timestamp")
     embeds: Selector = Selector("iframe", "src")
@@ -101,7 +101,7 @@ class Thread:
 DEFAULT_XF_SELECTORS = XenforoSelectors()
 
 
-class XenforoCrawler(MessageBoardCrawler, is_abc=True):
+class XenforoCrawler(ForumCrawler, is_abc=True):
     XF_ATTACHMENT_URL_PARTS = "attachments", "data", "uploads"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Attachments": tuple(f"/{name}/..." for name in XF_ATTACHMENT_URL_PARTS),
@@ -456,9 +456,9 @@ def get_thread_canonical_url(url: AbsoluteHttpURL, thread_name_index: int) -> Ab
 def get_thread_page_and_post(
     url: AbsoluteHttpURL, thread_name_index: int, page_name: str, post_name: str
 ) -> tuple[int, int | None]:
-    extra_parts = set(url.parts[thread_name_index + 1 :])
+    extra_parts = url.parts[thread_name_index + 1 :]
     if url.fragment:
-        extra_parts.update({url.fragment})
+        extra_parts = *extra_parts, url.fragment
 
     def find_number(search_value: str) -> int | None:
         for sec in extra_parts:

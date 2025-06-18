@@ -5,15 +5,13 @@ from typing import TYPE_CHECKING, ClassVar, final
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils.utilities import (
-    error_handling_wrapper,
-)
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
-class MessageBoardCrawler(Crawler, is_abc=True):
+class ForumCrawler(Crawler, is_abc=True):
     SUPPORTS_THREAD_RECURSION: ClassVar[bool] = False
 
     @property
@@ -54,8 +52,9 @@ class MessageBoardCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
-        if len(scrape_item.url.parts) < 5 and not scrape_item.url.suffix:
-            return
+        # This logic is for discourse
+        # if len(scrape_item.url.parts) < 5 and not scrape_item.url.suffix:
+        #    return
         filename, ext = self.get_filename_and_ext(scrape_item.url.name)
         scrape_item.add_to_parent_title("Attachments")
         scrape_item.part_of_album = True
@@ -78,4 +77,4 @@ class MessageBoardCrawler(Crawler, is_abc=True):
         await self.manager.log_manager.write_last_post_log(last_post_url)
 
 
-ForumCrawler = MessageBoardCrawler
+MessageBoardCrawler = ForumCrawler
