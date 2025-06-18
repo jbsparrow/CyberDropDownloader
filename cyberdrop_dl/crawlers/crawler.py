@@ -644,3 +644,33 @@ def make_custom_filename(stem: str, ext: str, extra_info: list[str], only_trunca
         truncated_stem = truncate_str(stem, truncate_len)
 
     return f"{truncated_stem}{ext}", invalid_extra_info_chars
+
+
+class Site(NamedTuple):
+    PRIMARY_URL: AbsoluteHttpURL
+    DOMAIN: str
+    SUPPORTED_DOMAINS: SupportedDomains = ()
+    FOLDER_DOMAIN: str = ""
+
+
+_CrawlerT = TypeVar("_CrawlerT", bound=Crawler)
+
+
+def _create_subclass(url_string: str, base_class: type[_CrawlerT]) -> type[_CrawlerT]:
+    primary_url = AbsoluteHttpURL(url_string)
+    domain = primary_url.host.removeprefix("www.")
+    class_name = _make_crawler_name(domain)
+    class_attributes = Site(primary_url, domain)._asdict()
+    return type(class_name, (base_class,), class_attributes)  # type: ignore[reportReturnType]
+
+
+def _make_crawler_name(input_string: str) -> str:
+    clean_string = re.sub(r"[^a-zA-Z0-9]+", " ", input_string).strip()
+    cap_name = clean_string.title().replace(" ", "")
+    assert cap_name and cap_name.isalnum(), (
+        f"Can not generate a valid class name from {input_string}. Needs to be defined as a concrete class"
+    )
+    if cap_name[0].isdigit():
+        cap_name = "_" + cap_name
+
+    return f"{cap_name}Crawler"
