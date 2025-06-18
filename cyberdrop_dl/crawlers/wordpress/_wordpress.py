@@ -119,7 +119,8 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
                 raise ValueError
 
         if _ := _match_date_from_path(scrape_item.url):
-            return await self.category_or_tag(scrape_item, ColletionType.TAG, date_range)
+            # TODO: Handle this
+            raise ValueError
         return await self.post(scrape_item)
 
     @abstractmethod
