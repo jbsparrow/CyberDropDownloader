@@ -83,11 +83,11 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.parametrize(
-    ("url", "thread_part_name", "result", "canonical_url"),
+    ("url", "thread_name_and_id", "result", "canonical_url"),
     [
         [
             "https://simpcity.su/threads/general-support.208041/page-260#post-23934165",
-            "threads",
+            "general-support.208041",
             (
                 208041,
                 "general-support",
@@ -98,7 +98,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         ],
         [
             "https://celebforum.to/threads/infos-regelaenderungen.18821/page-3",
-            "threads",
+            "infos-regelaenderungen.18821",
             (
                 18821,
                 "infos-regelaenderungen",
@@ -109,7 +109,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         ],
         [
             "https://www.bellazon.com/main/topic/27120-the-official-victorias-secret-thread",
-            "topic",
+            "27120-the-official-victorias-secret-thread",
             (
                 27120,
                 "the-official-victorias-secret-thread",
@@ -120,7 +120,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         ],
         [
             "https://forums.socialmediagirls.com/threads/forum-rules.14/post-34",
-            "threads",
+            "forum-rules.14",
             (
                 14,
                 "forum-rules",
@@ -131,7 +131,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         ],
         [
             "https://forums.socialmediagirls.com/threads/should-we-ban-gofile-76-5-say-no.436901/post-3942103",
-            "threads",
+            "should-we-ban-gofile-76-5-say-no.436901",
             (
                 436901,
                 "should-we-ban-gofile-76-5-say-no",
@@ -142,7 +142,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         ],
         [
             "https://forums.socialmediagirls.com/threads/en-fr-tools-to-download-upload-content-websites-softwares-extensions.13930/page-11/#post-2070848",
-            "threads",
+            "en-fr-tools-to-download-upload-content-websites-softwares-extensions.13930",
             (
                 13930,
                 "en-fr-tools-to-download-upload-content-websites-softwares-extensions",
@@ -153,7 +153,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         ],
         [
             "https://f95zone.to/threads/mod-uploading-rules-12-02-2018.9236/post-2726083",
-            "threads",
+            "mod-uploading-rules-12-02-2018.9236",
             (
                 9236,
                 "mod-uploading-rules-12-02-2018",
@@ -162,14 +162,45 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             ),
             "https://f95zone.to/threads/mod-uploading-rules-12-02-2018.9236",
         ],
+        [
+            "https://650f.bike/threads/central-stand-honda-cb650r-constands-power-evo.3093/page-2",
+            "central-stand-honda-cb650r-constands-power-evo.3093",
+            (
+                3093,
+                "central-stand-honda-cb650r-constands-power-evo",
+                2,
+                None,
+            ),
+            "https://650f.bike/threads/central-stand-honda-cb650r-constands-power-evo.3093",
+        ],
+        [
+            "https://arstechnica.com/civis/threads/the-new-perpetual-photo-accessory-thread.1274775/page-3#post-29155063",
+            "the-new-perpetual-photo-accessory-thread.1274775",
+            (
+                1274775,
+                "the-new-perpetual-photo-accessory-thread",
+                3,
+                29155063,
+            ),
+            "https://arstechnica.com/civis/threads/the-new-perpetual-photo-accessory-thread.1274775",
+        ],
+        [
+            "https://www.laneros.com/temas/iphone-16-16e-16-plus-16-pro-16-promax.256047/page-64#post-7512404",
+            "iphone-16-16e-16-plus-16-pro-16-promax.256047",
+            (
+                256047,
+                "iphone-16-16e-16-plus-16-pro-16-promax",
+                64,
+                7512404,
+            ),
+            "https://www.laneros.com/temas/iphone-16-16e-16-plus-16-pro-16-promax.256047",
+        ],
     ],
 )
-def test_parse_thread_info(
-    url: str, thread_part_name: str, result: tuple[int, str, int, int], canonical_url: str
-) -> None:
+def test_parse_thread(url: str, thread_name_and_id: str, result: tuple[int, str, int, int], canonical_url: str) -> None:
     url_, canonical_url_ = AbsoluteHttpURL(url), AbsoluteHttpURL(canonical_url)
     result_ = xenforo.Thread(*result, canonical_url_)
-    parsed = xenforo.parse_thread(url_, thread_part_name, "page", "post")
+    parsed = xenforo.parse_thread(url_, thread_name_and_id, "page", "post")
     assert result_ == parsed
 
 
@@ -377,7 +408,7 @@ def test_extract_embed_url_string_ends_with_url() -> None:
     assert xenforo.extract_embed_url(input_str) == expected_output
 
 
-async def test_test_hidden_redgifs() -> None:
+async def test_lazy_load_embeds() -> None:
     post = _post("""
     <div class="generic2wide-iframe-div" onclick="loadMedia(this, '//redgifs.com/ifr/downrightcluelesswirm');">
         <span data-s9e-mediaembed="redgifs">

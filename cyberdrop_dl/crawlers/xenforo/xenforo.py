@@ -99,6 +99,8 @@ class Thread:
 
 
 DEFAULT_XF_SELECTORS = XenforoSelectors()
+KNOWN_THREAD_PART_NAMES = "thread", "topic", "tema"
+KNOWN_THREAD_PART_NAMES = [f"{part}s" for part in KNOWN_THREAD_PART_NAMES]
 
 
 class XenforoCrawler(ForumCrawler, is_abc=True):
@@ -140,12 +142,16 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         scrape_item.url = self.parse_url(url)
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
-        if self.XF_THREAD_URL_PART in scrape_item.url.parts:
-            return await self.thread(scrape_item)
         if is_confirmation_link(scrape_item.url):
             return await self.follow_confirmation_link(scrape_item)
-        if any(p in scrape_item.url.parts for p in ("goto", "posts")):
-            return await self.follow_redirect_w_get(scrape_item)
+
+        thread_part_index = len(self.PRIMARY_URL.parts)
+        match scrape_item.url.parts[thread_part_index:]:
+            case [thread_part, thread_name_and_id, *_] if thread_part in KNOWN_THREAD_PART_NAMES:
+                return await self.thread(scrape_item, thread_name_and_id)
+            case ["goto" | "posts", *_]:
+                return await self.follow_redirect_w_get(scrape_item)
+
         raise ValueError
 
     async def follow_confirmation_link(self, scrape_item: ScrapeItem) -> None:
@@ -176,10 +182,10 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         raise NotImplementedError
 
     @error_handling_wrapper
-    async def thread(self, scrape_item: ScrapeItem) -> None:
+    async def thread(self, scrape_item: ScrapeItem, thread_name_and_id: str) -> None:
         scrape_item.setup_as_forum("")
         thread = parse_thread(
-            scrape_item.url, self.XF_THREAD_URL_PART, self.XF_PAGE_URL_PART_NAME, self.XF_POST_URL_PART_NAME
+            scrape_item.url, thread_name_and_id, self.XF_PAGE_URL_PART_NAME, self.XF_POST_URL_PART_NAME
         )
         if thread.url in self.scraped_threads:
             return
@@ -430,20 +436,19 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
 
-# TODO: Handle any post part name
-def parse_thread(url: AbsoluteHttpURL, thread_part_name: str, page_part_name: str, post_part_name: str) -> Thread:
-    name_index = url.parts.index(thread_part_name) + 1
-    name, id_ = get_thread_name_and_id(url, name_index)
+def parse_thread(url: AbsoluteHttpURL, thread_name_and_id: str, page_part_name: str, post_part_name: str) -> Thread:
+    name_index = url.parts.index(thread_name_and_id)
+    name, id_ = parse_thread_name_and_id(thread_name_and_id)
     page, post_id = get_thread_page_and_post(url, name_index, page_part_name, post_part_name)
     canonical_url = get_thread_canonical_url(url, name_index)
     return Thread(id_, name, page, post_id, canonical_url)
 
 
-def get_thread_name_and_id(url: AbsoluteHttpURL, thread_name_index: int) -> tuple[str, int]:
+def parse_thread_name_and_id(thread_name_and_id: str) -> tuple[str, int]:
     try:
-        name, id_str = url.parts[thread_name_index].rsplit(".", 1)
+        name, id_str = thread_name_and_id.rsplit(".", 1)
     except ValueError:
-        id_str, name = url.parts[thread_name_index].split("-", 1)
+        id_str, name = thread_name_and_id.split("-", 1)
     return name, int(id_str)
 
 
