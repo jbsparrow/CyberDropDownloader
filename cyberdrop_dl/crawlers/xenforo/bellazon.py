@@ -16,8 +16,8 @@ _post_selectors = PostSelectors(
 )
 
 
-# TODO: This is probably a diferenet version of xenforo. Selectors are complety diferent
-# Maybe crate a base crawler for Xenforo v1 and another for V2
+# TODO: Bellazon uses Invision, not Xenforo. The selectors are completely different.
+# See: https://github.com/jbsparrow/CyberDropDownloader/pull/1079#issuecomment-2982845352
 class BellazonCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.bellazon.com/main/")
     DOMAIN: ClassVar[str] = "bellazon"
