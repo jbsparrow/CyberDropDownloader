@@ -428,9 +428,9 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
 def parse_thread(url: AbsoluteHttpURL, thread_part_name: str, page_part_name: str, post_part_name: str) -> Thread:
     name_index = url.parts.index(thread_part_name) + 1
     name, id_ = get_thread_name_and_id(url, name_index)
-    url = get_thread_canonical_url(url, name_index)
     page, post = get_thread_page_and_post(url, name_index, page_part_name, post_part_name)
-    return Thread(id_, name, page, post, url)
+    canonical_url = get_thread_canonical_url(url, name_index)
+    return Thread(id_, name, page, post, canonical_url)
 
 
 def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
@@ -484,7 +484,7 @@ def get_post_title(soup: BeautifulSoup, selectors: XenforoSelectors) -> str:
         trash = title_block.select(selectors.title_trash.element)
         for element in trash:
             element.decompose()
-    except (AttributeError, AssertionError) as e:
+    except (AttributeError, AssertionError, css.SelectorError) as e:
         log_debug("Got an unprocessable soup", 40, exc_info=e)
         raise ScrapeError(429, message="Invalid response from forum. You may have been rate limited") from e
 

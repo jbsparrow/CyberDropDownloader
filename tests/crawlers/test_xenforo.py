@@ -84,8 +84,8 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             "https://simpcity.su/threads/general-support.208041/page-260#post-23934165",
             "threads",
             (
-                "general-support",
                 208041,
+                "general-support",
                 260,
                 23934165,
             ),
@@ -95,8 +95,8 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             "https://celebforum.to/threads/infos-regelaenderungen.18821/page-3",
             "threads",
             (
-                "infos-regelaenderungen",
                 18821,
+                "infos-regelaenderungen",
                 3,
                 0,
             ),
@@ -106,8 +106,8 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             "https://www.bellazon.com/main/topic/27120-the-official-victorias-secret-thread",
             "topic",
             (
-                "the-official-victorias-secret-thread",
                 27120,
+                "the-official-victorias-secret-thread",
                 0,
                 0,
             ),
@@ -117,8 +117,8 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             "https://forums.socialmediagirls.com/threads/forum-rules.14/post-34",
             "threads",
             (
-                "forum-rules",
                 14,
+                "forum-rules",
                 0,
                 34,
             ),
@@ -128,8 +128,8 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             "https://forums.socialmediagirls.com/threads/should-we-ban-gofile-76-5-say-no.436901/post-3942103",
             "threads",
             (
-                "should-we-ban-gofile-76-5-say-no",
                 436901,
+                "should-we-ban-gofile-76-5-say-no",
                 0,
                 3942103,
             ),
@@ -139,8 +139,8 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             "https://forums.socialmediagirls.com/threads/en-fr-tools-to-download-upload-content-websites-softwares-extensions.13930/page-11/#post-2070848",
             "threads",
             (
-                "en-fr-tools-to-download-upload-content-websites-softwares-extensions",
                 13930,
+                "en-fr-tools-to-download-upload-content-websites-softwares-extensions",
                 11,
                 2070848,
             ),
@@ -150,8 +150,8 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
             "https://f95zone.to/threads/mod-uploading-rules-12-02-2018.9236/post-2726083",
             "threads",
             (
-                "mod-uploading-rules-12-02-2018",
                 9236,
+                "mod-uploading-rules-12-02-2018",
                 0,
                 2726083,
             ),
@@ -160,7 +160,7 @@ async def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     ],
 )
 def test_parse_thread_info(
-    url: str, thread_part_name: str, result: tuple[str, int, int, int], canonical_url: str
+    url: str, thread_part_name: str, result: tuple[int, str, int, int], canonical_url: str
 ) -> None:
     url_, canonical_url_ = AbsoluteHttpURL(url), AbsoluteHttpURL(canonical_url)
     result_ = xenforo.Thread(*result, canonical_url_)
