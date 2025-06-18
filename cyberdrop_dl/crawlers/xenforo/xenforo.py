@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import re
-from typing import TYPE_CHECKING, ClassVar, Literal, overload
+from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup, Tag
 
@@ -33,7 +33,11 @@ if TYPE_CHECKING:
 
 
 HTTP_URL_REGEX = re.compile(r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)")
-
+LINK_TRASH_MAPPING = {
+    ".th.": ".",
+    ".md.": ".",
+    "ifr": "watch",
+}
 
 Selector = css.CssAttributeSelector
 
@@ -284,28 +288,21 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         self, scrape_item: ScrapeItem, links: list[Tag], attribute: str, *, embeds: bool = False
     ) -> None:
         for link_tag in links:
-            link_str = parse_children_tag(link_tag, attribute)
-            await self.process_child(scrape_item, link_str, embeds=embeds)
+            if link_str := css.get_attr_no_error(link_tag, attribute):
+                await self.process_child(scrape_item, link_str, embeds=embeds)
 
     @error_handling_wrapper
-    async def process_child(self, scrape_item: ScrapeItem, link_str: str) -> None:
-        link_str_ = pre_process_child(link_str)
+    async def process_child(self, scrape_item: ScrapeItem, link_str: str, *, embeds: bool = False) -> None:
+        link_str_ = pre_process_child(link_str, embeds)
         if not link_str_:
             return
         link = await self.get_absolute_link(link_str_)
         link = self.filter_link(link)
         if not link:
             return
-        new_scrape_item = scrape_item.create_new(link)
-        await self.handle_link(new_scrape_item)
+        await self.handle_link(scrape_item, link)
 
-    @overload
-    def is_attachment(self, link: None) -> Literal[False]: ...
-
-    @overload
-    def is_attachment(self, link: AbsoluteHttpURL | str) -> bool: ...
-
-    def is_attachment(self, link: AbsoluteHttpURL | str | None) -> bool:
+    def is_attachment(self, link: AbsoluteHttpURL | str) -> bool:
         if not link:
             return False
         if isinstance(link, str):
@@ -347,13 +344,14 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
 
     def is_not_image_or_attachment(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
-        link_str: str | None = css.get_attr_or_none(link_obj, self.XF_SELECTORS.posts.links.element)
-        return not (is_image or self.is_attachment(link_str))
+        if link_str := css.get_attr_no_error(link_obj, self.XF_SELECTORS.posts.links.element):
+            return not (is_image or self.is_attachment(link_str))
+        return not is_image
 
     def pre_filter_link(self, link: str) -> str:
         return link
 
-    def filter_link(self, link: URL | None) -> URL | None:
+    def filter_link(self, link: AbsoluteHttpURL | None) -> AbsoluteHttpURL | None:
         return link
 
     @error_handling_wrapper
@@ -506,25 +504,11 @@ def extract_embed_url(embed_str: str) -> str:
     return embed_str
 
 
-# TODO: Make the css module handle this
-def parse_children_tag(link_obj: Tag, attribute: str) -> str | None:
-    if attribute == "src":
-        attrs = ("data-src", "src")
-    else:
-        attrs = (attribute,)
-    for attr in attrs:
-        link_str = link_obj.get(attr)
-        if isinstance(link_str, str):
-            return link_str
-
-
 # TODO: move to parse_url
 def clean_link_str(link: str) -> str:
-    link_str = link
-    text_to_replace = [(".th.", "."), (".md.", "."), ("ifr", "watch")]
-    for old, new in text_to_replace:
-        link_str = link_str.replace(old, new)
-    return link_str
+    for old, new in LINK_TRASH_MAPPING.items():
+        link = link.replace(old, new)
+    return link
 
 
 def parse_login_form(resp_text: str) -> dict[str, str]:
@@ -541,7 +525,7 @@ def parse_login_form(resp_text: str) -> dict[str, str]:
 
 
 def is_confirmation_link(link: URL) -> bool:
-    return any(keyword in link.path for keyword in ("link-confirmation", "masked"))
+    return "masked" in link.parts or "link-confirmation" in link.path
 
 
 def check_post_id(init_post_id: int | None, current_post_id: int, scrape_single_forum_post: bool) -> tuple[bool, bool]:

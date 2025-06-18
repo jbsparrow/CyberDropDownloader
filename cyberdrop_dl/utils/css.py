@@ -51,12 +51,24 @@ def select_one_get_text(tag: Tag, selector: str, strip: bool = True) -> str:
     return get_text(select_one(tag, selector), strip)
 
 
+# TODO: Rename this to just get_attr
+# get_attr_no_error should be get_attr_or_none. `or_none` implies no error
 def get_attr_or_none(tag: Tag, attribute: str) -> str | None:
-    """Same as `tag.get(attribute)` but asserts the result is not multiple strings"""
-    value = tag.get(attribute)
+    """Same as `tag.get(attribute)` but asserts the result is a single str"""
+    if attribute == "src":
+        value = tag.get("data-src") or tag.get(attribute)
+    else:
+        value = tag.get(attribute)
     if isinstance(value, list):
         raise SelectorError(f"Expected a single value for {attribute = !r}, got multiple")
     return value
+
+
+def get_attr_no_error(tag: Tag, attribute: str) -> str | None:
+    try:
+        return get_attr_or_none(tag, attribute)
+    except Exception:
+        return
 
 
 def get_text(tag: Tag, strip: bool = True) -> str:
