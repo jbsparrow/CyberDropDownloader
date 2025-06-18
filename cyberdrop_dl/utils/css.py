@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, NamedTuple, ParamSpec, TypeVar
 
 import bs4.css
 
+from cyberdrop_dl.exceptions import ScrapeError
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
@@ -12,6 +14,11 @@ if TYPE_CHECKING:
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+class SelectorError(ScrapeError):
+    def __init__(self, message: str | None = None) -> None:
+        super().__init__(422, message)
 
 
 class CssAttributeSelector(NamedTuple):
@@ -26,15 +33,17 @@ def not_none(func: Callable[P, R | None]) -> Callable[P, R]:
     @functools.wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         result = func(*args, **kwargs)
-        assert result is not None
+        if result is None:
+            raise SelectorError
         return result
 
     return wrapper
 
 
-def select_one(tag: Tag, selector: str) -> Tag:
+@not_none
+def select_one(tag: Tag, selector: str) -> Tag | None:
     """Same as `tag.select_one` but asserts the result is not `None`"""
-    return not_none(tag.select_one)(selector)
+    return tag.select_one(selector)
 
 
 def select_one_get_text(tag: Tag, selector: str, strip: bool = True) -> str:
@@ -45,7 +54,8 @@ def select_one_get_text(tag: Tag, selector: str, strip: bool = True) -> str:
 def get_attr_or_none(tag: Tag, attribute: str) -> str | None:
     """Same as `tag.get(attribute)` but asserts the result is not multiple strings"""
     value = tag.get(attribute)
-    assert not isinstance(value, list)
+    if isinstance(value, list):
+        raise SelectorError(f"Expected a single value for {attribute = !r}, got multiple")
     return value
 
 
@@ -53,9 +63,10 @@ def get_text(tag: Tag, strip: bool = True) -> str:
     return tag.get_text(strip=strip)
 
 
-def get_attr(tag: Tag, attribute: str) -> str:
+@not_none
+def get_attr(tag: Tag, attribute: str) -> str | None:
     """Same as `tag.get(attribute)` but asserts the result is not `None` and is a single string"""
-    return not_none(get_attr_or_none)(tag, attribute)
+    return get_attr_or_none(tag, attribute)
 
 
 def select_one_get_attr(tag: Tag, selector: str, attribute: str) -> str:
