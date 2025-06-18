@@ -26,17 +26,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add a config option to disable the specific crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
+- Camwhores.tv support
+- Flugel-anime support
+- Missav support
+- Beeg.com support
+- efukt support
+- Initial HLS support (requires ffmpeg)
+- Support for any WordPress media site
+- Support for any Discourse site
+- Add a config option to disable specific crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
 
 ### Changed
+
+- Date parsing errors will be logged as warnings, not errors
+- Some crawlers have a new logic to create a filename. The name format for newly downloaded files may not match previous versions.
 
 ### Deprecated
 
 ### Removed
 
+- `no-ui` option
+- Importing cookies from multi browsers is no longer supported. CDl will only try to extract cookies from a single browser. The `browsers` option was renamed `browser`
+
 ### Fixed
 
-### Security
+- `ImportError: cannot import name 'MethodType'` on startup
+- Handle errors while processing confirmation links (Xenforo)
+- Redgifs not being downloaded (Xenforo)
+- Attachments not being downloaded (Xenforo)
+- Posts not being fully scraped if a single link in them failed (Xenforo)
+- Downloading from user profiles (xHamster)
+- Folder downloads (Cyberfile)
+- Do not crash when using the `Create file hashes` option from the main menu
+- Do not download "related" or "favorites" videos from a profile (PornHub)
+- `KeyError` when using the `--separate-posts` option
+- Using Real Debrid no longer causes the CDL to crash
+- Image downloads (HotPic)
 
 ## [6.10.1] - 2025-06-15
 
@@ -54,7 +79,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Date parsing (Cyberfile)
 - Remove invalid characters from filenames (Cyberfile)
 - Discord server name (Kemono)
-
 
 ## [6.10.0] - 2025-05-30
 
