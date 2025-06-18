@@ -25,7 +25,12 @@ class Format(NamedTuple):
 
 
 class BeegComCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": ("/<video_id>", "/video/<video_id>")}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Video": (
+            "/<video_id>",
+            "/video/<video_id>",
+        )
+    }
     DOMAIN: ClassVar[str] = "beeg.com"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
 
