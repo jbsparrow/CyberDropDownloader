@@ -4,7 +4,7 @@ import asyncio
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from dataclasses import field
+from dataclasses import dataclass, field
 from datetime import datetime
 from functools import partial, wraps
 from pathlib import Path
@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeAlia
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl import constants
 from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
@@ -30,7 +31,9 @@ from cyberdrop_dl.utils.utilities import (
     is_blob_or_svg,
     parse_url,
     remove_file_id,
+    sanitize_filename,
     sort_dict,
+    truncate_str,
 )
 
 P = ParamSpec("P")
@@ -53,6 +56,20 @@ SupportedPaths: TypeAlias = Mapping[str, OneOrTuple[str]]
 SupportedDomains: TypeAlias = OneOrTuple[str]
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
+HASH_PREFIXES = "md5:", "sha1:", "sha256:", "xxh128:"
+VALID_RESOLUTION_NAMES = "4K", "8K", "Unknown"
+
+
+@dataclass(slots=True, frozen=True)
+class PlaceHolderConfig:
+    include_file_id: bool = True
+    include_video_codec: bool = True
+    include_audio_codec: bool = True
+    include_resolution: bool = True
+    include_hash: bool = True
+
+
+_placeholder_config = PlaceHolderConfig()
 
 
 class CrawlerInfo(NamedTuple):
@@ -532,6 +549,53 @@ class Crawler(ABC):
             content = await self.client.get_text(self.DOMAIN, url, headers)
         return M3U8(content, url.parent)
 
+    def create_custom_filename(
+        self,
+        name: str,
+        ext: str,
+        /,
+        *,
+        file_id: str | None = None,
+        video_codec: str | None = None,
+        audio_codec: str | None = None,
+        resolution: str | int | None = None,
+        hash_string: str | None = None,
+        only_truncate_stem: bool = True,
+    ) -> str:
+        calling_args = {name: value for name, value in locals().items() if value is not None and name not in ("self",)}
+        clean_name = sanitize_filename(Path(name).as_posix().replace("/", "-"))  # remove OS separators (if any)
+        stem = Path(clean_name).stem.removesuffix(".")  # remove extensions (if any)
+        extra_info: list[str] = []
+
+        if _placeholder_config.include_file_id and file_id:
+            extra_info.append(file_id)
+        if _placeholder_config.include_video_codec and video_codec:
+            extra_info.append(video_codec)
+        if _placeholder_config.include_audio_codec and audio_codec:
+            extra_info.append(audio_codec)
+
+        if _placeholder_config.include_resolution and resolution:
+            if isinstance(resolution, str):
+                if not resolution.removesuffix("p").isdigit():
+                    assert resolution in VALID_RESOLUTION_NAMES, f"Invalid: {resolution = }"
+                extra_info.append(resolution)
+            else:
+                extra_info.append(f"{resolution}p")
+
+        if _placeholder_config.include_hash and hash_string:
+            assert any(hash_string.startswith(x) for x in HASH_PREFIXES), f"Invalid: {hash_string = }"
+            extra_info.append(hash_string)
+
+        filename, extra_info_had_invalid_chars = make_custom_filename(stem, ext, extra_info, only_truncate_stem)
+        if extra_info_had_invalid_chars:
+            msg = (
+                f"Custom filename creation for {self.FOLDER_DOMAIN} seems to be broken. "
+                f"Important information was removed while creating a filename. "
+                f"Please report this as a bug at {NEW_ISSUE_URL}:\n{calling_args}"
+            )
+            log(msg, 30)
+        return filename
+
 
 def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
     if cls.SUPPORTED_DOMAINS:
@@ -547,3 +611,21 @@ def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
 def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
     if scrape_item.url.path == "/":
         raise ValueError
+
+
+def make_custom_filename(stem: str, ext: str, extra_info: list[str], only_truncate_stem: bool) -> tuple[str, bool]:
+    truncate_len = constants.MAX_NAME_LENGTHS["FILE"] - len(ext)
+    invalid_extra_info_chars = False
+    if extra_info:
+        extra_info_str = "".join(f"[{info}]" for info in extra_info)
+        clean_extra_info_str = sanitize_filename(extra_info_str)
+        invalid_extra_info_chars = clean_extra_info_str != extra_info_str
+        if only_truncate_stem and (new_truncate_len := truncate_len - len(clean_extra_info_str) - 1) > 0:
+            truncated_stem = f"{truncate_str(stem, new_truncate_len)} {clean_extra_info_str}"
+        else:
+            truncated_stem = truncate_str(f"{stem} {clean_extra_info_str}", truncate_len)
+
+    else:
+        truncated_stem = truncate_str(stem, truncate_len)
+
+    return f"{truncated_stem}{ext}", invalid_extra_info_chars
