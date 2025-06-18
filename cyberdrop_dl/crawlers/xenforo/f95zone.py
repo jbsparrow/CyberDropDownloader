@@ -22,7 +22,7 @@ class F95ZoneCrawler(XenforoCrawler):
     XF_SELECTORS = XenforoSelectors(posts=_post_selectors)
 
     @error_handling_wrapper
-    async def handle_confirmation_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
+    async def resolve_confirmation_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
         """Override to handle protected link confirmation."""
         async with self.request_limiter:
             json_resp = await self.client.post_data(self.DOMAIN, link, data=_confirmation_data)

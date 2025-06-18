@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup, Tag
 
 from cyberdrop_dl.crawlers._forum import MessageBoardCrawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import LoginError, ScrapeError
+from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import TimeStamp
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -23,7 +23,7 @@ from cyberdrop_dl.utils.utilities import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Sequence
+    from collections.abc import AsyncGenerator
 
     from aiohttp_client_cache.response import AnyResponse
     from yarl import URL
@@ -143,20 +143,20 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         if self.XF_THREAD_URL_PART in scrape_item.url.parts:
             return await self.thread(scrape_item)
         if is_confirmation_link(scrape_item.url):
-            return await self.process_confirmation_link(scrape_item)
+            return await self.follow_confirmation_link(scrape_item)
         if any(p in scrape_item.url.parts for p in ("goto", "posts")):
-            return await self.redirect_from_get(scrape_item)
+            return await self.follow_redirect_w_get(scrape_item)
         raise ValueError
 
-    async def process_confirmation_link(self, scrape_item: ScrapeItem) -> None:
-        # This could end up back in here if the URL goes to another thread
-        url = await self.handle_confirmation_link(scrape_item.url)
+    async def follow_confirmation_link(self, scrape_item: ScrapeItem) -> None:
+        url = await self.resolve_confirmation_link(scrape_item.url)
         if url:  # If there was an error, this will be None
             scrape_item.url = url
+            # This could end up back in here if the URL goes to another thread
             return self.handle_external_links(scrape_item)
 
     @error_handling_wrapper
-    async def redirect_from_get(self, scrape_item: ScrapeItem) -> None:
+    async def follow_redirect_w_get(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             response, _ = await self.client._get_response_and_soup(self.DOMAIN, scrape_item.url)
         assert is_absolute_http_url(response.url)
@@ -164,7 +164,7 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         self.manager.task_group.create_task(self.run(scrape_item))
 
     @error_handling_wrapper
-    async def redirect_from_head(self, scrape_item: ScrapeItem) -> None:
+    async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
         head = await self.client.get_head(self.DOMAIN, scrape_item.url)
         redirect = head.get("location")
         if not redirect:
@@ -197,32 +197,32 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
                 title = self.create_title(get_post_title(soup, self.XF_SELECTORS), thread_id=thread.id)
                 scrape_item.add_to_parent_title(title)
 
-            posts = soup.select(self.XF_SELECTORS.posts.article)
-            continue_scraping, last_post_url = self.process_thread_page(scrape_item, thread, posts)
+            continue_scraping, last_post_url = self.process_thread_page(scrape_item, thread, soup)
             if not continue_scraping:
                 break
 
         await self.write_last_forum_post(thread.url, last_post_url)
 
     def process_thread_page(
-        self, scrape_item: ScrapeItem, thread: Thread, posts: Sequence[Tag]
+        self, scrape_item: ScrapeItem, thread: Thread, soup: BeautifulSoup
     ) -> tuple[bool, AbsoluteHttpURL]:
         continue_scraping = False
         post_url = thread.url
-        for post_soup in posts:
-            current_post = ForumPost.new(post_soup, self.XF_SELECTORS.posts, self.XF_POST_URL_PART_NAME)
+        for article in soup.select(self.XF_SELECTORS.posts.article):
+            current_post = ForumPost.new(article, self.XF_SELECTORS.posts, self.XF_POST_URL_PART_NAME)
             continue_scraping, scrape_this_post = check_post_id(
-                thread.post_id,
-                current_post.id,
-                self.scrape_single_forum_post,
+                thread.post_id, current_post.id, self.scrape_single_forum_post
             )
-            date = current_post.date
-            post_string = f"{self.XF_POST_URL_PART_NAME}{current_post.id}"
-            post_url = thread.url / post_string
             if scrape_this_post:
-                new_scrape_item = scrape_item.create_new(thread.url, possible_datetime=date, add_parent=post_url)
+                post_url = thread.url / f"{self.XF_POST_URL_PART_NAME}{current_post.id}"
+                new_scrape_item = scrape_item.create_new(
+                    thread.url, possible_datetime=current_post.date, add_parent=post_url
+                )
                 self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
-                scrape_item.add_children()
+                try:
+                    scrape_item.add_children()
+                except MaxChildrenError:
+                    break
 
             if not continue_scraping:
                 break
@@ -317,12 +317,11 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         else:
             absolute_link = link
         if is_confirmation_link(absolute_link):
-            absolute_link = await self.handle_confirmation_link(absolute_link)
+            return await self.resolve_confirmation_link(absolute_link)
         return absolute_link
 
     @error_handling_wrapper
-    async def handle_confirmation_link(self, link: URL) -> AbsoluteHttpURL | None:
-        """Handles link confirmation."""
+    async def resolve_confirmation_link(self, link: URL) -> AbsoluteHttpURL | None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, link)
         selector = self.XF_SELECTORS.confirmation_button
@@ -338,7 +337,7 @@ class XenforoCrawler(MessageBoardCrawler, is_abc=True):
         """Handles internal links."""
         slug = scrape_item.url.name or scrape_item.url.parent.name
         if slug.isdigit():
-            return await self.redirect_from_head(scrape_item)
+            return await self.follow_redirect_w_head(scrape_item)
 
         return await super().handle_internal_link(scrape_item)
 
@@ -541,6 +540,7 @@ def check_post_id(init_post_id: int | None, current_post_id: int, scrape_single_
             scrape_this_post, continue_scraping = not scrape_single_forum_post, not scrape_single_forum_post
 
         return continue_scraping, scrape_this_post
+
     assert not scrape_single_forum_post  # We should have raise an exception early
     return True, True
 
