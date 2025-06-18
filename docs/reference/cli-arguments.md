@@ -218,7 +218,7 @@ CLI-only options:
 
 browser_cookies:
   --auto-import, --no-auto-import
-  --browsers [BROWSERS ...]
+  --browser BROWSER
   --sites [SITES ...]
 
 download_options:
@@ -314,6 +314,7 @@ sorting:
 
 general:
   --allow-insecure-connections, --no-allow-insecure-connections
+  --disable-crawlers [DISABLE_CRAWLERS ...]
   --enable-generic-crawler, --no-enable-generic-crawler
   --flaresolverr FLARESOLVERR
   --max-file-name-length MAX_FILE_NAME_LENGTH

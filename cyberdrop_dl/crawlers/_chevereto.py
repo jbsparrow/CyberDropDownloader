@@ -199,7 +199,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
         name_index = url.parts.index(found_part) + 1
         name = url.parts[name_index]
         item_id = name.rsplit(".")[-1]
-        new_parts = url.parts[1:name_index] + (item_id,)
+        new_parts = (*url.parts[1:name_index], item_id)
         new_path = "/" + "/".join(new_parts)
         return item_id, self.parse_url(new_path, url.origin())
 
