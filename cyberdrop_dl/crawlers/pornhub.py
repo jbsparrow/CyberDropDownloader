@@ -87,8 +87,15 @@ class PornHubCrawler(Crawler):
         "Gif": "/gif/...",
         "Photo": "/photo/...",
         "Playlist": "/playlist/...",
-        "Profile": ("/user/...", "/model/...", "/pornstar/..."),
-        "Video": ("/embed/<video_id>", "/view_video.php?viewkey=<video_id>"),
+        "Profile": (
+            "/user/...",
+            "/model/...",
+            "/pornstar/...",
+        ),
+        "Video": (
+            "/embed/<video_id>",
+            "/view_video.php?viewkey=<video_id>",
+        ),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
@@ -282,12 +289,15 @@ def get_upload_date_str(soup: BeautifulSoup) -> str:
 
 
 def get_mp4_formats(soup: BeautifulSoup) -> Generator[Format]:
+    for media in get_medias(soup):
+        if media["format"] == "mp4":
+            yield Format.new(media)
+
+
+def get_medias(soup: BeautifulSoup) -> list[Media]:
     flashvars: str = css.select_one(soup, _SELECTORS.JS_VIDEO_INFO).text
     media_text = get_text_between(flashvars, 'mediaDefinitions":', ',"isVertical"')
-    for media in json.loads(media_text):
-        format = Format.new(media)
-        if format.format == "mp4":
-            yield format
+    return json.loads(media_text)
 
 
 def check_video_is_available(soup: BeautifulSoup) -> None:
