@@ -5,13 +5,12 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
-from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
+from .xenforo import XenforoCrawler
 
 if TYPE_CHECKING:
     from yarl import URL
 
 
-_post_selectors = PostSelectors(date=Selector("time", "data-time"), id=Selector("a[class=u-concealed]", "href"))
 _confirmation_data = ({"xhr": "1", "download": "1"},)
 
 
@@ -19,7 +18,6 @@ class F95ZoneCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://f95zone.to")
     DOMAIN: ClassVar[str] = "f95zone"
     FOLDER_DOMAIN: ClassVar[str] = "F95Zone"
-    XF_SELECTORS = XenforoSelectors(posts=_post_selectors)
 
     @error_handling_wrapper
     async def resolve_confirmation_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL | None:

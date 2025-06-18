@@ -51,7 +51,7 @@ class PostSelectors:
     content: Selector = Selector(".message-userContent")  # text, links and images (NO attachments)
     date: Selector = Selector("time", "data-timestamp")
     embeds: Selector = Selector("iframe", "src")
-    id: Selector = Selector("li.u-concealed a[href]", "href")  # TODO: This needs a better selector
+    id: Selector = Selector(".u-concealed a[href]", "href")  # TODO: This needs a better selector
     images: Selector = Selector("img.bbImage", "src")
     lazy_load_embeds: Selector = Selector('[class*=iframe][onclick*="loadMedia(this, \'//"]', "onclick")
     links: Selector = Selector(":any-link", "href")

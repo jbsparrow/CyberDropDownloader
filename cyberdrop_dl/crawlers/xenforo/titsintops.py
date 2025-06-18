@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 
-from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
+from .xenforo import XenforoCrawler
 
 if TYPE_CHECKING:
     from bs4 import Tag
@@ -15,10 +15,6 @@ class TitsInTopsCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://titsintops.com/phpBB2")
     DOMAIN: ClassVar[str] = "titsintops"
     FOLDER_DOMAIN: ClassVar[str] = "TitsInTops"
-    post_selectors = PostSelectors(
-        images=Selector("a[class*=file-preview]", "href"),
-    )
-    XF_SELECTORS = XenforoSelectors(posts=post_selectors)
 
     def filter_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL:
         return AbsoluteHttpURL(
