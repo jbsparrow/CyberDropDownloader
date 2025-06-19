@@ -2,9 +2,11 @@
 
 Reference: https://developer.wordpress.org/rest-api/reference/#rest-api-developer-endpoint-reference
 """
+# ruff: noqa: RUF009
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import itertools
 import re
@@ -41,12 +43,13 @@ _EXT_REGEX = re.compile(r"\d{2,}x\d{2,}(\.\w+)?")
 Selector = css.CssAttributeSelector
 
 
+@dataclasses.dataclass(frozen=True, slots=True)
 class Selectors:
-    POST_CONTENT: ClassVar = Selector("#content, .entry-content [id*='post-']")
-    POST_ID: ClassVar = Selector("[id*='post-']", "id")
-    IMG: ClassVar = Selector("img[class*='wp-image']", "srcset")
-    POST_LINK_FROM_PAGE = Selector(".post a", "href")
-    NEXT_PAGE = Selector("a.page-numbers.next", "href")
+    POST_CONTENT: Selector = Selector("#content, .entry-content [id*='post-']")
+    POST_ID: Selector = Selector("[id*='post-']", "id")
+    IMG: Selector = Selector("img[class*='wp-image']", "srcset")
+    POST_LINK_FROM_PAGE: Selector = Selector(".post a[href]", "href")
+    NEXT_PAGE: Selector = Selector("a.page-numbers.next", "href")
 
 
 _SELECTORS = Selectors()
@@ -187,7 +190,7 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
                 continue
 
 
-class WordPressAPICrawler(WordPressBaseCrawler, is_abc=True):
+class WordPressMediaCrawler(WordPressBaseCrawler, is_generic=True):
     WP_CATEGORIES_ENDPOINT: ClassVar = "/wp-json/wp/v2/categories"
     WP_TAGS_ENDPOINT: ClassVar = "/wp-json/wp/v2/tags"
     WP_POSTS_ENDPOINT: ClassVar = "/wp-json/wp/v2/posts"
@@ -259,7 +262,7 @@ class WordPressAPICrawler(WordPressBaseCrawler, is_abc=True):
             raise ScrapeError(404)
 
 
-class WordPressSoupCrawler(WordPressBaseCrawler, is_abc=True):
+class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
     async def __make_request(self, api_url: AbsoluteHttpURL) -> BeautifulSoup:
         async with self.request_limiter:
             return await self.client.get_soup(self.DOMAIN, api_url)

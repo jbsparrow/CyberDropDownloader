@@ -153,7 +153,7 @@ class Crawler(ABC):
         cls.SUPPORTED_PATHS = sort_dict(cls.SUPPORTED_PATHS)
 
         if cls.IS_GENERIC:
-            cls.GENERIC_NAME = (generic_name or cls.NAME).capitalize()
+            cls.GENERIC_NAME = generic_name or cls.NAME
             cls.SCRAPE_MAPPER_KEYS = ()
             cls.INFO = CrawlerInfo(cls.GENERIC_NAME, "::GENERIC CRAWLER::", (), cls.SUPPORTED_PATHS)  # type: ignore
             return

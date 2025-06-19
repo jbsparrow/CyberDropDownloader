@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ._wordpress import WordPressHTMLCrawler, WordPressMediaCrawler
 from .bestprettygirl import BestPrettyGirlCrawler
 
 if TYPE_CHECKING:
@@ -11,4 +12,4 @@ if TYPE_CHECKING:
 
 WP_CRAWLERS: set[type[WordPressBaseCrawler]] = {BestPrettyGirlCrawler}
 WP_CRAWLERS_MAP = {c.__name__: c for c in WP_CRAWLERS}
-__all__ = list(WP_CRAWLERS_MAP.keys())  # type: ignore[reportUnsupportedDunderAll]
+WP_GENERIC_CRAWLERS = {WordPressMediaCrawler, WordPressHTMLCrawler}

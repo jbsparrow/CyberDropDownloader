@@ -91,7 +91,7 @@ from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
 from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
-from .wordpress import WP_CRAWLERS
+from .wordpress import WP_CRAWLERS, WP_GENERIC_CRAWLERS
 from .xbunkr import XBunkrCrawler
 from .xenforo import XF_CRAWLERS, SimpCityCrawler
 from .xhamster import XhamsterCrawler
@@ -100,10 +100,11 @@ from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler
 
 FORUM_CRAWLERS = DISCOURSE_CRAWLERS.union(XF_CRAWLERS)
+GENERIC_CRAWLERS = WP_GENERIC_CRAWLERS.union({DiscourseCrawler})
 ALL_CRAWLERS: set[type[Crawler]] = {
     crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
 }
-ALL_CRAWLERS.update(WP_CRAWLERS, FORUM_CRAWLERS)
+ALL_CRAWLERS.update(WP_CRAWLERS, GENERIC_CRAWLERS, FORUM_CRAWLERS)
 DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler, FikFapCrawler}
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
     CRAWLERS = ALL_CRAWLERS
