@@ -17,7 +17,7 @@ from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
 from .cyberfile import CyberfileCrawler
 from .dirtyship import DirtyShipCrawler
-from .discourse import DISCOURSE_CRAWLERS
+from .discourse import DISCOURSE_CRAWLERS, DiscourseCrawler
 from .doodstream import DoodStreamCrawler
 from .dropbox import DropboxCrawler
 from .e621 import E621Crawler
@@ -101,7 +101,7 @@ from .youjizz import YouJizzCrawler
 
 ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
 ALL_CRAWLERS = ALL_CRAWLERS - {Crawler}
-ALL_CRAWLERS.update(XF_CRAWLERS, WP_CRAWLERS)
+ALL_CRAWLERS.update(XF_CRAWLERS, WP_CRAWLERS, DISCOURSE_CRAWLERS)
 DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler, FikFapCrawler}
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
     CRAWLERS = ALL_CRAWLERS

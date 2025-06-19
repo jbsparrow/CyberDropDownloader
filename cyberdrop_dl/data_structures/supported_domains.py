@@ -15,8 +15,11 @@ website_crawlers = CRAWLERS - forum_crawlers - {GenericCrawler}
 def get_supported_sites_from(crawlers: set[type[Crawler]] | set[type[XenforoCrawler]]) -> dict[str, str]:
     support_sites_dict = {}
     for crawler in crawlers:
-        site = crawler.DOMAIN or crawler.PRIMARY_URL.host
-        support_sites_dict[site] = crawler.PRIMARY_URL.host
+        if crawler.IS_GENERIC:
+            support_sites_dict[crawler.CDL_GENERIC_NAME] = crawler.CDL_GENERIC_NAME
+        else:
+            site = crawler.DOMAIN or crawler.PRIMARY_URL.host
+            support_sites_dict[site] = crawler.PRIMARY_URL.host
 
     support_sites_dict = {key: support_sites_dict[key] for key in sorted(support_sites_dict)}
 

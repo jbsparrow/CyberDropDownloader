@@ -350,7 +350,7 @@ def create_item_from_entry(entry: Sequence) -> ScrapeItem:
     return item
 
 
-def get_crawlers_mapping(manager: Manager | None = None) -> dict[str, Crawler]:
+def get_crawlers_mapping(manager: Manager | None = None, include_generics: bool = False) -> dict[str, Crawler]:
     """Retuns a mapping with an instance of all crawlers.
 
     Crawlers are only created on the first calls. Future calls always return a reference to the same crawlers
@@ -359,12 +359,17 @@ def get_crawlers_mapping(manager: Manager | None = None) -> dict[str, Crawler]:
 
     from cyberdrop_dl.managers.mock_manager import MOCK_MANAGER
 
-    manager = manager or MOCK_MANAGER
+    manager_ = manager or MOCK_MANAGER
     global existing_crawlers
     if not existing_crawlers:
         for crawler in CRAWLERS:
-            site_crawler = crawler(manager)
-            for domain in site_crawler.SCRAPE_MAPPER_KEYS:
+            site_crawler = crawler(manager_)
+            if site_crawler.IS_GENERIC and include_generics:
+                keys = (site_crawler.CDL_GENERIC_NAME,)
+            else:
+                keys = site_crawler.SCRAPE_MAPPER_KEYS
+
+            for domain in keys:
                 msg = f"{domain} from {site_crawler.NAME} already registered by {existing_crawlers.get(domain)}"
                 assert domain not in existing_crawlers, msg
                 existing_crawlers[domain] = site_crawler
@@ -372,7 +377,7 @@ def get_crawlers_mapping(manager: Manager | None = None) -> dict[str, Crawler]:
 
 
 def get_unique_crawlers() -> list[Crawler]:
-    return sorted(set(get_crawlers_mapping().values()), key=lambda x: x.FOLDER_DOMAIN)
+    return sorted(set(get_crawlers_mapping(include_generics=True).values()), key=lambda x: x.INFO.site)
 
 
 def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_to_disable: list[str]) -> None:

@@ -59,7 +59,7 @@ def _get_crawlers_info_cols_and_rows() -> tuple[list[str], Generator[tuple[str, 
 
 def _gen_crawlers_info_rows(crawlers: Sequence[Crawler]) -> Generator[tuple[str, ...]]:
     for crawler in crawlers:
-        if crawler.NAME.casefold() == "generic":
+        if not crawler.IS_GENERIC and crawler.NAME.casefold() == "generic":
             continue
         yield _get_row_values(crawler.INFO)
 

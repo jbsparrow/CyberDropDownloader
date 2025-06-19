@@ -134,7 +134,7 @@ class Crawler(ABC):
 
     def __post_init__(self) -> None: ...  # noqa: B027
 
-    def __init_subclass__(cls, is_abc: bool = False, **kwargs) -> None:
+    def __init_subclass__(cls, is_abc: bool = False, generic_name: str = "", **kwargs) -> None:
         super().__init_subclass__(**kwargs)
 
         msg = (
@@ -143,6 +143,14 @@ class Crawler(ABC):
             "use async_startup for setup that requires database access, making a request or setting cookies",
         )
         assert cls.__init__ is Crawler.__init__, msg
+        cls.IS_GENERIC = bool(generic_name)
+        cls.CDL_GENERIC_NAME = generic_name.capitalize()
+        cls.SUPPORTED_PATHS = sort_dict(cls.SUPPORTED_PATHS)
+        cls.NAME = cls.__name__.removesuffix("Crawler")
+        if cls.IS_GENERIC:
+            cls.SCRAPE_MAPPER_KEYS = ()
+            cls.INFO = CrawlerInfo(cls.CDL_GENERIC_NAME, "::GENERIC CRAWLER::", (), cls.SUPPORTED_PATHS)  # type: ignore
+
         if is_abc:
             return
 
@@ -151,10 +159,8 @@ class Crawler(ABC):
             for field_name in REQUIRED_FIELDS:
                 assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
 
-        cls.FOLDER_DOMAIN = cls.FOLDER_DOMAIN or cls.DOMAIN.capitalize()
-        cls.NAME = cls.__name__.removesuffix("Crawler")
         cls.SCRAPE_MAPPER_KEYS = make_scrape_mapper_keys(cls)
-        cls.SUPPORTED_PATHS = sort_dict(cls.SUPPORTED_PATHS)
+        cls.FOLDER_DOMAIN = cls.FOLDER_DOMAIN or cls.DOMAIN.capitalize()
         cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, cls.SCRAPE_MAPPER_KEYS, cls.SUPPORTED_PATHS)
 
         for path_name, paths in cls.SUPPORTED_PATHS.items():
@@ -613,9 +619,10 @@ class Crawler(ABC):
 
 
 def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
+    if cls.IS_GENERIC:
+        return ()
     if cls.SUPPORTED_DOMAINS:
         hosts: SupportedDomains = cls.SUPPORTED_DOMAINS
-
     else:
         hosts = cls.DOMAIN or cls.PRIMARY_URL.host
     if isinstance(hosts, str):
