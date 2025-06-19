@@ -70,4 +70,4 @@ class Topic(PostStream):
 
     @property
     def path(self) -> str:
-        return f"/t/{self.slug}"
+        return f"/t/{self.slug}/{self.id}"

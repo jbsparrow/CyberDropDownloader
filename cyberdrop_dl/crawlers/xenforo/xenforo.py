@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup, Tag
 
+from cyberdrop_dl.constants import HTTP_REGEX_LINKS
 from cyberdrop_dl.crawlers._forum import ForumCrawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
@@ -30,7 +31,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
-HTTP_URL_REGEX = re.compile(r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)")
 LINK_TRASH_MAPPING = {
     ".th.": ".",
     ".md.": ".",
@@ -510,7 +510,7 @@ def get_post_title(soup: BeautifulSoup, selectors: XenforoSelectors) -> str:
 
 def extract_embed_url(embed_str: str) -> str:
     embed_str = embed_str.replace(r"\/\/", "https://www.").replace("\\", "")
-    if match := re.search(HTTP_URL_REGEX, embed_str):
+    if match := re.search(HTTP_REGEX_LINKS, embed_str):
         return match.group(0).replace("www.", "")
     return embed_str
 
