@@ -365,7 +365,7 @@ def get_crawlers_mapping(manager: Manager | None = None, include_generics: bool 
         for crawler in CRAWLERS:
             site_crawler = crawler(manager_)
             if site_crawler.IS_GENERIC and include_generics:
-                keys = (site_crawler.CDL_GENERIC_NAME,)
+                keys = (site_crawler.GENERIC_NAME,)
             else:
                 keys = site_crawler.SCRAPE_MAPPER_KEYS
 

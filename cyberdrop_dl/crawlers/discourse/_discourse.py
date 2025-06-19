@@ -29,7 +29,7 @@ _MAX_POSTS_PER_REQUEST = 50
 _ModelT = TypeVar("_ModelT", bound=BaseModel)
 
 
-class DiscourseCrawler(MessageBoardCrawler, is_abc=True, generic_name="discourse"):
+class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
     SUPPORTED_PATHS: ClassVar = {
         "Topic": (
             "/t/<topic_name>/<topic_id>",

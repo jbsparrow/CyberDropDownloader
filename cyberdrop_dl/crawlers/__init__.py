@@ -99,13 +99,16 @@ from .xxxbunker import XXXBunkerCrawler
 from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler
 
-ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
-ALL_CRAWLERS = ALL_CRAWLERS - {Crawler}
-ALL_CRAWLERS.update(XF_CRAWLERS, WP_CRAWLERS, DISCOURSE_CRAWLERS)
+FORUM_CRAWLERS = DISCOURSE_CRAWLERS.union(XF_CRAWLERS)
+ALL_CRAWLERS: set[type[Crawler]] = {
+    crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
+}
+ALL_CRAWLERS.update(WP_CRAWLERS, FORUM_CRAWLERS)
 DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler, FikFapCrawler}
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
     CRAWLERS = ALL_CRAWLERS
 else:
     CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
-__all__ = ["ALL_CRAWLERS", "CRAWLERS", "DEBUG_CRAWLERS", "Crawler"]
+WEBSITE_CRAWLERS = CRAWLERS - FORUM_CRAWLERS - {GenericCrawler}
+__all__ = ["ALL_CRAWLERS", "CRAWLERS", "DEBUG_CRAWLERS", "FORUM_CRAWLERS", "Crawler"]
