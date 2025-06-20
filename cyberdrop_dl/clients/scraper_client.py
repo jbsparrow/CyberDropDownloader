@@ -111,9 +111,8 @@ class ScraperClient:
         self._session: CachedSession = NOT_DEFINED
         self._curl_session: AsyncSession = NOT_DEFINED
 
-    def startup(self) -> None:
-        add_request_log_hooks(self._trace_configs)
-        self._session = CachedSession(
+    def new_session(self) -> CachedSession:
+        return CachedSession(
             headers=self._headers,
             raise_for_status=False,
             cookie_jar=self.client_manager.cookies,
@@ -121,6 +120,11 @@ class ScraperClient:
             trace_configs=self._trace_configs,
             cache=self.client_manager.manager.cache_manager.request_cache,
         )
+
+    def startup(self) -> None:
+        add_request_log_hooks(self._trace_configs)
+        self._session = self.new_session()
+        self.reddit_session = self.new_session()
         if curl_import_error is not None:
             return
 

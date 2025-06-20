@@ -67,7 +67,7 @@ class RedditCrawler(Crawler):
         if not self.logged_in:
             return
 
-        self._session = self.manager.client_manager.scraper_session._session
+        self._session = self.manager.client_manager.scraper_session.reddit_session
         self._reddit = Reddit(
             client_id=self.reddit_personal_use_script,
             client_secret=self.reddit_secret,
