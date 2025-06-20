@@ -8,7 +8,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -57,15 +57,11 @@ class SaintCrawler(Crawler):
 
         for video in soup.select(VIDEOS_SELECTOR):
             on_click_text: str = css.get_attr(video, "onclick")
-            if match := re.search(URL_REGEX, on_click_text):
-                link_str = match.group(1)
-            else:
-                continue
-
+            link_str = get_text_between(on_click_text, "('", "');")
             link = self.parse_url(link_str)
-            filename, ext = self.get_filename_and_ext(link.name)
             if not self.check_album_results(link, results):
-                await self.handle_file(link, scrape_item, filename, ext)
+                new_scrape_item = scrape_item.create_child(link)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
     @error_handling_wrapper
