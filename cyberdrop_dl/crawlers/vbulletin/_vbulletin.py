@@ -33,7 +33,7 @@ class Post:
         return (image.attrib["main_url"] for image in self.xml.iter("image"))
 
 
-# TODO: make a super class of Xenforo an ingerit from that instead of xenforo itself
+# TODO: make a super class of Xenforo an inherit from that instead of Xenforo itself
 class vBulletinCrawler(XenforoCrawler, is_abc=True):  # noqa: N801
     # TODO: Make this crawler more general, potentially scraping the actual html of a page like xenforo
     # Current limitations
@@ -57,7 +57,7 @@ class vBulletinCrawler(XenforoCrawler, is_abc=True):  # noqa: N801
         REQUIRED_FIELDS = ("VBULLETIN_LOGIN_COOKIE_NAME", "VBULLETIN_API_ENDPOINT")
         for field_name in REQUIRED_FIELDS:
             assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
-        # TODO: make this class vars the same for forum crawlers
+        # TODO: Use the same name for these classvars across all crawlers
         cls.XF_USER_COOKIE_NAME = cls.VBULLETIN_LOGIN_COOKIE_NAME
         cls.XF_PAGE_URL_PART_NAME = "page"
         cls.XF_POST_URL_PART_NAME = "post"
@@ -96,9 +96,10 @@ class vBulletinCrawler(XenforoCrawler, is_abc=True):  # noqa: N801
         await self.process_posts(scrape_item, thread, root_xml)
 
     async def process_posts(self, scrape_item: ScrapeItem, thread: Thread, root_xml: ElementTree.Element[str]) -> None:
-        posts = root_xml.iter("post")
         if thread.page:
-            posts = itertools.islice(posts, (thread.page - 1) * N_POSTS_PER_PAGE)
+            posts = itertools.islice(root_xml.iter("post"), (thread.page - 1) * N_POSTS_PER_PAGE)
+        else:
+            posts = root_xml.iter("post")
 
         last_post_id = thread.post_id
         for element in posts:
