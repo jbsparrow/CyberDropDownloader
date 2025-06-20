@@ -1,5 +1,4 @@
-from _vbulletin import vBulletinCrawler
-
+from ._vbulletin import vBulletinCrawler
 from .vipergirls import ViperGirlsCrawler
 
 VBULLETIN_CRAWLERS: set[type[vBulletinCrawler]] = {ViperGirlsCrawler}

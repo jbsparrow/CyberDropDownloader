@@ -57,8 +57,10 @@ class vBulletinCrawler(XenforoCrawler, is_abc=True):  # noqa: N801
         REQUIRED_FIELDS = ("VBULLETIN_LOGIN_COOKIE_NAME", "VBULLETIN_API_ENDPOINT")
         for field_name in REQUIRED_FIELDS:
             assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
-        # TODO: make this class var the same for all crawlers
+        # TODO: make this class vars the same for forum crawlers
         cls.XF_USER_COOKIE_NAME = cls.VBULLETIN_LOGIN_COOKIE_NAME
+        cls.XF_PAGE_URL_PART_NAME = "page"
+        cls.XF_POST_URL_PART_NAME = "post"
 
     async def async_startup(self) -> None:
         if not self.logged_in:
@@ -73,7 +75,7 @@ class vBulletinCrawler(XenforoCrawler, is_abc=True):  # noqa: N801
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         # TODO: Handle more URLs
-        if not self.logged_in and self.login_required:
+        if self.login_required and not self.logged_in:
             return
         await self.fetch_thread(scrape_item)
 
@@ -85,7 +87,7 @@ class vBulletinCrawler(XenforoCrawler, is_abc=True):  # noqa: N801
             api_url = self.VBULLETIN_API_ENDPOINT.with_query({self.VBULLETIN_THREAD_QUERY_PARAM: str(thread.id)})
 
         root_xml = await self.get_xml(api_url)
-        if thread_element := root_xml.find("thread"):
+        if (thread_element := root_xml.find("thread")) is not None:
             title = self.create_title(thread_element.attrib["title"], thread_id=thread.id)
             scrape_item.setup_as_forum(title)
         else:
