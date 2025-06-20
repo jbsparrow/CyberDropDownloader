@@ -150,6 +150,9 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         if is_confirmation_link(scrape_item.url):
             return await self.follow_confirmation_link(scrape_item)
 
+        await self.fetch_thread(scrape_item)
+
+    async def fetch_thread(self, scrape_item: ScrapeItem) -> None:
         thread_part_index = len(self.PRIMARY_URL.parts)
         match scrape_item.url.parts[thread_part_index:]:
             case [thread_part, thread_name_and_id, *_] if thread_part in KNOWN_THREAD_PART_NAMES:
@@ -200,8 +203,11 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
             msg = "`--scrape-single-forum-post` is `True`, but the provided URL has no post id"
             raise ScrapeError("User Error", msg)
 
-        title: str = ""
         self.scraped_threads.add(thread.url)
+        await self.process_thread(scrape_item, thread)
+
+    async def process_thread(self, scrape_item: ScrapeItem, thread: Thread) -> None:
+        title: str = ""
         last_post_url = thread.url
         async for soup in self.thread_pager(scrape_item):
             if not title:

@@ -9,13 +9,12 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 
 class ViperGirlsCrawler(vBulletinCrawler):
-    LOGIN_REQUIRED = False
-    LOGIN_COOKIE = "vg_password"
-
+    login_required = False
+    VBULLETIN_LOGIN_COOKIE_NAME = "vg_password"
     PRIMARY_URL = AbsoluteHttpURL("https://vipergirls.to/forum.php")
     DOMAIN = "vipergirls.to"
     SUPPORTED_DOMAINS: ClassVar = "viper.click", "vipergirls.to"
-    API_ENDPOINT: ClassVar = AbsoluteHttpURL("https://viper.click/vr.php")
+    VBULLETIN_API_ENDPOINT: ClassVar = AbsoluteHttpURL("https://viper.click/vr.php")
 
     def __post_init__(self) -> None:
         super().__post_init__()

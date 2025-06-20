@@ -1,17 +1,12 @@
-# ruff : noqa: RUF009
-
 from __future__ import annotations
 
+import dataclasses
 import itertools
-import re
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 from xml.etree import ElementTree
 
-from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
-from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
+from cyberdrop_dl.crawlers.xenforo.xenforo import Thread, XenforoCrawler
+from cyberdrop_dl.exceptions import MaxChildrenError, ScrapeError
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -19,112 +14,75 @@ if TYPE_CHECKING:
     from cyberdrop_dl.crawlers.crawler import SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
+N_POSTS_PER_PAGE = 15
 
-@dataclass(slots=True)
+
+@dataclasses.dataclass(frozen=True, slots=True, order=True)
 class Post:
-    title: str
     id: int
-    images: Iterable[ElementTree.Element[str]]
+    title: str
+    xml: ElementTree.Element[str]
 
     @staticmethod
     def new(element: ElementTree.Element[str]) -> Post:
-        title, id = element.attrib["title"], int(element.attrib["id"])
-        images = (parse_url(image.attrib["main_url"]) for image in element.iter("image"))
-        return Post(title, id, images)
+        title, id_ = element.attrib["title"], int(element.attrib["id"])
+        return Post(id_, title, element)
+
+    @property
+    def images(self) -> Iterable[str]:
+        return (image.attrib["main_url"] for image in self.xml.iter("image"))
 
 
-@dataclass(frozen=True, slots=True)
-class Thread:
-    name: str
-    id: int
-    page: int | None
-    post: int | None
-    url: AbsoluteHttpURL
-    full_url: AbsoluteHttpURL
-
-
-class vBulletinCrawler(Crawler, is_abc=True):  # noqa: N801
-    # TODO: Make this crawler more general, potentially scraping the actual html of a page
+# TODO: make a super class of Xenforo an ingerit from that instead of xenforo itself
+class vBulletinCrawler(XenforoCrawler, is_abc=True):  # noqa: N801
+    # TODO: Make this crawler more general, potentially scraping the actual html of a page like xenforo
     # Current limitations
-    # 1. It can not get the content (text) of the actual post. (It's not included in the API response)
-    # 2. It only gets images
+    # 1. It can't get the content (text) of the actual post. (It's not included in the API response of most sites)
+    # 2. Must vBulletin sites have the API disabled
     # 3. It has no date information
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Threads": ("/threads/<thread_name>", "/posts/<post_id>", "/goto/<post_id>"),
+        "Threads": (
+            "/threads/<thread_name>",
+            "/posts/<post_id>",
+            "/goto/<post_id>",
+        ),
     }
-    LOGIN_REQUIRED: ClassVar = True
-    THREAD_PART_NAME: ClassVar = "threads"
-    LOGIN_COOKIE: ClassVar = ""
-    N_POSTS_PER_PAGE: ClassVar = 15
-
-    THREAD_QUERY_PARAM: ClassVar = "t"
-    POST_QUERY_PARAM: ClassVar = "p"
-    API_ENDPOINT: ClassVar[AbsoluteHttpURL] = None  # type: ignore
+    VBULLETIN_LOGIN_COOKIE_NAME: ClassVar = ""
+    VBULLETIN_THREAD_QUERY_PARAM: ClassVar = "t"
+    VBULLETIN_POST_QUERY_PARAM: ClassVar = "p"
+    VBULLETIN_API_ENDPOINT: ClassVar[AbsoluteHttpURL]
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
-        REQUIRED_FIELDS = ("API_ENDPOINT", "LOGIN_COOKIE")
+        REQUIRED_FIELDS = ("VBULLETIN_LOGIN_COOKIE_NAME", "VBULLETIN_API_ENDPOINT")
         for field_name in REQUIRED_FIELDS:
             assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
-
-    def __post_init__(self) -> None:
-        self.scraped_threads = set()
+        # TODO: make this class var the same for all crawlers
+        cls.XF_USER_COOKIE_NAME = cls.VBULLETIN_LOGIN_COOKIE_NAME
 
     async def async_startup(self) -> None:
         if not self.logged_in:
             login_url = self.PRIMARY_URL / "login.php"
-            await self.check_login(login_url)
+            await self.login_setup(login_url)
 
         self.register_cache_filter(self.PRIMARY_URL, lambda _: True)
 
-    @error_handling_wrapper
-    async def check_login(self, *_) -> None:
-        host_cookies = self.client.client_manager.cookies.filter_cookies(self.PRIMARY_URL)
-        session_cookie = host_cookies.get(self.LOGIN_COOKIE)
-        session_cookie = session_cookie.value if session_cookie else None
-        msg = f"No cookies found for {self.FOLDER_DOMAIN}"
-        self.logged_in = bool(session_cookie)
-        if self.logged_in:
-            return
-        if self.LOGIN_REQUIRED:
-            raise LoginError(message=msg)
-
-        msg += " Scraping without an account"
-        log(msg, 30)
+    async def check_login_with_request(self, *_) -> tuple[str, bool]:
+        # TODO: Support login
+        return "", False
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if not self.logged_in and self.LOGIN_REQUIRED:
+        # TODO: Handle more URLs
+        if not self.logged_in and self.login_required:
             return
-        if self.THREAD_PART_NAME in scrape_item.url.parts:
-            return await self.thread(scrape_item)
-        raise ValueError
+        await self.fetch_thread(scrape_item)
 
-    def get_thread_info(self, url: AbsoluteHttpURL) -> Thread:
-        if url.fragment.startswith("post"):
-            post_number = _digits(url.fragment)
+    async def process_thread(self, scrape_item: ScrapeItem, thread: Thread) -> None:
+        title: str = ""
+        if thread.post_id and self.scrape_single_forum_post:
+            api_url = self.VBULLETIN_API_ENDPOINT.with_query({self.VBULLETIN_POST_QUERY_PARAM: str(thread.post_id)})
         else:
-            post_number = _digits_or_none(url.query.get(self.POST_QUERY_PARAM))
-
-        name_index = url.parts.index(self.THREAD_PART_NAME) + 1
-        id_, name = url.parts[name_index].split("-", 1)
-        thread_url = get_thread_canonical_url(url, name_index)
-        page_number = _digits_or_none(next((p for p in url.parts if p.startswith("page")), None))
-        query = {self.POST_QUERY_PARAM: str(post_number)} if post_number else None
-        return Thread(name, int(id_), page_number, post_number, thread_url, url.with_query(query))
-
-    @error_handling_wrapper
-    async def thread(self, scrape_item: ScrapeItem) -> None:
-        thread = self.get_thread_info(scrape_item.url)
-        if thread.url in self.scraped_threads:
-            return
-
-        scrape_item.url = thread.full_url
-        scrape_item.parent_threads.add(thread.url)
-        self.scraped_threads.add(thread.url)
-        if thread.post and self.manager.config_manager.settings_data.download_options.scrape_single_forum_post:
-            api_url = self.API_ENDPOINT.with_query({self.POST_QUERY_PARAM: str(thread.post)})
-        else:
-            api_url = self.API_ENDPOINT.with_query({self.THREAD_QUERY_PARAM: str(thread.id)})
+            api_url = self.VBULLETIN_API_ENDPOINT.with_query({self.VBULLETIN_THREAD_QUERY_PARAM: str(thread.id)})
 
         root_xml = await self.get_xml(api_url)
         if thread_element := root_xml.find("thread"):
@@ -135,19 +93,19 @@ class vBulletinCrawler(Crawler, is_abc=True):  # noqa: N801
 
         await self.process_posts(scrape_item, thread, root_xml)
 
-    async def process_posts(
-        self, scrape_item: ScrapeItem, thread: Thread, root_xml: ElementTree.ElementTree[str]
-    ) -> None:
+    async def process_posts(self, scrape_item: ScrapeItem, thread: Thread, root_xml: ElementTree.Element[str]) -> None:
         posts = root_xml.iter("post")
         if thread.page:
-            posts = itertools.islice(posts, (thread.page - 1) * self.N_POSTS_PER_PAGE)
+            posts = itertools.islice(posts, (thread.page - 1) * N_POSTS_PER_PAGE)
 
-        last_post_id = thread.post
+        last_post_id = thread.post_id
         for element in posts:
             post = Post.new(element)
-            if thread.post and thread.post > post.id:
+            if thread.post_id and thread.post_id > post.id:
                 continue
-            new_scrape_item = scrape_item.create_child(thread.url.update_query({self.POST_QUERY_PARAM: str(post.id)}))
+            new_scrape_item = scrape_item.create_child(
+                thread.url.update_query({self.VBULLETIN_POST_QUERY_PARAM: str(post.id)})
+            )
             await self.post(new_scrape_item, post)
             last_post_id = post.id
             try:
@@ -155,20 +113,15 @@ class vBulletinCrawler(Crawler, is_abc=True):  # noqa: N801
             except MaxChildrenError:
                 break
 
-        await self.write_last_forum_post(thread.url, last_post_id)
-
-    async def write_last_forum_post(self, thread: Thread, last_post_id: int | None) -> None:
-        if not last_post_id or last_post_id == thread.post:
-            return
-        last_post_url = thread.url.update_query({self.POST_QUERY_PARAM: str(last_post_id)})
-        await self.manager.log_manager.write_last_post_log(last_post_url)
+        if last_post_id:
+            last_post_url = thread.url.update_query({self.VBULLETIN_POST_QUERY_PARAM: str(last_post_id)})
+            await self.write_last_forum_post(thread.url, last_post_url)
 
     async def post(self, scrape_item: ScrapeItem, post: Post) -> None:
-        scrape_item.setup_as_post("")
-        post_title = self.create_separate_post_title(post.title, str(post.id), None)
-        scrape_item.add_to_parent_title(post_title)
-        for image_url in post.images:
-            new_scrap_item = scrape_item.create_child(image_url)
+        title = self.create_separate_post_title(post.title, str(post.id), None)
+        scrape_item.setup_as_post(title)
+        for image in post.images:
+            new_scrap_item = scrape_item.create_child(self.parse_url(image))
             self.handle_external_links(new_scrap_item)
             scrape_item.add_children()
 
@@ -179,18 +132,5 @@ class vBulletinCrawler(Crawler, is_abc=True):  # noqa: N801
         if error := root_xml.find("error"):
             details = error.attrib["details"]
             error_code = 403 if error.attrib["type"] == "permissions" and "unknown" not in details.casefold() else 422
-            raise ScrapeError(error_code, msg=details)
-
-
-def get_thread_canonical_url(url: AbsoluteHttpURL, thread_name_index: int) -> AbsoluteHttpURL:
-    thread_parts = url.parts[1 : thread_name_index + 1]
-    return url.with_path("/".join(thread_parts))
-
-
-def _digits(string: str) -> int:
-    return int(re.sub(r"\D", "", string).strip())
-
-
-def _digits_or_none(string: str | None) -> int | None:
-    if string and (value := _digits(string)) is not None:
-        return value
+            raise ScrapeError(error_code, message=details)
+        return root_xml
