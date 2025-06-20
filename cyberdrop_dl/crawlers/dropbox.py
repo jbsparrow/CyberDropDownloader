@@ -9,8 +9,6 @@ from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 ZIP_REFERENCE = (
@@ -55,13 +53,13 @@ class DropboxCrawler(Crawler):
                     url = url.with_query(preview=preview_filename)
                 folder_or_file = DropboxItem(None, rlkey, preview_filename, url)
                 return await self.folder_or_file(scrape_item, folder_or_file)
-            case ["scl", "fi", file_id, *file_name]:
+            case ["scl", "fi", file_id, *file_name_part]:
                 url = PRIMARY_URL / "scl/fi" / file_id
                 if preview_filename:
                     file_name = preview_filename
+                elif file_name_part:
+                    file_name = file_name_part[0]
                 else:
-                    file_name = file_name[0] if file_name else None
-                if not file_name:
                     raise ValueError
                 file = DropboxItem(file_id, rlkey, file_name, url)
                 return await self.folder_or_file(scrape_item, file)
@@ -125,8 +123,3 @@ class DropboxItem:
     @property
     def view_url(self) -> AbsoluteHttpURL:
         return self.url.with_query(rlkey=self.rlkey, e=1, dl=0)
-
-
-def is_html(headers: Mapping[str, str]) -> bool:
-    content_type: str = headers.get("Content-Type", "").lower()
-    return any(s in content_type for s in ("html", "text"))
