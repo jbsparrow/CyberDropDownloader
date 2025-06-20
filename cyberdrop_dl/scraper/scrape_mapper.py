@@ -81,6 +81,8 @@ class ScrapeMapper:
         self.manager.scrape_mapper = self
         self.manager.client_manager.load_cookie_files()
         await self.manager.client_manager.scraper_session.__aenter__()
+        self.manager.task_group = asyncio.TaskGroup()
+        await self.manager.task_group.__aenter__()
         return self
 
     async def __aexit__(
@@ -89,9 +91,10 @@ class ScrapeMapper:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
+        await self.manager.task_group.__aexit__(exc_type, exc_val, exc_tb)
         await self.manager.client_manager.scraper_session.__aexit__(exc_type, exc_val, exc_tb)
 
-    async def start(self) -> None:
+    async def run(self) -> None:
         """Starts the orchestra."""
         self.start_scrapers()
         await self.manager.db_manager.history_table.update_previously_unsupported(self.existing_crawlers)

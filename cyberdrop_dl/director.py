@@ -151,9 +151,8 @@ async def _runtime(manager: Manager) -> None:
 
     manager.states.RUNNING.set()
     with manager.live_manager.get_main_live(stop=True):
-        async with ScrapeMapper(manager) as scrape_mapper, textual_ui(manager), asyncio.TaskGroup() as task_group:
-            manager.task_group = task_group
-            await scrape_mapper.start()
+        async with ScrapeMapper(manager) as scrape_mapper, textual_ui(manager):
+            await scrape_mapper.run()
 
 
 async def _post_runtime(manager: Manager) -> None:
