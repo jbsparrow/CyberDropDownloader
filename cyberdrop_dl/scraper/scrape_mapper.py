@@ -5,7 +5,7 @@ import re
 from dataclasses import Field
 from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import aiofiles
 import arrow
@@ -24,6 +24,7 @@ from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
+    from types import TracebackType
 
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.managers.manager import Manager
@@ -76,11 +77,22 @@ class ScrapeMapper:
             self.existing_crawlers["real-debrid"] = real = RealDebridCrawler(self.manager)
             await real.startup()
 
-    async def start(self) -> None:
-        """Starts the orchestra."""
+    async def __aenter__(self) -> Self:
         self.manager.scrape_mapper = self
         self.manager.client_manager.load_cookie_files()
-        self.manager.client_manager.scraper_session.startup()
+        await self.manager.client_manager.scraper_session.__aenter__()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        await self.manager.client_manager.scraper_session.__aexit__(exc_type, exc_val, exc_tb)
+
+    async def start(self) -> None:
+        """Starts the orchestra."""
         self.start_scrapers()
         await self.manager.db_manager.history_table.update_previously_unsupported(self.existing_crawlers)
         self.start_jdownloader()

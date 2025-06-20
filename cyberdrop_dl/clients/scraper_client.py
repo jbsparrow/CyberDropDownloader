@@ -10,7 +10,7 @@ from functools import wraps
 from json import dumps as json_dumps
 from json import loads as json_loads
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, Self, TypeVar
 
 import aiohttp
 from aiohttp_client_cache.response import AnyResponse
@@ -19,13 +19,13 @@ from bs4 import BeautifulSoup
 
 import cyberdrop_dl.constants as constants
 from cyberdrop_dl import env
-from cyberdrop_dl.constants import NOT_DEFINED
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.logger import log_debug
-from cyberdrop_dl.utils.utilities import close_if_defined, get_soup_no_error, sanitize_filename
+from cyberdrop_dl.utils.utilities import get_soup_no_error, sanitize_filename
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
+    from types import TracebackType
 
     from curl_cffi.requests.impersonate import BrowserTypeLiteral as BrowserTarget
     from curl_cffi.requests.models import Response as CurlResponse
@@ -108,8 +108,8 @@ class ScraperClient:
         # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
         min_html_file_path_len = len(str(self._pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
         self._max_html_stem_len = 245 - min_html_file_path_len
-        self._session: CachedSession = NOT_DEFINED
-        self._curl_session: AsyncSession = NOT_DEFINED
+        self._session: CachedSession
+        self._curl_session: AsyncSession
 
     def new_session(self) -> CachedSession:
         return CachedSession(
@@ -121,7 +121,7 @@ class ScraperClient:
             cache=self.client_manager.manager.cache_manager.request_cache,
         )
 
-    def startup(self) -> None:
+    def _startup(self) -> None:
         add_request_log_hooks(self._trace_configs)
         self._session = self.new_session()
         self.reddit_session = self.new_session()
@@ -138,9 +138,24 @@ class ScraperClient:
             cookies={c.key: c.value for c in self.client_manager.cookies},
         )
 
-    async def close(self) -> None:
-        await close_if_defined(self._session)
-        await close_if_defined(self._curl_session)
+    async def __aenter__(self) -> Self:
+        self._startup()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        await self._session.close()
+        await self.reddit_session.close()
+        if curl_import_error is not None:
+            return
+        try:
+            await self._curl_session.close()
+        except Exception:
+            pass
 
     def is_ddos(self, soup: BeautifulSoup) -> bool:
         return self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
