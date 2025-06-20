@@ -16,7 +16,7 @@ ZIP_REFERENCE = (
     "(https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#download-dropbox-folders-as-zip)"
 )
 
-PRIMARY_URL = AbsoluteHttpURL("https://dropbox.com/")
+PRIMARY_URL = AbsoluteHttpURL("https://www.dropbox.com/")
 
 
 class DropboxCrawler(Crawler):
