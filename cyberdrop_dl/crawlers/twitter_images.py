@@ -28,6 +28,10 @@ class TwimgCrawler(Crawler):
     async def photo(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
         # https://developer.x.com/en/docs/x-api/v1/data-dictionary/object-model/entities#photo_format
         link = url or scrape_item.url
+        if "emoji" in link.parts:
+            return
+        # name could be "orig", "large", "medium", "small"
+        # `orig`` is original quality but it's not always available
         link = link.with_host(CDN_HOST).with_query(format="jpg", name="large")
         filename = Path(link.name).with_suffix(".jpg").as_posix()
         filename, ext = self.get_filename_and_ext(filename)
