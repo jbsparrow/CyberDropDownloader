@@ -201,10 +201,10 @@ class RedditCrawler(Crawler):
 
 
 @contextmanager
-def asyncpraw_error_handle() -> Generator:
+def asyncpraw_error_handle() -> Generator[None]:
     try:
         yield
-    except asyncprawcore.exceptions.Forbidden:
-        raise ScrapeError(403) from None
-    except asyncprawcore.exceptions.NotFound:
-        raise ScrapeError(404) from None
+    except asyncprawcore.exceptions.ResponseException as e:
+        raise ScrapeError(e.response.status, message=str(e)) from None
+    except asyncprawcore.exceptions.AsyncPrawcoreException as e:
+        raise ScrapeError(422, message=str(e)) from None
