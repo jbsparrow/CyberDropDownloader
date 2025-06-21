@@ -50,7 +50,7 @@ class PostStream(BaseModel):
 
     @property
     def posts(self) -> Iterable[AvailablePost]:
-        for post in self.posts:
+        for post in self.all_posts:
             if isinstance(post, AvailablePost):
                 yield post
 
@@ -70,4 +70,4 @@ class Topic(PostStream):
 
     @property
     def path(self) -> str:
-        return f"/t/{self.slug}/{self.id}"
+        return f"t/{self.slug}/{self.id}"

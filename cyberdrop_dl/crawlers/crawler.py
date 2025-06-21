@@ -4,12 +4,13 @@ import asyncio
 import datetime
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
 
+import yarl
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
@@ -656,13 +657,16 @@ class Site(NamedTuple):
 _CrawlerT = TypeVar("_CrawlerT", bound=Crawler)
 
 
-def create_crawlers(urls: list[str], base_crawler: type[_CrawlerT]) -> set[type[_CrawlerT]]:
+def create_crawlers(urls: Iterable[str] | Iterable[yarl.URL], base_crawler: type[_CrawlerT]) -> set[type[_CrawlerT]]:
     """Creates new subclasses of the base crawler from the urls"""
     return {_create_subclass(url, base_crawler) for url in urls}
 
 
-def _create_subclass(url_string: str, base_class: type[_CrawlerT]) -> type[_CrawlerT]:
-    primary_url = remove_trailing_slash(AbsoluteHttpURL(url_string))
+def _create_subclass(url: yarl.URL | str, base_class: type[_CrawlerT]) -> type[_CrawlerT]:
+    if isinstance(url, str):
+        url = AbsoluteHttpURL(url)
+    assert is_absolute_http_url(url)
+    primary_url = remove_trailing_slash(url)
     domain = primary_url.host.removeprefix("www.")
     class_name = _make_crawler_name(domain)
     class_attributes = Site(primary_url, domain)._asdict()

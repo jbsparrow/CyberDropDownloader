@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, TypeVar
 
 import yarl
 from pydantic import (
@@ -22,11 +22,13 @@ from cyberdrop_dl.models.validators import (
     to_yarl_url_w_pydantyc_validation,
 )
 
+T = TypeVar("T")
 # ~~~~~ Strings ~~~~~~~
 StrSerializer = PlainSerializer(str, return_type=str, when_used="json-unless-none")
 NonEmptyStr = Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
 NonEmptyStrOrNone = Annotated[NonEmptyStr | None, BeforeValidator(falsy_as_none)]
 ListNonEmptyStr = Annotated[list[NonEmptyStr], BeforeValidator(falsy_as_list)]
+
 
 # ~~~~~ Paths ~~~~~~~
 PathOrNone = Annotated[Path | None, BeforeValidator(falsy_as_none)]
@@ -41,3 +43,4 @@ HttpURL = Annotated[yarl.URL, PlainValidator(to_yarl_url_w_pydantyc_validation),
 # ~~~~~ Others ~~~~~~~
 ByteSizeSerilized = Annotated[ByteSize, PlainSerializer(bytesize_to_str, return_type=str)]
 ListNonNegativeInt = Annotated[list[NonNegativeInt], BeforeValidator(falsy_as_list)]
+ListPydanticURL = Annotated[list[HttpURL], BeforeValidator(falsy_as_list)]

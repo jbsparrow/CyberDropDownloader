@@ -3,21 +3,34 @@ from __future__ import annotations
 import re
 from datetime import timedelta
 from functools import singledispatch
-from typing import TYPE_CHECKING, Any, SupportsIndex, SupportsInt, TypeAlias, TypedDict
+from typing import (
+    TYPE_CHECKING,
+    Concatenate,
+    ParamSpec,
+    SupportsIndex,
+    SupportsInt,
+    TypeAlias,
+    TypedDict,
+    TypeVar,
+    overload,
+)
 
+import yarl
 from pydantic import AnyUrl, ByteSize, HttpUrl, TypeAdapter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    import yarl
-
 
 _DATE_PATTERN_REGEX = r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)"
 _DATE_PATTERN = re.compile(_DATE_PATTERN_REGEX, re.IGNORECASE)
 _BYTE_SIZE_ADAPTER = TypeAdapter(ByteSize)
 _ConvertibleToInt: TypeAlias = str | SupportsInt | SupportsIndex
+P = ParamSpec("P")
+T = TypeVar("T")
+R = TypeVar("R")
+T2 = TypeVar("T2")
 
 
 def bytesize_to_str(value: _ConvertibleToInt) -> str:
@@ -36,6 +49,8 @@ def to_yarl_url(value: AnyUrl | str, *args, **kwargs) -> yarl.URL:
 
 
 def to_yarl_url_w_pydantyc_validation(value: str) -> yarl.URL:
+    if isinstance(value, yarl.URL):
+        value = str(value)
     url = HttpUrl(value)
     return to_yarl_url(url)
 
@@ -82,7 +97,7 @@ def str_to_timedelta(input_date: str) -> timedelta:
     return timedelta(**time_dict)
 
 
-def to_timedelta(input_date: timedelta | str | int) -> timedelta:
+def to_timedelta(input_date: timedelta | str | int) -> timedelta | str:
     """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
 
     For `str`, the expected format is `<value> <unit>`, ex: `5 days`, `10 minutes`, `1 year`
@@ -95,51 +110,59 @@ def to_timedelta(input_date: timedelta | str | int) -> timedelta:
     return falsy_as(input_date, timedelta(0), _parse_as_timedelta)
 
 
-@singledispatch
-def _parse_as_timedelta(input_date: timedelta) -> timedelta | str:
-    return input_date
-
-
-@_parse_as_timedelta.register
-def _(input_date: int) -> timedelta:
-    return timedelta(days=input_date)
-
-
-@_parse_as_timedelta.register
-def _(input_date: str, raise_error: bool = False) -> timedelta | str:
+def _parse_as_timedelta(input_date: timedelta | int | str) -> timedelta | str:
+    if isinstance(input_date, timedelta):
+        return input_date
+    if isinstance(input_date, int):
+        return timedelta(days=input_date)
     try:
         return str_to_timedelta(input_date)
     except ValueError:
-        if raise_error:
-            raise
-    return input_date
+        return input_date  # Let pydantic try to validate this
 
 
-def falsy_as(value: Any, falsy_value: Any, func: Callable | None = None, *args, **kwargs) -> Any:
+@overload
+def falsy_as(value: T, falsy_value: T2, func: None = None) -> T | T2: ...
+
+
+@overload
+def falsy_as(
+    value: T, falsy_value: T2, func: Callable[Concatenate[T, P], R], *args: P.args, **kwargs: P.kwargs
+) -> T2 | R: ...
+
+
+def falsy_as(
+    value: T,
+    falsy_value: T2,
+    func: Callable[Concatenate[T, P], R] | None = None,
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> T | T2 | R:
     """If `value` is falsy, returns `falsy_value`
 
     If `value` is NOT falsy AND `func` is provided, returns `func(value, *args, **kwargs)`
 
     Returns `value` otherwise
     """
-    if isinstance(value, str) and value.casefold() in ("none", "null"):
-        value = None
-    if not value:
+    value_ = value
+    if isinstance(value_, str) and value_.casefold() in ("none", "null"):
+        value_ = None
+    if not value_:
         return falsy_value
     if not func:
-        return value
-    return func(value, *args, **kwargs)
+        return value_
+    return func(value_, *args, **kwargs)
 
 
-def falsy_as_list(value: Any) -> Any:
+def falsy_as_list(value: list[T]) -> list[T]:
     return falsy_as(value, [])
 
 
-def falsy_as_none(value: Any) -> Any:
+def falsy_as_none(value: T) -> T | None:
     return falsy_as(value, None)
 
 
-def falsy_as_dict(value: Any) -> Any:
+def falsy_as_dict(value: dict[str, T]) -> dict[str, T]:
     return falsy_as(value, {})
 
 

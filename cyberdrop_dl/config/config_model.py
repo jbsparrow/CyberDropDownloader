@@ -92,7 +92,8 @@ class Logs(PathAliasModel):
     @field_validator("logs_expire_after", mode="before")
     @staticmethod
     def parse_logs_duration(input_date: timedelta | str | int | None) -> timedelta | str | None:
-        return falsy_as(input_date, None, to_timedelta)
+        if value := falsy_as(input_date, None):
+            return to_timedelta(value)
 
     def _set_output_filenames(self, now: datetime) -> None:
         self.log_folder.mkdir(exist_ok=True, parents=True)
@@ -136,13 +137,7 @@ class MediaDurationLimits(BaseModel):
 
     @field_validator("*", mode="before")
     @staticmethod
-    def parse_runtime_duration(input_date: timedelta | str | int | None) -> timedelta:
-        """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
-        for `str`, the expected format is `value unit`, ex: `5 days`, `10 minutes`, `1 year`
-        valid units:
-            year(s), week(s), day(s), hour(s), minute(s), second(s), millisecond(s), microsecond(s)
-        for `int`, value is assumed as `days`
-        """
+    def parse_runtime_duration(input_date: timedelta | str | int | None) -> timedelta | str:
         if input_date is None:
             return timedelta(seconds=0)
         return to_timedelta(input_date)
