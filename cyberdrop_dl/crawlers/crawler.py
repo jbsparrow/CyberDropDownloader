@@ -20,7 +20,7 @@ from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
-from cyberdrop_dl.utils.dates import TimeStamp, parse_date, to_timestamp
+from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media, RenditionGroup
 from cyberdrop_dl.utils.utilities import (
@@ -535,11 +535,11 @@ class Crawler(ABC):
             elif format:
                 parsed_date = datetime.datetime.strptime(date_or_datetime, format)
             else:
-                parsed_date = parse_date(date_or_datetime)
-        except (ValueError, TypeError) as e:
+                parsed_date = parse_human_date(date_or_datetime)
+        except Exception as e:
             msg = f"{msg}: {e}"
 
-        else:
+        if parsed_date:
             return parsed_date
 
         log(msg, 30)
