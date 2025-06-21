@@ -67,7 +67,7 @@ class RedditCrawler(Crawler):
         if not self.logged_in:
             return
 
-        self._session = self.manager.client_manager.scraper_session._session
+        self._session = self.manager.client_manager.scraper_session.reddit_session
         self._reddit = Reddit(
             client_id=self.reddit_personal_use_script,
             client_secret=self.reddit_secret,
@@ -201,10 +201,10 @@ class RedditCrawler(Crawler):
 
 
 @contextmanager
-def asyncpraw_error_handle() -> Generator:
+def asyncpraw_error_handle() -> Generator[None]:
     try:
         yield
-    except asyncprawcore.exceptions.Forbidden:
-        raise ScrapeError(403) from None
-    except asyncprawcore.exceptions.NotFound:
-        raise ScrapeError(404) from None
+    except asyncprawcore.exceptions.ResponseException as e:
+        raise ScrapeError(e.response.status, message=str(e)) from None
+    except asyncprawcore.exceptions.AsyncPrawcoreException as e:
+        raise ScrapeError(422, message=str(e)) from None
