@@ -5,7 +5,7 @@ import re
 from dataclasses import Field
 from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 import aiofiles
 import arrow
@@ -398,7 +398,7 @@ def register_crawler(
     existing_crawlers: dict[str, Crawler],
     crawler: Crawler,
     include_generics: bool = False,
-    from_user: bool = False,
+    from_user: bool | Literal["raise"] = False,
 ) -> None:
     if crawler.IS_GENERIC and include_generics:
         keys = (crawler.GENERIC_NAME,)
@@ -416,6 +416,8 @@ def register_crawler(
                     f"URL conflicts with URL format of builtin crawler {other.NAME}. "
                     "URL will be ignored"
                 )
+                if from_user == "raise":
+                    raise ValueError(msg)
                 log(msg, 40)
                 continue
             else:
