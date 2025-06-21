@@ -132,13 +132,12 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
     def extract_links(self, post: AvailablePost) -> Iterable[AbsoluteHttpURL]:
         def iter_links() -> Iterable[AbsoluteHttpURL]:
             soup = BeautifulSoup(post.content_html, "html.parser")
-            images = (css.get_attr_or_none(image, "srcset") for image in css.iselect(soup, "image"))
-            links = (css.get_attr_or_none(link, "href") for link in css.iselect(soup, ":any-link"))
+            images = css.iget(soup, *css.images)
+            links = css.iget(soup, *css.links)
             external_links = (ref.url for ref in post.link_counts)
             for link_str in unique(itertools.chain(external_links, images, links)):
                 try:
-                    if link_str:
-                        yield self.parse_url(link_str)
+                    yield self.parse_url(link_str)
                 except Exception:
                     continue
 

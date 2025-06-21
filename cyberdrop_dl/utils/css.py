@@ -119,3 +119,4 @@ def iget(tag: Tag, selector: str, attribute: str) -> Iterable[str]:
 
 iframes = CssAttributeSelector("iframe", "src")
 images = CssAttributeSelector("img", "srcset")
+links = CssAttributeSelector(":any-link", "href")
