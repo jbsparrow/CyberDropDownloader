@@ -3,7 +3,18 @@ from __future__ import annotations
 import re
 from datetime import timedelta
 from functools import singledispatch
-from typing import TYPE_CHECKING, Any, SupportsIndex, SupportsInt, TypeAlias, TypedDict
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Concatenate,
+    ParamSpec,
+    SupportsIndex,
+    SupportsInt,
+    TypeAlias,
+    TypedDict,
+    TypeVar,
+    overload,
+)
 
 from pydantic import AnyUrl, ByteSize, HttpUrl, TypeAdapter
 
@@ -18,6 +29,9 @@ _DATE_PATTERN_REGEX = r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|da
 _DATE_PATTERN = re.compile(_DATE_PATTERN_REGEX, re.IGNORECASE)
 _BYTE_SIZE_ADAPTER = TypeAdapter(ByteSize)
 _ConvertibleToInt: TypeAlias = str | SupportsInt | SupportsIndex
+P = ParamSpec("P")
+T = TypeVar("T")
+R = TypeVar("R")
 
 
 def bytesize_to_str(value: _ConvertibleToInt) -> str:
@@ -115,20 +129,37 @@ def _(input_date: str, raise_error: bool = False) -> timedelta | str:
     return input_date
 
 
-def falsy_as(value: Any, falsy_value: Any, func: Callable | None = None, *args, **kwargs) -> Any:
+@overload
+def falsy_as(value: T, falsy_value: T | None, func: None = None) -> T | None: ...
+
+
+@overload
+def falsy_as(
+    value: T, falsy_value: T | None, func: Callable[Concatenate[T, P], R], *args: P.args, **kwargs: P.kwargs
+) -> R | None: ...
+
+
+def falsy_as(
+    value: T,
+    falsy_value: T | None,
+    func: Callable[Concatenate[T, P], R] | None = None,
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> T | R | None:
     """If `value` is falsy, returns `falsy_value`
 
     If `value` is NOT falsy AND `func` is provided, returns `func(value, *args, **kwargs)`
 
     Returns `value` otherwise
     """
-    if isinstance(value, str) and value.casefold() in ("none", "null"):
-        value = None
-    if not value:
+    value_ = value
+    if isinstance(value_, str) and value_.casefold() in ("none", "null"):
+        value_ = None
+    if not value_:
         return falsy_value
     if not func:
-        return value
-    return func(value, *args, **kwargs)
+        return value_
+    return func(value_, *args, **kwargs)
 
 
 def falsy_as_list(value: Any) -> Any:

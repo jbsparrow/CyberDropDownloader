@@ -5,7 +5,7 @@ from pydantic import BaseModel, ByteSize, NonNegativeFloat, PositiveInt, field_s
 from yarl import URL
 
 from cyberdrop_dl.config._common import ConfigModel, Field
-from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, NonEmptyStr
+from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, ListHttpURL, ListNonEmptyStr, NonEmptyStr
 from cyberdrop_dl.models.validators import falsy_as, to_bytesize, to_timedelta
 
 MIN_REQUIRED_FREE_SPACE = to_bytesize("512MB")
@@ -14,7 +14,7 @@ DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
 
 class General(BaseModel):
     allow_insecure_connections: bool = False
-    disable_crawlers: list[NonEmptyStr] = []
+    disable_crawlers: ListNonEmptyStr = []
     enable_generic_crawler: bool = True
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
@@ -23,11 +23,6 @@ class General(BaseModel):
     required_free_space: ByteSizeSerilized = DEFAULT_REQUIRED_FREE_SPACE
     user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
     pause_on_insufficient_space: bool = False
-
-    @field_validator("disable_crawlers", mode="before")
-    @classmethod
-    def as_list(cls, value: str | list[str]) -> list[str]:
-        return falsy_as(value, [])
 
     @field_validator("disable_crawlers", mode="after")
     @classmethod
@@ -84,7 +79,14 @@ class UIOptions(BaseModel):
     vi_mode: bool = False
 
 
+class GenericCrawlerInstances(BaseModel):
+    wordpress_media: ListHttpURL = []
+    wordpress_html: ListHttpURL = []
+    discourse: ListHttpURL = []
+
+
 class GlobalSettings(ConfigModel):
     general: General = Field(General(), "General")
     rate_limiting_options: RateLimiting = Field(RateLimiting(), "Rate_Limiting_Options")
     ui_options: UIOptions = Field(UIOptions(), "UI_Options")
+    generic_crawlers_instances: GenericCrawlerInstances = GenericCrawlerInstances()

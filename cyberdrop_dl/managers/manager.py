@@ -192,17 +192,14 @@ class Manager:
             self.progress_manager.startup()
 
     def process_additive_args(self) -> None:
-        cli_global_options = self.parsed_args.global_settings
+        cli_general_options = self.parsed_args.global_settings.general
         cli_ignore_options = self.parsed_args.config_settings.ignore_options
-        config_skip_hosts = self.config_manager.settings_data.ignore_options.skip_hosts
-        config_only_hosts = self.config_manager.settings_data.ignore_options.only_hosts
-        config_disable_crawlers = self.config_manager.global_settings_data.general.disable_crawlers
+        config_ignore_options = self.config_manager.settings_data.ignore_options
+        config_general_options = self.config_manager.global_settings_data.general
 
-        cli_ignore_options.skip_hosts = add_or_remove_lists(config_skip_hosts, cli_ignore_options.skip_hosts)
-        cli_ignore_options.only_hosts = add_or_remove_lists(config_only_hosts, cli_ignore_options.only_hosts)
-        cli_global_options.general.disable_crawlers = add_or_remove_lists(
-            config_disable_crawlers, cli_global_options.general.disable_crawlers
-        )
+        add_or_remove_lists(cli_ignore_options.skip_hosts, config_ignore_options.skip_hosts)
+        add_or_remove_lists(cli_ignore_options.only_hosts, config_ignore_options.only_hosts)
+        add_or_remove_lists(cli_general_options.disable_crawlers, config_general_options.disable_crawlers)
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
@@ -280,23 +277,17 @@ class Manager:
         constants.DISABLE_CACHE = self.parsed_args.cli_only_args.disable_cache
 
 
-def add_or_remove_lists(old_list: list[str], new_list: list[str]) -> list[str]:
+def add_or_remove_lists(cli_values: list[str], config_values: list[str]) -> None:
     exclude = {"+", "-"}
-
-    def add(config_list: list[str], cli_list: list[str]) -> list[str]:
-        new_list_as_set = set(config_list + cli_list)
-        return sorted(new_list_as_set - exclude)
-
-    def remove(config_list: list[str], cli_list: list[str]) -> list[str]:
-        new_list_as_set = set(config_list) - set(cli_list)
-        return sorted(new_list_as_set - exclude)
-
-    if new_list:
-        if new_list[0] == "+":
-            return add(old_list, new_list)
-        if new_list[0] == "-":
-            return remove(old_list, new_list)
-    return new_list
+    if cli_values:
+        if cli_values[0] == "+":
+            new_values_set = set(config_values + cli_values)
+            cli_values.clear()
+            cli_values.extend(sorted(new_values_set - exclude))
+        if cli_values[0] == "-":
+            new_values_set = set(config_values) - set(cli_values)
+            cli_values.clear()
+            cli_values.extend(sorted(new_values_set - exclude))
 
 
 def merge_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, Any]:
