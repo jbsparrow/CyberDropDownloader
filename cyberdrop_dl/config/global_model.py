@@ -5,7 +5,7 @@ from pydantic import BaseModel, ByteSize, NonNegativeFloat, PositiveInt, field_s
 from yarl import URL
 
 from cyberdrop_dl.config._common import ConfigModel, Field
-from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, ListHttpURL, ListNonEmptyStr, NonEmptyStr
+from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, ListNonEmptyStr, ListPydanticURL, NonEmptyStr
 from cyberdrop_dl.models.validators import falsy_as, to_bytesize, to_timedelta
 
 MIN_REQUIRED_FREE_SPACE = to_bytesize("512MB")
@@ -80,9 +80,9 @@ class UIOptions(BaseModel):
 
 
 class GenericCrawlerInstances(BaseModel):
-    wordpress_media: ListHttpURL = []
-    wordpress_html: ListHttpURL = []
-    discourse: ListHttpURL = []
+    wordpress_media: ListPydanticURL = []
+    wordpress_html: ListPydanticURL = []
+    discourse: ListPydanticURL = []
 
 
 class GlobalSettings(ConfigModel):

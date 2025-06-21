@@ -15,13 +15,12 @@ from typing import (
     overload,
 )
 
+import yarl
 from pydantic import AnyUrl, ByteSize, HttpUrl, TypeAdapter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
-
-    import yarl
 
 
 _DATE_PATTERN_REGEX = r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)"
@@ -50,6 +49,8 @@ def to_yarl_url(value: AnyUrl | str, *args, **kwargs) -> yarl.URL:
 
 
 def to_yarl_url_w_pydantyc_validation(value: str) -> yarl.URL:
+    if isinstance(value, yarl.URL):
+        value = str(value)
     url = HttpUrl(value)
     return to_yarl_url(url)
 

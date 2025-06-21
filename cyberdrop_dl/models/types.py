@@ -43,4 +43,4 @@ HttpURL = Annotated[yarl.URL, PlainValidator(to_yarl_url_w_pydantyc_validation),
 # ~~~~~ Others ~~~~~~~
 ByteSizeSerilized = Annotated[ByteSize, PlainSerializer(bytesize_to_str, return_type=str)]
 ListNonNegativeInt = Annotated[list[NonNegativeInt], BeforeValidator(falsy_as_list)]
-ListHttpURL = Annotated[list[HttpURL], BeforeValidator(falsy_as_list)]
+ListPydanticURL = Annotated[list[HttpURL], BeforeValidator(falsy_as_list)]
