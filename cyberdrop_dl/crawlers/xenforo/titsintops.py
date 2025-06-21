@@ -27,11 +27,11 @@ class TitsInTopsCrawler(XenforoCrawler):
     def pre_filter_link(self, link: str) -> str:
         return link.replace("index.php?", "index.php/").replace("index.php%3F", "index.php/")
 
-    def is_not_image_or_attachment(self, link_obj: Tag) -> bool:
+    def is_image_or_attachment(self, link_obj: Tag) -> bool:
         text = css.get_text(link_obj)
         if "view attachment" in text.lower():
-            return False
+            return True
         title = css.get_attr_no_error(link_obj, "title")
         if title and "permanent link" in title.lower():
-            return False
-        return super().is_not_image_or_attachment(link_obj)
+            return True
+        return super().is_image_or_attachment(link_obj)

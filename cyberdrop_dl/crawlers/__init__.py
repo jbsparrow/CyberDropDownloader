@@ -6,6 +6,7 @@ from cyberdrop_dl import env
 from .acidimg import AcidImgCrawler
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
+from .beeg import BeegComCrawler
 from .box_dot_com import BoxDotComCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
@@ -17,6 +18,7 @@ from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
 from .cyberfile import CyberfileCrawler
 from .dirtyship import DirtyShipCrawler
+from .discourse import DISCOURSE_CRAWLERS, DiscourseCrawler
 from .doodstream import DoodStreamCrawler
 from .dropbox import DropboxCrawler
 from .e621 import E621Crawler
@@ -88,9 +90,10 @@ from .tokyomotion import TokioMotionCrawler
 from .toonily import ToonilyCrawler
 from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
+from .vbulletin import ViperGirlsCrawler  # TODO: import all vBulletin crawlers as a set
 from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
-from .wordpress import WP_CRAWLERS
+from .wordpress import WP_CRAWLERS, WP_GENERIC_CRAWLERS
 from .xbunkr import XBunkrCrawler
 from .xenforo import XF_CRAWLERS, SimpCityCrawler
 from .xhamster import XhamsterCrawler
@@ -98,13 +101,17 @@ from .xxxbunker import XXXBunkerCrawler
 from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler
 
-ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
-ALL_CRAWLERS = ALL_CRAWLERS - {Crawler}
-ALL_CRAWLERS.update(XF_CRAWLERS, WP_CRAWLERS)
+FORUM_CRAWLERS = DISCOURSE_CRAWLERS.union(XF_CRAWLERS)
+GENERIC_CRAWLERS = WP_GENERIC_CRAWLERS.union({DiscourseCrawler})
+ALL_CRAWLERS: set[type[Crawler]] = {
+    crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
+}
+ALL_CRAWLERS.update(WP_CRAWLERS, GENERIC_CRAWLERS, FORUM_CRAWLERS)
 DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler, FikFapCrawler}
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
     CRAWLERS = ALL_CRAWLERS
 else:
     CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
-__all__ = ["ALL_CRAWLERS", "CRAWLERS", "DEBUG_CRAWLERS", "Crawler"]
+WEBSITE_CRAWLERS = CRAWLERS - FORUM_CRAWLERS - {GenericCrawler}
+__all__ = ["ALL_CRAWLERS", "CRAWLERS", "DEBUG_CRAWLERS", "FORUM_CRAWLERS", "Crawler"]

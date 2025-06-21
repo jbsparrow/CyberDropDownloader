@@ -63,7 +63,7 @@ from enum import IntEnum
 from functools import partial
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypeAlias, TypedDict, TypeVar, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, Self, TypeAlias, TypedDict, TypeVar, cast
 
 import aiofiles
 import aiohttp
@@ -80,6 +80,7 @@ from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator, Mapping
+    from types import TracebackType
 
     from yarl import URL
 
@@ -459,7 +460,7 @@ class MegaApi:
         self.request_id: str = "".join(random.choice(VALID_REQUEST_ID_CHARS) for _ in range(10))
         self.user_agent = manager.config_manager.global_settings_data.general.user_agent
         self.default_headers = {"Content-Type": "application/json", "User-Agent": self.user_agent}
-        self.session = ClientSession()
+        self.session: ClientSession
         self.entrypoint = f"{self.schema}://{self.api_domain}/cs"
         self.logged_in = False
         self.root_id: str = ""
@@ -467,7 +468,13 @@ class MegaApi:
         self.trashbin_id: str = ""
         self._files = {}
 
-    async def close(self):
+    async def __aenter__(self) -> Self:
+        self.session = ClientSession()
+        return self
+
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+    ) -> None:
         await self.session.close()
 
     async def request(self, data_input: list[AnyDict] | AnyDict, add_params: AnyDict | None = None) -> Any:
@@ -792,7 +799,7 @@ class MegaDownloadClient(DownloadClient):
         self.decrypt_mapping: dict[URL, DecryptData] = {}
 
     async def close(self):
-        await self.api.close()
+        await self.api.__aexit__()
 
     def _decrypt_chunks(
         self,

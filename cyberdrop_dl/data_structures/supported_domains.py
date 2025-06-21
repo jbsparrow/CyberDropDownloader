@@ -2,28 +2,26 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.crawlers import CRAWLERS, GenericCrawler
-from cyberdrop_dl.crawlers.xenforo import XenforoCrawler
+from cyberdrop_dl.crawlers import FORUM_CRAWLERS, WEBSITE_CRAWLERS
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from cyberdrop_dl.crawlers import Crawler
 
-forum_crawlers = {crawler for crawler in CRAWLERS if issubclass(crawler, XenforoCrawler)}
-website_crawlers = CRAWLERS - forum_crawlers - {GenericCrawler}
 
-
-def get_supported_sites_from(crawlers: set[type[Crawler]] | set[type[XenforoCrawler]]) -> dict[str, str]:
+def get_supported_sites_from(crawlers: Iterable[type[Crawler]]) -> dict[str, str]:
     support_sites_dict = {}
     for crawler in crawlers:
+        if crawler.IS_GENERIC:
+            continue
         site = crawler.DOMAIN or crawler.PRIMARY_URL.host
         support_sites_dict[site] = crawler.PRIMARY_URL.host
 
-    support_sites_dict = {key: support_sites_dict[key] for key in sorted(support_sites_dict)}
-
-    return support_sites_dict
+    return {key: support_sites_dict[key] for key in sorted(support_sites_dict)}
 
 
-SUPPORTED_FORUMS = get_supported_sites_from(forum_crawlers)
-SUPPORTED_WEBSITES = get_supported_sites_from(website_crawlers)
+SUPPORTED_FORUMS = get_supported_sites_from(FORUM_CRAWLERS)
+SUPPORTED_WEBSITES = get_supported_sites_from(WEBSITE_CRAWLERS)
 SUPPORTED_SITES = SUPPORTED_FORUMS | SUPPORTED_WEBSITES
 SUPPORTED_SITES_DOMAINS = sorted(SUPPORTED_SITES.values())

@@ -20,7 +20,7 @@ from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
-from cyberdrop_dl.utils.dates import TimeStamp, parse_date, to_timestamp
+from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media, RenditionGroup
 from cyberdrop_dl.utils.utilities import (
@@ -31,6 +31,7 @@ from cyberdrop_dl.utils.utilities import (
     is_blob_or_svg,
     parse_url,
     remove_file_id,
+    remove_trailing_slash,
     sanitize_filename,
     sort_dict,
     truncate_str,
@@ -90,7 +91,7 @@ def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, C
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
             if not self.SKIP_PRE_CHECK:
-                pre_check_scrape_item(scrape_item)
+                _pre_check_scrape_item(scrape_item)
             return await func(scrape_item, **kwargs)  # type: ignore
         except ValueError:
             log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
@@ -134,7 +135,9 @@ class Crawler(ABC):
 
     def __post_init__(self) -> None: ...  # noqa: B027
 
-    def __init_subclass__(cls, is_abc: bool = False, **kwargs) -> None:
+    def __init_subclass__(
+        cls, is_abc: bool = False, is_generic: bool = False, generic_name: str = "", **kwargs
+    ) -> None:
         super().__init_subclass__(**kwargs)
 
         msg = (
@@ -143,32 +146,30 @@ class Crawler(ABC):
             "use async_startup for setup that requires database access, making a request or setting cookies",
         )
         assert cls.__init__ is Crawler.__init__, msg
+        cls.NAME = cls.__name__.removesuffix("Crawler")
+        cls.IS_GENERIC = is_generic
+        cls.IS_FALLBACK_GENERIC = cls.NAME == "Generic"
+        cls.IS_REAL_DEBRID = cls.NAME == "RealDebrid"
+        cls.SUPPORTED_PATHS = sort_dict(cls.SUPPORTED_PATHS)
+
+        if cls.IS_GENERIC:
+            cls.GENERIC_NAME = generic_name or cls.NAME
+            cls.SCRAPE_MAPPER_KEYS = ()
+            cls.INFO = CrawlerInfo(cls.GENERIC_NAME, "::GENERIC CRAWLER::", (), cls.SUPPORTED_PATHS)  # type: ignore
+            return
+
         if is_abc:
             return
 
-        if cls.DOMAIN not in ("generic", "real-debrid"):
+        if not (cls.IS_FALLBACK_GENERIC or cls.IS_REAL_DEBRID):
             REQUIRED_FIELDS = "PRIMARY_URL", "DOMAIN", "SUPPORTED_PATHS"
             for field_name in REQUIRED_FIELDS:
                 assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
 
+        _validate_supported_paths(cls)
+        cls.SCRAPE_MAPPER_KEYS = _make_scrape_mapper_keys(cls)
         cls.FOLDER_DOMAIN = cls.FOLDER_DOMAIN or cls.DOMAIN.capitalize()
-        cls.NAME = cls.__name__.removesuffix("Crawler")
-        cls.SCRAPE_MAPPER_KEYS = make_scrape_mapper_keys(cls)
-        cls.SUPPORTED_PATHS = sort_dict(cls.SUPPORTED_PATHS)
         cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, cls.SCRAPE_MAPPER_KEYS, cls.SUPPORTED_PATHS)
-
-        for path_name, paths in cls.SUPPORTED_PATHS.items():
-            assert path_name, f"{cls.__name__}, Invalid path: {path_name}"
-            assert isinstance(paths, str | tuple), f"{cls.__name__}, Invalid path {path_name}: {type(paths)}"
-            if path_name != "Direct links":
-                assert paths, f"{cls.__name__} has not paths for {path_name}"
-
-            if path_name.startswith("*"):  # note
-                return
-            if isinstance(paths, str):
-                paths = (paths,)
-            for path in paths:
-                assert "`" not in path, f"{cls.__name__}, Invalid path {path_name}: {path}"
 
     @abstractmethod
     async def fetch(self, scrape_item: ScrapeItem) -> None: ...
@@ -534,11 +535,11 @@ class Crawler(ABC):
             elif format:
                 parsed_date = datetime.datetime.strptime(date_or_datetime, format)
             else:
-                parsed_date = parse_date(date_or_datetime)
-        except (ValueError, TypeError) as e:
+                parsed_date = parse_human_date(date_or_datetime)
+        except Exception as e:
             msg = f"{msg}: {e}"
 
-        else:
+        if parsed_date:
             return parsed_date
 
         log(msg, 30)
@@ -601,7 +602,7 @@ class Crawler(ABC):
             assert any(hash_string.startswith(x) for x in HASH_PREFIXES), f"Invalid: {hash_string = }"
             extra_info.append(hash_string)
 
-        filename, extra_info_had_invalid_chars = make_custom_filename(stem, ext, extra_info, only_truncate_stem)
+        filename, extra_info_had_invalid_chars = _make_custom_filename(stem, ext, extra_info, only_truncate_stem)
         if extra_info_had_invalid_chars:
             msg = (
                 f"Custom filename creation for {self.FOLDER_DOMAIN} seems to be broken. "
@@ -612,10 +613,9 @@ class Crawler(ABC):
         return filename
 
 
-def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
+def _make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
     if cls.SUPPORTED_DOMAINS:
         hosts: SupportedDomains = cls.SUPPORTED_DOMAINS
-
     else:
         hosts = cls.DOMAIN or cls.PRIMARY_URL.host
     if isinstance(hosts, str):
@@ -623,12 +623,12 @@ def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
     return tuple(sorted(host.removeprefix("www.") for host in hosts))
 
 
-def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
+def _pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
     if scrape_item.url.path == "/":
         raise ValueError
 
 
-def make_custom_filename(stem: str, ext: str, extra_info: list[str], only_truncate_stem: bool) -> tuple[str, bool]:
+def _make_custom_filename(stem: str, ext: str, extra_info: list[str], only_truncate_stem: bool) -> tuple[str, bool]:
     truncate_len = constants.MAX_NAME_LENGTHS["FILE"] - len(ext)
     invalid_extra_info_chars = False
     if extra_info:
@@ -656,12 +656,17 @@ class Site(NamedTuple):
 _CrawlerT = TypeVar("_CrawlerT", bound=Crawler)
 
 
+def create_crawlers(urls: list[str], base_crawler: type[_CrawlerT]) -> set[type[_CrawlerT]]:
+    """Creates new subclasses of the base crawler from the urls"""
+    return {_create_subclass(url, base_crawler) for url in urls}
+
+
 def _create_subclass(url_string: str, base_class: type[_CrawlerT]) -> type[_CrawlerT]:
-    primary_url = AbsoluteHttpURL(url_string)
+    primary_url = remove_trailing_slash(AbsoluteHttpURL(url_string))
     domain = primary_url.host.removeprefix("www.")
     class_name = _make_crawler_name(domain)
     class_attributes = Site(primary_url, domain)._asdict()
-    return type(class_name, (base_class,), class_attributes)  # type: ignore[reportReturnType]
+    return type(class_name, (base_class,), class_attributes)  # type: ignore
 
 
 def _make_crawler_name(input_string: str) -> str:
@@ -672,5 +677,19 @@ def _make_crawler_name(input_string: str) -> str:
     )
     if cap_name[0].isdigit():
         cap_name = "_" + cap_name
-
     return f"{cap_name}Crawler"
+
+
+def _validate_supported_paths(cls: type[Crawler]) -> None:
+    for path_name, paths in cls.SUPPORTED_PATHS.items():
+        assert path_name, f"{cls.__name__}, Invalid path: {path_name}"
+        assert isinstance(paths, str | tuple), f"{cls.__name__}, Invalid path {path_name}: {type(paths)}"
+        if path_name != "Direct links":
+            assert paths, f"{cls.__name__} has not paths for {path_name}"
+
+        if path_name.startswith("*"):  # note
+            return
+        if isinstance(paths, str):
+            paths = (paths,)
+        for path in paths:
+            assert "`" not in path, f"{cls.__name__}, Invalid path {path_name}: {path}"

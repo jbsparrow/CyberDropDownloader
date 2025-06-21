@@ -5,7 +5,7 @@ import re
 from dataclasses import Field
 from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import aiofiles
 import arrow
@@ -24,6 +24,7 @@ from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
+    from types import TracebackType
 
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.managers.manager import Manager
@@ -76,11 +77,25 @@ class ScrapeMapper:
             self.existing_crawlers["real-debrid"] = real = RealDebridCrawler(self.manager)
             await real.startup()
 
-    async def start(self) -> None:
-        """Starts the orchestra."""
+    async def __aenter__(self) -> Self:
         self.manager.scrape_mapper = self
         self.manager.client_manager.load_cookie_files()
-        self.manager.client_manager.scraper_session.startup()
+        await self.manager.client_manager.scraper_session.__aenter__()
+        self.manager.task_group = asyncio.TaskGroup()
+        await self.manager.task_group.__aenter__()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        await self.manager.task_group.__aexit__(exc_type, exc_val, exc_tb)
+        await self.manager.client_manager.scraper_session.__aexit__(exc_type, exc_val, exc_tb)
+
+    async def run(self) -> None:
+        """Starts the orchestra."""
         self.start_scrapers()
         await self.manager.db_manager.history_table.update_previously_unsupported(self.existing_crawlers)
         self.start_jdownloader()
@@ -350,7 +365,7 @@ def create_item_from_entry(entry: Sequence) -> ScrapeItem:
     return item
 
 
-def get_crawlers_mapping(manager: Manager | None = None) -> dict[str, Crawler]:
+def get_crawlers_mapping(manager: Manager | None = None, include_generics: bool = False) -> dict[str, Crawler]:
     """Retuns a mapping with an instance of all crawlers.
 
     Crawlers are only created on the first calls. Future calls always return a reference to the same crawlers
@@ -359,12 +374,17 @@ def get_crawlers_mapping(manager: Manager | None = None) -> dict[str, Crawler]:
 
     from cyberdrop_dl.managers.mock_manager import MOCK_MANAGER
 
-    manager = manager or MOCK_MANAGER
+    manager_ = manager or MOCK_MANAGER
     global existing_crawlers
     if not existing_crawlers:
         for crawler in CRAWLERS:
-            site_crawler = crawler(manager)
-            for domain in site_crawler.SCRAPE_MAPPER_KEYS:
+            site_crawler = crawler(manager_)
+            if site_crawler.IS_GENERIC and include_generics:
+                keys = (site_crawler.GENERIC_NAME,)
+            else:
+                keys = site_crawler.SCRAPE_MAPPER_KEYS
+
+            for domain in keys:
                 msg = f"{domain} from {site_crawler.NAME} already registered by {existing_crawlers.get(domain)}"
                 assert domain not in existing_crawlers, msg
                 existing_crawlers[domain] = site_crawler
@@ -372,7 +392,7 @@ def get_crawlers_mapping(manager: Manager | None = None) -> dict[str, Crawler]:
 
 
 def get_unique_crawlers() -> list[Crawler]:
-    return sorted(set(get_crawlers_mapping().values()), key=lambda x: x.FOLDER_DOMAIN)
+    return sorted(set(get_crawlers_mapping(include_generics=True).values()), key=lambda x: x.INFO.site)
 
 
 def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_to_disable: list[str]) -> None:
