@@ -97,7 +97,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
         last_post_id = None
         async for post in self.iter_posts(topic):
             new_scrape_item = scrape_item.create_child(
-                self.PRIMARY_URL / post.path,
+                self.PRIMARY_URL / post.path.removeprefix("/"),
                 possible_datetime=to_timestamp(post.created_at),
             )
             await self.post(new_scrape_item, post)
@@ -108,7 +108,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
                 break
 
         if last_post_id:
-            topic_url = self.PRIMARY_URL / topic.path
+            topic_url = self.PRIMARY_URL / topic.path.removeprefix("/")
             post_url = topic_url / str(last_post_id)
             await self.write_last_forum_post(topic_url, post_url)
 
@@ -117,7 +117,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
             remaining = topic.stream[offset : offset + _MAX_POSTS_PER_REQUEST]
             if not remaining:
                 return
-            stream = await self.make_request(PostStream, f"/t/{topic.id}/posts.json", {"post_ids[]": remaining})
+            stream = await self.make_request(PostStream, f"t/{topic.id}/posts.json", {"post_ids[]": remaining})
             for post in stream.posts:
                 yield post
                 if topic.init_post_number != 1 and self.scrape_single_forum_post:
