@@ -137,7 +137,8 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
             external_links = (ref.url for ref in post.link_counts)
             for link_str in unique(itertools.chain(external_links, images, links)):
                 try:
-                    yield self.parse_url(link_str)
+                    if link_str:
+                        yield self.parse_url(link_str)
                 except Exception:
                     continue
 
