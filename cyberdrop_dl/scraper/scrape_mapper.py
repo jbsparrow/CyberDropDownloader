@@ -225,16 +225,15 @@ class ScrapeMapper:
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
         scrape_item.url = remove_trailing_slash(scrape_item.url)
-        supported_domain = match_url_to_crawler(self.existing_crawlers, scrape_item.url)
+        crawler_match = match_url_to_crawler(self.existing_crawlers, scrape_item.url)
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
             jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)
 
-        if supported_domain:
-            crawler = self.existing_crawlers[supported_domain]
-            if not crawler.ready:
-                await crawler.startup()
-            self.manager.task_group.create_task(crawler.run(scrape_item))
+        if crawler_match:
+            if not crawler_match.ready:
+                await crawler_match.startup()
+            self.manager.task_group.create_task(crawler_match.run(scrape_item))
             return
 
         if self.manager.real_debrid_manager.enabled and self.manager.real_debrid_manager.is_supported(
@@ -409,7 +408,7 @@ def register_crawler(
         other = existing_crawlers.get(domain)
         if from_user:
             if not other and (match := match_url_to_crawler(existing_crawlers, crawler.PRIMARY_URL)):
-                other = existing_crawlers[match]
+                other = match
             if other:
                 msg = (
                     f"Unable to assign {crawler.PRIMARY_URL} to generic crawler {crawler.GENERIC_NAME}. "
@@ -473,9 +472,10 @@ def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_t
     log_spacer(10)
 
 
-def match_url_to_crawler(existing_crawlers: dict[str, Crawler], url: AbsoluteHttpURL) -> str | None:
+def match_url_to_crawler(existing_crawlers: dict[str, Crawler], url: AbsoluteHttpURL) -> Crawler | None:
     # get most restrictive domain if multiple domain matches
     try:
-        return max((key for key in existing_crawlers if key in url.host), key=len)
+        domain = max((domain for domain in existing_crawlers if domain in url.host), key=len)
+        return existing_crawlers[domain]
     except (ValueError, TypeError):
         return
