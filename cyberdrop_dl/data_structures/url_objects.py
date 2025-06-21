@@ -301,10 +301,12 @@ class ScrapeItem:
     setup_as_forum = partialmethod(setup_as, type=FORUM)
     setup_as_post = partialmethod(setup_as, type=FORUM_POST)
 
+    @property
     def origin(self) -> AbsoluteHttpURL | None:
         if self.parents:
             return self.parents[0]
 
+    @property
     def parent(self) -> AbsoluteHttpURL | None:
         if self.parents:
             return self.parents[-1]
