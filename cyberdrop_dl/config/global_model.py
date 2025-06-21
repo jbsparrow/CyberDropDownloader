@@ -35,7 +35,7 @@ class General(BaseModel):
 
     @field_validator("flaresolverr", "proxy", mode="before")
     @classmethod
-    def convert_to_str(cls, value: URL | str) -> str | None:
+    def convert_to_str(cls, value: str) -> str | None:
         return falsy_as(value, None, str)
 
     @field_validator("required_free_space", mode="after")
@@ -59,7 +59,7 @@ class RateLimiting(BaseModel):
 
     @field_validator("file_host_cache_expire_after", "forum_cache_expire_after", mode="before")
     @staticmethod
-    def parse_cache_duration(input_date: timedelta | str | int) -> timedelta:
+    def parse_cache_duration(input_date: timedelta | str | int) -> timedelta | str:
         return to_timedelta(input_date)
 
     @property
