@@ -31,9 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Missav support
 - Beeg.com support
 - efukt support
+- Vipergirls support
 - Initial HLS support (requires ffmpeg)
-- Support for any WordPress media site
-- Support for any Discourse site
+- Support for any WordPress media site. See:
+- Support for any Discourse site See:
 - Add a config option to disable specific crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
 
 ### Changed
@@ -62,6 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `KeyError` when using the `--separate-posts` option
 - Using Real Debrid no longer causes the CDL to crash
 - Image downloads (HotPic)
+- Do not try to download emojis (twitter_images)
+- Fix albums downloads (saint)
+- Handle all possible response errors (reddit)
+- Do not use reddit's `user-agent` for every site
+- Fix `unclose client session` error at the end of a run
+- Fix parsing of dropbox folders URLS
 
 ## [6.10.1] - 2025-06-15
 
