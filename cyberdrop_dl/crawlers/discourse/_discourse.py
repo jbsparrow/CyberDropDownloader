@@ -6,14 +6,14 @@
 from __future__ import annotations
 
 import itertools
-import re
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
+from bs4 import BeautifulSoup
 from pydantic import BaseModel
 
-from cyberdrop_dl.constants import HTTP_REGEX_LINKS
 from cyberdrop_dl.crawlers._forum import MessageBoardCrawler
 from cyberdrop_dl.exceptions import MaxChildrenError
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, unique
 
@@ -131,10 +131,14 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
 
     def extract_links(self, post: AvailablePost) -> Iterable[AbsoluteHttpURL]:
         def iter_links() -> Iterable[AbsoluteHttpURL]:
+            soup = BeautifulSoup(post.content_html, "html.parser")
+            images = (css.get_attr_or_none(image, "srcset") for image in css.iselect(soup, "image"))
+            links = (css.get_attr_or_none(link, "href") for link in css.iselect(soup, ":any-link"))
             external_links = (ref.url for ref in post.link_counts)
-            for link_str in unique(itertools.chain(external_links, get_links_by_regex(post.content_html))):
+            for link_str in unique(itertools.chain(external_links, images, links)):
                 try:
-                    yield self.parse_url(link_str)
+                    if link_str:
+                        yield self.parse_url(link_str)
                 except Exception:
                     continue
 
@@ -153,7 +157,3 @@ def _clean_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     return url.with_path(original_path, encoded=True, keep_fragment=True, keep_query=True).with_name(
         original_name, keep_fragment=True, keep_query=True
     )
-
-
-def get_links_by_regex(text: str) -> Iterable[str]:
-    return (match.group() for match in re.finditer(HTTP_REGEX_LINKS, text))
