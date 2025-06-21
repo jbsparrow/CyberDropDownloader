@@ -67,9 +67,7 @@ class ScrapeMapper:
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
         self.existing_crawlers = get_crawlers_mapping(self.manager)
-        fallback_generic = self.existing_crawlers.pop("generic")
-        assert isinstance(fallback_generic, GenericCrawler)
-        self.fallback_generic = fallback_generic
+        self.fallback_generic = GenericCrawler(self.manager)
 
         generic_crawlers = create_generic_crawlers_by_config(self.global_settings.generic_crawlers_instances)
         for crawler in generic_crawlers:
@@ -400,6 +398,8 @@ def register_crawler(
     include_generics: bool = False,
     from_user: bool | Literal["raise"] = False,
 ) -> None:
+    if crawler.IS_FALLBACK_GENERIC:
+        return
     if crawler.IS_GENERIC and include_generics:
         keys = (crawler.GENERIC_NAME,)
     else:

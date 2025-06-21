@@ -284,7 +284,7 @@ def add_or_remove_lists(cli_values: list[str], config_values: list[str]) -> None
             new_values_set = set(config_values + cli_values)
             cli_values.clear()
             cli_values.extend(sorted(new_values_set - exclude))
-        if cli_values[0] == "-":
+        elif cli_values[0] == "-":
             new_values_set = set(config_values) - set(cli_values)
             cli_values.clear()
             cli_values.extend(sorted(new_values_set - exclude))
