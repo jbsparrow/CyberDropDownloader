@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup, Tag
 
+from cyberdrop_dl.constants import HTTP_REGEX_LINKS
 from cyberdrop_dl.crawlers._forum import ForumCrawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
@@ -30,7 +31,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
-HTTP_URL_REGEX = re.compile(r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)")
 LINK_TRASH_MAPPING = {
     ".th.": ".",
     ".md.": ".",
@@ -154,7 +154,7 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         match scrape_item.url.parts[thread_part_index:]:
             case [thread_part, thread_name_and_id, *_] if thread_part in KNOWN_THREAD_PART_NAMES:
                 return await self.thread(scrape_item, thread_name_and_id)
-            case ["goto" | "posts", *_]:
+            case ["goto" | "posts", _, *_]:
                 return await self.follow_redirect_w_get(scrape_item)
 
         raise ValueError
@@ -260,34 +260,34 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
 
     async def _links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.links
-        links = post.content.select(selector.element)
-        links = [link for link in links if self.is_not_image_or_attachment(link)]
-        await self.process_children(scrape_item, links, selector.attribute)
+        links = css.iselect(post.content, selector.element)
+        valid_links = (link for link in links if not self.is_image_or_attachment(link))
+        await self.process_children(scrape_item, valid_links, selector.attribute)
 
     async def _images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.images
-        images = post.content.select(selector.element)
+        images = css.iselect(post.content, selector.element)
         await self.process_children(scrape_item, images, selector.attribute)
 
     async def _videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.videos
-        videos = post.content.select(selector.element)
+        videos = css.iselect(post.content, selector.element)
         await self.process_children(scrape_item, videos, selector.attribute)
 
     async def _embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.embeds
-        embeds = post.content.select(selector.element)
+        embeds = css.iselect(post.content, selector.element)
         await self.process_children(scrape_item, embeds, selector.attribute, embeds=True)
 
     async def _attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.attachments
-        attachments = post.article.select(selector.element)
+        attachments = css.iselect(post.article, selector.element)
         await self.process_children(scrape_item, attachments, selector.attribute)
 
     async def _lazy_load_embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.lazy_load_embeds
-        for redgif in css.iselect(post.content, selector.element):
-            link_str = get_text_between(css.get_attr(redgif, selector.attribute), "loadMedia(this, '", "')")
+        for lazy_media in css.iselect(post.content, selector.element):
+            link_str = get_text_between(css.get_attr(lazy_media, selector.attribute), "loadMedia(this, '", "')")
             await self.process_child(scrape_item, link_str, embeds=True)
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
@@ -300,7 +300,7 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
 
     @error_handling_wrapper
     async def process_children(
-        self, scrape_item: ScrapeItem, links: list[Tag], attribute: str, *, embeds: bool = False
+        self, scrape_item: ScrapeItem, links: Iterable[Tag], attribute: str, *, embeds: bool = False
     ) -> None:
         for link_tag in links:
             if link_str := css.get_attr_no_error(link_tag, attribute):
@@ -356,11 +356,12 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
 
         return await super().handle_internal_link(scrape_item)
 
-    def is_not_image_or_attachment(self, link_obj: Tag) -> bool:
-        is_image = link_obj.select_one("img")
+    def is_image_or_attachment(self, link_obj: Tag) -> bool:
+        if link_obj.select_one("img"):
+            return True
         if link_str := css.get_attr_no_error(link_obj, self.XF_SELECTORS.posts.links.element):
-            return not (is_image or self.is_attachment(link_str))
-        return not is_image
+            return self.is_attachment(link_str)
+        return False
 
     def pre_filter_link(self, link: str) -> str:
         return link
@@ -510,7 +511,7 @@ def get_post_title(soup: BeautifulSoup, selectors: XenforoSelectors) -> str:
 
 def extract_embed_url(embed_str: str) -> str:
     embed_str = embed_str.replace(r"\/\/", "https://www.").replace("\\", "")
-    if match := re.search(HTTP_URL_REGEX, embed_str):
+    if match := re.search(HTTP_REGEX_LINKS, embed_str):
         return match.group(0).replace("www.", "")
     return embed_str
 

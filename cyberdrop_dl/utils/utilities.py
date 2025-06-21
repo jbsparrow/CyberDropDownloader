@@ -618,16 +618,6 @@ def is_blob_or_svg(link: str) -> bool:
     return any(link.startswith(x) for x in _BLOB_OR_SVG)
 
 
-def no_error(func: Callable[P, R]) -> Callable[P, R | None]:
-    def call(*args, **kwargs) -> R | None:
-        try:
-            return func(*args, **kwargs)
-        except Exception:
-            return
-
-    return call
-
-
 def unique(iterable: Iterable[T], *, hashable: bool = True) -> Iterable[T]:
     """Yields unique values from iterable, keeping original order"""
     if hashable:

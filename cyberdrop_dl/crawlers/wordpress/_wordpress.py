@@ -2,9 +2,11 @@
 
 Reference: https://developer.wordpress.org/rest-api/reference/#rest-api-developer-endpoint-reference
 """
+# ruff: noqa: RUF009
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import itertools
 import re
@@ -20,7 +22,7 @@ from cyberdrop_dl.data_structures.url_objects import QueryDatetimeRange
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.dates import to_timestamp
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, no_error, unique
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, unique
 
 from .models import HTML, Category, CategorySequence, ColletionType, Post, PostSequence, Tag, TagSequence
 
@@ -30,7 +32,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.crawlers.crawler import SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
-_T = TypeVar("_T")
 _ModelT = TypeVar("_ModelT", bound=BaseModel)
 _POST_PER_REQUEST = 100
 _HTTP_URL_REGEX = re.compile(
@@ -42,12 +43,13 @@ _EXT_REGEX = re.compile(r"\d{2,}x\d{2,}(\.\w+)?")
 Selector = css.CssAttributeSelector
 
 
+@dataclasses.dataclass(frozen=True, slots=True)
 class Selectors:
-    POST_CONTENT: ClassVar = Selector("#content, .entry-content [id*='post-']")
-    POST_ID: ClassVar = Selector("[id*='post-']", "id")
-    IMG: ClassVar = Selector("img[class*='wp-image']", "srcset")
-    POST_LINK_FROM_PAGE = Selector(".post a", "href")
-    NEXT_PAGE = Selector("a.page-numbers.next", "href")
+    POST_CONTENT: Selector = Selector("#content, .entry-content [id*='post-']")
+    POST_ID: Selector = Selector("[id*='post-']", "id")
+    IMG: Selector = Selector("img[class*='wp-image']", "srcset")
+    POST_LINK_FROM_PAGE: Selector = Selector(".post a[href]", "href")
+    NEXT_PAGE: Selector = Selector("a.page-numbers.next", "href")
 
 
 _SELECTORS = Selectors()
@@ -188,7 +190,7 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
                 continue
 
 
-class WordPressAPICrawler(WordPressBaseCrawler, is_abc=True):
+class WordPressMediaCrawler(WordPressBaseCrawler, is_generic=True):
     WP_CATEGORIES_ENDPOINT: ClassVar = "/wp-json/wp/v2/categories"
     WP_TAGS_ENDPOINT: ClassVar = "/wp-json/wp/v2/tags"
     WP_POSTS_ENDPOINT: ClassVar = "/wp-json/wp/v2/posts"
@@ -248,21 +250,19 @@ class WordPressAPICrawler(WordPressBaseCrawler, is_abc=True):
             await self.filter_post(scrape_item, post)
 
     async def post_pager(self, url: AbsoluteHttpURL, init_page: int | None = None) -> AsyncIterable[Post]:
-        had_at_least_1_post = False
         for page in itertools.count(init_page or 1):
             n_post = 0
             api_url = url.update_query(per_page=_POST_PER_REQUEST, page=page)
             for post in await self.__make_request(PostSequence, api_url):
                 n_post += 1
-                had_at_least_1_post = True
                 yield post
             if n_post < _POST_PER_REQUEST:
                 break
-        if not had_at_least_1_post:
+        else:
             raise ScrapeError(404)
 
 
-class WordPressSoupCrawler(WordPressBaseCrawler, is_abc=True):
+class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
     async def __make_request(self, api_url: AbsoluteHttpURL) -> BeautifulSoup:
         async with self.request_limiter:
             return await self.client.get_soup(self.DOMAIN, api_url)
@@ -312,19 +312,19 @@ class WordPressSoupCrawler(WordPressBaseCrawler, is_abc=True):
                     and not date_range.is_in_range(date_from_path)
                 ):
                     self.log(
-                        f"Skipping post {new_scrape_item.url} as it is out of date range. Post date: {{date_from_path}}"
+                        f"Skipping post {new_scrape_item.url} as it is out of date range. Post date: {date_from_path}"
                     )
                     continue
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
 
-@no_error
 def _match_date_from_path(url: AbsoluteHttpURL) -> datetime.datetime | None:
     match url.parts[1:]:
         case [year, month, day]:
-            return datetime.datetime(int(year), int(month), int(day))
-        case _:
-            return
+            try:
+                return datetime.datetime(int(year), int(month), int(day))
+            except Exception:
+                return
 
 
 def _get_original_quality_link(link: str) -> str:
@@ -344,7 +344,6 @@ def _iter_links(html: HTML, use_regex: bool) -> itertools.chain[str]:
     return itertools.chain(images, iframes)
 
 
-@no_error
 def get_post_id(soup: BeautifulSoup) -> int:
     id_text = _SELECTORS.POST_ID(soup)
     if match := _POST_ID_REGEX.search(id_text):
