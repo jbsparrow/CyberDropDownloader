@@ -44,6 +44,9 @@ CLI_VALIDATION_ERROR_FOOTER = """Please read the documentation to learn about th
 RAR_MULTIPART_PATTERN = re.compile(r"^part\d+")
 SANITIZE_FILENAME_PATTERN = re.compile(r'[<>:"/\\|?*\']')
 REGEX_LINKS = re.compile(r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]))")
+HTTP_REGEX_LINKS = re.compile(
+    r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
+)
 
 
 class CustomHTTPStatus(IntEnum):
