@@ -101,9 +101,9 @@ class AlbumItem:
 
     @classmethod
     def from_tag(cls, tag: Tag) -> AlbumItem:
-        name = css.select_one(tag, _SELECTORS.ITEM_NAME).text
+        name = css.select_one_get_text(tag, _SELECTORS.ITEM_NAME)
         thumbnail: str = css.select_one_get_attr(tag, _SELECTORS.THUMBNAIL, "src")
-        date_str = css.select_one(tag, _SELECTORS.ITEM_DATE).get_text(strip=True)
+        date_str = css.select_one_get_text(tag, _SELECTORS.ITEM_DATE)
         path_qs: str = css.select_one_get_attr(tag, "a", "href")
         return cls(name, thumbnail, date_str, path_qs)
 
@@ -164,7 +164,9 @@ class BunkrrCrawler(Crawler):
         for tag in soup.select(_SELECTORS.ALBUM_ITEM):
             item = AlbumItem.from_tag(tag)
             link = self.parse_url(item.path_qs, relative_to=scrape_item.url.origin())
-            new_scrape_item = scrape_item.create_child(link, possible_datetime=self.parse_date(item.date))
+            new_scrape_item = scrape_item.create_child(
+                link, possible_datetime=self.parse_date(item.date, "%H:%M:%S %m/%d/%Y")
+            )
             await self.process_album_item(new_scrape_item, item, results)
             scrape_item.add_children()
 
