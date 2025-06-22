@@ -89,11 +89,11 @@ class ForumPost:
         css.decompose(content, selectors.quotes)
         date = datetime.datetime.fromisoformat(css.select_one_get_attr(article, *selectors.date))
         id_str = css.get_attr(article, selectors.id.attribute)
-        post_id = int(id_str.rsplit("-", 1)[-1].replace("-", ""))
+        post_id = int(id_str.rsplit("-", 1)[-1])
         return ForumPost(post_id, date, article, content)
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True, order=True)
 class Thread:
     id: int
     name: str
@@ -141,6 +141,14 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
 
         self.register_cache_filter(self.PRIMARY_URL, check_is_not_last_page)
 
+    @classmethod
+    def is_thumbnail(cls, link: AbsoluteHttpURL) -> bool:
+        return False
+
+    @classmethod
+    def thumbnail_to_img(cls, link: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
+        return None
+
     def get_filename_and_ext(self, filename: str) -> tuple[str, str]:
         return super().get_filename_and_ext(filename, forum=True)
 
@@ -162,8 +170,8 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
                 return await self.thread(scrape_item, thread_name_and_id)
             case ["goto" | "posts", _, *_]:
                 return await self.follow_redirect_w_get(scrape_item)
-
-        raise ValueError
+            case _:
+                raise ValueError
 
     async def follow_confirmation_link(self, scrape_item: ScrapeItem) -> None:
         url = await self.resolve_confirmation_link(scrape_item.url)
@@ -322,13 +330,11 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         if not link_str_:
             return
         link = await self.get_absolute_link(link_str_)
-        if not link or self.is_thumbnail(link):
+        if link and self.is_thumbnail(link):
+            link = self.thumbnail_to_img(link)
+        if not link:
             return
         await self.handle_link(scrape_item, link)
-
-    @classmethod
-    def is_thumbnail(cls, link: AbsoluteHttpURL) -> bool:
-        return False
 
     def is_attachment(self, link: AbsoluteHttpURL | str) -> bool:
         if not link:

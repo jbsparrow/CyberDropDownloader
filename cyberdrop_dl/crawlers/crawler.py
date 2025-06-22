@@ -203,7 +203,7 @@ class Crawler(ABC):
         await self.manager.states.RUNNING.wait()
         self.waiting_items += 1
         scrape_prefix = "Scraping"
-        if self.DOMAIN == "generic":
+        if self.IS_FALLBACK_GENERIC:
             scrape_prefix += " (unsupported domain)"
 
         async with self._semaphore:
@@ -241,6 +241,10 @@ class Crawler(ABC):
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
         await self.handle_media_item(media_item, m3u8_media)
+
+    def log_bug_report(self, msg: str, level: int = 30) -> None:
+        msg += f". Please file a bug report at {NEW_ISSUE_URL}"
+        log(msg, level)
 
     async def handle_media_item(self, media_item: MediaItem, m3u8_media: M3U8Media | None = None) -> None:
         await self.manager.states.RUNNING.wait()

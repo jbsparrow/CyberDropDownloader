@@ -23,8 +23,16 @@ class F95ZoneCrawler(XenforoCrawler):
         if json_resp["status"] == "ok":
             return self.parse_url(json_resp["msg"])
 
+    @classmethod
+    def is_thumbnail(cls, link: AbsoluteHttpURL) -> bool:
+        return "thumb" in link.parts
+
+    @classmethod
+    def thumbnail_to_img(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        return url.with_path(url.path.replace("/thumb/", ""))
+
     def parse_url(self, link: str) -> AbsoluteHttpURL:
         url = super().parse_url(link)
-        if "thumb" in url.parts:
-            return url.with_path(url.path.replace("/thumb/", ""))
+        if self.is_thumbnail(url):
+            return self.thumbnail_to_img(url)
         return url
