@@ -50,8 +50,8 @@ def _post(
 ) -> xenforo.ForumPost:
     crawler = crawler or TEST_CRAWLER
     html = _html(POST_TEMPLATE.format(id=id, message_body=message_body, message_attachments=message_attachments))
-    soup = BeautifulSoup(html, "html.parser")
-    return xenforo.ForumPost.new(soup, crawler.XF_SELECTORS.posts)
+    article = BeautifulSoup(html, "html.parser").select("article")[0]
+    return xenforo.ForumPost.new(article, crawler.XF_SELECTORS.posts)
 
 
 def _item_call(value: Any) -> mock._Call:
@@ -408,7 +408,7 @@ def test_extract_embed_url_string_ends_with_url() -> None:
     assert xenforo.extract_embed_url(input_str) == expected_output
 
 
-async def test_lazy_load_embeds() -> None:
+def test_lazy_load_embeds() -> None:
     post = _post("""
     <div class="generic2wide-iframe-div" onclick="loadMedia(this, '//redgifs.com/ifr/downrightcluelesswirm');">
         <span data-s9e-mediaembed="redgifs">
@@ -417,10 +417,9 @@ async def test_lazy_load_embeds() -> None:
             </span>
         </span>
     </div>""")
-    expected_output = "//redgifs.com/ifr/downrightcluelesswirm"
-    with _amock() as mocked:
-        await TEST_CRAWLER._lazy_load_embeds(scrape_item, post)
-        mocked.assert_called_once_with(scrape_item, expected_output, embeds=True)
+    result = list(TEST_CRAWLER._lazy_load_embeds(post))
+    assert len(result) == 1
+    assert "//redgifs.com/ifr/downrightcluelesswirm" == result[0]
 
 
 @pytest.mark.parametrize(
@@ -464,18 +463,16 @@ async def test_lazy_load_embeds() -> None:
         )
     ],
 )
-async def test_post_images(cls: type[xenforo.XenforoCrawler], post_content: str, expected_result: list[str]) -> None:
+def test_post_images(cls: type[xenforo.XenforoCrawler], post_content: str, expected_result: list[str]) -> None:
     crawler = crawler_instances[cls]
     post = _post(post_content, crawler=crawler)
-    with _amock(crawler=crawler) as mocked:
-        await crawler._images(scrape_item, post)
-        count, expected_count = mocked.call_count, len(expected_result)
-        assert count == expected_count, f"Found {count} links, expected {expected_count} links"
-        for result, expected in zip(mocked.call_args_list, expected_result, strict=True):
-            assert result.args[1] == expected
+    results = list(crawler._images(post))
+    count, expected_count = len(results), len(expected_result)
+    assert count == expected_count, f"Found {count} links, expected {expected_count} links"
+    assert results == expected_result
 
 
-async def test_embeds_can_extract_google_drive_links() -> None:
+def test_embeds_can_extract_google_drive_links() -> None:
     # https://github.com/jbsparrow/CyberDropDownloader/issues/775
     crawler = crawler_instances[crawlers.SimpCityCrawler]
     content = """
@@ -492,13 +489,12 @@ async def test_embeds_can_extract_google_drive_links() -> None:
     """
     post = _post(content, crawler=crawler)
     expected_result = "//drive.google.com/file/d/1gfDjCbNXgJafY6ILQIrgbnuptSCFbM0J/preview"
-    with _amock(crawler=crawler) as mocked:
-        await crawler._embeds(scrape_item, post)
-        mocked.assert_called_once()
-        assert mocked.call_args.args[1] == expected_result
+    results = list(crawler._embeds(post))
+    assert len(results) == 1
+    assert results[0] == expected_result
 
 
-async def test_post_smg_extract_attachments() -> None:
+def test_post_smg_extract_attachments() -> None:
     # https://agithub.com/jbsparrow/CyberDropDownloader/issues/1070
     attachments = """
     <h4 class="block-textHeader">Attachments</h4>
@@ -564,12 +560,11 @@ async def test_post_smg_extract_attachments() -> None:
         "https://smgmedia2.socialmediagirls.com/forum/2022/04/33E3EDFF-B0ED-4AE3-8D5D-4D2BC6D7EFD4_3526918.jpeg",
         "https://smgmedia2.socialmediagirls.com/forum/2022/04/3663188F-00C6-4C90-AB4D-D8C6E7859286_3526919.png",
     ]
-    with _amock(crawler=crawler) as mocked:
-        await crawler._attachments(scrape_item, post)
-        count, expected_count = mocked.call_count, len(expected_result)
-        assert count == expected_count, f"Found {count} links, expected {expected_count} links"
-        for result, expected in zip(mocked.call_args_list, expected_result, strict=True):
-            assert result.args[1] == expected
+
+    result = list(crawler._attachments(post))
+    count, expected_count = len(result), len(expected_result)
+    assert count == expected_count, f"Found {count} links, expected {expected_count} links"
+    assert result == expected_result
 
 
 def test_get_post_title_thread_w_prefixes() -> None:
@@ -720,18 +715,79 @@ class TestCheckPostId:
 
 # og_post_id = 23549340
 POST_TEMPLATE = """
-<article class="message message--post js-post js-inlineModContainer" data-author="cyberdrop-dl-patched" data-content="post{id}" id="js-post{id}" itemscope="" itemtype="https://schema.org/Comment" itemid="https://xenforo.com/posts/{id}/">
-    <meta itemprop="parentItem" itemscope="" itemid="https://xenforo.com/threads/fanfan.33077/" />
+<article class="message message--post js-post js-inlineModContainer" data-author="" data-content="post-{id}" id="js-post-{id}" itemscope="" itemtype="https://schema.org/Comment" itemid="https://simpcity.su/posts/{id}/">
+    <meta itemprop="parentItem" itemscope="" itemid="https://simpcity.su/threads/fanfan.33077/" />
 
-    <span class="u-anchorTarget" id="post{id}"></span>
+    <span class="u-anchorTarget" id="post-{id}"></span>
 
     <div class="message-inner">
+        <div class="message-cell message-cell--user">
+            <section class="message-user" itemprop="author" itemscope="" itemtype="https://schema.org/Person" itemid="https://simpcity.su/members/mrspike.5160076/">
+                <meta itemprop="url" content="https://simpcity.su/members/mrspike.5160076/" />
+
+                <div class="message-avatar">
+                    <div class="message-avatar-wrapper">
+                        <a href="/members/mrspike.5160076/" class="avatar avatar--m" data-user-id="5160076" data-xf-init="member-tooltip" id="js-XFUniqueId10">
+                            <img
+                                src="http://simp6.jpg5.su/simpo/data/avatars/m/5160/5160076.jpg?1746748029"
+                                srcset="http://simp6.jpg5.su/simpo/data/avatars/l/5160/5160076.jpg?1746748029 2x"
+                                alt=""
+                                class="avatar-u5160076-m"
+                                width="96"
+                                height="96"
+                                loading="lazy"
+                                itemprop="image"
+                            />
+                        </a>
+                    </div>
+                </div>
+                <div class="message-userDetails">
+                    <h4 class="message-name">
+                        <a href="/members/mrspike.5160076/" class="username" dir="auto" data-user-id="5160076" data-xf-init="member-tooltip" id="js-XFUniqueId11"><span itemprop="name"></span></a>
+                    </h4>
+                    <h5 class="userTitle message-userTitle" dir="auto" itemprop="jobTitle">Bathwater Drinker</h5>
+                    <div class="userBanner banner--simp message-userBanner" itemprop="jobTitle"><span class="userBanner-before"></span><strong>⠀Simp⠀</strong><span class="userBanner-after"></span></div>
+                </div>
+
+                <div class="message-userExtras">
+                    <dl class="pairs pairs--justified">
+                        <dt>
+                            <i class="fa--xf far fa-user">
+                                <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true"><use href="/data/local/icons/regular.svg?v=1750411220#user"></use></svg>
+                            </i>
+                        </dt>
+                        <dd>Aug 1, 2024</dd>
+                    </dl>
+
+                    <dl class="pairs pairs--justified">
+                        <dt>
+                            <i class="fa--xf far fa-comment">
+                                <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true"><use href="/data/local/icons/regular.svg?v=1750411220#comment"></use></svg>
+                            </i>
+                        </dt>
+                        <dd>38</dd>
+                    </dl>
+
+                    <dl class="pairs pairs--justified">
+                        <dt>
+                            <i class="fa--xf far fa-thumbs-up">
+                                <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true"><use href="/data/local/icons/regular.svg?v=1750411220#thumbs-up"></use></svg>
+                            </i>
+                        </dt>
+                        <dd>3,783</dd>
+                    </dl>
+                </div>
+
+                <span class="message-userArrow"></span>
+            </section>
+        </div>
+
         <div class="message-cell message-cell--main">
             <div class="message-main js-quickEditTarget">
                 <header class="message-attribution message-attribution--split">
                     <ul class="message-attribution-main listInline">
                         <li class="u-concealed">
-                            <a href="/threads/fanfan.33077/post{id}" rel="nofollow" itemprop="url">
+                            <a href="/threads/fanfan.33077/post-{id}" rel="nofollow" itemprop="url">
                                 <time
                                     class="u-dt"
                                     dir="auto"
@@ -739,7 +795,7 @@ POST_TEMPLATE = """
                                     data-timestamp="1749508210"
                                     data-date="Jun 9, 2025"
                                     data-time="5:30 PM"
-                                    data-short="7d"
+                                    data-short="12d"
                                     title="Jun 9, 2025 at 5:30 PM"
                                     itemprop="datePublished"
                                 >
@@ -748,13 +804,54 @@ POST_TEMPLATE = """
                             </a>
                         </li>
                     </ul>
+
+                    <ul class="message-attribution-opposite message-attribution-opposite--list">
+                        <li>
+                            <a href="/threads/fanfan.33077/post-{id}" class="message-attribution-gadget" data-xf-init="share-tooltip" data-href="/posts/{id}/share" aria-label="Share" rel="nofollow" id="js-XFUniqueId41">
+                                <i class="fa--xf far fa-share-alt">
+                                    <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true"><use href="/data/local/icons/regular.svg?v=1750411220#share-alt"></use></svg>
+                                </i>
+                            </a>
+                        </li>
+
+                        <li class="u-hidden js-embedCopy">
+                            <a
+                                href="javascript:"
+                                data-xf-init="copy-to-clipboard"
+                                data-copy-text='<div class="js-xf-embed" data-url="https://simpcity.su" data-content="post-{id}"></div><script defer src="https://simpcity.su/js/xf/external_embed.js?_v=dc874496"></script>'
+                                data-success="Embed code HTML copied to clipboard."
+                                class=""
+                            >
+                                <i class="fa--xf far fa-code">
+                                    <svg xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true"><use href="/data/local/icons/regular.svg?v=1750411220#code"></use></svg>
+                                </i>
+                            </a>
+                        </li>
+
+                        <li>
+                            <a
+                                href="/posts/{id}/bookmark"
+                                class="bookmarkLink message-attribution-gadget bookmarkLink--highlightable"
+                                title="Add bookmark"
+                                data-xf-click="bookmark-click"
+                                data-label=".js-bookmarkText"
+                                data-sk-bookmarked="addClass:is-bookmarked, titleAttr:sync"
+                                data-sk-bookmarkremoved="removeClass:is-bookmarked, titleAttr:sync"
+                            >
+                                <span class="js-bookmarkText u-srOnly">Add bookmark</span>
+                            </a>
+                        </li>
+
+                        <li>
+                            <a href="/threads/fanfan.33077/post-{id}" rel="nofollow">
+                                #282
+                            </a>
+                        </li>
+                    </ul>
                 </header>
-                <div class="message-attachments">
-                    {message_attachments}
-                </div>
 
                 <div class="message-content js-messageContent">
-                    <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post{id}" data-lb-caption-desc="cyberdrop-dl-patched · Jun 9, 2025 at 5:30 PM">
+                    <div class="message-userContent lbContainer js-lbContainer" data-lb-id="post-{id}" data-lb-caption-desc=" · Jun 9, 2025 at 5:30 PM">
                         <article class="message-body js-selectToQuote">
                             {message_body}
                             <div class="js-selectToQuoteEnd">&nbsp;</div>
@@ -762,13 +859,17 @@ POST_TEMPLATE = """
                     </div>
 
                     <aside class="message-signature">
-                        <div class="bbWrapper">Can't post to Bunkr. Mirrors are always appreciated.</div>
+                        <div class="bbWrapper">Cant post to Bunkr. Mirrors are always appreciated.</div>
                     </aside>
+                </div>
+
+				<div class="message-attachments">
+                    {message_attachments}
                 </div>
 
                 <footer class="message-footer">
                     <div class="message-microdata" itemprop="interactionStatistic" itemtype="https://schema.org/InteractionCounter" itemscope="">
-                        <meta itemprop="userInteractionCount" content="154" />
+                        <meta itemprop="userInteractionCount" content="160" />
                         <meta itemprop="interactionType" content="https://schema.org/LikeAction" />
                     </div>
 
@@ -780,7 +881,7 @@ POST_TEMPLATE = """
                                 data-reaction-id="1"
                                 data-xf-init="reaction"
                                 data-reaction-list="< .js-post | .js-reactionsList"
-                                id="js-XFUniqueId13"
+                                id="js-XFUniqueId12"
                             >
                                 <i aria-hidden="true"></i><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" class="reaction-sprite js-reaction" alt="Like" title="Like" />
                                 <span class="reaction-text js-reactionText"><bdi>Like</bdi></span>
@@ -790,7 +891,14 @@ POST_TEMPLATE = """
                                 Quote
                             </a>
 
-                            <a href="/threads/fanfan.33077/reply?quote={id}" class="actionBar-action actionBar-action--reply" title="Reply, quoting this message" rel="nofollow" data-xf-click="quote" data-quote-href="/posts/{id}/quote">
+                            <a
+                                href="/threads/fanfan.33077/reply?quote={id}"
+                                class="actionBar-action actionBar-action--reply"
+                                title="Reply, quoting this message"
+                                rel="nofollow"
+                                data-xf-click="quote"
+                                data-quote-href="/posts/{id}/quote"
+                            >
                                 Reply
                             </a>
                         </div>
@@ -813,14 +921,14 @@ POST_TEMPLATE = """
                                 </span>
                             </li>
                             <li>
-                                <span class="reaction reaction--small reaction--91" data-reaction-id="91">
-                                    <i aria-hidden="true"></i><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" class="reaction-sprite js-reaction" alt="PepeClown" title="PepeClown" />
+                                <span class="reaction reaction--small reaction--50" data-reaction-id="50">
+                                    <i aria-hidden="true"></i><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" class="reaction-sprite js-reaction" alt="PeepoWew" title="PeepoWew" />
                                 </span>
                             </li>
                         </ul>
 
                         <span class="u-srOnly">Reactions:</span>
-                        <a class="reactionsBar-link" href="/posts/{id}/reactions" data-xf-click="overlay" data-cache="false" rel="nofollow"><bdi>xigxagxion</bdi>, <bdi>Feistee</bdi>, <bdi>kradpmis</bdi> and 140 others</a>
+                        <a class="reactionsBar-link" href="/posts/{id}/reactions" data-xf-click="overlay" data-cache="false" rel="nofollow"><bdi>DDDICKS</bdi>, <bdi>cachow</bdi>, <bdi>StubbornOne</bdi> and 145 others</a>
                     </div>
 
                     <div class="js-historyTarget message-historyTarget toggleTarget" data-href="trigger-href"></div>

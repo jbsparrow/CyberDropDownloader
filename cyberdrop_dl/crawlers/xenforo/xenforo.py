@@ -126,10 +126,9 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
     XF_SELECTORS = DEFAULT_XF_SELECTORS
     XF_POST_URL_PART_NAME = "post-"
     XF_PAGE_URL_PART_NAME = "page-"
-    XF_THREAD_URL_PART = "threads"
     XF_USER_COOKIE_NAME = "xf_user"
     XF_ATTACHMENT_HOSTS = "smgmedia", "attachments.f95zone"
-    XF_IGNORE_SRC_OF_EMBEDED_IMAGES = False
+    XF_IGNORE_EMBEDED_IMAGES_SRC = False
     login_required = True
 
     def __post_init__(self) -> None:
@@ -284,7 +283,7 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         return iter_links(valid_links, selector.attribute)
 
     def _images(self, post: ForumPost) -> Iterable[str]:
-        if self.XF_IGNORE_SRC_OF_EMBEDED_IMAGES:
+        if self.XF_IGNORE_EMBEDED_IMAGES_SRC:
             selector = self.XF_SELECTORS.posts.a_tag_w_image
         else:
             selector = self.XF_SELECTORS.posts.images
