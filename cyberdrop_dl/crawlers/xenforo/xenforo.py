@@ -147,8 +147,7 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in and self.login_required:
             return
-        url = self.pre_filter_link(str(scrape_item.url))
-        scrape_item.url = self.parse_url(url)
+        scrape_item.url = self.parse_url(str(scrape_item.url))
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
         if is_confirmation_link(scrape_item.url):
@@ -315,8 +314,7 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
             yield soup
 
     def get_next_page(self, soup: BeautifulSoup) -> str | None:
-        if next_page := css.select_one_get_attr_or_none(soup, *self.XF_SELECTORS.next_page):
-            return self.pre_filter_link(next_page)
+        return css.select_one_get_attr_or_none(soup, *self.XF_SELECTORS.next_page)
 
     @error_handling_wrapper
     async def process_child(self, scrape_item: ScrapeItem, link_str: str, *, embeds: bool = False) -> None:
@@ -324,10 +322,13 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         if not link_str_:
             return
         link = await self.get_absolute_link(link_str_)
-        link = self.filter_link(link)
-        if not link:
+        if not link or self.is_thumbnail(link):
             return
         await self.handle_link(scrape_item, link)
+
+    @classmethod
+    def is_thumbnail(cls, link: AbsoluteHttpURL) -> bool:
+        return False
 
     def is_attachment(self, link: AbsoluteHttpURL | str) -> bool:
         if not link:
@@ -373,12 +374,6 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         if link_str := css.get_attr_no_error(link_obj, self.XF_SELECTORS.posts.links.element):
             return self.is_attachment(link_str)
         return False
-
-    def pre_filter_link(self, link: str) -> str:
-        return link
-
-    def filter_link(self, link: AbsoluteHttpURL | None) -> AbsoluteHttpURL | None:
-        return link
 
     @error_handling_wrapper
     async def login_setup(self, login_url: AbsoluteHttpURL) -> None:
