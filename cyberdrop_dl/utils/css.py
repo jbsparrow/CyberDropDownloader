@@ -117,5 +117,10 @@ def iget(tag: Tag, selector: str, attribute: str) -> Iterable[str]:
         yield get_attr(inner_tag, attribute)
 
 
+def decompose(tag: Tag, selector: str) -> None:
+    for inner_tag in tag.select(selector):
+        inner_tag.decompose()
+
+
 iframes = CssAttributeSelector("iframe", "src")
 images = CssAttributeSelector("img", "srcset")

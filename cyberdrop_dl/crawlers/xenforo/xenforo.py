@@ -48,6 +48,9 @@ CURRENT_PAGE_SELECTOR = Selector("li.pageNav-page.pageNav-page--current a", "hre
 class PostSelectors:
     article: str = "article.message[id*=post]"  # the entire html of the post (comments, attachments, user avatar, signature, etc...)
     content: str = ".message-userContent"  # text, links and images (NO attachments)
+    signature: str = ".message-signature"
+    footer: str = ".message-footer"
+    quotes: str = "blockquote"
 
     attachments: Selector = Selector(".message-attachments a[href]", "href")
     date: Selector = Selector("time", "datetime")
@@ -65,7 +68,6 @@ class XenforoSelectors:
     confirmation_button: Selector = Selector("a[class*=button--cta][href]", "href")
     next_page: Selector = Selector("a[class*=pageNav-jump--next][href]", "href")
     posts: PostSelectors = PostSelectors()
-    quotes: Selector = Selector("blockquote")
     title_trash: Selector = Selector("span")
     title: Selector = Selector("h1[class*=p-title-value]")
     last_page: Selector = LAST_PAGE_SELECTOR
@@ -81,7 +83,10 @@ class ForumPost:
 
     @staticmethod
     def new(article: Tag, selectors: PostSelectors) -> ForumPost:
+        css.decompose(article, selectors.signature)
+        css.decompose(article, selectors.footer)
         content = css.select_one(article, selectors.content)
+        css.decompose(content, selectors.quotes)
         date = datetime.datetime.fromisoformat(css.select_one_get_attr(article, *selectors.date))
         id_str = css.get_attr(article, selectors.id.attribute)
         post_id = int(id_str.rsplit("-", 1)[-1].replace("-", ""))
@@ -124,7 +129,7 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
     XF_THREAD_URL_PART = "threads"
     XF_USER_COOKIE_NAME = "xf_user"
     XF_ATTACHMENT_HOSTS = "smgmedia", "attachments.f95zone"
-    XF_FOLLOW_EMBEDED_IMAGES = False
+    XF_IGNORE_SRC_OF_EMBEDED_IMAGES = False
     login_required = True
 
     def __post_init__(self) -> None:
@@ -279,7 +284,7 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         return iter_links(valid_links, selector.attribute)
 
     def _images(self, post: ForumPost) -> Iterable[str]:
-        if self.XF_FOLLOW_EMBEDED_IMAGES:
+        if self.XF_IGNORE_SRC_OF_EMBEDED_IMAGES:
             selector = self.XF_SELECTORS.posts.a_tag_w_image
         else:
             selector = self.XF_SELECTORS.posts.images
