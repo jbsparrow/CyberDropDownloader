@@ -57,7 +57,7 @@ class PostSelectors:
     embeds: Selector = Selector("iframe", "src")
     id: Selector = Selector(article, "id")
     images: Selector = Selector("img.bbImage", "src")
-    a_tag_w_image: Selector = Selector("a:has('img.bbImage')[href]", "href")
+    a_tag_w_image: Selector = Selector("a:has(img.bbImage)[href]", "href")
     lazy_load_embeds: Selector = Selector('[class*=iframe][onclick*="loadMedia(this, \'//"]', "onclick")
     links: Selector = Selector("a:not(:has(img))", "href")
     videos: Selector = Selector("video source", "src")

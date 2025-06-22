@@ -426,9 +426,26 @@ def test_lazy_load_embeds() -> None:
     ("cls", "post_content", "expected_result"),
     [
         (
+            crawlers.AllPornComixCrawler,
+            """
+                <a href="https://jpg5.su/img/aqDYT6c" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        title="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>""",
+            ["https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"],
+        ),
+        (
             crawlers.SimpCityCrawler,
             """
-    <div class="bbWrapper">
                 <a href="https://jpg5.su/img/aqDYT6c" target="_blank" class="link link--external" rel="nofollow ugc noopener">
                     <img
                         src="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
@@ -460,7 +477,217 @@ def test_lazy_load_embeds() -> None:
                 "https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg",
                 "https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg",
             ],
-        )
+        ),
+        (
+            crawlers.SimpCityCrawler,
+            """
+                <a href="https://jpg5.su/img/aqDYT6c" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        title="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+                <a href="https://jpg5.su/img/aqDYZAt" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        title="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+            </div>""",
+            [
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg",
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg",
+            ],
+        ),
+        (
+            crawlers.SimpCityCrawler,
+            """
+                <a href="https://jpg5.su/img/aqDYT6c" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        title="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+                <a href="https://jpg5.su/img/aqDYZAt" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        title="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+            </div>""",
+            [
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg",
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg",
+            ],
+        ),
+        (
+            crawlers.SimpCityCrawler,
+            """
+                <a href="https://jpg5.su/img/aqDYT6c" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        title="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+                <a href="https://jpg5.su/img/aqDYZAt" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        title="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+            </div>""",
+            [
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg",
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg",
+            ],
+        ),
+        (
+            crawlers.SimpCityCrawler,
+            """
+                <a href="https://jpg5.su/img/aqDYT6c" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        title="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+                <a href="https://jpg5.su/img/aqDYZAt" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        title="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+            </div>""",
+            [
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg",
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg",
+            ],
+        ),
+        (
+            crawlers.SimpCityCrawler,
+            """
+                <a href="https://jpg5.su/img/aqDYT6c" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        title="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+                <a href="https://jpg5.su/img/aqDYZAt" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        title="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+            </div>""",
+            [
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg",
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg",
+            ],
+        ),
+        (
+            crawlers.SimpCityCrawler,
+            """
+                <a href="https://jpg5.su/img/aqDYT6c" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        title="issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+                <a href="https://jpg5.su/img/aqDYZAt" target="_blank" class="link link--external" rel="nofollow ugc noopener">
+                    <img
+                        src="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        data-url="https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        class="bbImage"
+                        loading="lazy"
+                        alt="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        title="issfanfan-20250129-0001ef763780833ed714.md.jpg"
+                        style=""
+                        width=""
+                        height=""
+                    />
+                </a>
+            </div>""",
+            [
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0002b2b2fa9a5390f521.md.jpg",
+                "https://simp6.jpg5.su/images3/issfanfan-20250129-0001ef763780833ed714.md.jpg",
+            ],
+        ),
     ],
 )
 def test_post_images(cls: type[xenforo.XenforoCrawler], post_content: str, expected_result: list[str]) -> None:
@@ -495,7 +722,7 @@ def test_embeds_can_extract_google_drive_links() -> None:
 
 
 def test_post_smg_extract_attachments() -> None:
-    # https://agithub.com/jbsparrow/CyberDropDownloader/issues/1070
+    # https://github.com/jbsparrow/CyberDropDownloader/issues/1070
     attachments = """
     <h4 class="block-textHeader">Attachments</h4>
         <ul class="attachmentList">
@@ -562,6 +789,23 @@ def test_post_smg_extract_attachments() -> None:
     ]
 
     result = list(crawler._attachments(post))
+    count, expected_count = len(result), len(expected_result)
+    assert count == expected_count, f"Found {count} links, expected {expected_count} links"
+    assert result == expected_result
+
+
+def test_post_celebforum_should_use_href_for_images() -> None:
+    # https://github.com/jbsparrow/CyberDropDownloader/issues/1093
+    content = """
+    <a href="https://celebforum.to/attachments/jc6huqrju9-jpg.321620/" target="_blank"><img alt="JC6HUqrju9" class="bbImage"
+        height="200" loading="lazy"
+        src="https://celebforum.to/data/attachments/321/321141-2d66067afbf5cd3d546479380c08929d.jpg" style=""
+        title="JC6HUqrju9" width="150" /></a>
+    """
+    crawler = crawler_instances[crawlers.CelebForumCrawler]
+    post = _post(content, crawler=crawler)
+    expected_result = ["https://celebforum.to/attachments/jc6huqrju9-jpg.321620/"]
+    result = list(crawler._images(post))
     count, expected_count = len(result), len(expected_result)
     assert count == expected_count, f"Found {count} links, expected {expected_count} links"
     assert result == expected_result
@@ -716,14 +960,14 @@ class TestCheckPostId:
 # og_post_id = 23549340
 POST_TEMPLATE = """
 <article class="message message--post js-post js-inlineModContainer" data-author="" data-content="post-{id}" id="js-post-{id}" itemscope="" itemtype="https://schema.org/Comment" itemid="https://simpcity.su/posts/{id}/">
-    <meta itemprop="parentItem" itemscope="" itemid="https://simpcity.su/threads/fanfan.33077/" />
+    <meta itemprop="parentItem" itemscope="" itemid="https://xenforocomunity.com/threads/fanfan.33077/" />
 
     <span class="u-anchorTarget" id="post-{id}"></span>
 
     <div class="message-inner">
         <div class="message-cell message-cell--user">
-            <section class="message-user" itemprop="author" itemscope="" itemtype="https://schema.org/Person" itemid="https://simpcity.su/members/mrspike.5160076/">
-                <meta itemprop="url" content="https://simpcity.su/members/mrspike.5160076/" />
+            <section class="message-user" itemprop="author" itemscope="" itemtype="https://schema.org/Person" itemid="https://xenforocomunity.com/members/mrspike.5160076/">
+                <meta itemprop="url" content="https://xenforocomunity.com/members/mrspike.5160076/" />
 
                 <div class="message-avatar">
                     <div class="message-avatar-wrapper">
@@ -818,7 +1062,7 @@ POST_TEMPLATE = """
                             <a
                                 href="javascript:"
                                 data-xf-init="copy-to-clipboard"
-                                data-copy-text='<div class="js-xf-embed" data-url="https://simpcity.su" data-content="post-{id}"></div><script defer src="https://simpcity.su/js/xf/external_embed.js?_v=dc874496"></script>'
+                                data-copy-text='<div class="js-xf-embed" data-url="https://xenforocomunity.com" data-content="post-{id}"></div><script defer src="https://xenforocomunity.com/js/xf/external_embed.js?_v=dc874496"></script>'
                                 data-success="Embed code HTML copied to clipboard."
                                 class=""
                             >
