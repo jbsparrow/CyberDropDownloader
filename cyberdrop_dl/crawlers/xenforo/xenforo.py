@@ -47,13 +47,14 @@ CURRENT_PAGE_SELECTOR = Selector("li.pageNav-page.pageNav-page--current a", "hre
 @dataclasses.dataclass(frozen=True, slots=True)
 class PostSelectors:
     article: str = "article.message[id*=post]"  # the entire html of the post (comments, attachments, user avatar, signature, etc...)
+    content: str = ".message-userContent"  # text, links and images (NO attachments)
 
     attachments: Selector = Selector(".message-attachments a[href]", "href")
-    content: Selector = Selector(".message-userContent")  # text, links and images (NO attachments)
     date: Selector = Selector("time", "datetime")
     embeds: Selector = Selector("iframe", "src")
     id: Selector = Selector(".u-concealed a[href]", "href")  # TODO: This needs a better selector
     images: Selector = Selector("img.bbImage", "src")
+    a_tag_w_image: Selector = Selector("a:has('img.bbImage')[href]", "href")
     lazy_load_embeds: Selector = Selector('[class*=iframe][onclick*="loadMedia(this, \'//"]', "onclick")
     links: Selector = Selector(":any-link", "href")
     videos: Selector = Selector("video source", "src")
@@ -80,13 +81,13 @@ class ForumPost:
 
     @staticmethod
     def new(article: Tag, selectors: PostSelectors, post_name: str = "post") -> ForumPost:
-        content = css.select_one(article, selectors.content.element)
+        content = css.select_one(article, selectors.content)
         date = datetime.datetime.fromisoformat(css.select_one_get_attr(article, *selectors.date))
         if selectors.id.element == selectors.id.attribute:
-            post_id = int(css.get_attr(article, selectors.id.element))
+            id_str = css.get_attr(article, selectors.id.element)
         else:
             id_str = css.select_one_get_attr(article, *selectors.id)
-            post_id = int(id_str.rsplit(post_name, 1)[-1].replace("-", ""))
+        post_id = int(id_str.rsplit(post_name, 1)[-1].replace("-", ""))
         return ForumPost(post_id, date, article, content)
 
 
@@ -126,6 +127,7 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
     XF_THREAD_URL_PART = "threads"
     XF_USER_COOKIE_NAME = "xf_user"
     XF_ATTACHMENT_HOSTS = "smgmedia", "attachments.f95zone"
+    XF_FOLLOW_EMBEDED_IMAGES = False
     login_required = True
 
     def __post_init__(self) -> None:
@@ -257,47 +259,56 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
         scrape_item.setup_as_post("")
         post_title = self.create_separate_post_title(None, str(post.id), post.date)
         scrape_item.add_to_parent_title(post_title)
-        for scraper in (
-            self._attachments,
-            self._embeds,
-            self._images,
-            self._links,
-            self._videos,
-            self._lazy_load_embeds,
-        ):
-            await scraper(scrape_item, post)
 
-    async def _links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+        seen: set[str] = set()
+        for scraper in (self._attachments, self._images, self._videos, self._external_links):
+            for link in scraper(post):
+                if link not in seen:
+                    seen.add(link)
+                    await self.process_child(scrape_item, link)
+
+        for scraper in (self._embeds, self._lazy_load_embeds):
+            for link in scraper(post):
+                if link not in seen:
+                    seen.add(link)
+                    await self.process_child(scrape_item, link, embeds=True)
+
+        if seen:
+            self.log_debug(f"Found duplicate links. Selector are too generic: {seen}")
+
+    def _external_links(self, post: ForumPost) -> Iterable[str]:
         selector = self.XF_SELECTORS.posts.links
         links = css.iselect(post.content, selector.element)
         valid_links = (link for link in links if not self.is_image_username_or_attachment(link))
-        await self.process_children(scrape_item, valid_links, selector.attribute)
+        return iter_links(valid_links, selector.attribute)
 
-    async def _images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        selector = self.XF_SELECTORS.posts.images
+    def _images(self, post: ForumPost) -> Iterable[str]:
+        if self.XF_FOLLOW_EMBEDED_IMAGES:
+            selector = self.XF_SELECTORS.posts.a_tag_w_image
+        else:
+            selector = self.XF_SELECTORS.posts.images
         images = css.iselect(post.content, selector.element)
-        await self.process_children(scrape_item, images, selector.attribute)
+        return iter_links(images, selector.attribute)
 
-    async def _videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    def _videos(self, post: ForumPost) -> Iterable[str]:
         selector = self.XF_SELECTORS.posts.videos
         videos = css.iselect(post.content, selector.element)
-        await self.process_children(scrape_item, videos, selector.attribute)
+        return iter_links(videos, selector.attribute)
 
-    async def _embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    def _embeds(self, post: ForumPost) -> Iterable[str]:
         selector = self.XF_SELECTORS.posts.embeds
         embeds = css.iselect(post.content, selector.element)
-        await self.process_children(scrape_item, embeds, selector.attribute, embeds=True)
+        return iter_links(embeds, selector.attribute)
 
-    async def _attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    def _attachments(self, post: ForumPost) -> Iterable[str]:
         selector = self.XF_SELECTORS.posts.attachments
         attachments = css.iselect(post.article, selector.element)
-        await self.process_children(scrape_item, attachments, selector.attribute)
+        return iter_links(attachments, selector.attribute)
 
-    async def _lazy_load_embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    def _lazy_load_embeds(self, post: ForumPost) -> Iterable[str]:
         selector = self.XF_SELECTORS.posts.lazy_load_embeds
         for lazy_media in css.iselect(post.content, selector.element):
-            link_str = get_text_between(css.get_attr(lazy_media, selector.attribute), "loadMedia(this, '", "')")
-            await self.process_child(scrape_item, link_str, embeds=True)
+            yield get_text_between(css.get_attr(lazy_media, selector.attribute), "loadMedia(this, '", "')")
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         async for soup in self._web_pager(scrape_item.url, self.get_next_page):
@@ -306,14 +317,6 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
     def get_next_page(self, soup: BeautifulSoup) -> str | None:
         if next_page := css.select_one_get_attr_or_none(soup, *self.XF_SELECTORS.next_page):
             return self.pre_filter_link(next_page)
-
-    @error_handling_wrapper
-    async def process_children(
-        self, scrape_item: ScrapeItem, links: Iterable[Tag], attribute: str, *, embeds: bool = False
-    ) -> None:
-        for link_tag in links:
-            if link_str := css.get_attr_no_error(link_tag, attribute):
-                await self.process_child(scrape_item, link_str, embeds=embeds)
 
     @error_handling_wrapper
     async def process_child(self, scrape_item: ScrapeItem, link_str: str, *, embeds: bool = False) -> None:
@@ -451,6 +454,14 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
     async def check_login_with_request(self, login_url: AbsoluteHttpURL) -> tuple[str, bool]:
         text = await self.client.get_text(self.DOMAIN, login_url, cache_disabled=True)
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
+
+
+def iter_links(links: Iterable[Tag], attribute: str) -> Iterable[str]:
+    for link_tag in links:
+        try:
+            yield css.get_attr(link_tag, attribute)
+        except Exception:
+            continue
 
 
 def parse_thread(url: AbsoluteHttpURL, thread_name_and_id: str, page_part_name: str, post_part_name: str) -> Thread:
