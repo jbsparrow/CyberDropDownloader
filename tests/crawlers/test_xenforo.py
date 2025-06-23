@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 from bs4 import BeautifulSoup
 
+from cyberdrop_dl.crawlers import _forum
 from cyberdrop_dl.crawlers import xenforo as crawlers
 from cyberdrop_dl.crawlers.xenforo import xenforo
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
@@ -47,11 +48,11 @@ def _post(
     message_attachments: str = "",
     id: int = 12345,
     crawler: xenforo.XenforoCrawler | None = None,
-) -> xenforo.ForumPost:
+) -> _forum.ForumPost:
     crawler = crawler or TEST_CRAWLER
     html = _html(POST_TEMPLATE.format(id=id, message_body=message_body, message_attachments=message_attachments))
     article = BeautifulSoup(html, "html.parser").select("article")[0]
-    return xenforo.ForumPost.new(article, crawler.SELECTORS.posts)
+    return _forum.ForumPost.new(article, crawler.SELECTORS.posts)
 
 
 def _item_call(value: Any) -> mock._Call:
@@ -238,7 +239,7 @@ def test_parse_thread(url: str, thread_name_and_id: str, result: tuple[int, str,
     ],
 )
 def test_clean_link_url(link: str, out: str) -> None:
-    assert xenforo.clean_link_str(link) == out
+    assert _forum.clean_link_str(link) == out
 
 
 def test_parse_login_form_success() -> None:
@@ -357,7 +358,7 @@ def test_parse_login_form_no_input_form_should_fail() -> None:
     ],
 )
 def test_extract_embed_url(input_string: str, expected_output: str) -> None:
-    assert xenforo.extract_embed_url(input_string) == expected_output
+    assert _forum.extract_embed_url(input_string) == expected_output
 
 
 @pytest.mark.xfail  # regex can not handle URLs with commans in it (kvs)
@@ -375,37 +376,37 @@ def test_extract_embed_url(input_string: str, expected_output: str) -> None:
     ],
 )
 def test_extract_embed_url_complex_path(input_string: str, expected_output: str) -> None:
-    assert xenforo.extract_embed_url(input_string) == expected_output
+    assert _forum.extract_embed_url(input_string) == expected_output
 
 
 def test_extract_embed_url_should_extract_only_one_url() -> None:
     input_str = r"first_url \/\/first.com/path second_url \/\/www.second.net/another"
     expected_output = "https://first.com/path"
-    assert xenforo.extract_embed_url(input_str) == expected_output
+    assert _forum.extract_embed_url(input_str) == expected_output
 
 
 def test_extract_embed_url_with_escaped_backslashes_and_double_slashes() -> None:
     input_str = r"some_path\\to\\file\/\/imagepond.net\/clip.mov"
     expected_output = "https://imagepond.net/clip.mov"
-    assert xenforo.extract_embed_url(input_str) == expected_output
+    assert _forum.extract_embed_url(input_str) == expected_output
 
 
 def test_extract_embed_url_absolute_url_no_scheme() -> None:
     input_str = r"\/\/jpg5.su"
     expected_output = r"https://jpg5.su"
-    assert xenforo.extract_embed_url(input_str) == expected_output
+    assert _forum.extract_embed_url(input_str) == expected_output
 
 
 def test_extract_embed_url_should_not_modify_absolute_urls() -> None:
     input_str = r"https://celebforum.to/maps"
     expected_output = "https://celebforum.to/maps"
-    assert xenforo.extract_embed_url(input_str) == expected_output
+    assert _forum.extract_embed_url(input_str) == expected_output
 
 
 def test_extract_embed_url_string_ends_with_url() -> None:
     input_str = r"some text https://www.reddit.com/"
     expected_output = "https://reddit.com/"
-    assert xenforo.extract_embed_url(input_str) == expected_output
+    assert _forum.extract_embed_url(input_str) == expected_output
 
 
 def test_lazy_load_embeds() -> None:
@@ -827,7 +828,7 @@ def test_get_post_title_thread_w_prefixes() -> None:
     </div>
     """)
     soup = BeautifulSoup(html, "html.parser")
-    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
+    title = _forum.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
     assert title == "GunplaMeli"
 
 
@@ -838,7 +839,7 @@ def test_get_post_title_thread_w_no_prefixes() -> None:
     </div>
     """
     soup = BeautifulSoup(html, "html.parser")
-    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
+    title = _forum.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
     assert title == "Staged/Fake Japanese Candid Videos from Gcolle/Pcolle or FC2"
 
 
@@ -846,7 +847,7 @@ def test_get_post_title_no_title_found() -> None:
     html = _html("")
     soup = BeautifulSoup(html, "html.parser")
     with pytest.raises(ScrapeError) as exc_info:
-        xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
+        _forum.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
 
     assert exc_info.value.status == 429
     assert exc_info.value.message == "Invalid response from forum. You may have been rate limited"
@@ -856,7 +857,7 @@ def test_get_post_title_empty_title_block() -> None:
     html = _html("""<h1 class="p-title-value"></h1>""")
     soup = BeautifulSoup(html, "html.parser")
     with pytest.raises(ScrapeError):
-        xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
+        _forum.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
 
 
 def test_get_post_title_non_english_chars() -> None:
@@ -868,7 +869,7 @@ def test_get_post_title_non_english_chars() -> None:
     </div>
     """)
     soup = BeautifulSoup(html, "html.parser")
-    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
+    title = _forum.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
     assert title == "㊙️Hcupりおの極秘えち任務🙊💗 (りお❤️❤️❤️) / りお@Rio / rio_hcup_fantia"
 
 
@@ -883,7 +884,7 @@ def test_get_post_title_should_strip_new_lines() -> None:
     </div>
     """)
     soup = BeautifulSoup(html, "html.parser")
-    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
+    title = _forum.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
     assert title == "㊙️Hcupりおの極秘えち任務🙊💗 (りお❤️❤️❤️) / りお@Rio / rio_hcup_fantia"
 
 
@@ -932,7 +933,7 @@ class TestCheckPostId:
         expected_continue_scraping: bool,
         expected_scrape_this_post: bool,
     ) -> None:
-        continue_scraping, scrape_this_post = xenforo.check_post_id(
+        continue_scraping, scrape_this_post = _forum.check_post_id(
             init_post_id, current_post_id, scrape_single_forum_post
         )
         assert continue_scraping == expected_continue_scraping
@@ -942,7 +943,7 @@ class TestCheckPostId:
         init_post_id = None
         current_post_id = 100
         scrape_single_forum_post = False
-        continue_scraping, scrape_this_post = xenforo.check_post_id(
+        continue_scraping, scrape_this_post = _forum.check_post_id(
             init_post_id, current_post_id, scrape_single_forum_post
         )
         assert continue_scraping is True
@@ -954,7 +955,7 @@ class TestCheckPostId:
         scrape_single_forum_post = True
 
         with pytest.raises(AssertionError):
-            xenforo.check_post_id(init_post_id, current_post_id, scrape_single_forum_post)
+            _forum.check_post_id(init_post_id, current_post_id, scrape_single_forum_post)
 
 
 # og_post_id = 23549340

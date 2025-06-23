@@ -112,9 +112,10 @@ def _parse_srcset(srcset: str) -> str:
     return [src.split(" ")[0] for src in srcset.split(", ")][-1]
 
 
-def iget(tag: Tag, selector: str, attribute: str) -> Generator[str | None]:
+def iget(tag: Tag, selector: str, attribute: str) -> Generator[str]:
     for inner_tag in iselect(tag, selector):
-        yield get_attr_or_none(inner_tag, attribute)
+        if link := get_attr_or_none(inner_tag, attribute):
+            yield link
 
 
 def decompose(tag: Tag, selector: str) -> None:

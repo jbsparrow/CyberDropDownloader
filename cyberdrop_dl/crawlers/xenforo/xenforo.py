@@ -49,7 +49,7 @@ DEFAULT_XF_POST_SELECTORS = XenforoPostSelectors()
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
-class XenforoMessageBoardSelectors(MessageBoardSelectors):
+class XenforoSelectors(MessageBoardSelectors):
     posts: XenforoPostSelectors = DEFAULT_XF_POST_SELECTORS
     confirmation_button: Selector = Selector("a[class*=button--cta][href]", "href")
     next_page: Selector = Selector("a[class*=pageNav-jump--next][href]", "href")
@@ -59,7 +59,7 @@ class XenforoMessageBoardSelectors(MessageBoardSelectors):
     current_page: Selector = Selector("li.pageNav-page.pageNav-page--current a", "href")
 
 
-DEFAULT_XF_SELECTORS = XenforoMessageBoardSelectors()
+DEFAULT_XF_SELECTORS = XenforoSelectors()
 KNOWN_THREAD_PART_NAMES = "thread", "topic", "tema"
 KNOWN_THREAD_PART_NAMES = ",".join(f"{part},{part}s" for part in KNOWN_THREAD_PART_NAMES).split(",")
 

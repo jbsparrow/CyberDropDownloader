@@ -109,8 +109,11 @@ class ForumPost:
 
 class ForumPostProtocol(Protocol):
     id: int
-    date: datetime.datetime
+    date: datetime.datetime | None
     content: Tag
+
+    @property
+    def timestamp(self) -> TimeStamp | None: ...
 
 
 @dataclasses.dataclass(frozen=True, slots=True, order=True)
