@@ -33,5 +33,5 @@ def fix_link(link: str) -> str:
     return (
         link.replace("index.php%3F", "index.php/")
         .replace("index.php?", "index.php/")
-        .replace("index.php/goto", "index.php?goto")
+        .replace("index.php?goto", "index.php/goto")
     )

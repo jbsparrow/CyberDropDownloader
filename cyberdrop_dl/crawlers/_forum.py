@@ -115,23 +115,23 @@ class ThreadProtocol(Protocol):
     url: AbsoluteHttpURL
 
 
+# quotes_2 : embed fauxBlockLink
 class MessageBoardCrawler(Crawler, is_abc=True):
     """Base crawler for every MessageBoard.
 
     A Message board should have: forums,threads and posts.
 
-    Concrete classes need to implement:
-    - `parse_thread`
-    - `make_post_url`
-    - `thread`
-    - `post`
+    Concrete classes MUST:
+    - implement `parse_thread`
+    - implement `make_post_url`
+    - implement `thread`
+    - implement `post`
 
-
-    Optinally, define `ATTACHMENT_HOSTS` if internal images of the site are stored on servers with a diferent domain
+    Concrete classes SHOULD define `ATTACHMENT_HOSTS` if internal images of the site are stored on servers with a different domain
 
     NOTE: Always use this crawler as base, even if the message board logic does not match perfectly.
 
-    In those cases, override `fetch`,`fetch_thread` or any other non final method as needed
+    In those cases, override `fetch`,`fetch_thread`, `parse_url` or any other non final method as needed
     """
 
     # This crawler is NOT meant to scrape image boards (like 4chan)
@@ -221,11 +221,12 @@ class MessageBoardCrawler(Crawler, is_abc=True):
             return self.handle_external_links(scrape_item)
 
     async def resolve_confirmation_link(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
+        # Implementations of this method should return None instead of raising an error
         raise ValueError
 
     @classmethod
     @abstractmethod
-    def parse_thread(cls, url: AbsoluteHttpURL, thread_name_and_id) -> ThreadProtocol: ...
+    def parse_thread(cls, url: AbsoluteHttpURL, thread_name_and_id: str) -> ThreadProtocol: ...
 
     @abstractmethod
     async def thread(self, scrape_item: ScrapeItem, thread: ThreadProtocol) -> None: ...
@@ -251,6 +252,7 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     def stop_thread_recursion(self, scrape_item: ScrapeItem) -> bool:
         if (
             not self.SUPPORTS_THREAD_RECURSION
+            or self.scrape_single_forum_post
             or not self.max_thread_depth
             or (len(scrape_item.parent_threads) > self.max_thread_depth)
         ):
@@ -319,18 +321,19 @@ ForumCrawler = MessageBoardCrawler
 class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     """Base crawler that knows how to scrape the html of every MessageBoard.
 
-    Threads of the MessageBoard must be paginated.
+    Threads of the MessageBoard MUST be paginated.
 
-    Concrete classes need to implement:
-    - `parse_thread`
-    - `make_post_url`
-    - Define: `SELECTORS`, `POST_URL_PART_NAME` and `PAGE_URL_PART_NAME`
+    Concrete classes MUST:
+    - implement `parse_thread`
+    - implement `make_post_url`
+    - define: `SELECTORS`, `POST_URL_PART_NAME` and `PAGE_URL_PART_NAME`
 
-    To improve performance and reduce the number of requests, set `IGNORE_EMBEDED_IMAGES_SRC` to `False` and implement:
-    - `is_thumbnail`
-    - `thumbnail_to_img`
+    To improve performance and reduce the number of requests, concrete classes MAY:
+    - define `IGNORE_EMBEDED_IMAGES_SRC` as `False`
+    - override `is_thumbnail`
+    - override `thumbnail_to_img`
 
-    Optinally, define `ATTACHMENT_HOSTS` if internal images of the site are stored on servers with a diferent domain
+    Concrete classes SHOULD define `ATTACHMENT_HOSTS` if internal images of the site are stored on servers with a different domain
     """
 
     SUPPORTS_THREAD_RECURSION: ClassVar = True
@@ -366,8 +369,8 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     def get_filename_and_ext(self, filename: str) -> tuple[str, str]:
         return super().get_filename_and_ext(filename, forum=True)
 
-    @error_handling_wrapper
     # TODO: Move this to base crawler
+    @error_handling_wrapper
     async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
         head = await self.client.get_head(self.DOMAIN, scrape_item.url)
         redirect = head.get("location")
@@ -378,7 +381,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
 
     @classmethod
     @abstractmethod
-    def parse_thread(cls, url: AbsoluteHttpURL, thread_name_and_id) -> Thread:
+    def parse_thread(cls, url: AbsoluteHttpURL, thread_name_and_id: str) -> Thread:
         return parse_thread(url, thread_name_and_id, cls.PAGE_URL_PART_NAME, cls.POST_URL_PART_NAME)
 
     @classmethod
@@ -688,3 +691,11 @@ def pre_process_child(link_str: str, embeds: bool = False) -> str | None:
 
     if link_str and not is_blob_or_svg(link_str):
         return link_str
+
+
+"""
+A Xenforo site has these attributes attached to the main html tag of the site:
+id="XF"                                  This identifies the site as a Xenforo site
+data-cookie-prefix="ogaddgmetaprof_"     The full cookies name will be `ogaddgmetaprof_user`
+data-xf="2.3"                            Version number
+"""
