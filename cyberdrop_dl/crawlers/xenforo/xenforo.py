@@ -6,7 +6,7 @@ import asyncio
 import dataclasses
 from typing import TYPE_CHECKING, ClassVar
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers._forum import (
     HTMLMessageBoardCrawler,
@@ -150,14 +150,6 @@ class XenforoCrawler(HTMLMessageBoardCrawler, is_abc=True):
     async def check_login_with_request(self, login_url: AbsoluteHttpURL) -> tuple[str, bool]:
         text = await self.client.get_text(self.DOMAIN, login_url, cache_disabled=True)
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
-
-
-def iter_links(links: Iterable[Tag], attribute: str) -> Iterable[str]:
-    for link_tag in links:
-        try:
-            yield css.get_attr(link_tag, attribute)
-        except Exception:
-            continue
 
 
 def parse_login_form(resp_text: str) -> dict[str, str]:

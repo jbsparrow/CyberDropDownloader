@@ -4,9 +4,9 @@ from typing import ClassVar
 
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
-from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
+from .xenforo import Selector, XenforoCrawler, XenforoMessageBoardSelectors, XenforoPostSelectors
 
-_post_selectors = PostSelectors(
+_bellazon_post_selectors = XenforoPostSelectors(
     article="div[class*=ipsComment_content]",
     content="div.cPost_contentWrap",
     attachments=Selector("a[class*=ipsAttachLink]", "href"),
@@ -24,10 +24,10 @@ class BellazonCrawler(XenforoCrawler):
     FOLDER_DOMAIN: ClassVar[str] = "Bellazon"
     login_required = False
 
-    XF_THREAD_URL_PART = "topic"
-    XF_POST_URL_PART_NAME = "comment-"
-    XF_SELECTORS = XenforoSelectors(
-        posts=_post_selectors,
+    POST_URL_PART_NAME: ClassVar[str] = "comment-"
+    PAGE_URL_PART_NAME: ClassVar[str] = "page"
+    SELECTORS = XenforoMessageBoardSelectors(
+        posts=_bellazon_post_selectors,
         title=Selector("span.ipsType_break.ipsContained span"),
         next_page=Selector("li.ipsPagination_next a[href]", "href"),
     )
