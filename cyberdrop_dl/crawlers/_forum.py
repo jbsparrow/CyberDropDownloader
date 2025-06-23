@@ -15,7 +15,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.dates import to_timestamp
+from cyberdrop_dl.utils.dates import TimeStamp, to_timestamp
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
     get_text_between,
@@ -47,12 +47,17 @@ CURRENT_PAGE_SELECTOR = Selector("li.pageNav-page.pageNav-page--current a", "hre
 class PostSelectors:
     article: str  # the entire html of the post (comments, attachments, user avatar, signature, etc...)
     content: str  # text, links and images (NO attachments)
-    signature: str
-    footer: str
-    quotes: str
-
     id: Selector
     attachments: Selector
+    article_trash: tuple[str, ...] = (
+        "signature",
+        "footer",
+    )
+    content_trash: tuple[str, ...] = (
+        "quotes",
+        "fancy_quotes",
+    )
+
     date: Selector = Selector("time", "datetime")
     embeds: Selector = Selector("iframe", "src")
     images: Selector = Selector("img.bbImage", "src")
@@ -65,31 +70,41 @@ class PostSelectors:
 @dataclasses.dataclass(frozen=True, slots=True)
 class MessageBoardSelectors:
     posts: PostSelectors
-    confirmation_button: Selector = Selector("a[class*=button--cta][href]", "href")
-    next_page: Selector = Selector("a[class*=pageNav-jump--next][href]", "href")
+    confirmation_button: Selector
+    next_page: Selector
+    last_page: Selector
+    current_page: Selector
+    title: Selector
     title_trash: Selector = Selector("span")
-    title: Selector = Selector("h1[class*=p-title-value]")
-    last_page: Selector = LAST_PAGE_SELECTOR
-    current_page: Selector = CURRENT_PAGE_SELECTOR
 
 
 @dataclasses.dataclass(frozen=True, slots=True, order=True)
 class ForumPost:
     id: int
-    date: datetime.datetime
+    date: datetime.datetime | None
     article: Tag = dataclasses.field(compare=False)
     content: Tag = dataclasses.field(compare=False)
 
     @staticmethod
     def new(article: Tag, selectors: PostSelectors) -> ForumPost:
-        css.decompose(article, selectors.signature)
-        css.decompose(article, selectors.footer)
+        for trash in selectors.article_trash:
+            css.decompose(article, trash)
         content = css.select_one(article, selectors.content)
-        css.decompose(content, selectors.quotes)
-        date = datetime.datetime.fromisoformat(css.select_one_get_attr(article, *selectors.date))
+        for trash in selectors.content_trash:
+            css.decompose(article, trash)
+        try:
+            date = datetime.datetime.fromisoformat(css.select_one_get_attr(article, *selectors.date))
+        except Exception:
+            date = None
+
         id_str = css.get_attr(article, selectors.id.attribute)
         post_id = int(id_str.rsplit("-", 1)[-1])
         return ForumPost(post_id, date, article, content)
+
+    @property
+    def timestamp(self) -> TimeStamp | None:
+        if self.date:
+            return to_timestamp(self.date)
 
 
 class ForumPostProtocol(Protocol):
@@ -356,7 +371,10 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
 
     async def async_startup(self) -> None:
         await super().async_startup()
-        self.register_cache_filter(self.PRIMARY_URL, check_is_not_last_page)
+        self.register_cache_filter(self.PRIMARY_URL, self.check_is_not_last_page)
+
+    async def check_is_not_last_page(self, response: AnyResponse) -> bool:
+        return await check_is_not_last_page(response, self.SELECTORS)
 
     @classmethod
     def is_thumbnail(cls, link: AbsoluteHttpURL) -> bool:
@@ -365,9 +383,6 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     @classmethod
     def thumbnail_to_img(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
         return None
-
-    def get_filename_and_ext(self, filename: str) -> tuple[str, str]:
-        return super().get_filename_and_ext(filename, forum=True)
 
     # TODO: Move this to base crawler
     @error_handling_wrapper
@@ -435,7 +450,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
                 post_url = self.make_post_url(thread, current_post.id)
                 new_scrape_item = scrape_item.create_new(
                     thread.url,
-                    possible_datetime=to_timestamp(current_post.date),
+                    possible_datetime=current_post.timestamp,
                     add_parent=post_url,
                 )
                 self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
@@ -611,15 +626,15 @@ def get_thread_page_and_post(
     return page_number, post_id
 
 
-async def check_is_not_last_page(response: AnyResponse) -> bool:
+async def check_is_not_last_page(response: AnyResponse, selectors: MessageBoardSelectors) -> bool:
     soup = BeautifulSoup(await response.text(), "html.parser")
-    return not is_last_page(soup)
+    return not is_last_page(soup, selectors)
 
 
-def is_last_page(soup: BeautifulSoup) -> bool:
+def is_last_page(soup: BeautifulSoup, selectors: MessageBoardSelectors) -> bool:
     try:
-        last_page = css.select_one_get_attr(soup, *LAST_PAGE_SELECTOR)
-        current_page = css.select_one_get_attr(soup, *CURRENT_PAGE_SELECTOR)
+        last_page = css.select_one_get_attr(soup, *selectors.last_page)
+        current_page = css.select_one_get_attr(soup, *selectors.current_page)
     except (AttributeError, IndexError, css.SelectorError):
         return True
     return current_page == last_page

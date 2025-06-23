@@ -51,7 +51,7 @@ def _post(
     crawler = crawler or TEST_CRAWLER
     html = _html(POST_TEMPLATE.format(id=id, message_body=message_body, message_attachments=message_attachments))
     article = BeautifulSoup(html, "html.parser").select("article")[0]
-    return xenforo.ForumPost.new(article, crawler.XF_SELECTORS.posts)
+    return xenforo.ForumPost.new(article, crawler.SELECTORS.posts)
 
 
 def _item_call(value: Any) -> mock._Call:
@@ -827,7 +827,7 @@ def test_get_post_title_thread_w_prefixes() -> None:
     </div>
     """)
     soup = BeautifulSoup(html, "html.parser")
-    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
     assert title == "GunplaMeli"
 
 
@@ -838,7 +838,7 @@ def test_get_post_title_thread_w_no_prefixes() -> None:
     </div>
     """
     soup = BeautifulSoup(html, "html.parser")
-    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
     assert title == "Staged/Fake Japanese Candid Videos from Gcolle/Pcolle or FC2"
 
 
@@ -846,7 +846,7 @@ def test_get_post_title_no_title_found() -> None:
     html = _html("")
     soup = BeautifulSoup(html, "html.parser")
     with pytest.raises(ScrapeError) as exc_info:
-        xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+        xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
 
     assert exc_info.value.status == 429
     assert exc_info.value.message == "Invalid response from forum. You may have been rate limited"
@@ -856,7 +856,7 @@ def test_get_post_title_empty_title_block() -> None:
     html = _html("""<h1 class="p-title-value"></h1>""")
     soup = BeautifulSoup(html, "html.parser")
     with pytest.raises(ScrapeError):
-        xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+        xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
 
 
 def test_get_post_title_non_english_chars() -> None:
@@ -868,7 +868,7 @@ def test_get_post_title_non_english_chars() -> None:
     </div>
     """)
     soup = BeautifulSoup(html, "html.parser")
-    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
     assert title == "㊙️Hcupりおの極秘えち任務🙊💗 (りお❤️❤️❤️) / りお@Rio / rio_hcup_fantia"
 
 
@@ -883,7 +883,7 @@ def test_get_post_title_should_strip_new_lines() -> None:
     </div>
     """)
     soup = BeautifulSoup(html, "html.parser")
-    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.XF_SELECTORS)
+    title = xenforo.get_post_title(soup, xenforo.XenforoCrawler.SELECTORS)
     assert title == "㊙️Hcupりおの極秘えち任務🙊💗 (りお❤️❤️❤️) / りお@Rio / rio_hcup_fantia"
 
 
