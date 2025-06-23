@@ -6,14 +6,14 @@
 from __future__ import annotations
 
 import itertools
-import re
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
+from bs4 import BeautifulSoup
 from pydantic import BaseModel
 
-from cyberdrop_dl.constants import HTTP_REGEX_LINKS
 from cyberdrop_dl.crawlers._forum import MessageBoardCrawler
 from cyberdrop_dl.exceptions import MaxChildrenError
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, unique
 
@@ -97,7 +97,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
         last_post_id = None
         async for post in self.iter_posts(topic):
             new_scrape_item = scrape_item.create_child(
-                self.PRIMARY_URL / post.path,
+                self.PRIMARY_URL / post.path.removeprefix("/"),
                 possible_datetime=to_timestamp(post.created_at),
             )
             await self.post(new_scrape_item, post)
@@ -108,7 +108,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
                 break
 
         if last_post_id:
-            topic_url = self.PRIMARY_URL / topic.path
+            topic_url = self.PRIMARY_URL / topic.path.removeprefix("/")
             post_url = topic_url / str(last_post_id)
             await self.write_last_forum_post(topic_url, post_url)
 
@@ -117,7 +117,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
             remaining = topic.stream[offset : offset + _MAX_POSTS_PER_REQUEST]
             if not remaining:
                 return
-            stream = await self.make_request(PostStream, f"/t/{topic.id}/posts.json", {"post_ids[]": remaining})
+            stream = await self.make_request(PostStream, f"t/{topic.id}/posts.json", {"post_ids[]": remaining})
             for post in stream.posts:
                 yield post
                 if topic.init_post_number != 1 and self.scrape_single_forum_post:
@@ -131,10 +131,14 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
 
     def extract_links(self, post: AvailablePost) -> Iterable[AbsoluteHttpURL]:
         def iter_links() -> Iterable[AbsoluteHttpURL]:
+            soup = BeautifulSoup(post.content_html, "html.parser")
+            images = css.iget(soup, *css.images)
+            links = css.iget(soup, *css.links)
             external_links = (ref.url for ref in post.link_counts)
-            for link_str in unique(itertools.chain(external_links, get_links_by_regex(post.content_html))):
+            for link_str in unique(itertools.chain(external_links, images, links)):
                 try:
-                    yield self.parse_url(link_str)
+                    if link_str:
+                        yield self.parse_url(link_str)
                 except Exception:
                     continue
 
@@ -153,7 +157,3 @@ def _clean_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     return url.with_path(original_path, encoded=True, keep_fragment=True, keep_query=True).with_name(
         original_name, keep_fragment=True, keep_query=True
     )
-
-
-def get_links_by_regex(text: str) -> Iterable[str]:
-    return (match.group() for match in re.finditer(HTTP_REGEX_LINKS, text))

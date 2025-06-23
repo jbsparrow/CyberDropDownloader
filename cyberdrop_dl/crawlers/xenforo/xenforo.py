@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import datetime
 import re
 from typing import TYPE_CHECKING, ClassVar
 
@@ -14,7 +15,7 @@ from cyberdrop_dl.crawlers._forum import ForumCrawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.dates import TimeStamp
+from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
     get_text_between,
@@ -49,7 +50,7 @@ class PostSelectors:
 
     attachments: Selector = Selector(".message-attachments a[href]", "href")
     content: Selector = Selector(".message-userContent")  # text, links and images (NO attachments)
-    date: Selector = Selector("time", "data-timestamp")
+    date: Selector = Selector("time", "datetime")
     embeds: Selector = Selector("iframe", "src")
     id: Selector = Selector(".u-concealed a[href]", "href")  # TODO: This needs a better selector
     images: Selector = Selector("img.bbImage", "src")
@@ -73,14 +74,14 @@ class XenforoSelectors:
 @dataclasses.dataclass(frozen=True, slots=True, order=True)
 class ForumPost:
     id: int
-    date: TimeStamp
+    date: datetime.datetime
     article: Tag = dataclasses.field(compare=False)
     content: Tag = dataclasses.field(compare=False)
 
     @staticmethod
     def new(article: Tag, selectors: PostSelectors, post_name: str = "post") -> ForumPost:
         content = css.select_one(article, selectors.content.element)
-        date = TimeStamp(int(css.select_one_get_attr(article, *selectors.date)))
+        date = datetime.datetime.fromisoformat(css.select_one_get_attr(article, *selectors.date))
         if selectors.id.element == selectors.id.attribute:
             post_id = int(css.get_attr(article, selectors.id.element))
         else:
@@ -237,7 +238,9 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
             if scrape_this_post:
                 post_url = thread.url / f"{self.XF_POST_URL_PART_NAME}{current_post.id}"
                 new_scrape_item = scrape_item.create_new(
-                    thread.url, possible_datetime=current_post.date, add_parent=post_url
+                    thread.url,
+                    possible_datetime=to_timestamp(current_post.date),
+                    add_parent=post_url,
                 )
                 self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
                 try:
@@ -267,7 +270,7 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
     async def _links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         selector = self.XF_SELECTORS.posts.links
         links = css.iselect(post.content, selector.element)
-        valid_links = (link for link in links if not self.is_image_or_attachment(link))
+        valid_links = (link for link in links if not self.is_image_username_or_attachment(link))
         await self.process_children(scrape_item, valid_links, selector.attribute)
 
     async def _images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
@@ -362,8 +365,10 @@ class XenforoCrawler(ForumCrawler, is_abc=True):
 
         return await super().handle_internal_link(scrape_item)
 
-    def is_image_or_attachment(self, link_obj: Tag) -> bool:
+    def is_image_username_or_attachment(self, link_obj: Tag) -> bool:
         if link_obj.select_one("img"):
+            return True
+        if link_obj.select_one(".username"):
             return True
         if link_str := css.get_attr_no_error(link_obj, self.XF_SELECTORS.posts.links.element):
             return self.is_attachment(link_str)
