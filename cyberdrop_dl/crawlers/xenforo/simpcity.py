@@ -11,5 +11,6 @@ class SimpCityCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://simpcity.su")
     DOMAIN: ClassVar[str] = "simpcity"
     FOLDER_DOMAIN: ClassVar[str] = "SimpCity"
-    XF_USER_COOKIE_NAME = "dontlikebots_user"
+    LOGIN_USER_COOKIE_NAME = "dontlikebots_user"
     login_required = False
+    IGNORE_EMBEDED_IMAGES_SRC = False

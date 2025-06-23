@@ -11,7 +11,7 @@ class CelebForumCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://celebforum.to")
     DOMAIN: ClassVar[str] = "celebforum"
     FOLDER_DOMAIN: ClassVar[str] = "CelebForum"
-    XF_IGNORE_EMBEDED_IMAGES_SRC: ClassVar = True
+    IGNORE_EMBEDED_IMAGES_SRC: ClassVar = True  # images src is always a thumbnail
 
     @classmethod
     def is_thumbnail(cls, link: AbsoluteHttpURL) -> bool:
