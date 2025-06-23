@@ -1,3 +1,10 @@
+"""Base crawlers to scrape any message board / forum
+
+If the message board has a public API, inherit from MessageBoard (ex: Discourse)
+
+If the message board needs to scrape the actual HTML of page, Inherit for HTMLMessageBoard
+
+"""
 # ruff : noqa: RUF009
 
 from __future__ import annotations
@@ -16,12 +23,7 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import TimeStamp, to_timestamp
-from cyberdrop_dl.utils.utilities import (
-    error_handling_wrapper,
-    get_text_between,
-    is_absolute_http_url,
-    is_blob_or_svg,
-)
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, is_absolute_http_url, is_blob_or_svg
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Iterable, Sequence
@@ -32,15 +34,9 @@ if TYPE_CHECKING:
 
 THREAD_PART_NAMES = "thread", "topic", "tema"
 THREAD_PART_NAMES = ",".join(f"{part},{part}s" for part in THREAD_PART_NAMES).split(",")
-LINK_TRASH_MAPPING = {
-    ".th.": ".",
-    ".md.": ".",
-    "ifr": "watch",
-}
+LINK_TRASH_MAPPING = {".th.": ".", ".md.": ".", "ifr": "watch"}
 
 Selector = css.CssAttributeSelector
-LAST_PAGE_SELECTOR = Selector("li.pageNav-page a:last-of-type", "href")
-CURRENT_PAGE_SELECTOR = Selector("li.pageNav-page.pageNav-page--current a", "href")
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -49,15 +45,10 @@ class PostSelectors:
     content: str  # text, links and images (NO attachments)
     id: Selector
     attachments: Selector
-    article_trash: tuple[str, ...] = (
-        "signature",
-        "footer",
-    )
-    content_trash: tuple[str, ...] = (
-        "quotes",
-        "fancy_quotes",
-    )
+    article_trash: Sequence[str] = ("signature", "footer")
+    content_trash: Sequence[str] = ("blockquote", "fauxBlockLink")
 
+    # Most sites should only need to overwrite the attributes above
     date: Selector = Selector("time", "datetime")
     embeds: Selector = Selector("iframe", "src")
     images: Selector = Selector("img.bbImage", "src")
@@ -75,7 +66,7 @@ class MessageBoardSelectors:
     last_page: Selector
     current_page: Selector
     title: Selector
-    title_trash: Selector = Selector("span")
+    title_trash: Sequence[str] = ("span",)
 
 
 @dataclasses.dataclass(frozen=True, slots=True, order=True)
@@ -108,10 +99,18 @@ class ForumPost:
 
 
 class ForumPostProtocol(Protocol):
-    id: int
-    date: datetime.datetime | None
-    content: Tag
-
+    # Concrete classes may define their own custom `ForumPost` class (ex: a Pydantic Model from an API response)
+    # Those classes need to satisfy this Protocol to make sure they work with all of `MessageBoard` methods
+    # This is just to flag type error.
+    # Subclasses implementation does not need to conform to this if they override the necessary methods
+    @property
+    def id(self) -> int: ...
+    @property
+    def date(self) -> datetime.datetime | None: ...
+    @property
+    def article(self) -> Tag: ...
+    @property
+    def content(self) -> Tag: ...
     @property
     def timestamp(self) -> TimeStamp | None: ...
 
@@ -126,18 +125,27 @@ class Thread:
 
 
 class ThreadProtocol(Protocol):
-    id: int
-    name: str
-    page: int
-    post_id: int | None
-    url: AbsoluteHttpURL
+    # Concrete classes may define their own custom `Thread` class (ex: discourse defines `Topic` from an API Response)
+    # Those classes need to satisfy this Protocol to make sure they work with all of `MessageBoard` methods
+    # This is just to flag type error.
+    # Subclasses implementation does not need to conform to this if they override the necessary methods
+    @property
+    def id(self) -> int: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def page(self) -> int: ...
+    @property
+    def post_id(self) -> int | None: ...
+    @property
+    def url(self) -> AbsoluteHttpURL: ...
 
 
 # quotes_2 : embed fauxBlockLink
 class MessageBoardCrawler(Crawler, is_abc=True):
     """Base crawler for every MessageBoard.
 
-    A Message board should have: forums,threads and posts.
+    A Message board should have: forums, threads (also known as topics) and posts.
 
     Concrete classes MUST:
     - implement `parse_thread`
@@ -150,24 +158,42 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     NOTE: Always use this crawler as base, even if the message board logic does not match perfectly.
 
     In those cases, override `fetch`,`fetch_thread`, `parse_url` or any other non final method as needed
-    """
 
-    # This crawler is NOT meant to scrape image boards (like 4chan)
+    This crawler is NOT meant to scrape image boards (like 4chan)
+    """
 
     THREAD_PART_NAMES: ClassVar[Sequence[str]] = THREAD_PART_NAMES
     ATTACHMENT_URL_PARTS: ClassVar[Sequence[str]] = "attachments", "data", "uploads"
     ATTACHMENT_HOSTS: ClassVar[Sequence[str]] = ()
     SUPPORTS_THREAD_RECURSION: ClassVar[bool] = False
-
     LOGIN_USER_COOKIE_NAME: ClassVar[str] = ""
-    login_required: ClassVar[bool | None] = None
 
     # True: Login is mandatory. If login fails, the crawler will be disabled
     # False: Login is optional, but CDL will try to log in anyway. ex: Forums where only some threads require auth
     # None: Completely skip login check and request. Always try to scrape as is the user is logged in
-
     # TODO: move login logic to the base crawler
     # TODO: make login_required an enum
+    login_required: ClassVar[bool | None] = None
+
+    @classmethod
+    @abstractmethod
+    def parse_thread(cls, url: AbsoluteHttpURL, thread_name_and_id: str) -> ThreadProtocol: ...
+
+    @abstractmethod
+    async def post(self, scrape_item: ScrapeItem, post: ForumPostProtocol) -> None: ...
+
+    @abstractmethod
+    async def thread(self, scrape_item: ScrapeItem, thread: ThreadProtocol) -> None: ...
+
+    async def forum(self, scrape_item: ScrapeItem) -> None:
+        # Subclasses can define custom logic for this method.
+        # They would need to also override `fetch` since the default fetch does not take this method into account
+        raise NotImplementedError
+
+    async def resolve_confirmation_link(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
+        # Implementations of this method should return `None`` instead of raising an error
+        raise NotImplementedError
+
     async def async_startup(self) -> None:
         await self.login()
 
@@ -178,7 +204,7 @@ class MessageBoardCrawler(Crawler, is_abc=True):
 
         if not self.logged_in:
             login_url = self.PRIMARY_URL / "login"
-            await self.login_setup(login_url)
+            await self._login(login_url)
 
     @final
     @property
@@ -223,6 +249,8 @@ class MessageBoardCrawler(Crawler, is_abc=True):
         by_host = any(host in link.host for host in self.ATTACHMENT_HOSTS)
         return by_parts or by_host
 
+    # TODO: Move this to base crawler
+    @final
     @error_handling_wrapper
     async def follow_redirect_w_get(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
@@ -231,29 +259,24 @@ class MessageBoardCrawler(Crawler, is_abc=True):
         scrape_item.url = response.url
         self.manager.task_group.create_task(self.run(scrape_item))
 
+    # TODO: Move this to base crawler
+    @final
+    @error_handling_wrapper
+    async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
+        head = await self.client.get_head(self.DOMAIN, scrape_item.url)
+        redirect = head.get("location")
+        if not redirect:
+            raise ScrapeError(422)
+        scrape_item.url = self.parse_url(redirect)
+        self.manager.task_group.create_task(self.run(scrape_item))
+
+    @final
     async def follow_confirmation_link(self, scrape_item: ScrapeItem) -> None:
         url = await self.resolve_confirmation_link(scrape_item.url)
         if url:  # If there was an error, this will be None
             scrape_item.url = url
             # This could end up back in here if the URL goes to another thread
             return self.handle_external_links(scrape_item)
-
-    async def resolve_confirmation_link(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
-        # Implementations of this method should return None instead of raising an error
-        raise ValueError
-
-    @classmethod
-    @abstractmethod
-    def parse_thread(cls, url: AbsoluteHttpURL, thread_name_and_id: str) -> ThreadProtocol: ...
-
-    @abstractmethod
-    async def thread(self, scrape_item: ScrapeItem, thread: ThreadProtocol) -> None: ...
-
-    @abstractmethod
-    async def post(self, scrape_item: ScrapeItem, post: ForumPostProtocol) -> None: ...
-
-    async def forum(self, scrape_item: ScrapeItem) -> None:
-        raise NotImplementedError
 
     @final
     def check_thread_recursion(self, scrape_item: ScrapeItem) -> None:
@@ -277,6 +300,7 @@ class MessageBoardCrawler(Crawler, is_abc=True):
             return True
         return False
 
+    @final
     @error_handling_wrapper
     async def handle_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL) -> None:
         if link == self.PRIMARY_URL:
@@ -306,9 +330,11 @@ class MessageBoardCrawler(Crawler, is_abc=True):
             return
         await self.manager.log_manager.write_last_post_log(last_post_url)
 
+    # TODO: Move this to the base crawler
+    # TODO: Define an unified workflow for crawlers to perform and check login
     @final
     @error_handling_wrapper
-    async def login_setup(self, login_url: AbsoluteHttpURL) -> None:
+    async def _login(self, login_url: AbsoluteHttpURL) -> None:
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.PRIMARY_URL)
         session_cookie = host_cookies.get(self.LOGIN_USER_COOKIE_NAME)
         session_cookie = session_cookie.value if session_cookie else None
@@ -317,7 +343,6 @@ class MessageBoardCrawler(Crawler, is_abc=True):
             raise LoginError(message=msg)
 
         _, self.logged_in = await self.check_login_with_request(login_url)
-
         if self.logged_in:
             return
         if session_cookie:
@@ -333,20 +358,18 @@ class MessageBoardCrawler(Crawler, is_abc=True):
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
 
-ForumCrawler = MessageBoardCrawler
-
-
 class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     """Base crawler that knows how to scrape the html of every MessageBoard.
 
     Threads of the MessageBoard MUST be paginated.
 
     Concrete classes MUST:
-    - implement `parse_thread`
-    - implement `make_post_url`
     - define: `SELECTORS`, `POST_URL_PART_NAME` and `PAGE_URL_PART_NAME`
 
-    To improve performance and reduce the number of requests, concrete classes MAY:
+    This crawler delegates images to other crawlers by default
+    Concreate classes can handle images themselft if they know how to, to improve performance and reduce the number of requests,
+
+    To handle images, concrete classes SHOULD:
     - define `IGNORE_EMBEDED_IMAGES_SRC` as `False`
     - override `is_thumbnail`
     - override `thumbnail_to_img`
@@ -354,9 +377,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     Concrete classes SHOULD define `ATTACHMENT_HOSTS` if internal images of the site are stored on servers with a different domain
     """
 
-    SUPPORTS_THREAD_RECURSION: ClassVar = True
     IGNORE_EMBEDED_IMAGES_SRC = True
-    login_required = True
     SELECTORS: ClassVar[MessageBoardSelectors]
     POST_URL_PART_NAME: ClassVar[str]
     PAGE_URL_PART_NAME: ClassVar[str]
@@ -387,28 +408,16 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     def thumbnail_to_img(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
         return None
 
-    # TODO: Move this to base crawler
-    @error_handling_wrapper
-    async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
-        head = await self.client.get_head(self.DOMAIN, scrape_item.url)
-        redirect = head.get("location")
-        if not redirect:
-            raise ScrapeError(422)
-        scrape_item.url = self.parse_url(redirect)
-        self.manager.task_group.create_task(self.run(scrape_item))
-
     @classmethod
-    @abstractmethod
-    def parse_thread(cls, url: AbsoluteHttpURL, thread_name_and_id: str) -> Thread:
+    def parse_thread(cls, url: AbsoluteHttpURL, thread_name_and_id: str) -> ThreadProtocol:
         return parse_thread(url, thread_name_and_id, cls.PAGE_URL_PART_NAME, cls.POST_URL_PART_NAME)
 
     @classmethod
-    @abstractmethod
-    def make_post_url(cls, thread: Thread, post_id: int) -> AbsoluteHttpURL:
+    def make_post_url(cls, thread: ThreadProtocol, post_id: int) -> AbsoluteHttpURL:
         return thread.url / f"{cls.POST_URL_PART_NAME}-{post_id}"
 
     @error_handling_wrapper
-    async def thread(self, scrape_item: ScrapeItem, thread: Thread) -> None:
+    async def thread(self, scrape_item: ScrapeItem, thread: ThreadProtocol) -> None:
         scrape_item.setup_as_forum("")
         if thread.url in self.scraped_threads:
             return
@@ -421,7 +430,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         self.scraped_threads.add(thread.url)
         await self.process_thread(scrape_item, thread)
 
-    async def process_thread(self, scrape_item: ScrapeItem, thread: Thread) -> None:
+    async def process_thread(self, scrape_item: ScrapeItem, thread: ThreadProtocol) -> None:
         title: str = ""
         last_post_url = thread.url
         async for soup in self.thread_pager(scrape_item):
@@ -440,7 +449,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         await self.write_last_forum_post(thread.url, last_post_url)
 
     def process_thread_page(
-        self, scrape_item: ScrapeItem, thread: Thread, soup: BeautifulSoup
+        self, scrape_item: ScrapeItem, thread: ThreadProtocol, soup: BeautifulSoup
     ) -> tuple[bool, AbsoluteHttpURL]:
         continue_scraping = False
         post_url = thread.url
@@ -467,7 +476,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         return continue_scraping, post_url
 
     @error_handling_wrapper
-    async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
+    async def post(self, scrape_item: ScrapeItem, post: ForumPostProtocol) -> None:
         scrape_item.setup_as_post("")
         post_title = self.create_separate_post_title(None, str(post.id), post.date)
         scrape_item.add_to_parent_title(post_title)
@@ -487,13 +496,13 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         if duplicates:
             self.log_bug_report(f"Found duplicate links. Selectors are too generic: {duplicates}")
 
-    def _external_links(self, post: ForumPost) -> Iterable[str]:
+    def _external_links(self, post: ForumPostProtocol) -> Iterable[str]:
         selector = self.SELECTORS.posts.links
         links = css.iselect(post.content, selector.element)
         valid_links = (link for link in links if not self.is_username_or_attachment(link))
         return iter_links(valid_links, selector.attribute)
 
-    def _images(self, post: ForumPost) -> Iterable[str]:
+    def _images(self, post: ForumPostProtocol) -> Iterable[str]:
         if self.IGNORE_EMBEDED_IMAGES_SRC:
             selector = self.SELECTORS.posts.a_tag_w_image
         else:
@@ -501,22 +510,22 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         images = css.iselect(post.content, selector.element)
         return iter_links(images, selector.attribute)
 
-    def _videos(self, post: ForumPost) -> Iterable[str]:
+    def _videos(self, post: ForumPostProtocol) -> Iterable[str]:
         selector = self.SELECTORS.posts.videos
         videos = css.iselect(post.content, selector.element)
         return iter_links(videos, selector.attribute)
 
-    def _attachments(self, post: ForumPost) -> Iterable[str]:
+    def _attachments(self, post: ForumPostProtocol) -> Iterable[str]:
         selector = self.SELECTORS.posts.attachments
         attachments = css.iselect(post.article, selector.element)
         return iter_links(attachments, selector.attribute)
 
-    def _embeds(self, post: ForumPost) -> Iterable[str]:
+    def _embeds(self, post: ForumPostProtocol) -> Iterable[str]:
         selector = self.SELECTORS.posts.embeds
         embeds = css.iselect(post.content, selector.element)
         return iter_links(embeds, selector.attribute)
 
-    def _lazy_load_embeds(self, post: ForumPost) -> Iterable[str]:
+    def _lazy_load_embeds(self, post: ForumPostProtocol) -> Iterable[str]:
         selector = self.SELECTORS.posts.lazy_load_embeds
         for lazy_media in css.iselect(post.content, selector.element):
             yield get_text_between(css.get_attr(lazy_media, selector.attribute), "loadMedia(this, '", "')")
@@ -590,7 +599,9 @@ def iter_links(links: Iterable[Tag], attribute: str) -> Iterable[str]:
             continue
 
 
-def parse_thread(url: AbsoluteHttpURL, thread_name_and_id: str, page_part_name: str, post_part_name: str) -> Thread:
+def parse_thread(
+    url: AbsoluteHttpURL, thread_name_and_id: str, page_part_name: str, post_part_name: str
+) -> ThreadProtocol:
     name_index = url.parts.index(thread_name_and_id)
     name, id_ = parse_thread_name_and_id(thread_name_and_id)
     page, post_id = get_thread_page_and_post(url, name_index, page_part_name, post_part_name)
@@ -646,7 +657,8 @@ def is_last_page(soup: BeautifulSoup, selectors: MessageBoardSelectors) -> bool:
 def get_post_title(soup: BeautifulSoup, selectors: MessageBoardSelectors) -> str:
     try:
         title_block = css.select_one(soup, selectors.title.element)
-        css.decompose(title_block, selectors.title_trash.element)
+        for trash in selectors.title_trash:
+            css.decompose(title_block, trash)
     except (AttributeError, AssertionError, css.SelectorError) as e:
         raise ScrapeError(429, message="Invalid response from forum. You may have been rate limited") from e
 
@@ -662,24 +674,10 @@ def extract_embed_url(embed_str: str) -> str:
     return embed_str
 
 
-# TODO: move to parse_url
 def clean_link_str(link: str) -> str:
     for old, new in LINK_TRASH_MAPPING.items():
         link = link.replace(old, new)
     return link
-
-
-def parse_login_form(resp_text: str) -> dict[str, str]:
-    soup = BeautifulSoup(resp_text, "html.parser")
-    inputs = soup.select("form:first-of-type input")
-    data = {
-        name: value
-        for elem in inputs
-        if (name := css.get_attr_or_none(elem, "name")) and (value := css.get_attr_or_none(elem, "value"))
-    }
-    if data:
-        return data
-    raise ScrapeError(422)
 
 
 def is_confirmation_link(link: AbsoluteHttpURL) -> bool:
@@ -709,11 +707,3 @@ def pre_process_child(link_str: str, embeds: bool = False) -> str | None:
 
     if link_str and not is_blob_or_svg(link_str):
         return link_str
-
-
-"""
-A Xenforo site has these attributes attached to the main html tag of the site:
-id="XF"                                  This identifies the site as a Xenforo site
-data-cookie-prefix="ogaddgmetaprof_"     The full cookies name will be `ogaddgmetaprof_user`
-data-xf="2.3"                            Version number
-"""
