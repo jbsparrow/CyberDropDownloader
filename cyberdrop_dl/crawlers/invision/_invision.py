@@ -1,6 +1,6 @@
 """Generic crawler for any Invision forum
 
-A Invision site has an tag with `ipsCopyright` class and the text: "Powered By Invision"
+A Invision site has a tag with a `ipsCopyright` class and the text: "Powered By Invision"
 """
 
 from __future__ import annotations
@@ -8,6 +8,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING, ClassVar
 
+from cyberdrop_dl.crawlers._forum import HTMLMessageBoardCrawler
 from cyberdrop_dl.crawlers.xenforo.xenforo import DEFAULT_XF_POST_SELECTORS, DEFAULT_XF_SELECTORS, XenforoCrawler
 from cyberdrop_dl.utils import css
 
@@ -40,7 +41,7 @@ DEFAULT_INVISION_SELECTORS = dataclasses.replace(
 )
 
 
-class InvisionCrawler(XenforoCrawler, is_abc=True):
+class InvisionCrawler(HTMLMessageBoardCrawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = XenforoCrawler.SUPPORTED_PATHS | {"**NOTE**": "base crawler: Invision"}  # type: ignore
     SUPPORTS_THREAD_RECURSION: ClassVar[bool] = True
     SELECTORS: ClassVar[MessageBoardSelectors] = DEFAULT_INVISION_SELECTORS

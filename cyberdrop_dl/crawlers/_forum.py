@@ -32,8 +32,6 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
-THREAD_PART_NAMES = "thread", "topic", "tema"
-THREAD_PART_NAMES = ",".join(f"{part},{part}s" for part in THREAD_PART_NAMES).split(",")
 LINK_TRASH_MAPPING = {".th.": ".", ".md.": ".", "ifr": "watch"}
 
 Selector = css.CssAttributeSelector
@@ -101,8 +99,8 @@ class ForumPost:
 class ForumPostProtocol(Protocol):
     # Concrete classes may define their own custom `ForumPost` class (ex: a Pydantic Model from an API response)
     # Those classes need to satisfy this Protocol to make sure they work with all of `MessageBoard` methods
-    # This is just to flag type error.
-    # Subclasses implementation does not need to conform to this if they override the necessary methods
+    # This is just identify type errors.
+    # Subclass implementation does not need to conform to this if they override the necessary methods
     @property
     def id(self) -> int: ...
     @property
@@ -127,8 +125,8 @@ class Thread:
 class ThreadProtocol(Protocol):
     # Concrete classes may define their own custom `Thread` class (ex: discourse defines `Topic` from an API Response)
     # Those classes need to satisfy this Protocol to make sure they work with all of `MessageBoard` methods
-    # This is just to flag type error.
-    # Subclasses implementation does not need to conform to this if they override the necessary methods
+    # This is just identify type errors.
+    # Subclass implementation does not need to conform to this if they override the necessary methods
     @property
     def id(self) -> int: ...
     @property
@@ -162,7 +160,7 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     This crawler is NOT meant to scrape image boards (like 4chan)
     """
 
-    THREAD_PART_NAMES: ClassVar[Sequence[str]] = THREAD_PART_NAMES
+    THREAD_PART_NAMES: ClassVar[Sequence[str]] = "thread", "topic", "tema", "threads", "topics", "temas"
     ATTACHMENT_URL_PARTS: ClassVar[Sequence[str]] = "attachments", "data", "uploads"
     ATTACHMENT_HOSTS: ClassVar[Sequence[str]] = ()
     SUPPORTS_THREAD_RECURSION: ClassVar[bool] = False
@@ -172,7 +170,6 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     # False: Login is optional, but CDL will try to log in anyway. ex: Forums where only some threads require auth
     # None: Completely skip login check and request. Always try to scrape as is the user is logged in
     # TODO: move login logic to the base crawler
-    # TODO: make login_required an enum
     login_required: ClassVar[bool | None] = None
 
     @classmethod
@@ -191,7 +188,8 @@ class MessageBoardCrawler(Crawler, is_abc=True):
         raise NotImplementedError
 
     async def resolve_confirmation_link(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
-        # Implementations of this method should return `None`` instead of raising an error
+        # Not every forum has confirmation link so overriding this method is optional
+        # Implementation of this method MUST return `None` instead of raising an error
         raise NotImplementedError
 
     async def async_startup(self) -> None:
@@ -367,10 +365,10 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     - define: `SELECTORS`, `POST_URL_PART_NAME` and `PAGE_URL_PART_NAME`
 
     This crawler delegates images to other crawlers by default
-    Concreate classes can handle images themselft if they know how to, to improve performance and reduce the number of requests,
+    Concrete classes MAY handle images themselfs if they know how to. This will improve performance by reducing the number of requests
 
-    To handle images, concrete classes SHOULD:
-    - define `IGNORE_EMBEDED_IMAGES_SRC` as `False`
+    To handle images, concrete classes need to:
+    - override `IGNORE_EMBEDED_IMAGES_SRC` to `False`
     - override `is_thumbnail`
     - override `thumbnail_to_img`
 
@@ -393,6 +391,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     def __post_init__(self) -> None:
         self.scraped_threads = set()
 
+    @final
     async def async_startup(self) -> None:
         await super().async_startup()
         self.register_cache_filter(self.PRIMARY_URL, self.check_is_not_last_page)
@@ -537,6 +536,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     def get_next_page(self, soup: BeautifulSoup) -> str | None:
         return css.select_one_get_attr_or_none(soup, *self.SELECTORS.next_page)
 
+    @final
     @error_handling_wrapper
     async def process_child(self, scrape_item: ScrapeItem, link_str: str, *, embeds: bool = False) -> None:
         link_str_ = pre_process_child(link_str, embeds)

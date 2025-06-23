@@ -327,6 +327,10 @@ class Crawler(ABC):
     def get_filename_and_ext(
         self, filename: str, forum: bool = False, assume_ext: str | None = None
     ) -> tuple[str, str]:
+        """Wrapper around `utils.get_filename_and_ext`.
+        Calls it as is.
+        If that fails, appedns `assume_ext` and tries again, but only if the user had exclude_files_with_no_extension = `False`
+        """
         try:
             return get_filename_and_ext(filename, forum)
         except NoExtensionError:
