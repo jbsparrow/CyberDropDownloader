@@ -8,7 +8,7 @@ import bs4.css
 from cyberdrop_dl.exceptions import ScrapeError
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Iterable
+    from collections.abc import Callable, Generator
 
     from bs4 import Tag
 
@@ -112,9 +112,9 @@ def _parse_srcset(srcset: str) -> str:
     return [src.split(" ")[0] for src in srcset.split(", ")][-1]
 
 
-def iget(tag: Tag, selector: str, attribute: str) -> Iterable[str]:
+def iget(tag: Tag, selector: str, attribute: str) -> Generator[str | None]:
     for inner_tag in iselect(tag, selector):
-        yield get_attr(inner_tag, attribute)
+        yield get_attr_or_none(inner_tag, attribute)
 
 
 def decompose(tag: Tag, selector: str) -> None:
@@ -124,3 +124,4 @@ def decompose(tag: Tag, selector: str) -> None:
 
 iframes = CssAttributeSelector("iframe", "src")
 images = CssAttributeSelector("img", "srcset")
+links = CssAttributeSelector(":any-link", "href")

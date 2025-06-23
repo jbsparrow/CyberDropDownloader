@@ -102,7 +102,7 @@ from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler
 
 FORUM_CRAWLERS = DISCOURSE_CRAWLERS.union(XF_CRAWLERS)
-GENERIC_CRAWLERS = WP_GENERIC_CRAWLERS.union({DiscourseCrawler})
+GENERIC_CRAWLERS: set[type[Crawler]] = WP_GENERIC_CRAWLERS.union({DiscourseCrawler})
 ALL_CRAWLERS: set[type[Crawler]] = {
     crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
 }
