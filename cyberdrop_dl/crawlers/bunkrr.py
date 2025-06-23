@@ -165,7 +165,7 @@ class BunkrrCrawler(Crawler):
             item = AlbumItem.from_tag(tag)
             link = self.parse_url(item.path_qs, relative_to=scrape_item.url.origin())
             new_scrape_item = scrape_item.create_child(
-                link, possible_datetime=self.parse_date(item.date, "%H:%M:%S %m/%d/%Y")
+                link, possible_datetime=self.parse_date(item.date, "%H:%M:%S %d/%m/%Y")
             )
             await self.process_album_item(new_scrape_item, item, results)
             scrape_item.add_children()
