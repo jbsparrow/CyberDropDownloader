@@ -23,6 +23,7 @@ from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media, RenditionGroup
+from cyberdrop_dl.utils.strings import safe_format
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
     get_download_path,
@@ -384,18 +385,9 @@ class Crawler(ABC):
             title_format = self.DEFAULT_POST_TITLE_FORMAT
         if isinstance(date, int):
             date = datetime.datetime.fromtimestamp(date)
-        if isinstance(date, datetime.datetime | datetime.date):
-            date_str = date.isoformat()
-        else:
-            date_str: str | None = date
 
-        def default_if_none(value: str | None, default: str) -> str:
-            return default if value is None else value
-
-        id = default_if_none(id, "Unknown")
-        title = default_if_none(title, "Untitled")
-        date_str = default_if_none(date_str, "NO_DATE")
-        return title_format.format(id=id, number=id, date=date_str, title=title)
+        post_title, _ = safe_format(title_format, id=id, number=id, date=date, title=title)
+        return post_title
 
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> AbsoluteHttpURL:
         """Wrapper arround `utils.parse_url` to use `self.PRIMARY_URL` as base"""

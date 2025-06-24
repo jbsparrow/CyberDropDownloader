@@ -1,5 +1,4 @@
 import string
-from collections.abc import Callable
 from typing import Any
 
 _FORMATER = string.Formatter()
@@ -39,7 +38,7 @@ def safe_format(format_string: str, **fields: Any) -> tuple[str, set[str]]:
         **kwargs: Keyword arguments for formatting.
 
     Returns:
-        str: The formatted string with unknown keys replaced by "NO_{KEY_NAME}".
+        str: The formatted string with unknown keys replaced by "UNKNOWN_{KEY_NAME}".
         set[str]: colletion of unknown field_names in the format string
     """
 
@@ -89,10 +88,3 @@ def get_field_names(format_string: str) -> set[str]:
 def get_unknown_field_names(format_string: str, valid_keys: set[str]) -> set[str]:
     field_names = get_field_names(format_string)
     return field_names - valid_keys
-
-
-def make_format_validator(valid_keys: set[str]) -> Callable[[str], None]:
-    def validate(format_string: str) -> None:
-        return validate_format_string(format_string, valid_keys)
-
-    return validate
