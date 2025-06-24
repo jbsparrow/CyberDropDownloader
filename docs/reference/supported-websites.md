@@ -17,7 +17,7 @@ Example: `https://cyberfile.me/folder/xUGg?password=1234`
 | ------------------------------------------------------- |
 | GoFile                                                  |
 | Cyberfile                                               |
-| Chevereto Sites (`JPG5`, `ImagePond.net` or `img.kiwi`) |
+| Chevereto Sites (`JPG5`, `ImagePond.net`) |
 | Iceyfile.com                                            |
 
 ## Additional Content Hosts with Real-Debrid

@@ -30,7 +30,7 @@ However, to make sure the program will not run endlessly, there are certain situ
 | ------ | ------- |
 | `bool` | `false` |
 
-By default the program will do it's absolute best to try and find when a file was uploaded. It'll then set the `last modified`, `last accessed` and `created` dates on the file to match.
+By default the program will do it's absolute best to try and find when a file was uploaded. It'll then set the `last modified`, `last accessed` dates on the file to match. On Windows and MacOS, it will also try to set the `created` date.
 
 Setting this to `true` will disable this function, and the dates for those metadata entries will be the date the file was downloaded.
 
@@ -75,6 +75,7 @@ Limit **FORUM** scrape to 15 posts max, grab all links and media within those po
 --maximum-number-of-children 15 0 10
 
 ```
+
 {% endtab %}
 
 {% tab title="example 2" %}
@@ -88,16 +89,20 @@ Only grab the first link from each post in a forum, but that link will have no `
 
 {% tab title="example 3" %}
 Only grab the first **POST** / **ALBUM** from a **FILE_HOST_PROFILE**
+
 ```shell
 --maximum-number-of-children 0 0 1
 ```
+
 {% endtab %}
 
 {% tab title="example 4" %}
 No **FORUM** limit, no **FORUM_POST** limit, no **FILE_HOST_PROFILE** limit, maximum of 20 items from any **FILE_HOST_ALBUM**:
+
 ```shell
     --maximum-number-of-children 0 0 0 20
 ```
+
 {% endtab %}
 {% endtabs %}
 
@@ -115,7 +120,9 @@ Setting this to `true` will remove the "(DOMAIN)" portion of folder names on new
 | ------ | ------- |
 | `bool` | `false` |
 
-Setting this to `true` will remove the alphanumeric ID added to the end of filenames by some websites like  `cyberdrop.me`.
+Setting this to `true` will remove the alphanumeric ID added to the end of filenames by some websites.
+
+This option only works for URLs from `cyberdrop.me`.
 
 Multipart archive filenames will be corrected to follow the proper naming pattern for their format.
 
@@ -127,7 +134,16 @@ Supported formats: `.rar` `.7z` `.tar` `.gz` `.bz2` `.zip`
 | ------ | ------- |
 | `bool` | `false` |
 
-Setting this to `true` will prevent Cyberdrop-DL to scrape entire thread if an individual post link was provided as input.
+Setting this to `true` will prevent Cyberdrop-DL to scrape entire thread if an the input URL had an specific post in it.
+
+CDL will only download files within that post.
+
+For most forum sites, the post id is part of the fragment in the URL.
+
+ex: `/thread/iphone-16-16e-16-plus-16-pro-16-promax.256047/page-64#post-7512404` has a post id of `7512404`
+
+If `scrape_single_forum_post` is `false`, CDL will download all post in the thread from `7512404` until the last post
+If `scrape_single_forum_post` is `true`, CDL will only download file within post `7512404` itself and stop.
 
 ## `separate_posts`
 
@@ -135,7 +151,19 @@ Setting this to `true` will prevent Cyberdrop-DL to scrape entire thread if an i
 | ------ | ------- |
 | `bool` | `false` |
 
-Setting this to `true` will separate content from forum and site posts into separate folders. Only affects sites which have 'posts': `Forums`, `reddit`, `coomer`, `kemono` and `nekohouse`.
+Setting this to `true` will separate content from forum and site posts into separate folders.
+
+This option only works with sites that have 'posts'.
+
+- `Forums`
+- `Discourse`
+- `reddit`
+- `coomer`, `kemono` and `nekohouse`.
+
+For some sites, this value is hardcorded to `true` because each post is always an individual page:
+
+- `Wordpress`
+- `eFukt`
 
 ## `separate_posts_format`
 
@@ -147,25 +175,39 @@ This is the format for the directory created when using `--separate-posts`.
 
 Unique Path Flags:
 
-> `date`: date of the post
+> `date`: date of the post. This is a python `datetime` object
 >
-> `number`: post number
+> `id`: The post id. This is always a `string`, even if some sites use just numbers
 >
-> `id`: same as `number`
+> `number`: This no longer means anything. Currently, it always has the same value as `id`
 >
-> `title`: post title
+> `title`: post title. This is a `string`
 
 {% hint style="warning" %}
 Not all sites support all possible flags. Ex: Posts from reddit only support the `title` flag
+If you use a format that tthe sites does not support, CDL will replace with `UNKNOWN_<FLAG_NAME>`
+
+ex: using the format `reddit post #{number}` will procude: `reddit post #UNKNOWN_ID`
 {% endhint %}
 
 Setting it to `{default}` will use the default format, which is different for each crawler:
 
-| Site                              | Default Format     |
-| --------------------------------- | ------------------ |
-| `Coomer`, `Kemono` an `Nekohouse` | `{date} - {title}` |
-| `Forums`                          | `post-{number}`    |
-| `Reddit`                          | `{title}`          |
+| Site                                  | Default Format                     |
+| ------------------------------------- | ---------------------------------- |
+| `Coomer`, `Kemono` and `Nekohouse`    | `{date} - {title}`                 |
+| `Forums (Xenforo/vBulletin/Invision)` | `{date} - {id} - {title}`          |
+| `Discourse`                           | `{date} - {id} - {title}`          |
+| `Reddit`                              | `{title}`                          |
+| `WordPress`                           | `{date:%Y-%m-%d} - {id} - {title}` |
+| `eFukt`                               | `{date:%Y-%m-%d}  {title}`         |
+
+A date without a `format_spec` defaults to ISO 8601 format
+
+You can use any `format_spec` and `conversion` supported by python f-strings, with the following restrictions:
+
+- You can not have positional arguments in the format string. ex: `post {0} from date {1}`
+- You can not have unnamed fields in the format string. ex:  `post {} from date {}`
+- You can not perform operations within the format string. ex:  `post {id + 1} from date {date}`
 
 ## `skip_download_mark_completed`
 
@@ -183,29 +225,34 @@ Setting this to `true` will skip the download process for every file and mark th
 
 Setting this to `true` will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped, regardless of whether the referer was successfully scraped or not
 
-
 ## `maximum_thread_depth`
 
-| Type           | Default  |
-|----------------|----------|
-| `NonNegativeInt` | 0 |
+| Type             | Default |
+| ---------------- | ------- |
+| `NonNegativeInt` | 0       |
 
 {% hint style="warning" %}
-It is not recommended to set this above the default value of 0, as there is a high chance of infinite nesting in certain cases.
+It is not recommended to set this above the default value of `0`, as there is a high chance of infinite nesting in certain cases.
 
 For example, when dealing with Megathreads, if a Megathread is linked to another Megathread, you could end up scraping an undesirable amount of data.
 {% endhint %}
 
 Restricts how many levels deep the scraper is allowed to go while scraping a thread
 
-Values
-0: No nesting allowed, only the top level thread is allowed
-None: unlimited parents
-1>: limits to the value given
+Values:
+
+- `0`: No nesting allowed, only the top level thread is allowed
+- `1+`: limits to the value given
+
+{% hint style="info" %}
+This setting is hardcoded to `false` for Discourse sites
+{% endhint %}
 
 ### Example
+
 Consider CDL finds the following sub-threads while scraping an input URL:
-\```
+
+```bash
 └── thread_01
     ├── thread_02
     ├── thread_03
@@ -218,7 +265,8 @@ Consider CDL finds the following sub-threads while scraping an input URL:
     ├── thread_07
     │   └── thread_12
     └── thread_08
-\```
+```
+
 - With `maximum_thread_depth` = 0, CDL will only download files in `thread_01`, all the other threads will be ignored
-- With `maximum_thread_depth` = 1, CDL will only download files in `thread_01` to `thread_08`. `thread_09` to `thread_12` will be ignored
+- With `maximum_thread_depth` = 1, CDL will only download files in `thread_01` to `thread_08`. All threads from `thread_09` to `thread_12` will be ignored
 - With `maximum_thread_depth` >= 2, CDL will download files from all the threads in this case

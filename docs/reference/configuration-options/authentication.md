@@ -27,25 +27,13 @@ Once you have put your `session` cookie into the authentication file, you can ad
 
 <summary>Forums</summary>
 
-In order to scrape links/content from forums, you need to provide Cyberdrop-DL with your login details so it can access the website. This section also includes cookies for the support forums.
+{% hint style="warning" %}
+Logging to forums with `Authentification` settings was deprecated in v6.7.0
 
-If you use the cookie extractor to load the `XF_User` cookies into the program, you don't need to provide these credentials. If you ever log out of the forum in your browser though, you will need to use the cookie extractor again to get new cookies.
+You need to use cookie files.
 
-It is best to leave the authentication parameter for SimpCity blank, as they have made their forum public and have asked users scraping the website not to use logged in users.
-
-In order to set specific authentication values for a config instead of the global values, make an `authentication.yaml` file in the config folder.
-
-## `xf_user_cookie`
-
-This is the value for the `XF_User` cookie mentioned above. If you want to only use credentials, you can leave this blank.
-
-## `username`
-
-This is your username for the forum. Again, if you use cookies, you don't need to provide this.
-
-## `password`
-
-This is your password for the forum. Again, if you use cookies, you don't need to provide this.
+See: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839)
+{% endhint %}
 
 </details>
 
