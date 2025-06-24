@@ -2,7 +2,7 @@
 
 Cyberdrop-DL has a file sorter built in, but it's disabled by default
 
-You can use the field name bellow to create a custom path format. You can also use essentially none of them and have a hard coded path.
+You can use the field names bellow to create a custom path format. You can also use essentially none of them and have a hard coded path.
 However, `filename` and `ext` must always be used.
 
 Common fields for sorting format options (supported for `audio`, `videos`, `images` and `other`):
@@ -46,7 +46,7 @@ Setting this to `true` will allow Cyberdrop-DL to sort downloads after a run is 
 This is the path to the folder you'd like sorted downloads to be stored in.
 
 {% hint style="warning" %}
-Setting `sort_folder` to the same value as `scan_folder` is not officiality supported and will lead to expected results
+Setting `sort_folder` to the same value as `scan_folder` is not supported and will lead to expected results
 {% endhint %}
 
 ## `sort_incrementer_format`

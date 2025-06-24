@@ -16,7 +16,7 @@ layout:
 
 # Move to Cyberdrop-DL-Patched
 
-If you used the original version of the package (`cyberdrop-dl` instad of `cyberdrop-dl-patched`), you can follow the steps below to migrate.
+If you used the original version of the package (`cyberdrop-dl` instead of `cyberdrop-dl-patched`), you can follow the steps below to migrate.
 
 {% hint style="warning" %}
 You may need to adjust your config to make sure it's compatible with the newer versions.

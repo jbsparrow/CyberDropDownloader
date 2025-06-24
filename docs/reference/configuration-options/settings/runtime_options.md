@@ -36,10 +36,10 @@ For example, scraping an album normally takes one single request. However, with 
 | ------ | ------- |
 | `bool` | `false` |
 
-Files downloaded by CDL have a `.part` extension. CDL only changes the extension to the original one after a suscessfull download.
+Files downloaded by CDL have a `.part` extension. CDL only changes the extension to the original one after a successful download.
 This allows CDL to resume downloads on subsequent runs.
 
-Setting this to `true` will delete any `.part` files from the download folder.
+Setting this to `true` will delete any `.part` files in the download folder.
 
 ## `ignore_history`
 
@@ -47,7 +47,7 @@ Setting this to `true` will delete any `.part` files from the download folder.
 | ------ | ------- |
 | `bool` | `false` |
 
-By default, the program tracks your downloads to prevent downloading the same files multiple times, to save time and reduce strain on the servers you're downloading from.
+By default, the program tracks your downloads in a database to prevent downloading the same files multiple times, to save time and reduce strain on the servers you're downloading from.
 
 Setting this to `true` will cause the program to ignore the database, and will allow you to re-download files.
 
@@ -113,7 +113,7 @@ There is more verbose level of logs: `DEVELOPER`
 
 It includes pager logs, posts logs, individual requests logs (their URLs and their response code), requests cache hits and misses, file system locks logs and local variable values from within a traceback. It's not exposed as a config option becuase it is too verbose.
 
-You can set the environment variable `CDL_DEBUG_LOG_FOLDER` to any valid folder and CDL will create and aditional log file with the level set to `DEVELOPER` inside it.
+You can set the environment variable `CDL_DEBUG_LOG_FOLDER` to any valid folder and CDL will create an additional log file with the level set to `DEVELOPER` inside it.
 {% endhint %}
 
 {% hint style="critical" %}

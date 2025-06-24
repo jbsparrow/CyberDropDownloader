@@ -21,9 +21,9 @@ This will make the connection insecure, and sensitive data may be exposed. You s
 | ------------------- | ------- | ------------------------------------------------------------------- |
 | `list[NonEmptyStr]` | `[]`    | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs) |
 
-You can supply a list of crawlers to disable for the current run. This will make CDL completly ignore the crawler, as if the site was not supported. However, links from the site will still be proccesed by Real-Debrid (if enabled), Jdownloader (If enabled) and the Generic crawler (If enabled), in that order.
+You can supply a list of crawlers to disable for the current run. This will make CDL completely ignore the crawler, as if the site was not supported. However, links from the site will still be processed by Real-Debrid (if enabled), Jdownloader (If enabled) and the Generic crawler (If enabled), in that order.
 
-The list should be valid crawlers names. The name of the crawler if the name of the primary site they support. ex: `4Chan`, `Bunkrr`, `Dropbox`
+The list should be valid crawlers names. The name of the crawler is the name of the primary site they support. ex: `4Chan`, `Bunkrr`, `Dropbox`
 Crawlers names correspond to the column `site` in the [supported sites page](https://script-ware.gitbook.io/cyberdrop-dl/reference/supported-websites#supported-sites).
 
 
@@ -52,7 +52,7 @@ CDL will still try to download from unsupported URLs if the last part of the URL
 {% endhint %}
 
 {% hint style="warning" %}
-This wiki does not covert flaresolverr setup process. If you need help, refer to their documentation. Please do not open issues related to flaresolverr or DDoS-Guard.
+This wiki does not cover flaresolverr setup process. If you need help, refer to their documentation. Please do not open issues related to flaresolverr or `DDoS-Guard`.
 See: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839) for alternatives using cookies
 {% endhint %}
 
@@ -62,7 +62,7 @@ See: [How to extract cookies (DDoSGuard or login errors) #839](https://github.co
 | ------------- | ------- |
 | `PositiveInt` | `95`    |
 
-This is the maximum number of characters filename should have. CDl will truncate filenames longer that this.
+This is the maximum number of characters filename should have. CDL will truncate filenames longer that this.
 
 ## `max_folder_name_length`
 
@@ -70,7 +70,7 @@ This is the maximum number of characters filename should have. CDl will truncate
 | ------------- | ------- |
 | `PositiveInt` | `95`    |
 
-This is the maximum number of characters a folder should have. CDl will truncate folders longer that this.
+This is the maximum number of characters a folder should have. CDL will truncate folders longer that this.
 
 <!-- This needs Textual
 ## `pause_on_insufficient_space`
@@ -116,5 +116,5 @@ The user agent is the signature of your browser. Some sites use it to identify i
 You can google "what is my user agent" to get yours.
 
 {% hint style="info" %}
-If you use flaresolverr, this value MUST match with flaresolverr's user agent. Otherwirse, flaresolverr cookies won't work
+If you use flaresolverr, this value MUST match with flaresolverr's user agent. Otherwise, flaresolverr cookies won't work
 {% endhint %}

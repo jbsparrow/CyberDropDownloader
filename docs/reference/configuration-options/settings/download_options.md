@@ -30,7 +30,7 @@ However, to make sure the program will not run endlessly, there are certain situ
 | ------ | ------- |
 | `bool` | `false` |
 
-By default the program will do it's absolute best to try and find when a file was uploaded. It'll then set the `last modified`, `last accessed` dates on the file to match. On Windows and MacOS, it will also try to set the `created` date.
+By default the program will do it's absolute best to try and find the upload date of a file. It'll then set the `last modified` and `last accessed` dates on the file to match. On Windows and macOS, it will also try to set the `created` date.
 
 Setting this to `true` will disable this function, and the dates for those metadata entries will be the date the file was downloaded.
 
@@ -122,7 +122,7 @@ Setting this to `true` will remove the "(DOMAIN)" portion of folder names on new
 
 Setting this to `true` will remove the alphanumeric ID added to the end of filenames by some websites.
 
-This option only works for URLs from `cyberdrop.me`.
+This option only works for URLs from `cyberdrop.me` at the moment.
 
 Multipart archive filenames will be corrected to follow the proper naming pattern for their format.
 
@@ -134,7 +134,7 @@ Supported formats: `.rar` `.7z` `.tar` `.gz` `.bz2` `.zip`
 | ------ | ------- |
 | `bool` | `false` |
 
-Setting this to `true` will prevent Cyberdrop-DL to scrape entire thread if an the input URL had an specific post in it.
+Setting this to `true` will prevent Cyberdrop-DL from scraping an entire thread if the input URL had an specific post in it.
 
 CDL will only download files within that post.
 
@@ -142,7 +142,7 @@ For most forum sites, the post id is part of the fragment in the URL.
 
 ex: `/thread/iphone-16-16e-16-plus-16-pro-16-promax.256047/page-64#post-7512404` has a post id of `7512404`
 
-If `scrape_single_forum_post` is `false`, CDL will download all post in the thread from `7512404` until the last post
+If `scrape_single_forum_post` is `false`, CDL will download all post in the thread, from post `7512404` until the last post
 If `scrape_single_forum_post` is `true`, CDL will only download file within post `7512404` itself and stop.
 
 ## `separate_posts`
@@ -153,7 +153,7 @@ If `scrape_single_forum_post` is `true`, CDL will only download file within post
 
 Setting this to `true` will separate content from forum and site posts into separate folders.
 
-This option only works with sites that have 'posts'.
+This option only works with sites that have 'posts':
 
 - `Forums`
 - `Discourse`
@@ -177,7 +177,7 @@ Unique Path Flags:
 
 > `date`: date of the post. This is a python `datetime` object
 >
-> `id`: The post id. This is always a `string`, even if some sites use just numbers
+> `id`: The post id. This is always a `string`, even if some sites use numbers
 >
 > `number`: This no longer means anything. Currently, it always has the same value as `id`
 >
@@ -185,9 +185,9 @@ Unique Path Flags:
 
 {% hint style="warning" %}
 Not all sites support all possible flags. Ex: Posts from reddit only support the `title` flag
-If you use a format that tthe sites does not support, CDL will replace with `UNKNOWN_<FLAG_NAME>`
+If you use a format with a field that the site does not support, CDL will replace with `UNKNOWN_<FIELD_NAME>`
 
-ex: using the format `reddit post #{number}` will procude: `reddit post #UNKNOWN_ID`
+ex: using the format `reddit post #{number}` -> `reddit post #UNKNOWN_ID`
 {% endhint %}
 
 Setting it to `{default}` will use the default format, which is different for each crawler:
@@ -199,15 +199,16 @@ Setting it to `{default}` will use the default format, which is different for ea
 | `Discourse`                           | `{date} - {id} - {title}`          |
 | `Reddit`                              | `{title}`                          |
 | `WordPress`                           | `{date:%Y-%m-%d} - {id} - {title}` |
-| `eFukt`                               | `{date:%Y-%m-%d}  {title}`         |
+| `eFukt`                               | `{date:%Y-%m-%d} {title}`         |
 
 A date without a `format_spec` defaults to ISO 8601 format
 
-You can use any `format_spec` and `conversion` supported by python f-strings, with the following restrictions:
+You can use any valid format string supported by python, with the following restrictions:
 
 - You can not have positional arguments in the format string. ex: `post {0} from date {1}`
 - You can not have unnamed fields in the format string. ex:  `post {} from date {}`
 - You can not perform operations within the format string. ex:  `post {id + 1} from date {date}`
+- All the fields named in the format string must be valid fields for that format option. CDL will validate this at startup
 
 ## `skip_download_mark_completed`
 
