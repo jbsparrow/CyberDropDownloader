@@ -139,8 +139,8 @@ class FikFapCrawler(Crawler):
         scrape_item.possible_datetime = to_timestamp(post.created_at)
         scrape_item.setup_as_album(self.create_title(f"{post.user} [user]", post.user_id), album_id=post.user_id)
         filename, ext = self.get_filename_and_ext(f"{post.media_id}.mp4")
-        custom_filename, _ = self.get_filename_and_ext(
-            f"{post.label} [{post.id}][{rendition_group.resolution.name}].mp4"
+        custom_filename = self.create_custom_filename(
+            post.label, ext, file_id=post.id, resolution=rendition_group.resolution.name
         )
 
         await self.handle_file(

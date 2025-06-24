@@ -36,7 +36,6 @@ class Selectors:
 
 _SELECTORS = Selectors()
 RESOLUTIONS = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
-INCLUDE_VIDEO_ID_IN_FILENAME = True
 
 
 class Format(NamedTuple):
@@ -165,7 +164,7 @@ class AShemaleTubeCrawler(Crawler):
             link_str = get_text_between(style, "url('", "');")
         url = self.parse_url(link_str).with_query(None)
         filename, ext = self.get_filename_and_ext(url.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{img_tag['data-image-id']}{ext}")
+        custom_filename = self.create_custom_filename(filename, ext, file_id=css.get_attr(img_tag, "data-image-id"))
         await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
@@ -197,8 +196,7 @@ class AShemaleTubeCrawler(Crawler):
 
         scrape_item.url = canonical_url
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-        include_id = f"[{video_id}]" if INCLUDE_VIDEO_ID_IN_FILENAME else ""
-        custom_filename, _ = self.get_filename_and_ext(f"{title} {include_id}[{best_format.resolution}]{ext}")
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_format.resolution)
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
         )

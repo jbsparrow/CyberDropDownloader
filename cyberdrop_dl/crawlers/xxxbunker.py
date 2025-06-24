@@ -107,7 +107,7 @@ class XXXBunkerCrawler(Crawler):
             raise ScrapeError(422, "Couldn't find video source") from None
 
         filename, ext = f"{video_id}.mp4", ".mp4"
-        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}]{ext}")
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper

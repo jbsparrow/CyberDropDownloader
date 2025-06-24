@@ -258,7 +258,7 @@ class PornHubCrawler(Crawler):
             filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
             filename, ext = self.get_filename_and_ext(f"{video_id}.mp4")
-        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}][{best_format.quality}p].mp4")
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_format.quality)
         await self.handle_file(embed_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)
 
     async def get_best_format(self, soup: BeautifulSoup) -> Format:

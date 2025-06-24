@@ -79,7 +79,7 @@ class ImageBamCrawler(Crawler):
         title: str = css.get_attr(image_tag, "alt")
         link = self.parse_url(css.get_attr(image_tag, "src"))
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(title)
+        custom_filename = self.create_custom_filename(title, ext)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 

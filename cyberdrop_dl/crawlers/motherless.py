@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal, NamedTuple
 
 from aiolimiter import AsyncLimiter
@@ -26,7 +25,6 @@ GROUP_TITLE_SELECTOR = "div.group-bio > h1"
 ITEM_GALLERY_TITLE_SELECTOR = "div.gallery-captions > a.gallery-data"
 NOT_FOUND_TEXTS = "The page you're looking for cannot be found", "File not Found. Nothing to see here"
 USER_NAME_SELECTOR = "div.member-bio-username"
-INCLUDE_ID_IN_FILENAME = True
 
 
 class MediaInfo(NamedTuple):
@@ -153,13 +151,9 @@ class MotherlessCrawler(Crawler):
         media_info = self.process_media_soup(scrape_item, soup)
         link = self.parse_url(media_info.url)
         scrape_item.url = canonical_url
-
         title = css.select_one_get_text(soup, ITEM_TITLE_SELECTOR)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename = Path(title).with_suffix(ext)
-        if INCLUDE_ID_IN_FILENAME:
-            custom_filename = f"{custom_filename.stem} [{media_id}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(str(custom_filename))
+        custom_filename = self.create_custom_filename(title, ext, file_id=media_id)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

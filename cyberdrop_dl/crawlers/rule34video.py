@@ -101,11 +101,9 @@ class Rule34VideoCrawler(Crawler):
         ext, resolution, link_str = v_format
         link = self.parse_url(link_str)
         scrape_item.possible_datetime = self.parse_date(info["uploadDate"], "%Y-%m-%d")
-
-        name = link.name or link.parent.name
-        filename, ext = self.get_filename_and_ext(name)
+        filename, ext = self.get_filename_and_ext(link.name)
         custom_filename = link.query.get("download_filename") or info["title"]
-        custom_filename, _ = self.get_filename_and_ext(f"{custom_filename} [{video_id}][{resolution}]{ext}")
+        custom_filename = self.create_custom_filename(custom_filename, ext, file_id=video_id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     def set_cookies(self) -> None:

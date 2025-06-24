@@ -6,7 +6,6 @@ import re
 import struct
 from collections import defaultdict
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple, Required, TypedDict
 
 from aiolimiter import AsyncLimiter
@@ -209,7 +208,7 @@ class HitomiLaCrawler(Crawler):
             link = get_image_url(servers, image)
             new_scrape_item = scrape_item.create_child(img_reader_url)
             filename, ext = self.get_filename_and_ext(image["name"])
-            custom_filename = Path(filename).with_suffix(link.suffix).as_posix()
+            custom_filename = self.create_custom_filename(filename, link.suffix)
             await self.handle_file(
                 img_reader_url, new_scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
             )

@@ -131,11 +131,10 @@ class SpankBangCrawler(Crawler):
         if not video_format:
             raise ScrapeError(422)
         resolution, link_str = video_format
-        scrape_item.possible_datetime = self.parse_date(info["uploadDate"], "%Y-%m-%dT%H:%M:%S")
-
+        scrape_item.possible_datetime = self.parse_iso_date(info["uploadDate"])
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{info['title']} [{resolution}]{ext}")
+        custom_filename = self.create_custom_filename(info["title"], ext, file_id=video_id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     def set_cookies(self) -> None:

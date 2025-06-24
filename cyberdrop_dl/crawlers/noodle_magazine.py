@@ -101,7 +101,7 @@ class NoodleMagazineCrawler(Crawler):
         content_url = self.parse_url(metadata["contentUrl"])
         filename, ext = self.get_filename_and_ext(content_url.name)
         video_id = filename.removesuffix(ext)
-        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}] [{best_source.resolution}p]{ext}")
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_source.resolution)
         src_url = self.parse_url(best_source.file)
         await self.handle_file(
             content_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=src_url
