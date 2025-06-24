@@ -22,7 +22,7 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [7.0.0] - 2025-06-20
+## [7.0.0] - 2025-06-27
 
 ### Added
 
@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for any WordPress media site. See:
 - Support for any Discourse site See:
 - Add a config option to disable specific crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
+- Add a config option to map unknown URLs to generic crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
 
 ### Changed
 
@@ -61,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Do not crash when using the `Create file hashes` option from the main menu
 - Do not download "related" or "favorites" videos from a profile (PornHub)
 - `KeyError` when using the `--separate-posts` option
-- Using Real Debrid no longer causes the CDL to crash
+- Using Real Debrid no longer causes CDL to crash
 - Image downloads (HotPic)
 - Do not try to download emojis (twitter_images)
 - Fix albums downloads (saint)
