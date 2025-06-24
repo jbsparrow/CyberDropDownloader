@@ -41,10 +41,10 @@ class ForumCrawler(Crawler, is_abc=True):
             return
         if self.is_attachment(link):
             return await self.handle_internal_link(scrape_item.create_new(link))
-        if self.PRIMARY_URL.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):
+        if self.PRIMARY_URL.host in link.host and self.stop_thread_recursion(scrape_item):
             msg = f"Skipping nested thread URL {scrape_item.url} found on {scrape_item.origin}"
             return self.log(msg)
-        new_scrape_item = scrape_item.copy()
+        new_scrape_item = scrape_item.create_child(link)
         new_scrape_item.type = None
         new_scrape_item.reset_childen()
         self.handle_external_links(new_scrape_item)

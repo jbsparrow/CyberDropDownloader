@@ -5,7 +5,7 @@ import re
 from dataclasses import Field
 from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 import aiofiles
 import arrow
@@ -13,7 +13,10 @@ from yarl import URL
 
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.crawlers import CRAWLERS
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, create_crawlers
+from cyberdrop_dl.crawlers.discourse import DiscourseCrawler
+from cyberdrop_dl.crawlers.generic import GenericCrawler
+from cyberdrop_dl.crawlers.wordpress import WordPressHTMLCrawler, WordPressMediaCrawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import JDownloaderError, NoExtensionError
@@ -26,6 +29,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
     from types import TracebackType
 
+    from cyberdrop_dl.config.global_model import GenericCrawlerInstances, GlobalSettings
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.managers.manager import Manager
 
@@ -44,6 +48,7 @@ class ScrapeMapper:
         self.using_input_file = False
         self.groups = set()
         self.count = 0
+        self.fallback_generic: GenericCrawler
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -51,15 +56,23 @@ class ScrapeMapper:
     def group_count(self) -> int:
         return len(self.groups)
 
+    @property
+    def global_settings(self) -> GlobalSettings:
+        return self.manager.config_manager.global_settings_data
+
+    @property
+    def enable_generic_crawler(self) -> bool:
+        return self.global_settings.general.enable_generic_crawler
+
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
         self.existing_crawlers = get_crawlers_mapping(self.manager)
-        if not self.manager.config_manager.global_settings_data.general.enable_generic_crawler:
-            _ = self.existing_crawlers.pop(".")
+        self.fallback_generic = GenericCrawler(self.manager)
 
-        disable_crawlers_by_config(
-            self.existing_crawlers, self.manager.config_manager.global_settings_data.general.disable_crawlers
-        )
+        generic_crawlers = create_generic_crawlers_by_config(self.global_settings.generic_crawlers_instances)
+        for crawler in generic_crawlers:
+            register_crawler(self.existing_crawlers, crawler(self.manager), from_user=True)
+        disable_crawlers_by_config(self.existing_crawlers, self.global_settings.general.disable_crawlers)
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
@@ -212,19 +225,15 @@ class ScrapeMapper:
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
         scrape_item.url = remove_trailing_slash(scrape_item.url)
-        supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]
-        is_generic = supported_domain == ["."]
+        crawler_match = match_url_to_crawler(self.existing_crawlers, scrape_item.url)
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
             jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)
 
-        if supported_domain and not is_generic:
-            # get most restrictive domain if multiple domain matches
-            supported_domain = max(supported_domain, key=len)
-            crawler = self.existing_crawlers[supported_domain]
-            if not crawler.ready:
-                await crawler.startup()
-            self.manager.task_group.create_task(crawler.run(scrape_item))
+        if crawler_match:
+            if not crawler_match.ready:
+                await crawler_match.startup()
+            self.manager.task_group.create_task(crawler_match.run(scrape_item))
             return
 
         if self.manager.real_debrid_manager.enabled and self.manager.real_debrid_manager.is_supported(
@@ -270,11 +279,10 @@ class ScrapeMapper:
             self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
             return
 
-        if is_generic:
-            generic_crawler = self.existing_crawlers["."]
-            if not generic_crawler.ready:
-                await generic_crawler.startup()
-            self.manager.task_group.create_task(generic_crawler.run(scrape_item))
+        if self.enable_generic_crawler:
+            if not self.fallback_generic.ready:
+                await self.fallback_generic.startup()
+            self.manager.task_group.create_task(self.fallback_generic.run(scrape_item))
             return
 
         log(f"Unsupported URL: {scrape_item.url}", 30)
@@ -378,21 +386,61 @@ def get_crawlers_mapping(manager: Manager | None = None, include_generics: bool 
     global existing_crawlers
     if not existing_crawlers:
         for crawler in CRAWLERS:
-            site_crawler = crawler(manager_)
-            if site_crawler.IS_GENERIC and include_generics:
-                keys = (site_crawler.GENERIC_NAME,)
-            else:
-                keys = site_crawler.SCRAPE_MAPPER_KEYS
-
-            for domain in keys:
-                msg = f"{domain} from {site_crawler.NAME} already registered by {existing_crawlers.get(domain)}"
-                assert domain not in existing_crawlers, msg
-                existing_crawlers[domain] = site_crawler
+            crawler_instance = crawler(manager_)
+            register_crawler(existing_crawlers, crawler_instance, include_generics)
     return existing_crawlers
+
+
+def register_crawler(
+    existing_crawlers: dict[str, Crawler],
+    crawler: Crawler,
+    include_generics: bool = False,
+    from_user: bool | Literal["raise"] = False,
+) -> None:
+    if crawler.IS_FALLBACK_GENERIC:
+        return
+    if crawler.IS_GENERIC and include_generics:
+        keys = (crawler.GENERIC_NAME,)
+    else:
+        keys = crawler.SCRAPE_MAPPER_KEYS
+
+    for domain in keys:
+        other = existing_crawlers.get(domain)
+        if from_user:
+            if not other and (match := match_url_to_crawler(existing_crawlers, crawler.PRIMARY_URL)):
+                other = match
+            if other:
+                msg = (
+                    f"Unable to assign {crawler.PRIMARY_URL} to generic crawler {crawler.GENERIC_NAME}. "
+                    f"URL conflicts with URL format of builtin crawler {other.NAME}. "
+                    "URL will be ignored"
+                )
+                if from_user == "raise":
+                    raise ValueError(msg)
+                log(msg, 40)
+                continue
+            else:
+                log(f"Successfully mapped {crawler.PRIMARY_URL} to generic crawler {crawler.GENERIC_NAME}")
+
+        elif other:
+            msg = f"{domain} from {crawler.NAME} already registered by {other}"
+            assert domain not in existing_crawlers, msg
+        existing_crawlers[domain] = crawler
 
 
 def get_unique_crawlers() -> list[Crawler]:
     return sorted(set(get_crawlers_mapping(include_generics=True).values()), key=lambda x: x.INFO.site)
+
+
+def create_generic_crawlers_by_config(generic_crawlers: GenericCrawlerInstances) -> set[type[Crawler]]:
+    new_crawlers: set[type[Crawler]] = set()
+    if generic_crawlers.wordpress_html:
+        new_crawlers.update(create_crawlers(generic_crawlers.wordpress_html, WordPressHTMLCrawler))
+    if generic_crawlers.wordpress_media:
+        new_crawlers.update(create_crawlers(generic_crawlers.wordpress_media, WordPressMediaCrawler))
+    if generic_crawlers.discourse:
+        new_crawlers.update(create_crawlers(generic_crawlers.discourse, DiscourseCrawler))
+    return new_crawlers
 
 
 def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_to_disable: list[str]) -> None:
@@ -422,3 +470,12 @@ def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_t
         )
         log(f"Crawlers disabled by config: \n{crawlers_info}")
     log_spacer(10)
+
+
+def match_url_to_crawler(existing_crawlers: dict[str, Crawler], url: AbsoluteHttpURL) -> Crawler | None:
+    # get most restrictive domain if multiple domain matches
+    try:
+        domain = max((domain for domain in existing_crawlers if domain in url.host), key=len)
+        return existing_crawlers[domain]
+    except (ValueError, TypeError):
+        return
