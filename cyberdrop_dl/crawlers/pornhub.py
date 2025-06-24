@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, TypedDict
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -37,7 +38,7 @@ class Profile:
     def new(type_: str, name: str, rest: list[str]) -> Profile:
         videos = gifs = photos = False
         match rest:
-            case ["videos"]:
+            case ["videos", *_]:
                 videos = True
             case ["gifs", *_]:
                 gifs = True
@@ -314,11 +315,23 @@ def get_medias(soup: BeautifulSoup) -> list[Media]:
 
 
 def check_video_is_available(soup: BeautifulSoup) -> None:
+    page_text = soup.text
     if soup.select_one(_SELECTORS.NO_VIDEO):
-        raise ScrapeError(404)
+        raise ScrapeError(HTTPStatus.NOT_FOUND)
 
-    if soup.select_one(_SELECTORS.GEO_BLOCKED) or "This content is unavailable in your country" in soup.text:
-        raise ScrapeError(403)
+    if soup.select_one(_SELECTORS.GEO_BLOCKED) or "This content is unavailable in your country" in page_text:
+        raise ScrapeError(HTTPStatus.FORBIDDEN)
 
-    if soup.select_one(_SELECTORS.REMOVED):
-        raise ScrapeError(410)
+    if soup.select_one(_SELECTORS.REMOVED) or any(
+        text in page_text for text in ("This video has been removed", "This video is currently unavailable")
+    ):
+        raise ScrapeError(HTTPStatus.GONE)
+
+    if any(
+        text in page_text
+        for text in (
+            "Video has been flagged for verification in accordance with our trust and safety policy",
+            "Video has been removed at the request of",
+        )
+    ):
+        raise ScrapeError(HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS)
