@@ -23,7 +23,6 @@ JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
 API_ENTRYPOINT = AbsoluteHttpURL("https://pmvhaven.com/api/v2/")
 PRIMARY_URL = AbsoluteHttpURL("https://pmvhaven.com")
 CATEGORIES = "Hmv", "Pmv", "Hypno", "Tiktok", "KoreanBJ"
-INCLUDE_VIDEO_ID_IN_FILENAME = True
 
 
 class PMVHavenCrawler(Crawler):
@@ -205,9 +204,7 @@ class PMVHavenCrawler(Crawler):
         link = self.parse_url(link_str)
         resolution = f"{resolution}p" if resolution else "Unknown"
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-        include_id = f"[{video_id}]" if INCLUDE_VIDEO_ID_IN_FILENAME else ""
-        custom_filename = f"{title} {include_id}[{resolution}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def iter_video_info(self, scrape_item: ScrapeItem, videos: list[dict], new_title_part: str = "") -> None:

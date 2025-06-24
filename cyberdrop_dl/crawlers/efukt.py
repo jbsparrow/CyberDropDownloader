@@ -83,7 +83,7 @@ class EfuktCrawler(Crawler):
         item_id = scrape_item.url.query.get("id") or scrape_item.url.name.partition("_")[0]
         title = Path(css.select_one_get_text(soup, _SELECTORS.TITLE)).as_posix().replace("/", "-")
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{datetime.date().isoformat()} {title} [{item_id}]{ext}")
+        custom_filename = self.create_custom_filename(f"{datetime.date().isoformat()} {title}", ext, file_id=item_id)
         # Video links expire, but the path is always the same, only query params change
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)
 

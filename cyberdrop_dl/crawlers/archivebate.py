@@ -98,6 +98,6 @@ class ArchiveBateCrawler(MixDropCrawler):
 
         link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{show_title}{ext}")
+        custom_filename = self.create_custom_filename(show_title, ext)
         scrape_item.url = mixdrop_url
         await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)

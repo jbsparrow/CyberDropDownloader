@@ -65,17 +65,12 @@ class YouJizzCrawler(Crawler):
             raise ScrapeError(422)
 
         resolution, link_str = v_format
-
         link = self.parse_url(link_str)
-        date_str: str | None = info["date"]
-        if date_str:
-            date = self.parse_date(date_str)
-            scrape_item.possible_datetime = date
+        scrape_item.possible_datetime = self.parse_date(info["date"])
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
             raise ScrapeError(422)
-        custom_filename = f"{info['title']} [{video_id}][{resolution}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+        custom_filename = self.create_custom_filename(info["title"], ext, file_id=video_id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
