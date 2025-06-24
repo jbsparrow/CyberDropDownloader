@@ -217,7 +217,7 @@ class PornHubCrawler(Crawler):
         link_str: str = css.select_one_get_attr(soup, _SELECTORS.PHOTO, "src")
         link = self.parse_url(link_str)
         album_tag = css.select_one(soup, _SELECTORS.ALBUM_FROM_PHOTO)
-        album_name = album_tag.get_text(strip=True)
+        album_name = css.get_text(album_tag)
         album_link_str: str = css.get_attr(album_tag, "href")
         album_id: str = album_link_str.split("/")[-1]
         title = self.create_title(album_name, album_id)
@@ -322,11 +322,6 @@ def check_video_is_available(soup: BeautifulSoup) -> None:
     if soup.select_one(_SELECTORS.GEO_BLOCKED) or "This content is unavailable in your country" in page_text:
         raise ScrapeError(HTTPStatus.FORBIDDEN)
 
-    if soup.select_one(_SELECTORS.REMOVED) or any(
-        text in page_text for text in ("This video has been removed", "This video is currently unavailable")
-    ):
-        raise ScrapeError(HTTPStatus.GONE)
-
     if any(
         text in page_text
         for text in (
@@ -335,3 +330,8 @@ def check_video_is_available(soup: BeautifulSoup) -> None:
         )
     ):
         raise ScrapeError(HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS)
+
+    if soup.select_one(_SELECTORS.REMOVED) or any(
+        text in page_text for text in ("This video has been removed", "This video is currently unavailable")
+    ):
+        raise ScrapeError(HTTPStatus.GONE)
