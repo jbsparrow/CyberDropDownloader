@@ -72,6 +72,9 @@ class BoxDotComCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
+        if "file or folder link has been removed" in soup.text:
+            raise ScrapeError(410)
+
         js_text: str = css.select_one_get_text(soup, JS_SELECTOR)
         _, _, data = js_text.removesuffix(";").partition("=")
 
