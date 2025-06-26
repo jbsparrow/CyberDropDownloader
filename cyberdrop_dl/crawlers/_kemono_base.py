@@ -216,10 +216,9 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
 
     def __post_init__(self) -> None:
-        self.__known_user_names: dict[User, str] = {}
+        self._user_names: dict[User, str] = {}
         self.__known_discord_servers: dict[str, DiscordServer] = {}
         self.__known_attachment_servers: dict[str, str] = {}
-        self.__user_names_locks: dict[User, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.session_cookie = self.manager.config_manager.authentication_data.kemono.session
 
@@ -232,6 +231,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             return True
 
         self.register_cache_filter(self.PRIMARY_URL, check_kemono_page)
+        if getattr(self, "API_ENTRYPOINT", None):
+            await self.__get_usernames(self.API_ENTRYPOINT / "creators.txt")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "discord" in scrape_item.url.parts:
@@ -401,7 +402,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     async def _handle_user_post(self, scrape_item: ScrapeItem, post: UserPost):
-        user_name = await self.__get_user_name(post.user)
+        user_name = self._user_names[post.user]
         title = self.create_title(user_name, post.user_id)
         scrape_item.setup_as_album(title, album_id=post.user_id)
         scrape_item.possible_datetime = post.date
@@ -444,18 +445,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             self.handle_external_links(new_scrape_item)
             scrape_item.add_children()
 
-    async def _register_user_name(self, user: User, user_name: str) -> None:
-        """Save the user_name to the internal dict
-
-        NOTE: This should never be overriden.
-        It's defined as internal to allow subclasses to override `post_w_no_api` and still be able to modify the private self.__known_user_names
-        """
-
-        async with self.__user_names_locks[user]:
-            if self.__known_user_names.get(user):
-                return
-            self.__known_user_names[user] = user_name
-
     """~~~~~~~~  PRIVATE METHODS, should never be overriden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def __handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
@@ -484,18 +473,11 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             return api_url.update_query(o=offset, q=query)
         return api_url.update_query(o=offset)
 
-    async def __get_user_name(self, user: User) -> str:
-        """Gets the user name, making a new API call if needed"""
-        async with self.__user_names_locks[user]:
-            if user_name := self.__known_user_names.get(user):
-                return user_name
+    async def __get_usernames(self, api_url: AbsoluteHttpURL) -> None:
+        async with self.request_limiter:
+            json_resp: list[dict[str, Any]] = await self.client.get_json(self.DOMAIN, api_url)
 
-            api_url = self.API_ENTRYPOINT / user.service / "user" / user.id / "posts-legacy"
-            async with self.request_limiter:
-                profile_json: dict = await self.client.get_json(self.DOMAIN, api_url)
-
-            self.__known_user_names[user] = user_name = profile_json["props"]["name"]
-            return user_name
+        self._user_names = {User(u["service"], u["id"]): u["name"] for u in json_resp}
 
     async def __get_discord_server(self, server_id: str) -> DiscordServer:
         """Get discord server information, making new API calls if needed."""
@@ -613,5 +595,5 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             soup_attachments=files,
         )
 
-        await self._register_user_name(full_post.user, post.user_name)
+        self._user_names[full_post.user] = post.user_name
         await self._handle_user_post(scrape_item, full_post)
