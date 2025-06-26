@@ -50,7 +50,13 @@ PRIMARY_URL = AbsoluteHttpURL("https://www.box.com")
 
 class BoxDotComCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (APP_DOMAIN,)
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File or Folder": "app.box.com/s?sh=<share_code>"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "File or Folder": "app.box.com/s?sh=<share_code>",
+        "Embeded File or Folder": (
+            "app.box.com/embed/s?sh=<share_code>",
+            "app.box.com/embed_widget/s?sh=<share_code>",
+        ),
+    }
     DOMAIN: ClassVar[str] = "box.com"
     FOLDER_DOMAIN: ClassVar[str] = "Box"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
