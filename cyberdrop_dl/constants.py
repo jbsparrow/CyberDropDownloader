@@ -55,7 +55,22 @@ class CustomHTTPStatus(IntEnum):
     DDOS_GUARD = 429
 
 
-BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
+BLOCKED_DOMAINS = (
+    "facebook",
+    "instagram",
+    "fbcdn",
+    "gfycat",
+    "ko-fi.com",
+    "paypal.me",
+    "amazon.com",
+    "throne.com",
+    "youtu.be",
+    "youtube.com",
+    "linktr.ee",
+    "beacons.page",
+    "beacons.ai",
+    "allmylinks.com",
+)
 
 
 DEFAULT_APP_STORAGE = Path("./AppData")
