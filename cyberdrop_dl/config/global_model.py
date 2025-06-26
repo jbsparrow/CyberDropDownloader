@@ -1,5 +1,6 @@
 import random
 from datetime import timedelta
+from typing import Literal
 
 from pydantic import BaseModel, ByteSize, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
@@ -13,7 +14,7 @@ DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
 
 
 class General(BaseModel):
-    allow_insecure_connections: bool = False
+    ssl_context: Literal["truststore", "certifi", "truststore+certifi"] | None = "truststore+certifi"
     disable_crawlers: ListNonEmptyStr = []
     enable_generic_crawler: bool = True
     flaresolverr: HttpURL | None = None
@@ -23,6 +24,13 @@ class General(BaseModel):
     required_free_space: ByteSizeSerilized = DEFAULT_REQUIRED_FREE_SPACE
     user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
     pause_on_insufficient_space: bool = False
+
+    @field_validator("ssl_context", mode="before")
+    @classmethod
+    def ssl(cls, value: str | None) -> str | None:
+        if isinstance(value, str):
+            value = value.lower().strip()
+        return falsy_as(value, None)
 
     @field_validator("disable_crawlers", mode="after")
     @classmethod
