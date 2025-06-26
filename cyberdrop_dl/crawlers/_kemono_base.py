@@ -474,10 +474,14 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         return api_url.update_query(o=offset)
 
     async def __get_usernames(self, api_url: AbsoluteHttpURL) -> None:
-        async with self.request_limiter:
+        try:
             json_resp: list[dict[str, Any]] = await self.client.get_json(self.DOMAIN, api_url)
-
-        self._user_names = {User(u["service"], u["id"]): u["name"] for u in json_resp}
+            self._user_names = {User(u["service"], u["id"]): u["name"] for u in json_resp}
+        except Exception:
+            pass
+        if not self._user_names:
+            self.log(f"Unable to get list of creators from {self.NAME}. Crawler has been disabled")
+            self.disabled = True
 
     async def __get_discord_server(self, server_id: str) -> DiscordServer:
         """Get discord server information, making new API calls if needed."""
