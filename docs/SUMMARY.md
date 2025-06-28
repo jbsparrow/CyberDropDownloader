@@ -34,6 +34,7 @@
     * [General](reference/configuration-options/global-settings/general.md)
     * [Rate Limiting Options](reference/configuration-options/global-settings/rate-limiting-options.md)
     * [UI Options](reference/configuration-options/global-settings/ui-options.md)
+    * [Generic Crawlers](reference/configuration-options/global-settings/generic_crawlers_instances.md)
 * [CLI Arguments](reference/cli-arguments.md)
 * [Notifications](reference/notifications.md)
 * [Changelog](https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md)
