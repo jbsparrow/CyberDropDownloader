@@ -127,6 +127,7 @@ class Crawler(ABC):
         self.startup_lock = asyncio.Lock()
         self.request_limiter = AsyncLimiter(10, 1)
         self.ready: bool = False
+        self.disabled: bool = False
         self.logged_in: bool = False
         self.scraped_items: list[str] = []
         self.waiting_items = 0
@@ -199,6 +200,8 @@ class Crawler(ABC):
     async def run(self, item: ScrapeItem) -> None:
         """Runs the crawler loop."""
         if not item.url.host:
+            return
+        if self.disabled:
             return
 
         await self.manager.states.RUNNING.wait()
