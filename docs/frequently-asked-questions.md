@@ -39,8 +39,15 @@ pip3 install --upgrade cyberdrop-dl-patched
 ```
 
 </details>
+<details>
+<summary> Why do i get DDoS-Guard Error downloading from <X> sites? </summary>
+
+You may need to import cookies. Follow the instructions here: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839)
+
+</details>
 
 <details>
+
 <summary> Where is the downloader.log file? </summary>
 
 If you are running using one of the new start scripts it'll be in `./AppData/configs/<config>/logs/`

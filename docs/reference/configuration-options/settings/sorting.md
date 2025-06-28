@@ -1,16 +1,17 @@
 # Sorting
 
-Cyberdrop-DL has a file sorter built in, but you have to enable it to use it.
+Cyberdrop-DL has a file sorter built in, but it's disabled by default
 
-You can use the shared path flags below in any part of the sorting schemas. You can also use essentially none of them and have a hard coded path. However, `filename` and `ext` must always be used.
+You can use the field names bellow to create a custom path format. You can also use essentially none of them and have a hard coded path.
+However, `filename` and `ext` must always be used.
 
-Shared path flags:
+Common fields for sorting format options (supported for `audio`, `videos`, `images` and `other`):
 
-> `sort_dir`: The same path as `sort_folder`
+> `sort_dir`: This represent the same path as `sort_folder` from the download options
 >
 > `base_dir`: the name of highest level folder inside `scan_folder` ex: (model name / thread name)
 >
-> `parent_dir`: the name of the folder where the file is. Ex: (album name)
+> `parent_dir`: the name of the folder where the file is located at. Ex: (album name)
 >
 > `filename`: the file's name (stem)
 >
@@ -24,9 +25,9 @@ Shared path flags:
 
 Sets the starting point for the file scan
 
-Each direct child of the `scan_folder` is recursively scanned, and files are moved based on your settings
+Each direct child of the `scan_folder` is recursively scanned, and files are moved based on your settings.
 
-If this is set to `null` (the default), `download_dir` is used instead
+If this is set to `null` (the default), the value of `download_dir` from  the download options is used.
 
 ## `sort_downloads`
 
@@ -45,7 +46,7 @@ Setting this to `true` will allow Cyberdrop-DL to sort downloads after a run is 
 This is the path to the folder you'd like sorted downloads to be stored in.
 
 {% hint style="warning" %}
-Setting `sort_folder` to the same value as `scan_folder` is not officiality supported and will lead to undefined results
+Setting `sort_folder` to the same value as `scan_folder` is not supported and will lead to expected results
 {% endhint %}
 
 ## `sort_incrementer_format`
@@ -66,13 +67,13 @@ You can modify the format as needed, but it must include `{i}` to specify where 
 | ----------------------- | --------------------------------------------- |
 | `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Audio/{filename}{ext}` |
 
-This is the format for the directory structure and naming scheme for audio files. Set to `null` skip sorting audio files
+This is the format for the directory structure and naming scheme for audio files. Set to `null` to skip sorting audio files
 
-Unique Path Flags:
+In addition to the common sorting format fields, this option supports:
 
 > `bitrate`: file bit rate
 >
-> `duration`: audio runtime
+> `duration`: audio total runtime
 >
 > `length`: same as `duration`
 >
@@ -84,9 +85,9 @@ Unique Path Flags:
 | ----------------------- | ---------------------------------------------- |
 | `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Images/{filename}{ext}` |
 
-This is the format for the directory structure and naming scheme for image files. Set to `null` skip sorting image files
+This is the format for the directory structure and naming scheme for image files. Set to `null` to skip sorting image files
 
-Unique Path Flags:
+In addition to the common sorting format fields, this option supports:
 
 > `height`: vertical pixel count
 >
@@ -100,13 +101,13 @@ Unique Path Flags:
 | ----------------------- | --------------------------------------------- |
 | `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Video/{filename}{ext}` |
 
-This is the format for the directory structure and naming scheme for video files. Set to `null` skip sorting video files
+This is the format for the directory structure and naming scheme for video files. Set to `null` to skip sorting video files
 
-Unique Path Flags:
+In addition to the common sorting format fields, this option supports:
 
 > `codec`: ex. h264
 >
-> `duration`: video runtime
+> `duration`: video total runtime
 >
 > `fps`: ex. 24
 >
@@ -124,7 +125,7 @@ Unique Path Flags:
 | ----------------------- | --------------------------------------------- |
 | `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Other/{filename}{ext}` |
 
-This is the format for the directory structure and naming scheme for other files. Set to `null` skip sorting other files
+This is the format for the directory structure and naming scheme for other files. Set to `null` to skip sorting other files
 
 ## Group URLs
 
@@ -132,7 +133,7 @@ It is possible to treat a list of URLs as a group, allowing them to be downloade
 
 To define a group, put a title above the URLs you want to be in the group, using the format: `--- <group_name>` or `=== <group_name>`.
 
-To define the end of a group, insert an group with no name. (`---` or `===`)
+To define the end of a group, add a new group with no name. (`---` or `===`)
 
 Here is an example URL file with two groups:
 

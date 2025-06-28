@@ -11,7 +11,7 @@ These are higher level options that effect the overarching functions of the prog
 Same as `log_level` but it controls which messages are shown on the console.
 
 {% hint style="info" %}
-This option is ignored unless CDL is running with `--no-ui`
+This option is ignored unless CDL is running with `--ui DISABLED`
 {% endhint %}
 
 ## `deep_scrape`
@@ -36,9 +36,10 @@ For example, scraping an album normally takes one single request. However, with 
 | ------ | ------- |
 | `bool` | `false` |
 
-The program will leave partial files alone as they will be used to resume downloads on subsequent runs.
+Files downloaded by CDL have a `.part` extension. CDL only changes the extension to the original one after a successful download.
+This allows CDL to resume downloads on subsequent runs.
 
-Setting this to `true` will remove any partial downloads from the download folder.
+Setting this to `true` will delete any `.part` files in the download folder.
 
 ## `ignore_history`
 
@@ -46,9 +47,9 @@ Setting this to `true` will remove any partial downloads from the download folde
 | ------ | ------- |
 | `bool` | `false` |
 
-By default, the program tracks your downloads to prevent downloading the same files multiple times, helping to save time and reduce strain on the servers you're downloading from.
+By default, the program tracks your downloads in a database to prevent downloading the same files multiple times, to save time and reduce strain on the servers you're downloading from.
 
-Setting this to `true` will cause the program to ignore the history, and will allow you to re-download files.
+Setting this to `true` will cause the program to ignore the database, and will allow you to re-download files.
 
 ## `jdownloader_autostart`
 
@@ -58,7 +59,9 @@ Setting this to `true` will cause the program to ignore the history, and will al
 
 Setting this to `true` will make jdownloader start downloads as soon as they are sent.
 
+{% hint style="info" %}
 This option has no effect unless `send_unsupported_to_jdownloader` is `true`
+{% endhint %}
 
 ## `jdownloader_download_dir`
 
@@ -68,7 +71,9 @@ This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 
 The `download_dir` jdownloader will use. A `null` value (the default) will make jdownloader use the same `download_dir` as Cyberdrop-DL. Use this option as path mapping when jdownloader is running on a different host / docker.
 
+{% hint style="info" %}
 This option has no effect unless `send_unsupported_to_jdownloader` is `true`
+{% endhint %}
 
 ## `jdownloader_whitelist`
 
@@ -76,9 +81,11 @@ This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 | ------------------- | ------- |
 | `list[NonEmptyStr]` | `[]`    |
 
-List of domain names. An unsupported URL will only be sent to jdownloader if its host is found on the list. An empty whitelist (the default) will disable this functionality, sending any unsupported URL to jdownloader
+List of domain names. An unsupported URL will only be sent to jdownloader if its host is found on the list. An empty whitelist (the default) will disable this functionality, sending any unsupported URL to jdownloader.
 
+{% hint style="info" %}
 This option has no effect unless `send_unsupported_to_jdownloader` is `true`
+{% endhint %}
 
 ## `log_level`
 
@@ -98,7 +105,21 @@ Defines the logging level for messages, according to [Python logging levels](htt
 | `CRITICAL` | 50    | Fatal error that causes Cyberdrop-DL to exit immediately                                                       |
 
 {% hint style="info" %}
-Using anything other that `DEBUG` makes troubleshooting issues harder. Practically speaking, this should only be adjusted if you expect CDL to run for an extended period (with a large number of input URLs) to minimize the log files sizes
+Using anything other that `DEBUG` makes troubleshooting issues harder. Practically speaking, you should _only_ change this if you expect CDL to run for an extended period (with a large number of input URLs) to minimize the log files sizes
+{% endhint %}
+
+{% hint style="info" %}
+There is more verbose level of logs: `DEVELOPER`
+
+It includes pager logs, posts logs, individual requests logs (their URLs and their response code), requests cache hits and misses, file system locks logs and local variable values from within a traceback. It's not exposed as a config option becuase it is too verbose.
+
+You can set the environment variable `CDL_DEBUG_LOG_FOLDER` to any valid folder and CDL will create an additional log file with the level set to `DEVELOPER` inside it.
+{% endhint %}
+
+{% hint style="critical" %}
+As the name suggest, the `DEVELOPER` log level is only meant for developers or, more generally, people that want and have the "know how"
+to troubleshoot CDL issues on their own. You should never share those logs with _anyone_ as it could potentially have raw information in
+the locals informaion of the tracebacks like cookies, auth credentials, IPs, etc.
 {% endhint %}
 
 ## `send_unsupported_to_jdownloader`

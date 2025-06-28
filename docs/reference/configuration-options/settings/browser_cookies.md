@@ -14,13 +14,13 @@ The `user-agent` config value **MUST** match the `user-agent` of the browser fro
 
 Toggles automatic import of cookies at the start of each run
 
-## `browsers`
+## `browser`
 
 | Type             | Default    |
 | ---------------- | ---------- |
-| `list[BROWSERS]` | `[chrome]` |
+| `BROWSER` | `firefox` |
 
-List of browsers to use for extraction. Each item must be a supported browser's name, separated by commas
+A browser to use for extraction. Browser must be a supported browser's name.
 
 ### Supported Browsers
 
@@ -40,13 +40,6 @@ List of browsers to use for extraction. Each item must be a supported browser's 
 | Vivaldi   | :x:                | :white_check_mark: | :white_check_mark: |
 | W3M       | :x:                | :white_check_mark: | :x:                |
 
-{% hint style="info" %}
-If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
-{% endhint %}
-
-{% hint style="info" %}
-If the value entered is `null` or an empty list, no cookies will be extracted from any browser
-{% endhint %}
 
 ## `sites`
 
@@ -59,6 +52,8 @@ List of domains to extract cookies from. You can put any domain on the list, eve
 ## Manual Cookie Extraction
 
 If cookie extraction fails, you can manually extract the cookies from your browser using tools like [cookie-editor](https://cookie-editor.com) and save them at `AppData/Cookies/<site_name>.txt`. The file must be a Netscape formatted cookie file. You can use any name for the file as long as it has a `.txt` extension.
+
+See: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839) for detailed instructions
 
 {% hint style="info" %}
 Multiple cookie files are supported. You could have a `SocialMediaGirls.txt` file and a `cyberdrop.txt` file, for example

@@ -1,5 +1,5 @@
 ---
-description: This is the walk through for transitioning from V4 or V5 to V6
+description: This is the walk through for transitioning from V4, V5 or V6 to v7
 icon: arrow-up-to-bracket
 layout:
   title:
@@ -14,10 +14,10 @@ layout:
     visible: true
 ---
 
-# Transition from V4 or V5 to V6
+# Transition from V4, V5 or V6 to V7
 
 {% hint style="danger" %}
-V6 introduces some breaking changes: Using a more strict config validation logic, replacing `md5` with `xxh128` as the default hashing algorithm, using a new database schema, among others.
+V6 introduced some breaking changes: Using a more strict config validation logic, replacing `md5` with `xxh128` as the default hashing algorithm, using a new database schema, among others.
 
 It's recommended to do a manual backup of your current `AppData` folder. You won't be able to rollback to a previous version after the transfer is completed.
 
@@ -30,17 +30,17 @@ Even after a successful configuration migration, the program may not start if so
 You can use the [Config Options page](reference/configuration-options/README.md) as reference for valid config values
 {% endhint %}
 
-## Import V5 config to V6
+## Import V5 or V6 config into V7
 
 Good news! If you have a v5 config, CDL can import it. The program will automatically detect the config in the current folder and handle the migration process for you.
 
-All you have to do is replace the v5 start script (for Windows, that's the `.bat` file) with the v6 start script. If CDL does not update automatically to v6, delete the `.venv` folder inside CDL's folder and run the start script again.
+All you have to do is replace your old start script (for Windows, that's the `.bat` file) with the v7 start script. If CDL does not update automatically to v7, delete the `.venv` folder inside CDL's folder and run the start script again.
 
 Please note that after the migration is complete, you may still need to manually adjust some values in the config.
 
-If the migration fails, the database will be rolled back to its previous state. An automatic backup is also made before the migration begins. However, keep in mind that the backup only includes the database, not the config files.
+If you are migrating from v5 and the migration fails, the database will be rolled back to its previous state. An automatic backup is also made before the migration begins. However, keep in mind that the backup only includes the database, not the config files.
 
-## Import V4 config to V6
+## Import V4 config
 
 {% hint style="warning" %}
 V4 import is no longer supported. Last version with v4 support was `6.5.0`. To upgrade to the latest version, you need to perform a sequential upgrade. First, update CDL to `6.5.0`, import your v4 files, and then update to the latest version.
@@ -62,7 +62,7 @@ The config files will be located in the folder that you were previously running 
 {% hint style="info" %}
 If you weren't using the config previously, you don't need to import it.
 
-However, if you were primarily using CLI Arguments with V4, some of the arguments will need to swapped into config options.
+However, if you were primarily using CLI Arguments with V4, some of the arguments has been replaced.
 {% endhint %}
 
 If you don't end up using the import feature, make sure you also change the default config in the program if that's something you want to do.

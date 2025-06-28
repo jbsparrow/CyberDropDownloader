@@ -16,6 +16,10 @@ layout:
 
 # Getting Started
 
+{% hint style="warning" %}
+Cyberdrop-DL requires python 3.11, 3.12 or python 3.13
+{% endhint %}
+
 ## Installing Python
 
 Cyberdrop-DL is written in Python. You'll need Python installed on your system to be able to run it. If you're using Linux or macOS, Python is likely already included by default. However, if you're on Windows or need a different version, you can easily download and install Python from the official website
