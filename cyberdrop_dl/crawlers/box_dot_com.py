@@ -50,7 +50,13 @@ PRIMARY_URL = AbsoluteHttpURL("https://www.box.com")
 
 class BoxDotComCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (APP_DOMAIN,)
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File or Folder": "app.box.com/s?sh=<share_code>"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "File or Folder": "app.box.com/s?sh=<share_code>",
+        "Embeded File or Folder": (
+            "app.box.com/embed/s?sh=<share_code>",
+            "app.box.com/embed_widget/s?sh=<share_code>",
+        ),
+    }
     DOMAIN: ClassVar[str] = "box.com"
     FOLDER_DOMAIN: ClassVar[str] = "Box"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
@@ -62,11 +68,18 @@ class BoxDotComCrawler(Crawler):
 
     @error_handling_wrapper
     async def file_or_folder(self, scrape_item: ScrapeItem) -> None:
+        canonical_path = scrape_item.url.path
+        for trash in ("/embed_widget/", "/embed/"):
+            canonical_path = canonical_path.replace(trash, "")
+        scrape_item.url = scrape_item.url.with_path(canonical_path, keep_query=True, keep_fragment=True)
         if "file" in scrape_item.url.parts and await self.check_complete_from_referer(scrape_item):
             return
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+
+        if "file or folder link has been removed" in soup.text:
+            raise ScrapeError(410)
 
         js_text: str = css.select_one_get_text(soup, JS_SELECTOR)
         _, _, data = js_text.removesuffix(";").partition("=")
