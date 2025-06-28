@@ -3,18 +3,6 @@ description: These are some general settings that will be used regardless of whi
 ---
 # General
 
-## `allow_insecure_connections`
-
-| Type   | Default |
-| ------ | ------- |
-| `bool` | `false` |
-
-Setting this to `true` will allow the program to connect to websites without SSL encryption (insecurely).
-
-{% hint style="danger" %}
-This will make the connection insecure, and sensitive data may be exposed. You should only enable this option if you know what you are doing. For your safety, is recommended to always use a secure HTTPS connection to protect your privacy.
-{% endhint %}
-
 ## `disable_crawlers`
 
 | Type                | Default | Additional Info                                                     |
@@ -104,6 +92,28 @@ This is the minimum amount of free space require to start new downloads.
 
 {% hint style="info" %}
 If you set a value lower than `512MB`, CDL will override it with `512MB`
+{% endhint %}
+
+## `ssl_context`
+
+| Type   | Default |
+| ------ | ------- |
+| `NonEmptyStr` or None | `truststore+certifi` |
+
+Content SSL will use to verify SSL connections. Valid values are:
+
+- `truststore`: Will use certificates already included with the OS
+
+- `certifi`: Will use certificates bundles with the `certifi` version avaiable at realease of the currently running version
+
+- `truststore+certifi`:  Will use certificates already included with the OS, with a fallback to `certifi` if for missing certificates
+
+- `None`: Will completly disable SSL verification, allowing secure connections.
+
+Setting this to `None` will allow the program to connect to websites without SSL encryption (insecurely).
+
+{% hint style="danger" %}
+Sensitive data may be exposed using an insecure connection. For your safety, is recommended to always use a secure HTTPS connection.
 {% endhint %}
 
 ## `user_agent`
