@@ -22,7 +22,7 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [7.0.0] - 2025-06-27
+## [7.0.0] - 2025-07-04
 
 ### Added
 
@@ -36,18 +36,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for any WordPress media site. See:
 - Support for any Discourse site See:
 - Add a config option to disable specific crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
-- Add a config option to map unknown URLs to generic crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
+- Add new `ssl_context` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
+- Add a config option to map unknown URLs to generic crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers> #TODO: Add wiki entry
 
 ### Changed
 
 - Date parsing errors will be logged as warnings, not errors
+- CDL will use native system certificates by default, with fallback to `certifi`
 - Some crawlers have a new logic to create a filename. The name format for newly downloaded files may not match previous versions.
+- CDL will validate config options that take format strings at startup
+- CDL will only process URLs once, ignoring duplicates, even if they come from different crawlers. ex: If you have a dropbox URL in `URLs.txt` and CDL finds that same URL while crawling a forum, the URL from the forum will be ignored.
+- New Blocked domains:
 
-### Deprecated
+> gfycat
+> ko-fi.com
+> paypal.me
+> amazon.com
+> throne.com
+> youtu.be
+> youtube.com
+> linktr.ee
+> beacons.page
+> beacons.ai
+> allmylinks.com
 
 ### Removed
 
 - `no-ui` option
+- `allow_insecure_connections` option
 - Importing cookies from multi browsers is no longer supported. CDl will only try to extract cookies from a single browser. The `browsers` option was renamed `browser`
 
 ### Fixed
@@ -70,6 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Do not use reddit's `user-agent` for every site
 - Fix `unclose client session` error at the end of a run
 - Fix parsing of dropbox folders URLS
+- Handle embeded URLS (box.com)
+- [Regresion] Fixed free space check when using network drives (windows)
 
 ## [6.10.1] - 2025-06-15
 
