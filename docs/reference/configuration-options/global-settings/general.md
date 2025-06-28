@@ -100,13 +100,13 @@ If you set a value lower than `512MB`, CDL will override it with `512MB`
 | ------ | ------- |
 | `NonEmptyStr` or None | `truststore+certifi` |
 
-Content SSL will use to verify SSL connections. Valid values are:
+Context that will used to verify SSL connections. Valid values are:
 
 - `truststore`: Will use certificates already included with the OS
 
-- `certifi`: Will use certificates bundles with the `certifi` version avaiable at realease of the currently running version
+- `certifi`: Will use certificates bundled with the `certifi` version available at the release of the current CDL version
 
-- `truststore+certifi`:  Will use certificates already included with the OS, with a fallback to `certifi` if for missing certificates
+- `truststore+certifi`:  Will use certificates already included with the OS, with a fallback to `certifi` for missing certificates
 
 - `None`: Will completly disable SSL verification, allowing secure connections.
 

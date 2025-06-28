@@ -73,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Redgifs not being downloaded (Xenforo)
 - Attachments not being downloaded (Xenforo)
 - Posts not being fully scraped if a single link in them failed (Xenforo)
-- Downloading from user profiles (xHamster)
+- Download from user profiles (xHamster)
 - Folder downloads (Cyberfile)
 - Do not crash when using the `Create file hashes` option from the main menu
 - Do not download "related" or "favorites" videos from a profile (PornHub)
@@ -87,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `unclose client session` error at the end of a run
 - Fix parsing of dropbox folders URLS
 - Handle embeded URLS (box.com)
-- [Regresion] Fixed free space check when using network drives (windows)
+- [Regression] Fixed free space check when using network drives (windows)
 
 ## [6.10.1] - 2025-06-15
 
