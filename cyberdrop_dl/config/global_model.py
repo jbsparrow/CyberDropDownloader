@@ -14,6 +14,7 @@ DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
 
 
 class General(BaseModel):
+    # TODO: Move `ssl_context` to an advance config section
     ssl_context: Literal["truststore", "certifi", "truststore+certifi"] | None = "truststore+certifi"
     disable_crawlers: ListNonEmptyStr = []
     enable_generic_crawler: bool = True
