@@ -5,8 +5,8 @@ description: These are some general settings that will be used regardless of whi
 
 ## `disable_crawlers`
 
-| Type                | Default | Additional Info                                                     |
-| ------------------- | ------- | ------------------------------------------------------------------- |
+| Type                | Default | Additional Info                                                      |
+| ------------------- | ------- | -------------------------------------------------------------------- |
 | `list[NonEmptyStr]` | `[]`    | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs) |
 
 You can supply a list of crawlers to disable for the current run. This will make CDL completely ignore the crawler, as if the site was not supported. However, links from the site will still be processed by Real-Debrid (if enabled), Jdownloader (If enabled) and the Generic crawler (If enabled), in that order.
@@ -14,12 +14,11 @@ You can supply a list of crawlers to disable for the current run. This will make
 The list should be valid crawlers names. The name of the crawler is the name of the primary site they support. ex: `4Chan`, `Bunkrr`, `Dropbox`
 Crawlers names correspond to the column `site` in the [supported sites page](https://script-ware.gitbook.io/cyberdrop-dl/reference/supported-websites#supported-sites).
 
-
 ## `enable_generic_crawler`
 
 | Type   | Default |
 | ------ | ------- |
-| `bool` | `true` |
+| `bool` | `true`  |
 
 CDl has a generic crawler that will try to download from unsupported sites. Setting this to `false` will disable it.
 
@@ -96,8 +95,8 @@ If you set a value lower than `512MB`, CDL will override it with `512MB`
 
 ## `ssl_context`
 
-| Type   | Default |
-| ------ | ------- |
+| Type                  | Default              |
+| --------------------- | -------------------- |
 | `NonEmptyStr` or None | `truststore+certifi` |
 
 Context that will used to verify SSL connections. Valid values are:

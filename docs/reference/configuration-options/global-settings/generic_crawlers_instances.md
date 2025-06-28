@@ -17,18 +17,18 @@ Currently, there are three generic crawlers:
 
 ## `wordpress_media`
 
-| Type          | Default |
-| ------------- | ------- |
-| `list[HttpURL]` | `[]`     |
+| Type            | Default |
+| --------------- | ------- |
+| `list[HttpURL]` | `[]`    |
 
 ## `wordpress_html`
 
-| Type          | Default |
-| ------------- | ------- |
-| `list[HttpURL]` | `[]`     |
+| Type            | Default |
+| --------------- | ------- |
+| `list[HttpURL]` | `[]`    |
 
 ## `discourse`
 
-| Type          | Default |
-| ------------- | ------- |
-| `list[HttpURL]` | `[]`     |
+| Type            | Default |
+| --------------- | ------- |
+| `list[HttpURL]` | `[]`    |
