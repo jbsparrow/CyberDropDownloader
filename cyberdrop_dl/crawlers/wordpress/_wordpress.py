@@ -171,7 +171,8 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
 
     async def handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
         for link in self.iter_parse_url(_iter_links(post.content, self.WP_USE_REGEX)):
-            await self.handle_link(scrape_item, link)
+            if link:
+                await self.handle_link(scrape_item, link)
 
     def parse_url(self, link: str) -> AbsoluteHttpURL:
         # TODO: handle more domains and move it to the base crawler
@@ -334,7 +335,7 @@ def _get_original_quality_link(link: str) -> str:
     return link
 
 
-def _iter_links(html: HTML, use_regex: bool) -> itertools.chain[str]:
+def _iter_links(html: HTML, use_regex: bool) -> Iterable[str]:
     soup = BeautifulSoup(html, "html.parser")
     images = css.iget(soup, *css.images)
     iframes = css.iget(soup, *css.iframes)

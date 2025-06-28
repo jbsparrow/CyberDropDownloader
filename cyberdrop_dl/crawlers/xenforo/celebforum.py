@@ -11,11 +11,13 @@ class CelebForumCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://celebforum.to")
     DOMAIN: ClassVar[str] = "celebforum"
     FOLDER_DOMAIN: ClassVar[str] = "CelebForum"
+    IGNORE_EMBEDED_IMAGES_SRC: ClassVar = True  # images src is always a thumbnail
 
-    def filter_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
-        if link.host == self.PRIMARY_URL.host:
+    @classmethod
+    def is_thumbnail(cls, link: AbsoluteHttpURL) -> bool:
+        if link.host == cls.PRIMARY_URL.host:
             if all(part in link.parts for part in ["data", "attachments"]):  # Thumbnails
-                return None
+                return True
             if all(part in link.parts for part in ["data", "assets"]):  # Placeholder content for insufficient rank
-                return None
-        return link
+                return True
+        return False

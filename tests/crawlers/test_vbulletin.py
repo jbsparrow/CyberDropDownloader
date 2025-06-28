@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from cyberdrop_dl.crawlers.xenforo import xenforo
+from cyberdrop_dl.crawlers import _forum, vbulletin
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 
@@ -35,6 +35,6 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 )
 def test_parse_thread(url: str, thread_name_and_id: str, result: tuple[int, str, int, int], canonical_url: str) -> None:
     url_, canonical_url_ = AbsoluteHttpURL(url), AbsoluteHttpURL(canonical_url)
-    result_ = xenforo.Thread(*result, canonical_url_)
-    parsed = xenforo.parse_thread(url_, thread_name_and_id, "page", "post")
+    result_ = _forum.Thread(*result, canonical_url_)
+    parsed = vbulletin.vBulletinCrawler.parse_thread(url_, thread_name_and_id)
     assert result_ == parsed

@@ -1,5 +1,4 @@
 from .allporncomix import AllPornComixCrawler
-from .bellazon import BellazonCrawler
 from .celebforum import CelebForumCrawler
 from .f95zone import F95ZoneCrawler
 from .leakedmodels import LeakedModelsCrawler
@@ -12,7 +11,6 @@ from .xenforo import XenforoCrawler
 
 XF_CRAWLERS: set[type[XenforoCrawler]] = {
     AllPornComixCrawler,
-    BellazonCrawler,
     CelebForumCrawler,
     F95ZoneCrawler,
     LeakedModelsCrawler,

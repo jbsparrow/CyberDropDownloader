@@ -12,3 +12,4 @@ class AllPornComixCrawler(XenforoCrawler):
     DOMAIN: ClassVar[str] = "allporncomix"
     FOLDER_DOMAIN: ClassVar[str] = "AllPornComix"
     login_required = False
+    IGNORE_EMBEDED_IMAGES_SRC: ClassVar = False

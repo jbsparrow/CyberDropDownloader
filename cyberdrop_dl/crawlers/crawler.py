@@ -18,6 +18,7 @@ from cyberdrop_dl import constants
 from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
+from cyberdrop_dl.exceptions import NoExtensionError
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
@@ -204,7 +205,7 @@ class Crawler(ABC):
         await self.manager.states.RUNNING.wait()
         self.waiting_items += 1
         scrape_prefix = "Scraping"
-        if self.DOMAIN == "generic":
+        if self.IS_FALLBACK_GENERIC:
             scrape_prefix += " (unsupported domain)"
 
         async with self._semaphore:
@@ -242,6 +243,10 @@ class Crawler(ABC):
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
         await self.handle_media_item(media_item, m3u8_media)
+
+    def log_bug_report(self, msg: str, level: int = 30) -> None:
+        msg += f". Please file a bug report at {NEW_ISSUE_URL}"
+        log(msg, level)
 
     async def handle_media_item(self, media_item: MediaItem, m3u8_media: M3U8Media | None = None) -> None:
         await self.manager.states.RUNNING.wait()
@@ -320,20 +325,19 @@ class Crawler(ABC):
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def get_filename_and_ext(self, filename: str, *args, assume_ext: str | None = None, **kwargs):
+    def get_filename_and_ext(
+        self, filename: str, forum: bool = False, assume_ext: str | None = None
+    ) -> tuple[str, str]:
         """Wrapper around `utils.get_filename_and_ext`.
-
-        If `ignore_options.exclude_files_with_no_extension` is `True`, `assume_ext` is not None and the file has no extension,
-        The value of `assume_ext` will be used as `ext`
-
-        In any other case, it will just call `utils.get_filename_and_ext`
+        Calls it as is.
+        If that fails, appedns `assume_ext` and tries again, but only if the user had exclude_files_with_no_extension = `False`
         """
-        filename_as_path = Path(filename)
-        if assume_ext and self.allow_no_extension and not filename_as_path.suffix:
-            filename_as_path = filename_as_path.with_suffix(assume_ext)
-            new_filename, ext = get_filename_and_ext(str(filename_as_path), *args, *kwargs)
-            return Path(new_filename).stem, ext
-        return get_filename_and_ext(filename, *args, *kwargs)
+        try:
+            return get_filename_and_ext(filename, forum)
+        except NoExtensionError:
+            if assume_ext and self.allow_no_extension:
+                return get_filename_and_ext(filename + assume_ext, forum)
+            raise
 
     def check_album_results(self, url: URL, album_results: dict[str, Any]) -> bool:
         """Checks whether an album has completed given its domain and album id."""
