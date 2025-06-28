@@ -33,11 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - efukt support
 - Vipergirls support
 - Initial HLS support (requires ffmpeg)
-- Support for any WordPress media site. See:
-- Support for any Discourse site See:
+- Support for any WordPress media site. See: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/generic_crawlers_instances>
+- Support for any Discourse site See: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/generic_crawlers_instances>
 - Add a config option to disable specific crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
-- Add new `ssl_context` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers>
-- Add a config option to map unknown URLs to generic crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#disable_crawlers> #TODO: Add wiki entry
+- Add new `ssl_context` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#ssl_context>
+- Add a config option to map unknown URLs to generic crawlers: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/generic_crawlers_instances>
 
 ### Changed
 
@@ -45,8 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CDL will use native system certificates by default, with fallback to `certifi`
 - Some crawlers have a new logic to create a filename. The name format for newly downloaded files may not match previous versions.
 - CDL will validate config options that take format strings at startup
-- CDL will only process URLs once, ignoring duplicates, even if they come from different crawlers. ex: If you have a dropbox URL in `URLs.txt` and CDL finds that same URL while crawling a forum, the URL from the forum will be ignored.
-- New Blocked domains:
+- CDL will only process URLs once, ignoring duplicates, even if they come from different crawlers. ex: If you have a dropbox URL in `URLs.txt` and CDL finds that same URL while crawling a forum, it will silently ignore the URL from the forum.
+- New blocked domains:
 
 > gfycat
 > ko-fi.com
@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `no-ui` option
 - `allow_insecure_connections` option
-- Importing cookies from multi browsers is no longer supported. CDl will only try to extract cookies from a single browser. The `browsers` option was renamed `browser`
+- Importing cookies from multi browsers is no longer supported. CDL will only try to extract cookies from a single browser. The `browsers` option was renamed `browser`
 
 ### Fixed
 
