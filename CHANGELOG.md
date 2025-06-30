@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Date parsing errors will be logged as warnings, not errors
+- CDL will use an asynchronous DNS resolver
 - CDL will use native system certificates by default, with fallback to `certifi`
 - Some crawlers have a new logic to create a filename. The name format for newly downloaded files may not match previous versions.
 - CDL will validate config options that take format strings at startup
@@ -59,6 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > beacons.page
 > beacons.ai
 > allmylinks.com
+
+### Deprecated
+
+- Support for 32-bit Python and 32-bit operating systems in general is deprecated. On a future version, the start scripts will explicitly fail when trying to install on 32-bit systems. This deprecation only applies to the start scripts. 32-bit versions can still be installed manually via `pip`, but the user may need to compile any missing wheels.
 
 ### Removed
 
