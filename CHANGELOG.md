@@ -42,11 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Date parsing errors will be logged as warnings, not errors
-- CDL will use an asynchronous DNS resolver
-- CDL will use native system certificates by default, with fallback to `certifi`. See: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#ssl_context>
+- Use an asynchronous DNS resolver
+- Use native system certificates by default, with fallback to `certifi`. See: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#ssl_context>
 - Some crawlers have a new logic to create a filename. The name format for newly downloaded files may not match previous versions.
-- CDL will validate config options that take format strings at startup
-- CDL will only process URLs once, ignoring duplicates, even if they come from different crawlers. ex: If you have a dropbox URL in `URLs.txt` and CDL finds that same URL while crawling a forum, it will silently ignore the URL from the forum.
+- Config options that take format strings will be validated at startup
+- URLs will only be processed once, ignoring duplicates, even if they come from different crawlers. ex: If you have a dropbox URL in `URLs.txt` and CDL finds that same URL while crawling a forum, it will silently ignore the URL from the forum.
+- General performance improvements
 - New blocked domains:
 
 > gfycat
