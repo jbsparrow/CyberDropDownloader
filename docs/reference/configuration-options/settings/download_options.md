@@ -185,7 +185,7 @@ Unique Path Flags:
 
 {% hint style="warning" %}
 Not all sites support all possible flags. Ex: Posts from reddit only support the `title` flag
-If you use a format with a field that the site does not support, CDL will replace with `UNKNOWN_<FIELD_NAME>`
+If you use a format with a field that the site does not support, CDL will replace it with `UNKNOWN_<FIELD_NAME>`
 
 ex: using the format `reddit post #{number}` -> `reddit post #UNKNOWN_ID`
 {% endhint %}
