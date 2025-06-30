@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 class Video(NamedTuple):
     id: str
-    res: str
+    res: str | None
     url: AbsoluteHttpURL
     title: str = ""
 
@@ -192,7 +192,7 @@ def parse_flash_vars(flashvars: str) -> Video | None:
         if match_res := VIDEO_RESOLUTION_PATTERN.search(flashvars):
             resolution = match_res.group(1)
         else:
-            resolution = "Unknown"
+            resolution = None
         return Video(video_id, resolution, real_url, title)
 
 

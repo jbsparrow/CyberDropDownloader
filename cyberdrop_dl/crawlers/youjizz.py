@@ -28,7 +28,7 @@ DATE_SELECTOR = "span.pretty-date"
 
 
 class Format(NamedTuple):
-    resolution: str
+    resolution: str | None
     link_str: str
 
 
@@ -106,4 +106,4 @@ def get_best_quality(info_dict: dict) -> Format | None:
     default_quality: dict = next((f for f in qualities if f["name"] == DEFAULT_QUALITY), {})
     if default_quality:
         default_link_str = default_quality.get("filename") or ""
-        return Format(DEFAULT_QUALITY, default_link_str)
+        return Format(None, default_link_str)

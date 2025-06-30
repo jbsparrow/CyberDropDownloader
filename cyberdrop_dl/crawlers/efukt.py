@@ -43,6 +43,7 @@ class EfuktCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "eFukt"
     NEXT_PAGE_SELECTOR = _SELECTORS.NEXT_PAGE
     SKIP_PRE_CHECK = True
+    DEFAULT_POST_TITLE_FORMAT = "{date:%Y-%m-%d} {title}"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_series(scrape_item.url) or is_homepage(scrape_item.url):

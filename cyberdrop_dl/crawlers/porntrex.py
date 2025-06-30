@@ -234,7 +234,7 @@ def get_video_info(soup: BeautifulSoup) -> Video:
                     resolutions.append((video_info[text_key], video_info[key]))
 
         if not resolutions:
-            resolutions.append((video_info["video_url"], "Unknown"))
+            resolutions.append((video_info["video_url"], ""))
 
         best = max(resolutions, key=lambda x: extract_resolution(x[0]))
         return Video(video_info["video_id"], video_info["video_title"], URL(best[1].strip("/")), best[0].split()[0])
