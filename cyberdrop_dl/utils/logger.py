@@ -5,7 +5,7 @@ import logging
 import queue
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
-from typing import IO, TYPE_CHECKING
+from typing import IO, TYPE_CHECKING, Any
 
 from rich._log_render import LogRender
 from rich.console import Console, Group
@@ -215,7 +215,7 @@ class RedactedConsole(Console):
         return _redact_message(output)
 
 
-def process_log_msg(message: dict | Exception | str) -> str:
+def process_log_msg(message: dict[str, Any] | Exception | str) -> str:
     if isinstance(message, dict):
         return json.dumps(message, indent=4, ensure_ascii=False)
     return str(message)
@@ -227,14 +227,14 @@ def create_rich_log_msg(msg: str, level: int = 10) -> Text:
     return rich_level + indent_string(msg)
 
 
-def log(message: dict | Exception | str, level: int = 10, **kwargs) -> None:
+def log(message: dict[str, Any] | Exception | str, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     msg = process_log_msg(message)
     logger.log(level, msg, **kwargs)
     log_debug(msg, level, **kwargs)
 
 
-def log_debug(message: dict | Exception | str, level: int = 10, **kwargs) -> None:
+def log_debug(message: dict[str, Any] | Exception | str, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     if env.DEBUG_VAR:
         msg = process_log_msg(message)
