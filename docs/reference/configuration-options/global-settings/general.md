@@ -105,7 +105,7 @@ Context that will used to verify SSL connections. Valid values are:
 
 - `certifi`: Will use certificates bundled with the `certifi` version available at the release of the current CDL version
 
-- `truststore+certifi`:  Will use certificates already included with the OS, with a fallback to `certifi` for missing certificates
+- `truststore+certifi`: Will use certificates already included with the OS, with a fallback to `certifi` for missing certificates
 
 - `None`: Will completly disable SSL verification, allowing secure connections.
 

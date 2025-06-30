@@ -8,7 +8,7 @@
     * [macOS](getting-started/python-install/macos.md)
   * [Cyberdrop-DL Install](getting-started/cyberdrop-dl-install.md)
   * [Running CDL on Android](getting-started/cyberdrop-dl-on-android.md)
-* [Transition to V6](transition-to-v6.md)
+* [Transition to V7](transition-to-v6.md)
 * [Frequently Asked Questions](frequently-asked-questions.md)
 * [Migration to Cyberdrop-DL-Patched](migration-to-cyberdrop-dl-patched.md)
 * [SimpCity Support Dropped](simpcity-support-dropped.md)
