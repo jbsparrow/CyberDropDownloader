@@ -493,6 +493,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         for scraper in (self._embeds, self._lazy_load_embeds):
             for link in scraper(post):
                 duplicates.add(link) if link in seen else seen.add(link)
+                stats[scraper.__name__] += 1
                 await self.process_child(scrape_item, link, embeds=True)
 
         if seen:
