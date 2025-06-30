@@ -10,6 +10,7 @@ from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
+import certifi
 import truststore
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiolimiter import AsyncLimiter
@@ -84,8 +85,17 @@ class ClientManager:
         self.user_agent = global_settings_data.general.user_agent
         self.simultaneous_per_domain = global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
 
-        verify_ssl = not global_settings_data.general.allow_insecure_connections
-        self.ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT) if verify_ssl else False
+        ssl_context = global_settings_data.general.ssl_context
+        if not ssl_context:
+            self.ssl_context = False
+        elif ssl_context == "certifi":
+            self.ssl_context = ssl.create_default_context(cafile=certifi.where())
+        elif ssl_context == "truststore":
+            self.ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        elif ssl_context == "truststore+certifi":
+            self.ssl_context = ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.load_verify_locations(cafile=certifi.where())
+
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
         self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
 

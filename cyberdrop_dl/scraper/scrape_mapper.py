@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 existing_crawlers: dict[str, Crawler] = {}
+seen_urls: set[AbsoluteHttpURL] = set()
 
 
 class ScrapeMapper:
@@ -296,6 +297,10 @@ class ScrapeMapper:
         """Pre-filter scrape items base on URL."""
         if not is_valid_url(scrape_item):
             return False
+
+        if scrape_item.url in seen_urls:
+            return False
+        seen_urls.add(scrape_item.url)
 
         if is_in_domain_list(scrape_item, BLOCKED_DOMAINS):
             log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)

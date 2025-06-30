@@ -22,11 +22,13 @@ from cyberdrop_dl.models.types import (
     PathOrNone,
 )
 from cyberdrop_dl.models.validators import falsy_as, to_timedelta
+from cyberdrop_dl.utils.strings import validate_format_string
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 from ._common import ConfigModel, Field, PathAliasModel
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
+SORTING_COMMON_KEYS = {"sort_dir", "base_dir", "parent_dir", "filename", "ext"}
 
 
 class DownloadOptions(BaseModel):
@@ -48,13 +50,9 @@ class DownloadOptions(BaseModel):
     @field_validator("separate_posts_format", mode="after")
     @classmethod
     def valid_format(cls, value: str) -> str:
-        valid_keys = ("default", "title", "id", "number", "date")
-        try:
-            value.format(**dict.fromkeys(valid_keys, "TEST"))
-            return value
-        except KeyError as e:
-            msg = f"'{e.args[0]}' is not a valid key for this option. Valid keys: {valid_keys}"
-            raise ValueError(msg) from None
+        valid_keys = {"default", "title", "id", "number", "date"}
+        validate_format_string(value, valid_keys)
+        return value
 
 
 class Files(PathAliasModel):
@@ -197,6 +195,40 @@ class Sorting(BaseModel):
     sorted_image: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Images/{filename}{ext}"
     sorted_other: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
     sorted_video: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
+
+    @field_validator("sorted_audio", mode="after")
+    @classmethod
+    def valid_sorted_audio(cls, value: str | None) -> str | None:
+        if value is not None:
+            valid_keys = SORTING_COMMON_KEYS.union("bitrate", "duration", "length", "sample_rate")
+            validate_format_string(value, valid_keys)
+        return value
+
+    @field_validator("sorted_image", mode="after")
+    @classmethod
+    def valid_sorted_image(cls, value: str | None) -> str | None:
+        if value is not None:
+            valid_keys = SORTING_COMMON_KEYS.union("height", "width", "resolution")
+            validate_format_string(value, valid_keys)
+        return value
+
+    @field_validator("sorted_other", mode="after")
+    @classmethod
+    def valid_sorted_other(cls, value: str | None) -> str | None:
+        if value is not None:
+            valid_keys = SORTING_COMMON_KEYS.union("bitrate", "duration", "length", "sample_rate")
+            validate_format_string(value, valid_keys)
+        return value
+
+    @field_validator("sorted_video", mode="after")
+    @classmethod
+    def valid_sorted_video(cls, value: str | None) -> str | None:
+        if value is not None:
+            valid_keys = SORTING_COMMON_KEYS.union(
+                "codec", "duration", "fps", "length", "height", "width", "resolution"
+            )
+            validate_format_string(value, valid_keys)
+        return value
 
 
 class BrowserCookies(BaseModel):
