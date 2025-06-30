@@ -13,6 +13,7 @@ import dataclasses
 import datetime
 import re
 from abc import abstractmethod
+from collections import defaultdict
 from typing import TYPE_CHECKING, ClassVar, Protocol, final
 
 from bs4 import BeautifulSoup, Tag
@@ -482,9 +483,11 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
 
         seen: set[str] = set()
         duplicates: set[str] = set()
+        stats: dict[str, int] = defaultdict(int)
         for scraper in (self._attachments, self._images, self._videos, self._external_links):
             for link in scraper(post):
                 duplicates.add(link) if link in seen else seen.add(link)
+                stats[scraper.__name__] += 1
                 await self.process_child(scrape_item, link)
 
         for scraper in (self._embeds, self._lazy_load_embeds):
@@ -492,6 +495,8 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
                 duplicates.add(link) if link in seen else seen.add(link)
                 await self.process_child(scrape_item, link, embeds=True)
 
+        if seen:
+            self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} stats = {stats}")
         if duplicates:
             self.log_bug_report(f"Found duplicate links. Selectors are too generic: {duplicates}")
 
