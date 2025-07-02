@@ -46,7 +46,7 @@ class JPG5Crawler(CheveretoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://jpg5.su")
 
     def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 5)
+        self.request_limiter = AsyncLimiter(1, 1)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = fix_host(scrape_item.url)
