@@ -59,7 +59,7 @@ class StreamableCrawler(Crawler):
 
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}]{ext}")
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 

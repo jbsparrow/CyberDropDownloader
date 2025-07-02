@@ -65,21 +65,22 @@ def get_direct_dependencies() -> Generator[str]:
     with pyproject_toml.open(encoding="utf-8") as file:
         content = file.read()
         start_index = content.index("dependencies = [") + len("dependencies = [")
-        end_index = content.index("]", start_index)
+        end_index = content.index("]\n", start_index)
         dependencies = content[start_index:end_index]
         for dep in dependencies.splitlines():
-            name = dep.replace('"', "").strip()
+            name = dep.replace('"', "").strip().split(" ")[0]
             for separator in " (>=":
                 name = name.split(separator)[0].strip()
             if name:
-                yield name
+                yield name.casefold()
 
 
 async def get_all_package_info() -> list[PackageInfo]:
     try:
-        direct_dependencies: set[str] = set(get_direct_dependencies())
+        direct_dependencies: list[str] = list(get_direct_dependencies())
         pip_output: str = subprocess.check_output(["pip", "list", "--format", "json"], text=True)  # noqa : ASYNC221
-        installed_packages: list[dict] = [p for p in json.loads(pip_output) if p["name"] in direct_dependencies]
+        pip_json: list[dict[str, Any]] = json.loads(pip_output)
+        installed_packages: list[dict] = [p for p in pip_json if p["name"].casefold() in direct_dependencies]
         total_packages: int = len(installed_packages)
 
         all_packages: list[PackageInfo] = []

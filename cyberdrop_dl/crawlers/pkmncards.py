@@ -171,7 +171,7 @@ class PkmncardsCrawler(Crawler):
         scrape_item.setup_as_album(set_title, album_id=card.set.abbr)
         scrape_item.possible_datetime = card.set.release_date
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
-        custom_filename, _ = self.get_filename_and_ext(f"{card.full_name}{ext}")
+        custom_filename = self.create_custom_filename(card.full_name, ext)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def handle_simple_card(self, scrape_item: ScrapeItem, simple_card: SimpleCard) -> None:

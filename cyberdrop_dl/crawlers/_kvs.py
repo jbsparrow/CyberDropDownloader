@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 class Video(NamedTuple):
     id: str
-    res: str
+    res: str | None
     url: AbsoluteHttpURL
     title: str = ""
 
@@ -130,7 +130,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
 
         video = self.get_video_info(soup)
         filename, ext = self.get_filename_and_ext(video.url.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}] [{video.res}]{ext}")
+        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.res)
         date_str = css.select_one_get_text(soup, _SELECTORS.DATE).split(":", 1)[-1].strip()
         scrape_item.possible_datetime = self.parse_date(date_str)
         await self.handle_file(
@@ -192,7 +192,7 @@ def parse_flash_vars(flashvars: str) -> Video | None:
         if match_res := VIDEO_RESOLUTION_PATTERN.search(flashvars):
             resolution = match_res.group(1)
         else:
-            resolution = "Unknown"
+            resolution = None
         return Video(video_id, resolution, real_url, title)
 
 

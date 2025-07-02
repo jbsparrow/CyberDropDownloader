@@ -77,7 +77,7 @@ class EHentaiCrawler(Crawler):
         link_str: str = css.select_one_get_attr(soup, _SELECTORS.IMAGE, "src")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{scrape_item.url.name}{ext}")
+        custom_filename = self.create_custom_filename(scrape_item.url.name, ext)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper

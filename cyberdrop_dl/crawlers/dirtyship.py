@@ -146,9 +146,8 @@ class DirtyShipCrawler(Crawler):
             raise ScrapeError(422, message="No video source found")
 
         res, link = sorted(formats)[-1]
-        res = f"{res}p" if res else "Unknown"
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{title} [{res}]{link.suffix}")
+        custom_filename = self.create_custom_filename(title, ext, resolution=res)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     def get_flowplayer_sources(self, soup: BeautifulSoup) -> set[Format]:

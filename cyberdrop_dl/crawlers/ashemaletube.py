@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
@@ -35,8 +34,6 @@ class Selectors:
 
 
 _SELECTORS = Selectors()
-RESOLUTIONS = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
-INCLUDE_VIDEO_ID_IN_FILENAME = True
 
 
 class Format(NamedTuple):
@@ -165,7 +162,7 @@ class AShemaleTubeCrawler(Crawler):
             link_str = get_text_between(style, "url('", "');")
         url = self.parse_url(link_str).with_query(None)
         filename, ext = self.get_filename_and_ext(url.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{img_tag['data-image-id']}{ext}")
+        custom_filename = self.create_custom_filename(filename, ext, file_id=css.get_attr(img_tag, "data-image-id"))
         await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
@@ -190,39 +187,24 @@ class AShemaleTubeCrawler(Crawler):
         if video_object := soup.select_one(_SELECTORS.VIDEO_PROPS_JS):
             json_data = json.loads(video_object.text.strip())
             if "uploadDate" in json_data:
-                scrape_item.possible_datetime = self.parse_date(json_data["uploadDate"])
+                scrape_item.possible_datetime = self.parse_iso_date(json_data["uploadDate"])
 
         title: str = css.select_one_get_text(soup, "title").split("- aShemaletube.com")[0].strip()
         link = self.parse_url(best_format.link_str)
 
         scrape_item.url = canonical_url
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-        include_id = f"[{video_id}]" if INCLUDE_VIDEO_ID_IN_FILENAME else ""
-        custom_filename, _ = self.get_filename_and_ext(f"{title} {include_id}[{best_format.resolution}]{ext}")
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_format.resolution)
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
         )
 
 
-def get_best_quality(info_dict: dict) -> Format:
-    """Returns best available format"""
-    active_url: str = ""
-    active_res: str = ""
-    for res in RESOLUTIONS:
-        for item in info_dict:
-            if item["active"] == "true":
-                active_url = item["src"]
-                active_res = item["desc"]
-            if res == item["desc"]:
-                return Format(res, item["src"])
-
-    return Format(active_res, active_url)
-
-
 def parse_player_info(script_text: str) -> tuple[bool, Format]:
-    if match := re.search(r"hls:\s+(true|false)", script_text):
-        is_hls = match.group(1) == "true"
-        urls_info = "[{" + get_text_between(script_text, "[{", "}],") + "}]"
-        format: Format = get_best_quality(json.loads(urls_info))
-        return is_hls, format
-    raise ScrapeError(404)
+    def get_resolution(video):
+        return int(video["desc"].rstrip("p"))
+
+    sources = get_text_between(script_text, "sources:", "poster:").strip().strip(",")
+    video_data = max(json.loads(sources), key=get_resolution)
+    format: Format = Format(video_data["desc"], video_data["src"])
+    return video_data["hls"], format
