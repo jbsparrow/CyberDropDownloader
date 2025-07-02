@@ -12,4 +12,4 @@ if TYPE_CHECKING:
 
 WP_CRAWLERS: set[type[WordPressBaseCrawler]] = {BestPrettyGirlCrawler}
 WP_CRAWLERS_MAP = {c.__name__: c for c in WP_CRAWLERS}
-WP_GENERIC_CRAWLERS = {WordPressMediaCrawler, WordPressHTMLCrawler}
+__all__ = [*WP_CRAWLERS_MAP.keys(), "WordPressMediaCrawler", "WordPressHTMLCrawler"]  # type: ignore[reportUnsupportedDunderAll]

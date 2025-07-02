@@ -89,6 +89,9 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
     async def forum(self, scrape_item: ScrapeItem) -> None:
         raise NotImplementedError
 
+    def parse_thread(self, *args) -> None:
+        raise NotImplementedError
+
     async def thread(self, scrape_item: ScrapeItem, topic: Topic) -> None:
         await self.topic(scrape_item, topic)
 
@@ -124,7 +127,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
                     return
 
     async def post(self, scrape_item: ScrapeItem, post: AvailablePost) -> None:
-        title = self.create_separate_post_title(post.title, str(post.id), None)
+        title = self.create_separate_post_title(post.title, str(post.id), post.created_at)
         scrape_item.setup_as_post(title)
         for link in self.extract_links(post):
             await self.handle_link(scrape_item, link)

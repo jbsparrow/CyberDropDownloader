@@ -176,7 +176,7 @@ class Video(XHamsterItem):
     mp4_sources: dict[str, Any] = Field({}, validation_alias=AliasPath("sources", "mp4"))
 
     def get_formats(self) -> Generator[Format]:
-        yield Format(0, 0, self.mp4_file)
+        yield Format(0, "", self.mp4_file)
         for resolution, details in self.mp4_sources.items():
             height = int(resolution.removesuffix("p"))
             link: str = details["link"] if isinstance(details, dict) else details
