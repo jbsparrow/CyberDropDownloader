@@ -45,7 +45,7 @@ A special kind of `bool`. Within a config file, it can have a `true` or `false` 
 
 ## `ByteSize`
 
-A special kind of `int` that accepts suffixes like `GB`, `MiB` and `KB`
+A special kind of `int` that also accepts suffixes like `GB`, `MiB` and `KB` to specify valid values
 
 In conformance with IEC 80000-13 Standard, `1KB` means `1000 bytes`, and `1KiB` means `1024 bytes`. In general, including a middle 'i' will cause the unit to be interpreted as a power of 2, rather than a power of 10.
 

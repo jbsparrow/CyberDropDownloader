@@ -5,12 +5,14 @@ import itertools
 from typing import TYPE_CHECKING, ClassVar
 from xml.etree import ElementTree
 
-from cyberdrop_dl.crawlers.xenforo.xenforo import Thread, XenforoCrawler
+from cyberdrop_dl.crawlers.xenforo.xenforo import XenforoCrawler
 from cyberdrop_dl.exceptions import MaxChildrenError, ScrapeError
 
 if TYPE_CHECKING:
+    import datetime
     from collections.abc import Iterable
 
+    from cyberdrop_dl.crawlers._forum import Thread
     from cyberdrop_dl.crawlers.crawler import SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
@@ -22,6 +24,7 @@ class Post:
     id: int
     title: str
     xml: ElementTree.Element[str]
+    date: datetime.datetime | None = None
 
     @staticmethod
     def new(element: ElementTree.Element[str]) -> Post:
@@ -65,7 +68,7 @@ class vBulletinCrawler(XenforoCrawler, is_abc=True):  # noqa: N801
     async def async_startup(self) -> None:
         if not self.logged_in:
             login_url = self.PRIMARY_URL / "login.php"
-            await self.login_setup(login_url)
+            await self._login(login_url)
 
         self.register_cache_filter(self.PRIMARY_URL, lambda _: True)
 

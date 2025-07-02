@@ -47,6 +47,7 @@ from .imgur import ImgurCrawler
 from .imx_to import ImxToCrawler
 from .incestflix import IncestflixCrawler
 from .influencer_bitches import InfluencerBitchesCrawler
+from .invision import INVISION_CRAWLERS
 from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
@@ -90,10 +91,10 @@ from .tokyomotion import TokioMotionCrawler
 from .toonily import ToonilyCrawler
 from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
-from .vbulletin import ViperGirlsCrawler  # TODO: import all vBulletin crawlers as a set
+from .vbulletin import VBULLETIN_CRAWLERS
 from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
-from .wordpress import WP_CRAWLERS, WP_GENERIC_CRAWLERS
+from .wordpress import WP_CRAWLERS, WordPressHTMLCrawler, WordPressMediaCrawler
 from .xbunkr import XBunkrCrawler
 from .xenforo import XF_CRAWLERS, SimpCityCrawler
 from .xhamster import XhamsterCrawler
@@ -101,8 +102,8 @@ from .xxxbunker import XXXBunkerCrawler
 from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler
 
-FORUM_CRAWLERS = DISCOURSE_CRAWLERS.union(XF_CRAWLERS)
-GENERIC_CRAWLERS: set[type[Crawler]] = WP_GENERIC_CRAWLERS.union({DiscourseCrawler})
+FORUM_CRAWLERS = XF_CRAWLERS.union(INVISION_CRAWLERS, DISCOURSE_CRAWLERS, VBULLETIN_CRAWLERS)
+GENERIC_CRAWLERS: set[type[Crawler]] = {WordPressHTMLCrawler, WordPressMediaCrawler, DiscourseCrawler}
 ALL_CRAWLERS: set[type[Crawler]] = {
     crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
 }

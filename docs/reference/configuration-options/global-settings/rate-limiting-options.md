@@ -20,7 +20,7 @@ The number of seconds to wait while connecting to a website before timing out
 | ------------- | ------- |
 | `PositiveInt` | `5`     |
 
-The number of download attempts per file. Regardless of this value, some conditions (such as a 404 HTTP status) will cause a file to not be retried at all.
+The number of download attempts per file. Some conditions are never retried (such as a `404` HTTP status)
 
 ## `download_delay`
 
@@ -32,9 +32,11 @@ This is the number of seconds to wait between downloads to the same domain.
 
 Some domains have internal limits set by the program, which can not be modified:
 
-- `bunkrr`: 1
-- `cyberfile.me`: 1
-- `pixeldrain` : 2
+- `bunkr`: 0.5,
+- `coomer`: 0.5,
+- `kemono`: 0.5,
+- `nhentai.net`: 1,
+
 
 ## `download_speed_limit`
 
@@ -110,7 +112,15 @@ This is the maximum number of files that can be downloaded simultaneously.
 
 This is the maximum number of files that can be downloaded from a single domain simultaneously.
 
-Some domains have internal limits set by the program, such as `bunkrr`, `cyberfile.me`, etc.
+Some domains have internal limits set by the program, which can not be modified:
+
+- `bunkr`: 1
+- `cyberdrop`: 1
+- `cyberfile`: 1
+- `noodlemagazine`: 2
+- `4chan`: 1
+- `pixeldrain`: 2
+- `xxxbunker`: 2
 
 ## `rate_limit`
 
@@ -130,4 +140,4 @@ This is the maximum number of requests that can be made by the program per secon
 | ------------- | ------- |
 | `PositiveInt` | `300`   |
 
-The number of seconds to wait while reading data from a website before timing out. If it's a download, it will be retried and won't count against the `download_attempts` limit.
+The number of seconds to wait while reading data from a website before timing out.
