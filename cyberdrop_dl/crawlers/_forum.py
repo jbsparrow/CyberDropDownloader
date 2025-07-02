@@ -306,7 +306,7 @@ class MessageBoardCrawler(Crawler, is_abc=True):
             return
         if self.is_attachment(link):
             return await self.handle_internal_link(scrape_item, link)
-        if self.PRIMARY_URL.host == scrape_item.url.host:
+        if self.PRIMARY_URL.host == link.host:
             self.manager.task_group.create_task(self.run(scrape_item.create_child(link)))
             return
         new_scrape_item = scrape_item.create_child(link)
@@ -487,13 +487,13 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         for scraper in (self._attachments, self._images, self._videos, self._external_links):
             for link in scraper(post):
                 duplicates.add(link) if link in seen else seen.add(link)
-                stats[scraper.__name__] += 1
+                stats[scraper.__name__.removeprefix("_")] += 1
                 await self.process_child(scrape_item, link)
 
         for scraper in (self._embeds, self._lazy_load_embeds):
             for link in scraper(post):
                 duplicates.add(link) if link in seen else seen.add(link)
-                stats[scraper.__name__] += 1
+                stats[scraper.__name__.removeprefix("_")] += 1
                 await self.process_child(scrape_item, link, embeds=True)
 
         if seen:
@@ -579,12 +579,13 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         new_link = self.parse_url(link_str)
         return await self.get_absolute_link(new_link)
 
-    async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
-        slug = scrape_item.url.name or scrape_item.url.parent.name
+    async def handle_internal_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL | None = None) -> None:
+        link = link or scrape_item.url
+        slug = link.name or link.parent.name
         if slug.isdigit():
-            return await self.follow_redirect_w_head(scrape_item)
+            return await self.follow_redirect_w_head(scrape_item.create_new(link))
 
-        await super().handle_internal_link(scrape_item)
+        await super().handle_internal_link(scrape_item, link)
 
     def is_username_or_attachment(self, link_obj: Tag) -> bool:
         if link_obj.select_one(".username"):

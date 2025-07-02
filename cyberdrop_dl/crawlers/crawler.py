@@ -217,6 +217,8 @@ class Crawler(ABC):
         scrape_prefix = "Scraping"
         if self.IS_FALLBACK_GENERIC:
             scrape_prefix += " (unsupported domain)"
+        else:
+            scrape_prefix += f" [{self.FOLDER_DOMAIN}]"
 
         async with self._semaphore:
             self.waiting_items -= 1

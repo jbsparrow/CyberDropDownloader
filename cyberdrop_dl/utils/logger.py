@@ -227,9 +227,9 @@ def create_rich_log_msg(msg: str, level: int = 10) -> Text:
     return rich_level + indent_string(msg)
 
 
-def log(message: dict[str, Any] | Exception | str, level: int = 10, **kwargs) -> None:
+def log(message: dict[str, Any] | Exception | str, level: int = 10, prefix: str = "", **kwargs) -> None:
     """Simple logging function."""
-    msg = process_log_msg(message)
+    msg = prefix + process_log_msg(message)
     logger.log(level, msg, **kwargs)
     log_debug(msg, level, **kwargs)
 
