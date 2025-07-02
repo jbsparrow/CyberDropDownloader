@@ -99,7 +99,7 @@ class GenericCrawler(Crawler):
             filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
             filename, ext = self.get_filename_and_ext(link.name + ".mp4")
-        custom_filename, _ = self.get_filename_and_ext(f"{title}{ext}")
+        custom_filename = self.create_custom_filename(title, ext)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def log_unsupported(self, scrape_item: ScrapeItem, msg: str = "") -> None:

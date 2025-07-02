@@ -94,7 +94,7 @@ class NHentaiCrawler(Crawler):
         padding = max(3, len(str(n_images)))
         for index, link in get_image_urls(json_resp):
             filename, ext = self.get_filename_and_ext(link.name)
-            custom_filename = f"{index:0{padding}d}{ext}"
+            custom_filename = self.create_custom_filename(str(index).zfill(padding), ext)
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 

@@ -188,7 +188,7 @@ class EpornerCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
             raise ScrapeError(422)
-        custom_filename, _ = self.get_filename_and_ext(f"{info_dict['name']} [{video_id}][{resolution}]{ext}")
+        custom_filename = self.create_custom_filename(info_dict["name"], ext, file_id=video_id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 

@@ -28,7 +28,7 @@ DATE_SELECTOR = "span.pretty-date"
 
 
 class Format(NamedTuple):
-    resolution: str
+    resolution: str | None
     link_str: str
 
 
@@ -65,17 +65,12 @@ class YouJizzCrawler(Crawler):
             raise ScrapeError(422)
 
         resolution, link_str = v_format
-
         link = self.parse_url(link_str)
-        date_str: str | None = info["date"]
-        if date_str:
-            date = self.parse_date(date_str)
-            scrape_item.possible_datetime = date
+        scrape_item.possible_datetime = self.parse_date(info["date"])
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
             raise ScrapeError(422)
-        custom_filename = f"{info['title']} [{video_id}][{resolution}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+        custom_filename = self.create_custom_filename(info["title"], ext, file_id=video_id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
@@ -111,4 +106,4 @@ def get_best_quality(info_dict: dict) -> Format | None:
     default_quality: dict = next((f for f in qualities if f["name"] == DEFAULT_QUALITY), {})
     if default_quality:
         default_link_str = default_quality.get("filename") or ""
-        return Format(DEFAULT_QUALITY, default_link_str)
+        return Format(None, default_link_str)

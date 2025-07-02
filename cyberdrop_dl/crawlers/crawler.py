@@ -108,7 +108,7 @@ def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, C
 class Crawler(ABC):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ()
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {}
-    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {number} - {title}"
+    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {id} - {title}"
 
     UPDATE_UNSUPPORTED: ClassVar[bool] = False
     SKIP_PRE_CHECK: ClassVar[bool] = False
