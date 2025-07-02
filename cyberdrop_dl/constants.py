@@ -1,11 +1,13 @@
 import re
 from dataclasses import field
 from datetime import UTC, datetime
-from enum import Enum, IntEnum, StrEnum, auto
+from enum import auto
 from pathlib import Path
 from typing import Any
 
 from rich.text import Text
+
+from cyberdrop_dl.compat import Enum, IntEnum, StrEnum
 
 NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
 
@@ -42,6 +44,9 @@ CLI_VALIDATION_ERROR_FOOTER = """Please read the documentation to learn about th
 RAR_MULTIPART_PATTERN = re.compile(r"^part\d+")
 SANITIZE_FILENAME_PATTERN = re.compile(r'[<>:"/\\|?*\']')
 REGEX_LINKS = re.compile(r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]))")
+HTTP_REGEX_LINKS = re.compile(
+    r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
+)
 
 
 class CustomHTTPStatus(IntEnum):
@@ -50,7 +55,22 @@ class CustomHTTPStatus(IntEnum):
     DDOS_GUARD = 429
 
 
-BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
+BLOCKED_DOMAINS = (
+    "facebook",
+    "instagram",
+    "fbcdn",
+    "gfycat",
+    "ko-fi.com",
+    "paypal.me",
+    "amazon.com",
+    "throne.com",
+    "youtu.be",
+    "youtube.com",
+    "linktr.ee",
+    "beacons.page",
+    "beacons.ai",
+    "allmylinks.com",
+)
 
 
 DEFAULT_APP_STORAGE = Path("./AppData")

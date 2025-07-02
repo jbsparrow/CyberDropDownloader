@@ -68,7 +68,7 @@ class DBManager:
         result = await self._db_conn.execute(check_pre_allocation)
         free_space = await result.fetchone()
 
-        if free_space[0] <= 1024:
+        if free_space and free_space[0] <= 1024:
             await self._db_conn.execute(create_pre_allocation_table)
             await self._db_conn.commit()
             await self._db_conn.execute(fill_pre_allocation)

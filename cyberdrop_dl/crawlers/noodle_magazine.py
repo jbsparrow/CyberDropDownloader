@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -66,7 +66,7 @@ class NoodleMagazineCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, page_url)
 
             if not title:
-                search_string: str = soup.select_one(SEARCH_STRING_SELECTOR).text.strip()
+                search_string: str = css.select_one_get_text(soup, SEARCH_STRING_SELECTOR)
                 title = search_string.rsplit(" videos", 1)[0]
                 title = self.create_title(f"{title} [search]")
                 scrape_item.setup_as_album(title)
@@ -101,7 +101,7 @@ class NoodleMagazineCrawler(Crawler):
         content_url = self.parse_url(metadata["contentUrl"])
         filename, ext = self.get_filename_and_ext(content_url.name)
         video_id = filename.removesuffix(ext)
-        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}] [{best_source.resolution}p]{ext}")
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_source.resolution)
         src_url = self.parse_url(best_source.file)
         await self.handle_file(
             content_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=src_url

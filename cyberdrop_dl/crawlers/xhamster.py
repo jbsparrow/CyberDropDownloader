@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
 
 from pydantic import AliasPath, Field, PlainValidator
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
@@ -38,7 +38,7 @@ HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_
 
 class XhamsterCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Video": "/<video_title>",
+        "Video": "/videos/<video_title>",
         "User": "/users/<user_name>",
         "Creator": "/creatos/<creator_name>",
         "Gallery": "photos/gallery/<gallery_name>",
@@ -51,14 +51,14 @@ class XhamsterCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "gallery" in scrape_item.url.parts:
             return await self.gallery(scrape_item)
-        if any(p in scrape_item.url.parts for p in ("creators", "user")):
+        if any(p in scrape_item.url.parts for p in ("creators", "users")):
             return await self.profile(scrape_item)
         if any(p in scrape_item.url.parts for p in ("movies", "videos")):
             return await self.video(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
-    async def profile(self, scrape_item: ScrapeItem, paths_to_scrape) -> None:
+    async def profile(self, scrape_item: ScrapeItem) -> None:
         profile_type, username = scrape_item.url.parts[1:3]
         title = self.create_title(f"{username} [{profile_type.removesuffix('s')}]")
         scrape_item.setup_as_profile(title)
@@ -94,7 +94,9 @@ class XhamsterCrawler(Crawler):
         padding = max(3, len(str(gallery.quantity)))
         for index, image in enumerate(gallery.photos, 1):
             filename, ext = self.get_filename_and_ext(image.url.name)
-            custom_filename = f"{index:0{padding}d} - {filename.removesuffix(ext)} [{image.id}]{ext}"
+            # TODO: Adding an index prefix should be handled by `create_custom_filename`
+            custom_filename = f"{str(index).zfill(padding)} - {filename.removesuffix(ext)}"
+            custom_filename = self.create_custom_filename(custom_filename, ext, file_id=image.id)
             new_scrape_item = scrape_item.create_child(image.page_url)
             await self.handle_file(image.url, new_scrape_item, filename, ext, custom_filename=custom_filename)
             scrape_item.add_children()
@@ -111,9 +113,8 @@ class XhamsterCrawler(Crawler):
         scrape_item.possible_datetime = video.created
         _, resolution, download_url = max(video.get_formats())
         link = PRIMARY_URL / "movies" / video.id / "download" / resolution
-
         filename, ext = self.get_filename_and_ext(f"{video.id}.mp4")
-        custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}][{resolution}]{ext}")
+        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=resolution)
         await self.handle_file(
             link, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=download_url
         )
@@ -175,7 +176,7 @@ class Video(XHamsterItem):
     mp4_sources: dict[str, Any] = Field({}, validation_alias=AliasPath("sources", "mp4"))
 
     def get_formats(self) -> Generator[Format]:
-        yield Format(0, "Unknown", self.mp4_file)
+        yield Format(0, "", self.mp4_file)
         for resolution, details in self.mp4_sources.items():
             height = int(resolution.removesuffix("p"))
             link: str = details["link"] if isinstance(details, dict) else details

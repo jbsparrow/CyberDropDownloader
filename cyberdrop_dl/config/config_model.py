@@ -22,11 +22,13 @@ from cyberdrop_dl.models.types import (
     PathOrNone,
 )
 from cyberdrop_dl.models.validators import falsy_as, to_timedelta
+from cyberdrop_dl.utils.strings import validate_format_string
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 from ._common import ConfigModel, Field, PathAliasModel
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
+SORTING_COMMON_KEYS = {"sort_dir", "base_dir", "parent_dir", "filename", "ext"}
 
 
 class DownloadOptions(BaseModel):
@@ -44,6 +46,13 @@ class DownloadOptions(BaseModel):
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
     maximum_thread_depth: NonNegativeInt = 0
+
+    @field_validator("separate_posts_format", mode="after")
+    @classmethod
+    def valid_format(cls, value: str) -> str:
+        valid_keys = {"default", "title", "id", "number", "date"}
+        validate_format_string(value, valid_keys)
+        return value
 
 
 class Files(PathAliasModel):
@@ -81,7 +90,8 @@ class Logs(PathAliasModel):
     @field_validator("logs_expire_after", mode="before")
     @staticmethod
     def parse_logs_duration(input_date: timedelta | str | int | None) -> timedelta | str | None:
-        return falsy_as(input_date, None, to_timedelta)
+        if value := falsy_as(input_date, None):
+            return to_timedelta(value)
 
     def _set_output_filenames(self, now: datetime) -> None:
         self.log_folder.mkdir(exist_ok=True, parents=True)
@@ -125,7 +135,7 @@ class MediaDurationLimits(BaseModel):
 
     @field_validator("*", mode="before")
     @staticmethod
-    def parse_runtime_duration(input_date: timedelta | str | int | None) -> timedelta:
+    def parse_runtime_duration(input_date: timedelta | str | int | None) -> timedelta | str:
         """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
         for `str`, the expected format is `value unit`, ex: `5 days`, `10 minutes`, `1 year`
         valid units:
@@ -186,19 +196,49 @@ class Sorting(BaseModel):
     sorted_other: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
     sorted_video: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
 
+    @field_validator("sorted_audio", mode="after")
+    @classmethod
+    def valid_sorted_audio(cls, value: str | None) -> str | None:
+        if value is not None:
+            valid_keys = SORTING_COMMON_KEYS.union("bitrate", "duration", "length", "sample_rate")
+            validate_format_string(value, valid_keys)
+        return value
+
+    @field_validator("sorted_image", mode="after")
+    @classmethod
+    def valid_sorted_image(cls, value: str | None) -> str | None:
+        if value is not None:
+            valid_keys = SORTING_COMMON_KEYS.union("height", "width", "resolution")
+            validate_format_string(value, valid_keys)
+        return value
+
+    @field_validator("sorted_other", mode="after")
+    @classmethod
+    def valid_sorted_other(cls, value: str | None) -> str | None:
+        if value is not None:
+            valid_keys = SORTING_COMMON_KEYS.union("bitrate", "duration", "length", "sample_rate")
+            validate_format_string(value, valid_keys)
+        return value
+
+    @field_validator("sorted_video", mode="after")
+    @classmethod
+    def valid_sorted_video(cls, value: str | None) -> str | None:
+        if value is not None:
+            valid_keys = SORTING_COMMON_KEYS.union(
+                "codec", "duration", "fps", "length", "height", "width", "resolution"
+            )
+            validate_format_string(value, valid_keys)
+        return value
+
 
 class BrowserCookies(BaseModel):
     auto_import: bool = False
-    browsers: list[BROWSERS] = [BROWSERS.chrome]
+    browser: BROWSERS | None = BROWSERS.firefox
     sites: list[NonEmptyStr] = SUPPORTED_SITES_DOMAINS
 
-    @field_validator("browsers", mode="before")
-    @classmethod
-    def parse_browsers(cls, values: list) -> list:
-        values = falsy_as(values, [])
-        if isinstance(values, list):
-            return sorted(str(value).lower() for value in values)
-        return values
+    def model_post_init(self, *_) -> None:
+        if self.auto_import and not self.browser:
+            raise ValueError("You need to provide a browser for auto_import to work")
 
     @field_validator("sites", mode="before")
     @classmethod

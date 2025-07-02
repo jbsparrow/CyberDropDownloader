@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -88,7 +89,7 @@ class PorntrexCrawler(Crawler):
         if "This album is a private album" in soup.text:
             raise ScrapeError(401, "Private album")
 
-        title = soup.select_one(_SELECTORS.ALBUM_TITLE).text
+        title = css.select_one_get_text(soup, _SELECTORS.ALBUM_TITLE)
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title)
 
@@ -112,7 +113,7 @@ class PorntrexCrawler(Crawler):
         video = get_video_info(soup)
         filename, ext = self.get_filename_and_ext(video.url.name)
         scrape_item.url = canonical_url
-        custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}] [{video.res}]{ext}")
+        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.res)
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
         )
@@ -123,13 +124,13 @@ class PorntrexCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if "models" in scrape_item.url.parts:
-            title: str = soup.select_one(_SELECTORS.MODEL_NAME).get_text(strip=True).title()
+            title: str = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME).title()
         elif "members" in scrape_item.url.parts:
-            title: str = soup.select_one(_SELECTORS.USER_NAME).get_text(strip=True)
+            title: str = css.select_one_get_text(soup, _SELECTORS.USER_NAME)
         elif "latest-updates" in scrape_item.url.parts:
             title: str = "Latest Updates"
         else:
-            title = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)
+            title = css.select_one_get_text(soup, _SELECTORS.TITLE)
 
         for trash in TITLE_TRASH:
             title = title.replace(trash, "").strip()
@@ -171,6 +172,7 @@ class PorntrexCrawler(Crawler):
         sort_by: str = scrape_item.url.parts[4] if len(scrape_item.url.parts) > 4 else ""
         sort_by = sort_by or scrape_item.url.query.get("sort_by") or "post_date"
         if "search" in scrape_item.url.parts:
+            assert len(scrape_item.url.parts) > 3
             search_query = scrape_item.url.parts[3]
             block_id = "list_videos_videos"
         elif "members" in scrape_item.url.parts:
@@ -232,7 +234,7 @@ def get_video_info(soup: BeautifulSoup) -> Video:
                     resolutions.append((video_info[text_key], video_info[key]))
 
         if not resolutions:
-            resolutions.append((video_info["video_url"], "Unknown"))
+            resolutions.append((video_info["video_url"], ""))
 
         best = max(resolutions, key=lambda x: extract_resolution(x[0]))
         return Video(video_info["video_id"], video_info["video_title"], URL(best[1].strip("/")), best[0].split()[0])

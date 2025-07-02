@@ -19,8 +19,7 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
     from yarl import URL
 
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.types import AbsoluteHttpURL
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
 P = ParamSpec("P")
@@ -100,12 +99,12 @@ class GenericCrawler(Crawler):
             filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
             filename, ext = self.get_filename_and_ext(link.name + ".mp4")
-        custom_filename, _ = self.get_filename_and_ext(f"{title}{ext}")
+        custom_filename = self.create_custom_filename(title, ext)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def log_unsupported(self, scrape_item: ScrapeItem, msg: str = "") -> None:
         log(f"Unsupported URL: {scrape_item.url} {msg}", 30)
-        await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.origin())
+        await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.origin)
         self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
 

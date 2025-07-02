@@ -4,12 +4,13 @@ import asyncio
 import contextlib
 import ssl
 import time
-from dataclasses import Field, dataclass
+from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
+import certifi
 import truststore
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiolimiter import AsyncLimiter
@@ -18,14 +19,16 @@ from yarl import URL
 
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
-from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from aiohttp_client_cache.response import CachedResponse
     from curl_cffi.requests.models import Response as CurlResponse
 
@@ -36,6 +39,9 @@ DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
     "65b7753c-528a": "SC Scrape Image",
     "5c4fb843-ece": "PixHost Removed Image",
+    "637be5da-11d2b": "eFukt Video removed",
+    "63a05f27-11d2b": "eFukt Video removed",
+    "5a56b09d-1485eb": "eFukt Video removed",
 }
 
 
@@ -79,8 +85,17 @@ class ClientManager:
         self.user_agent = global_settings_data.general.user_agent
         self.simultaneous_per_domain = global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
 
-        verify_ssl = not global_settings_data.general.allow_insecure_connections
-        self.ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT) if verify_ssl else False
+        ssl_context = global_settings_data.general.ssl_context
+        if not ssl_context:
+            self.ssl_context = False
+        elif ssl_context == "certifi":
+            self.ssl_context = ssl.create_default_context(cafile=certifi.where())
+        elif ssl_context == "truststore":
+            self.ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        elif ssl_context == "truststore+certifi":
+            self.ssl_context = ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.load_verify_locations(cafile=certifi.where())
+
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
         self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
 
@@ -119,7 +134,10 @@ class ClientManager:
 
     def load_cookie_files(self) -> None:
         if self.manager.config_manager.settings_data.browser_cookies.auto_import:
-            get_cookies_from_browsers(self.manager)
+            assert self.manager.config_manager.settings_data.browser_cookies.browser
+            get_cookies_from_browsers(
+                self.manager, browser=self.manager.config_manager.settings_data.browser_cookies.browser
+            )
         cookie_files = sorted(self.manager.path_manager.cookies_dir.glob("*.txt"))
         if not cookie_files:
             return
@@ -219,9 +237,14 @@ class ClientManager:
         raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
-    def check_bunkr_maint(headers: dict) -> None:
-        if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
+    def check_content_length(headers: Mapping[str, Any]) -> None:
+        content_length, content_type = headers.get("Content-Length"), headers.get("Content-Type")
+        if content_length is None or content_type is None:
+            return
+        if content_length == "322509" and content_type == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
+        if content_length == "73003" and content_type == "video/mp4":
+            raise DownloadError(410)  # Placeholder video with text "Video removed" (efukt)
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
@@ -241,8 +264,6 @@ class ClientManager:
 
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
-        if not isinstance(self.scraper_session, Field):
-            await self.scraper_session.close()
 
 
 @dataclass(frozen=True, slots=True)

@@ -6,20 +6,120 @@ from dataclasses import InitVar, dataclass, field
 from enum import IntEnum
 from functools import partialmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, ParamSpec, Self, TypeVar, overload
 
-from yarl import URL
+import yarl
 
 from cyberdrop_dl.exceptions import MaxChildrenError
-from cyberdrop_dl.utils.utilities import is_absolute_http_url, sanitize_folder
+
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
 
 if TYPE_CHECKING:
+    import datetime
+    import functools
+    import inspect
     from collections.abc import Callable
 
+    from propcache.api import under_cached_property as cached_property
     from rich.progress import TaskID
 
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.types import AbsoluteHttpURL
+
+    def copy_signature(target: Callable[P, R]) -> Callable[[Callable[..., T]], Callable[P, T]]:
+        def decorator(func: Callable[..., T]) -> Callable[P, T]:
+            @functools.wraps(func)
+            def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+                return func(*args, **kwargs)
+
+            wrapper.__signature__ = inspect.signature(target).replace(  # type: ignore
+                return_annotation=inspect.signature(func).return_annotation
+            )
+            return wrapper
+
+        return decorator
+
+    class AbsoluteHttpURL(yarl.URL):
+        @copy_signature(yarl.URL.__new__)
+        def __new__(cls) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.__truediv__)
+        def __truediv__(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.__mod__)
+        def __mod__(self) -> AbsoluteHttpURL: ...
+
+        @cached_property
+        def host(self) -> str: ...
+
+        @cached_property
+        def scheme(self) -> Literal["http", "https"]: ...
+
+        @cached_property
+        def absolute(self) -> Literal[True]: ...
+
+        @cached_property
+        def parent(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_path)
+        def with_path(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_host)
+        def with_host(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.origin)
+        def origin(self) -> AbsoluteHttpURL: ...
+
+        @overload
+        def with_query(self, query: yarl.Query) -> AbsoluteHttpURL: ...
+
+        @overload
+        def with_query(self, **kwargs: yarl.QueryVariable) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_query)
+        def with_query(self) -> AbsoluteHttpURL: ...
+
+        @overload
+        def extend_query(self, query: yarl.Query) -> AbsoluteHttpURL: ...
+
+        @overload
+        def extend_query(self, **kwargs: yarl.QueryVariable) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.extend_query)
+        def extend_query(self) -> AbsoluteHttpURL: ...
+
+        @overload
+        def update_query(self, query: yarl.Query) -> AbsoluteHttpURL: ...
+
+        @overload
+        def update_query(self, **kwargs: yarl.QueryVariable) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.update_query)
+        def update_query(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.without_query_params)
+        def without_query_params(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_fragment)
+        def with_fragment(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_name)
+        def with_name(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_suffix)
+        def with_suffix(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.join)
+        def join(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.joinpath)
+        def joinpath(self) -> AbsoluteHttpURL: ...
+
+else:
+    AbsoluteHttpURL = yarl.URL
+
+AnyURL = TypeVar("AnyURL", bound=yarl.URL | AbsoluteHttpURL)
 
 
 class ScrapeItemType(IntEnum):
@@ -38,7 +138,7 @@ FILE_HOST_ALBUM = ScrapeItemType.FILE_HOST_ALBUM
 class HlsSegment(NamedTuple):
     part: str
     name: str
-    url: URL
+    url: AbsoluteHttpURL
 
 
 @dataclass(unsafe_hash=True, slots=True)
@@ -62,14 +162,14 @@ class MediaItem:
     download_filename: str | None = field(default=None, init=False)
     filesize: int | None = field(default=None, init=False)
     current_attempt: int = field(default=0, init=False, hash=False, compare=False)
-    partial_file: Path | None = field(default=None, init=False)
+    partial_file: Path = field(default=None, init=False)  # type: ignore
     complete_file: Path = field(default=None, init=False)  # type: ignore
     hash: str | None = field(default=None, init=False, hash=False, compare=False)
     downloaded: bool = field(default=False, init=False, hash=False, compare=False)
     _task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
 
     # slots for __post_init__
-    referer: URL = field(init=False)
+    referer: AbsoluteHttpURL = field(init=False)
     album_id: str | None = field(init=False)
     datetime: int | None = field(init=False, hash=False, compare=False)
     parents: list[AbsoluteHttpURL] = field(init=False, hash=False, compare=False)
@@ -124,6 +224,8 @@ class ScrapeItem:
 
     def add_to_parent_title(self, title: str) -> None:
         """Adds a title to the parent title."""
+        from cyberdrop_dl.utils.utilities import sanitize_folder
+
         if not title or self.retry:
             return
         title = sanitize_folder(title)
@@ -168,20 +270,22 @@ class ScrapeItem:
 
     def create_new(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         *,
         new_title_part: str = "",
         part_of_album: bool = False,
         album_id: str | None = None,
         possible_datetime: int | None = None,
-        add_parent: URL | bool | None = None,
+        add_parent: AbsoluteHttpURL | bool | None = None,
     ) -> ScrapeItem:
         """Creates a scrape item."""
+        from cyberdrop_dl.utils.utilities import is_absolute_http_url
+
         scrape_item = self.copy()
         assert is_absolute_http_url(url)
         scrape_item.url = url
         if add_parent:
-            new_parent = add_parent if isinstance(add_parent, URL) else self.url
+            new_parent = add_parent if isinstance(add_parent, AbsoluteHttpURL) else self.url
             assert is_absolute_http_url(new_parent)
             scrape_item.parents.append(new_parent)
         if new_title_part:
@@ -197,14 +301,45 @@ class ScrapeItem:
     setup_as_forum = partialmethod(setup_as, type=FORUM)
     setup_as_post = partialmethod(setup_as, type=FORUM_POST)
 
-    def origin(self) -> URL | None:
+    @property
+    def origin(self) -> AbsoluteHttpURL | None:
         if self.parents:
             return self.parents[0]
 
-    def parent(self) -> URL | None:
+    @property
+    def parent(self) -> AbsoluteHttpURL | None:
         if self.parents:
             return self.parents[-1]
 
-    def copy(self) -> ScrapeItem:
+    def copy(self) -> Self:
         """Returns a deep copy of this scrape_item"""
         return copy.deepcopy(self)
+
+
+class QueryDatetimeRange(NamedTuple):
+    before: datetime.datetime | None = None
+    after: datetime.datetime | None = None
+
+    @staticmethod
+    def from_url(url: AbsoluteHttpURL) -> QueryDatetimeRange | None:
+        self = QueryDatetimeRange(_date_from_query_param(url, "before"), _date_from_query_param(url, "after"))
+        if self == (None, None):
+            return None
+        if (self.before and self.after) and (self.before <= self.after):
+            raise ValueError
+        return self
+
+    def is_in_range(self, other: datetime.datetime) -> bool:
+        if (self.before and other >= self.before) or (self.after and other <= self.after):
+            return False
+        return True
+
+    def as_query(self) -> dict[str, Any]:
+        return {name: value.isoformat() for name, value in self._asdict().items() if value}
+
+
+def _date_from_query_param(url: AbsoluteHttpURL, query_param: str) -> datetime.datetime | None:
+    from cyberdrop_dl.utils.dates import parse_aware_iso_datetime
+
+    if value := url.query.get(query_param):
+        return parse_aware_iso_datetime(value)

@@ -5,14 +5,15 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.mixdrop import MixDropCrawler
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.crawlers.crawler import SupportedDomains, SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -97,6 +98,6 @@ class ArchiveBateCrawler(MixDropCrawler):
 
         link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{show_title}{ext}")
+        custom_filename = self.create_custom_filename(show_title, ext)
         scrape_item.url = mixdrop_url
         await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)

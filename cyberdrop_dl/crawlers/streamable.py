@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ class StreamableCrawler(Crawler):
 
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}]{ext}")
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 

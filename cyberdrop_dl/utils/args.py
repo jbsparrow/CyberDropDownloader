@@ -45,7 +45,7 @@ def is_terminal_in_portrait() -> bool:
     """Check if CDL is being run in portrait mode based on a few conditions."""
     # Return True if running in portait mode, False otherwise (landscape mode)
 
-    def check_terminal_size():
+    def check_terminal_size() -> bool:
         terminal_size = get_terminal_size()
         width, height = terminal_size.columns, terminal_size.lines
         aspect_ratio = width / height
@@ -122,12 +122,7 @@ class CommandLineOnlyArgs(BaseModel):
         return value.lower()
 
 
-class DeprecatedArgs(BaseModel):
-    no_ui: bool = Field(
-        False,
-        description="disables the UI/progress view entirely",
-        deprecated="'--no-ui' is deprecated and will be removed in the future. Use '--ui disabled'",
-    )
+class DeprecatedArgs(BaseModel): ...
 
 
 class ParsedArgs(AliasModel):
@@ -170,24 +165,31 @@ class ParsedArgs(AliasModel):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
-            if self.deprecated_args.no_ui:
-                add_warning_msg_from("no_ui")
-                self.cli_only_args.ui = UIOptions.DISABLED
+            pass
 
         return warnings_to_emit
 
 
 def _add_args_from_model(
-    parser: ArgumentParser | ArgGroup, model: type[BaseModel], *, cli_args: bool = False, deprecated: bool = False
+    parser: ArgumentParser | ArgGroup,
+    model: type[BaseModel],
+    *,
+    cli_args: bool = False,
+    deprecated: bool = False,
+    prefix: str = "",
 ) -> None:
     for name, field in model.model_fields.items():
-        cli_name = name.replace("_", "-")
+        full_name = prefix + name
+        cli_name = full_name.replace("_", "-")
         arg_type = type(field.default)
+        if issubclass(arg_type, BaseModel):
+            _add_args_from_model(parser, arg_type, cli_args=cli_args, deprecated=deprecated, prefix=f"{cli_name}.")
+            continue
         if arg_type not in (list, set, bool):
             arg_type = str
         help_text = field.description or ""
         default = field.default if cli_args else SUPPRESS
-        default_options = {"default": default, "dest": name, "help": help_text}
+        default_options = {"default": default, "dest": full_name, "help": help_text}
         name_or_flags = [f"--{cli_name}"]
         alias: str = field.alias or field.validation_alias or field.serialization_alias  # type: ignore
         if alias and len(alias) == 1:
@@ -202,7 +204,7 @@ def _add_args_from_model(
             parser.add_argument(*name_or_flags, action=action, **default_options)
             continue
         if cli_name == "links":
-            default_options.pop("dest")
+            _ = default_options.pop("dest")
             parser.add_argument(cli_name, metavar="LINK(S)", nargs="*", action="extend", **default_options)
             continue
         if arg_type in (list, set):
@@ -249,7 +251,7 @@ def make_parser() -> tuple[ArgumentParser, dict[str, list[ArgGroup]]]:
     cli_only = parser.add_argument_group("CLI-only options")
     _add_args_from_model(cli_only, CommandLineOnlyArgs, cli_args=True)
 
-    group_lists = {
+    groups_mapping = {
         "config_settings": _create_groups_from_nested_models(parser, ConfigSettings),
         "global_settings": _create_groups_from_nested_models(parser, GlobalSettings),
         "cli_only_args": [cli_only],
@@ -258,16 +260,16 @@ def make_parser() -> tuple[ArgumentParser, dict[str, list[ArgGroup]]]:
     if USING_DEPRECATED_ARGS:
         deprecated = parser.add_argument_group("deprecated")
         _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
-        group_lists["deprecated_args"] = [deprecated]
+        groups_mapping["deprecated_args"] = [deprecated]
 
-    return parser, group_lists
+    return parser, groups_mapping
 
 
 def get_parsed_args_dict(args: Sequence[str] | None = None) -> dict[str, dict[str, Any]]:
-    parser, group_lists = make_parser()
+    parser, groups_mapping = make_parser()
     namespace = parser.parse_intermixed_args(args)
     parsed_args: dict[str, dict[str, Any]] = {}
-    for name, groups in group_lists.items():
+    for name, groups in groups_mapping.items():
         parsed_args[name] = {}
         for group in groups:
             group_dict = {
@@ -277,7 +279,7 @@ def get_parsed_args_dict(args: Sequence[str] | None = None) -> dict[str, dict[st
             }
             if group_dict:
                 assert group.title
-                parsed_args[name][group.title] = group_dict
+                parsed_args[name][group.title] = parse_nested_values(group_dict)
 
     if USING_DEPRECATED_ARGS:
         parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("deprecated") or {}
@@ -309,3 +311,19 @@ def show_supported_sites() -> NoReturn:
     table = get_crawlers_info_as_rich_table()
     print(table)
     sys.exit(0)
+
+
+def parse_nested_values(data_list: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+
+    for command_name, value in data_list.items():
+        inner_names = command_name.split(".")
+        current_level = result
+        for index, key in enumerate(inner_names):
+            if index < len(inner_names) - 1:
+                if key not in current_level:
+                    current_level[key] = {}
+                current_level = current_level[key]
+            else:
+                current_level[key] = value
+    return result

@@ -1,33 +1,39 @@
 from __future__ import annotations
 
 import base64
-import re
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+
+class Selectors:
+    VIDEOS = "a.btn-primary.action.download"
+    EMBED_SRC = "video[id=main-video] source"
+    DOWNLOAD_BUTTON = "a:contains('Download Video')"
+    NOT_FOUND_IMAGE = "video#video-container img"
+
+
 PRIMARY_URL = AbsoluteHttpURL("https://saint2.su/")
-VIDEOS_SELECTOR = "a.btn-primary.action.download"
-EMBED_SRC_SELECTOR = "video[id=main-video] source"
-DOWNLOAD_BUTTON_SELECTOR = "a:contains('Download Video')"
-NOT_FOUND_IMAGE_SELECTOR = "video#video-container img"
-URL_REGEX = re.compile(r"\('(.+?)'\)")
 NOT_FOUND_GIF = "https://saint2.su/assets/notfound.gif"
+_SELECTORS = Selectors()
 
 
 class SaintCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Album": "/a/...",
-        "Video": ("/embed/...", "/d/..."),
+        "Video": (
+            "/embed/...",
+            "/d/...",
+        ),
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
@@ -35,7 +41,6 @@ class SaintCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = PRIMARY_URL.with_path(scrape_item.url.path)
-
         if "a" in scrape_item.url.parts:
             return await self.album(scrape_item)
         if "embed" in scrape_item.url.parts:
@@ -55,17 +60,13 @@ class SaintCrawler(Crawler):
         title = self.create_title(title_portion, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
 
-        for video in soup.select(VIDEOS_SELECTOR):
+        for video in soup.select(_SELECTORS.VIDEOS):
             on_click_text: str = css.get_attr(video, "onclick")
-            if match := re.search(URL_REGEX, on_click_text):
-                link_str = match.group(1)
-            else:
-                continue
-
+            link_str = get_text_between(on_click_text, "('", "');")
             link = self.parse_url(link_str)
-            filename, ext = self.get_filename_and_ext(link.name)
             if not self.check_album_results(link, results):
-                await self.handle_file(link, scrape_item, filename, ext)
+                new_scrape_item = scrape_item.create_child(link)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -76,7 +77,7 @@ class SaintCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         try:
-            link_str: str = css.select_one_get_attr(soup, EMBED_SRC_SELECTOR, "src")
+            link_str: str = css.select_one_get_attr(soup, _SELECTORS.EMBED_SRC, "src")
         except AssertionError:
             if is_not_found(soup):
                 raise ScrapeError(404) from None
@@ -90,8 +91,8 @@ class SaintCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         try:
-            link_str: str = css.select_one_get_attr(soup, DOWNLOAD_BUTTON_SELECTOR, "href")
-        except AttributeError:
+            link_str: str = css.select_one_get_attr(soup, _SELECTORS.DOWNLOAD_BUTTON, "href")
+        except (AttributeError, css.SelectorError):
             if is_not_found(soup):
                 raise ScrapeError(404) from None
             raise ScrapeError(422, "Couldn't find video source") from None
@@ -101,10 +102,9 @@ class SaintCrawler(Crawler):
 
 
 def is_not_found(soup: BeautifulSoup) -> bool:
-    title = soup.select_one("title")
-    if title and title.text == "Video not found":
+    if (title := soup.select_one("title")) and title.text == "Video not found":
         return True
-    if (image := soup.select_one(NOT_FOUND_IMAGE_SELECTOR)) and image.get("src") == NOT_FOUND_GIF:
+    if (image := soup.select_one(_SELECTORS.NOT_FOUND_IMAGE)) and image.get("src") == NOT_FOUND_GIF:
         return True
     if "File not found in the database" in soup.get_text():
         return True
@@ -115,6 +115,5 @@ def get_url_from_base64(link: AbsoluteHttpURL) -> AbsoluteHttpURL:
     base64_str: str | None = link.query.get("file")
     if not base64_str:
         return link
-    assert link.host
     filename_decoded = base64.b64decode(base64_str).decode("utf-8")
     return AbsoluteHttpURL(f"https://{link.host}/videos/{filename_decoded}")

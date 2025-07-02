@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -21,13 +22,17 @@ PRIMARY_URL = AbsoluteHttpURL("https://www.imagebam.com/")
 
 
 class ImageBamCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/view/...", "Image": "/view/...", "Direct links": ""}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/view/...",
+        "Image": "/view/...",
+        "Direct links": "",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "imagebam"
     FOLDER_DOMAIN: ClassVar[str] = "ImageBam"
 
     async def async_startup(self) -> None:
-        self.set_cookies()
+        self.update_cookies({"nsfw_inter": "1"})
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_cdn(scrape_item.url):
@@ -46,7 +51,7 @@ class ImageBamCrawler(Crawler):
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        gallery_name = soup.select_one(GALLERY_TITLE_SELECTOR).get_text()
+        gallery_name = css.select_one_get_text(soup, GALLERY_TITLE_SELECTOR)
         gallery_id = scrape_item.url.name
         title = self.create_title(gallery_name, gallery_id)
         scrape_item.setup_as_album(title, album_id=gallery_id)
@@ -54,7 +59,7 @@ class ImageBamCrawler(Crawler):
 
         for _, new_scrape_item in self.iter_children(scrape_item, soup, IMAGES_SELECTOR):
             if not self.check_album_results(new_scrape_item.url, results):
-                self.manager.task_group.create_task(self.image(new_scrape_item))
+                self.manager.task_group.create_task(self.image(new_scrape_item, soup))
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
@@ -67,20 +72,15 @@ class ImageBamCrawler(Crawler):
 
         gallery_info = soup.select_one(GALLERY_INFO_SELECTOR)
         if gallery_info and not scrape_item.album_id:
-            gallery_url = self.parse_url(gallery_info.get("href"))
+            gallery_url = self.parse_url(css.get_attr(gallery_info, "href"))
             gallery_id = gallery_url.name
             scrape_item.album_id = gallery_id
 
-        title: str = image_tag["alt"]
-        link = self.parse_url(image_tag["src"])
+        title: str = css.get_attr(image_tag, "alt")
+        link = self.parse_url(css.get_attr(image_tag, "src"))
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(title)
+        custom_filename = self.create_custom_filename(title, ext)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
-
-    def set_cookies(self) -> None:
-        """Set cookies to bypass confirmation."""
-        cookies = {"nsfw_inter": "1"}
-        self.update_cookies(cookies)
 
 
 def is_cdn(url: AbsoluteHttpURL) -> bool:

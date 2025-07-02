@@ -10,9 +10,9 @@ from datetime import UTC, datetime, timedelta
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 

@@ -1,11 +1,12 @@
 import random
 from datetime import timedelta
+from typing import Literal
 
 from pydantic import BaseModel, ByteSize, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
 from cyberdrop_dl.config._common import ConfigModel, Field
-from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, NonEmptyStr
+from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, ListNonEmptyStr, ListPydanticURL, NonEmptyStr
 from cyberdrop_dl.models.validators import falsy_as, to_bytesize, to_timedelta
 
 MIN_REQUIRED_FREE_SPACE = to_bytesize("512MB")
@@ -13,7 +14,9 @@ DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
 
 
 class General(BaseModel):
-    allow_insecure_connections: bool = False
+    # TODO: Move `ssl_context` to an advance config section
+    ssl_context: Literal["truststore", "certifi", "truststore+certifi"] | None = "truststore+certifi"
+    disable_crawlers: ListNonEmptyStr = []
     enable_generic_crawler: bool = True
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
@@ -23,13 +26,25 @@ class General(BaseModel):
     user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
     pause_on_insufficient_space: bool = False
 
+    @field_validator("ssl_context", mode="before")
+    @classmethod
+    def ssl(cls, value: str | None) -> str | None:
+        if isinstance(value, str):
+            value = value.lower().strip()
+        return falsy_as(value, None)
+
+    @field_validator("disable_crawlers", mode="after")
+    @classmethod
+    def unique_list(cls, value: list[str]) -> list[str]:
+        return sorted(set(value))
+
     @field_serializer("flaresolverr", "proxy")
     def serialize(self, value: URL | str) -> str | None:
         return falsy_as(value, None, str)
 
     @field_validator("flaresolverr", "proxy", mode="before")
     @classmethod
-    def convert_to_str(cls, value: URL | str) -> str | None:
+    def convert_to_str(cls, value: str) -> str | None:
         return falsy_as(value, None, str)
 
     @field_validator("required_free_space", mode="after")
@@ -53,7 +68,7 @@ class RateLimiting(BaseModel):
 
     @field_validator("file_host_cache_expire_after", "forum_cache_expire_after", mode="before")
     @staticmethod
-    def parse_cache_duration(input_date: timedelta | str | int) -> timedelta:
+    def parse_cache_duration(input_date: timedelta | str | int) -> timedelta | str:
         return to_timedelta(input_date)
 
     @property
@@ -73,7 +88,14 @@ class UIOptions(BaseModel):
     vi_mode: bool = False
 
 
+class GenericCrawlerInstances(BaseModel):
+    wordpress_media: ListPydanticURL = []
+    wordpress_html: ListPydanticURL = []
+    discourse: ListPydanticURL = []
+
+
 class GlobalSettings(ConfigModel):
     general: General = Field(General(), "General")
     rate_limiting_options: RateLimiting = Field(RateLimiting(), "Rate_Limiting_Options")
     ui_options: UIOptions = Field(UIOptions(), "UI_Options")
+    generic_crawlers_instances: GenericCrawlerInstances = GenericCrawlerInstances()

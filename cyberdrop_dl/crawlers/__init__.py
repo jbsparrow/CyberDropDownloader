@@ -6,27 +6,32 @@ from cyberdrop_dl import env
 from .acidimg import AcidImgCrawler
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
-from .bestprettygirl import BestPrettyGirlCrawler
+from .beeg import BeegComCrawler
 from .box_dot_com import BoxDotComCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
 from .buzzheavier import BuzzHeavierCrawler
+from .camwhores_dot_tv import CamwhoresTVCrawler
 from .catbox import CatboxCrawler
 from .coomer import CoomerCrawler
 from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
 from .cyberfile import CyberfileCrawler
 from .dirtyship import DirtyShipCrawler
+from .discourse import DISCOURSE_CRAWLERS, DiscourseCrawler
 from .doodstream import DoodStreamCrawler
 from .dropbox import DropboxCrawler
 from .e621 import E621Crawler
+from .efukt import EfuktCrawler
 from .ehentai import EHentaiCrawler
 from .eightmuses import EightMusesCrawler
 from .eporner import EpornerCrawler
 from .erome import EromeCrawler
 from .fapello import FapelloCrawler
+from .fikfap import FikFapCrawler
 from .fileditch import FileditchCrawler
 from .files_vc import FilesVcCrawler
+from .flugel_anime import FlugelAnimeCrawler
 from .fourchan import FourChanCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
@@ -42,6 +47,7 @@ from .imgur import ImgurCrawler
 from .imx_to import ImxToCrawler
 from .incestflix import IncestflixCrawler
 from .influencer_bitches import InfluencerBitchesCrawler
+from .invision import INVISION_CRAWLERS
 from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
@@ -85,32 +91,28 @@ from .tokyomotion import TokioMotionCrawler
 from .toonily import ToonilyCrawler
 from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
+from .vbulletin import VBULLETIN_CRAWLERS
 from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
+from .wordpress import WP_CRAWLERS, WordPressHTMLCrawler, WordPressMediaCrawler
 from .xbunkr import XBunkrCrawler
-from .xenforo import (
-    AllPornComixCrawler,
-    BellazonCrawler,
-    CelebForumCrawler,
-    F95ZoneCrawler,
-    LeakedModelsCrawler,
-    NudoStarCrawler,
-    SimpCityCrawler,
-    SocialMediaGirlsCrawler,
-    TitsInTopsCrawler,
-    XBunkerCrawler,
-)
+from .xenforo import XF_CRAWLERS, SimpCityCrawler
 from .xhamster import XhamsterCrawler
 from .xxxbunker import XXXBunkerCrawler
 from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler
 
-ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
-ALL_CRAWLERS = ALL_CRAWLERS - {Crawler}
-DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MissAVCrawler, MegaNzCrawler, HitomiLaCrawler}
-CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
-
+FORUM_CRAWLERS = XF_CRAWLERS.union(INVISION_CRAWLERS, DISCOURSE_CRAWLERS, VBULLETIN_CRAWLERS)
+GENERIC_CRAWLERS: set[type[Crawler]] = {WordPressHTMLCrawler, WordPressMediaCrawler, DiscourseCrawler}
+ALL_CRAWLERS: set[type[Crawler]] = {
+    crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
+}
+ALL_CRAWLERS.update(WP_CRAWLERS, GENERIC_CRAWLERS, FORUM_CRAWLERS)
+DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler, FikFapCrawler}
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
-    CRAWLERS.update(DEBUG_CRAWLERS)
+    CRAWLERS = ALL_CRAWLERS
+else:
+    CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
-__all__ = ["ALL_CRAWLERS", "CRAWLERS", "DEBUG_CRAWLERS", "Crawler"]
+WEBSITE_CRAWLERS = CRAWLERS - FORUM_CRAWLERS - {GenericCrawler}
+__all__ = ["ALL_CRAWLERS", "CRAWLERS", "DEBUG_CRAWLERS", "FORUM_CRAWLERS", "Crawler"]

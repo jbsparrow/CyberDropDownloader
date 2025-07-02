@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -23,7 +23,6 @@ JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
 API_ENTRYPOINT = AbsoluteHttpURL("https://pmvhaven.com/api/v2/")
 PRIMARY_URL = AbsoluteHttpURL("https://pmvhaven.com")
 CATEGORIES = "Hmv", "Pmv", "Hypno", "Tiktok", "KoreanBJ"
-INCLUDE_VIDEO_ID_IN_FILENAME = True
 
 
 class PMVHavenCrawler(Crawler):
@@ -196,18 +195,15 @@ class PMVHavenCrawler(Crawler):
             raise ScrapeError(422, message="No video source found")
 
         video_id: str = video_info["_id"]
-        resolution: str = video_info.get("height") or ""
+        resolution: str | None = video_info.get("height")
         title: str = video_info.get("title") or video_info["uploadTitle"]
         link_str: str = video_info["url"]
         date = self.parse_date(video_info["isoDate"])
 
         scrape_item.possible_datetime = date
         link = self.parse_url(link_str)
-        resolution = f"{resolution}p" if resolution else "Unknown"
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-        include_id = f"[{video_id}]" if INCLUDE_VIDEO_ID_IN_FILENAME else ""
-        custom_filename = f"{title} {include_id}[{resolution}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def iter_video_info(self, scrape_item: ScrapeItem, videos: list[dict], new_title_part: str = "") -> None:

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -55,8 +56,8 @@ class EHentaiCrawler(Crawler):
         scrape_item.url = scrape_item.url.with_query(None)
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = self.create_title(soup.select_one(_SELECTORS.TITLE).get_text())
-                date_str: str = soup.select_one(_SELECTORS.DATE).get_text()
+                title = self.create_title(css.select_one_get_text(soup, _SELECTORS.TITLE))
+                date_str: str = css.select_one_get_text(soup, _SELECTORS.DATE)
                 gallery_id = scrape_item.url.parts[2]
                 title = self.create_title(title, gallery_id)
                 scrape_item.setup_as_album(title, album_id=gallery_id)
@@ -73,10 +74,10 @@ class EHentaiCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        link_str: str = soup.select_one(_SELECTORS.IMAGE).get("src")
+        link_str: str = css.select_one_get_attr(soup, _SELECTORS.IMAGE, "src")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{scrape_item.url.name}{ext}")
+        custom_filename = self.create_custom_filename(scrape_item.url.name, ext)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper

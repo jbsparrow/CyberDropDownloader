@@ -17,16 +17,16 @@ layout:
 # CLI Arguments
 
 {% hint style="info" %}
-Anything input as a CLI argument will take priority over config values.
+CLI inputs always take priority over config values.
 {% endhint %}
 
 {% hint style="info" %}
-Use `-` instead of `_` to separate words in an option name when using it as a CLI argument: Ex: `auto-dedupe` instead of `auto_dedupe`
+Use `-` instead of `_` to separate words in an config option name when using it as a CLI argument: Ex: `auto_dedupe` needs to be `auto-dedupe` when using it via the CLI
 {% endhint %}
 
-You can pass any of the **Config Settings** and **Global Settings** options as a cli argument for the program
+You can pass any of the **Config Settings** and **Global Settings** options as a cli argument for the program.
 
-For items not explained below, you can find their counterparts in the configuration options to see what they do
+For items not explained below, you can find their counterparts in the configuration options to see what they do.
 
 ## CLI only arguments
 
@@ -36,7 +36,7 @@ For items not explained below, you can find their counterparts in the configurat
 | ------ | ----------------------------- |
 | `Path` | `<Current Working Directory>` |
 
-Folder where Cyberdrop-DL will store its data files.
+Folder where Cyberdrop-DL will store it's database, cache and config files.
 
 ### `completed-after`
 
@@ -119,6 +119,7 @@ Download TikTok audios from posts and save them as separate files
 
 Max number of links to retry. Using `0` means no limit
 
+<!-- This needs textual
 ### `no-textual-ui`
 
 | Type       | Default | Action       |
@@ -126,6 +127,7 @@ Max number of links to retry. Using `0` means no limit
 | `BoolFlag` | `False` | `store_true` |
 
 Disable CDL's textual UI (TUI with buttons and mouse support)
+-->
 
 ### `portrait`
 
@@ -171,7 +173,7 @@ Shows a list of all supported sites and exits
 
 | Type       | Default |
 | ---------- | ------- |
-| `StrEnum` | `FULLSCREEN` |
+| `CaseInsensitiveStrEnum` | `FULLSCREEN` |
 
 UI can have 1 of these values:
 
@@ -218,7 +220,7 @@ CLI-only options:
 
 browser_cookies:
   --auto-import, --no-auto-import
-  --browsers [BROWSERS ...]
+  --browser BROWSER
   --sites [SITES ...]
 
 download_options:
@@ -313,7 +315,8 @@ sorting:
   --sorted-video SORTED_VIDEO
 
 general:
-  --allow-insecure-connections, --no-allow-insecure-connections
+  --ssl-context SSL_CONTEXT
+  --disable-crawlers [DISABLE_CRAWLERS ...]
   --enable-generic-crawler, --no-enable-generic-crawler
   --flaresolverr FLARESOLVERR
   --max-file-name-length MAX_FILE_NAME_LENGTH
@@ -342,7 +345,9 @@ ui_options:
   --scraping-item-limit SCRAPING_ITEM_LIMIT
   --vi-mode, --no-vi-mode
 
-deprecated:
-  --no-ui                                                                       disables the UI/progress view entirely
+generic_crawlers_instances:
+  --wordpress-media [WORDPRESS_MEDIA ...]
+  --wordpress-html [WORDPRESS_HTML ...]
+  --discourse [DISCOURSE ...]
 
 ```

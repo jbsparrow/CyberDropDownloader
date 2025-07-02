@@ -8,9 +8,9 @@ from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
 
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -67,7 +67,7 @@ class RedditCrawler(Crawler):
         if not self.logged_in:
             return
 
-        self._session = self.manager.client_manager.scraper_session._session
+        self._session = self.manager.client_manager.scraper_session.reddit_session
         self._reddit = Reddit(
             client_id=self.reddit_personal_use_script,
             client_secret=self.reddit_secret,
@@ -104,7 +104,7 @@ class RedditCrawler(Crawler):
         title = self.create_title(subreddit_name)
         scrape_item.setup_as_profile(title)
         subreddit: Subreddit = await self._reddit.subreddit(subreddit_name)
-        submissions: AsyncIterator[Submission] = subreddit.new(limit=None)
+        submissions: AsyncIterator[Submission] = subreddit.new(limit=None)  # type: ignore[reportArgumentType]
         await self.get_posts(scrape_item, submissions)
 
     @error_handling_wrapper
@@ -142,11 +142,9 @@ class RedditCrawler(Crawler):
         if "reddit.com" not in link.host:
             return self.handle_external_links(new_scrape_item)
 
-        origin = scrape_item.origin()
-        parent = scrape_item.parent()
-        msg = f"found on {parent}"
-        if parent != origin:
-            msg += f" from {origin}"
+        msg = f"found on {scrape_item.parent}"
+        if scrape_item.parent != scrape_item.origin:
+            msg += f" from {scrape_item.origin}"
         self.log(f"Skipping nested thread URL {link} {msg}")
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission) -> None:
@@ -201,10 +199,10 @@ class RedditCrawler(Crawler):
 
 
 @contextmanager
-def asyncpraw_error_handle() -> Generator:
+def asyncpraw_error_handle() -> Generator[None]:
     try:
         yield
-    except asyncprawcore.exceptions.Forbidden:
-        raise ScrapeError(403) from None
-    except asyncprawcore.exceptions.NotFound:
-        raise ScrapeError(404) from None
+    except asyncprawcore.exceptions.ResponseException as e:
+        raise ScrapeError(e.response.status, message=str(e)) from None
+    except asyncprawcore.exceptions.AsyncPrawcoreException as e:
+        raise ScrapeError(422, message=str(e)) from None

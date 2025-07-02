@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -94,7 +94,7 @@ class NHentaiCrawler(Crawler):
         padding = max(3, len(str(n_images)))
         for index, link in get_image_urls(json_resp):
             filename, ext = self.get_filename_and_ext(link.name)
-            custom_filename = f"{index:0{padding}d}{ext}"
+            custom_filename = self.create_custom_filename(str(index).zfill(padding), ext)
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 

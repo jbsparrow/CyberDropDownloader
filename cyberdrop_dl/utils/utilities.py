@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import sys
 import unicodedata
-from dataclasses import Field, dataclass, fields
+from dataclasses import Field, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
@@ -25,6 +25,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl import constants
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import (
     CDLBaseError,
     ErrorLogMessage,
@@ -33,19 +34,19 @@ from cyberdrop_dl.exceptions import (
     NoExtensionError,
     get_origin,
 )
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine, Mapping
+    from collections.abc import Callable, Coroutine, Iterable, Mapping
 
     from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
 
     from cyberdrop_dl.crawlers import Crawler
-    from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, AnyURL, MediaItem, ScrapeItem
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.types import AbsoluteHttpURL, AnyURL
 
 
 P = ParamSpec("P")
@@ -54,8 +55,8 @@ R = TypeVar("R")
 
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
-FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
 ALLOWED_FILEPATH_PUNCTUATION = " .-_!#$%'()+,;=@[]^{}~"
+_BLOB_OR_SVG = ("data:", "blob:", "javascript:")
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
@@ -63,25 +64,27 @@ class Dataclass(Protocol):
     __dataclass_fields__: ClassVar[dict]
 
 
-@dataclass(frozen=True, slots=True)
-class OGProperties:
+class OGProperties(dict[str, str]):
     """Open Graph properties.  Each attribute corresponds to an OG property."""
 
-    title: str = ""
-    description: str = ""
-    image: str = ""
-    url: str = ""
-    type: str = ""
-    site_name: str = ""
-    locale: str = ""
-    determiner: str = ""
-    audio: str = ""
-    video: str = ""
+    title: str
+    description: str
+    image: str
+    url: str
+    type: str
+    site_name: str
+    locale: str
+    determiner: str
+    audio: str
+    video: str
+
+    def __getattr__(self, name) -> str | None:
+        return self.get(name, None)
 
 
 def error_handling_wrapper(
-    func: Callable[..., Coroutine[None, None, R]],
-) -> Callable[..., Coroutine[None, None, R | None]]:
+    func: Callable[P, Coroutine[None, None, R]],
+) -> Callable[P, Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
@@ -497,9 +500,12 @@ def remove_trailing_slash(url: AnyURL) -> AnyURL:
     return url.parent.with_fragment(url.fragment).with_query(url.query)
 
 
-def remove_parts(url: AnyURL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True) -> AnyURL:
-    assert parts_to_remove
-    new_parts = [p for p in url.parts[1:] if p not in set(parts_to_remove)]
+def remove_parts(
+    url: AbsoluteHttpURL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True
+) -> AbsoluteHttpURL:
+    if not parts_to_remove:
+        return url
+    new_parts = [p for p in url.parts[1:] if p not in parts_to_remove]
     return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
 
 
@@ -515,23 +521,13 @@ async def get_soup_no_error(response: CurlResponse | AnyResponse) -> BeautifulSo
 
 def get_og_properties(soup: BeautifulSoup) -> OGProperties:
     """Extracts Open Graph properties (og properties) from soup."""
-    og_properties: dict[str, str] = {}
+    og_properties = OGProperties()
 
     for meta in soup.select('meta[property^="og:"]'):
-        property_name = meta["property"].replace("og:", "").replace(":", "_")  # type: ignore
-        og_properties[property_name] = meta["content"] or ""  # type: ignore
+        property_name = css.get_attr(meta, "property").replace("og:", "").replace(":", "_")
+        og_properties[property_name] = css.get_attr(meta, "content")
 
-    return OGProperties(**og_properties)
-
-
-def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
-    """Get `filename=` value from `Content-Disposition`"""
-    content_disposition: str | None = headers.get("Content-Disposition")
-    if not content_disposition:
-        return
-    if match := re.search(FILENAME_REGEX, content_disposition):
-        matches = match.groups()
-        return matches[0] or matches[1]
+    return og_properties
 
 
 def get_size_or_none(path: Path) -> int | None:
@@ -616,6 +612,40 @@ def get_os_common_name() -> str:
     if system == "Windows" and (edition := platform.win32_edition()):
         return f"{default} {edition}"
     return default
+
+
+def is_blob_or_svg(link: str) -> bool:
+    return any(link.startswith(x) for x in _BLOB_OR_SVG)
+
+
+def unique(iterable: Iterable[T], *, hashable: bool = True) -> Iterable[T]:
+    """Yields unique values from iterable, keeping original order"""
+    if hashable:
+        seen: set[T] | list[T] = set()
+        add: Callable[[T], None] = seen.add
+    else:
+        seen = []
+        add = seen.append
+
+    for value in iterable:
+        if value not in seen:
+            add(value)
+            yield value
+
+
+def get_valid_kwargs(func: Callable[..., Any], kwargs: Mapping[str, T], accept_kwargs: bool = True) -> Mapping[str, T]:
+    """Get the subset of ``kwargs`` that are valid params for ``func`` and their values are not `None`
+
+    If func takes **kwargs, returns everything"""
+    params = inspect.signature(func).parameters
+    if accept_kwargs and any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return kwargs
+
+    return {k: v for k, v in kwargs.items() if k in params.keys() and v is not None}
+
+
+def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
+    return cls(**get_valid_kwargs(cls, kwargs))
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

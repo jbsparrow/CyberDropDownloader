@@ -1,29 +1,23 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
-from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
-
-if TYPE_CHECKING:
-    from yarl import URL
+from .xenforo import XenforoCrawler
 
 
 class CelebForumCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://celebforum.to")
-    post_selectors = PostSelectors(
-        date=Selector("time", "data-time"),
-        images=Selector("a[class*=js-lbImage]", "href"),
-    )
-    selectors = XenforoSelectors(posts=post_selectors)
     DOMAIN: ClassVar[str] = "celebforum"
     FOLDER_DOMAIN: ClassVar[str] = "CelebForum"
+    IGNORE_EMBEDED_IMAGES_SRC: ClassVar = True  # images src is always a thumbnail
 
-    def filter_link(self, link: URL) -> URL | None:
-        if link.host == self.PRIMARY_URL.host:
+    @classmethod
+    def is_thumbnail(cls, link: AbsoluteHttpURL) -> bool:
+        if link.host == cls.PRIMARY_URL.host:
             if all(part in link.parts for part in ["data", "attachments"]):  # Thumbnails
-                return None
+                return True
             if all(part in link.parts for part in ["data", "assets"]):  # Placeholder content for insufficient rank
-                return None
-        return link
+                return True
+        return False

@@ -6,14 +6,13 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.types import SupportedPaths
 
 
 SOUP_ERRORS = {
@@ -186,13 +185,12 @@ class YetiShareCrawler(Crawler, is_abc=True):
         Returns a list with the `folder_id` of every subfolder"""
         folder_ids = []
         for item in soup.select(_SELECTOR.FOLDER_ITEM):
-            folder_id, file_id = item["folderid"], item["fileid"]
-            if folder_id:
-                folder_ids.append(folder_ids)
+            if folder_id := css.get_attr_or_none(item, "folderid"):
+                folder_ids.append(folder_id)
                 if not iter_subfolders:
                     continue
                 link_str = css.get_attr(item, "sharing-url")
-            elif file_id:
+            elif css.get_attr_or_none(item, "fileid"):
                 link_str = css.get_attr(item, "dtfullurl")
             else:
                 continue

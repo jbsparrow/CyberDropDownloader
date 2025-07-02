@@ -1,17 +1,10 @@
-import calendar
 import datetime
 from functools import lru_cache
-from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar
+from typing import Literal, NewType, TypeAlias, TypeVar
 
 import dateparser.date
-import dateutil
-import dateutil.parser
 
-if TYPE_CHECKING:
-    from cyberdrop_dl.types import TimeStamp
-else:
-    TimeStamp = int
-
+TimeStamp = NewType("TimeStamp", int)
 MIDNIGHT_TIME = datetime.time.min
 DATE_NOT_FOUND = dateparser.date.DateData(date_obj=None, period="day")
 DateOrder: TypeAlias = Literal["DMY", "DYM", "MDY", "MYD", "YDM", "YMD"]
@@ -113,7 +106,7 @@ def remove_time_if_not_midnight(date: datetime.datetime) -> datetime.datetime:
     return date
 
 
-def parse_date(
+def parse_human_date(
     date_string: str,
     date_formats: list[str] | str | None = None,
     /,
@@ -125,20 +118,8 @@ def parse_date(
     return date or parser.parse_human_date(date_string, date_formats)
 
 
-def parse_concrete_date(date_string: str, date_format: str) -> datetime.datetime | None:
-    try:
-        if date_format:
-            parsed_date = datetime.datetime.strptime(date_string, date_format)
-        else:
-            parsed_date = dateutil.parser.parse(date_string)
-    except (ValueError, TypeError, dateutil.parser.ParserError):
-        pass
-    else:
-        return parsed_date
-
-
 def to_timestamp(date: datetime.datetime) -> TimeStamp:
-    return TimeStamp(calendar.timegm(date.timetuple()))
+    return TimeStamp(int(date.timestamp()))
 
 
 @lru_cache(maxsize=10)
@@ -146,6 +127,16 @@ def get_parser(parser_kind: ParserKind | None = None, date_order: DateOrder | No
     return DateParser(parser_kind, date_order)
 
 
+def parse_aware_iso_datetime(value: str) -> datetime.datetime | None:
+    try:
+        parsed_date = datetime.datetime.fromisoformat(value)
+        if parsed_date.tzinfo is None:
+            parsed_date.replace(tzinfo=datetime.UTC)
+        return parsed_date
+    except Exception:
+        return
+
+
 if __name__ == "__main__":
-    print(parse_date("today at noon"))  # noqa: T201
-    print(parse_date("today"))  # noqa: T201
+    print(parse_human_date("today at noon"))  # noqa: T201
+    print(parse_human_date("today"))  # noqa: T201

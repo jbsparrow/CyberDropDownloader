@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -54,11 +55,11 @@ class InfluencerBitchesCrawler(Crawler):
         scrape_item.setup_as_album("Photos", album_id=album_id)
         results = await self.get_album_results(album_id)
         for a_tag in soup.select(_SELECTORS.PICTURES):
-            link_str: str = a_tag.select_one("img")["data-full"]
+            link_str: str = css.select_one_get_attr(a_tag, "img", "data-full")
             link = self.parse_url(link_str)
             if self.check_album_results(link, results):
                 continue
-            web_url = self.parse_url(a_tag["href"])
+            web_url = self.parse_url(css.get_attr(a_tag, "href"))
             new_scrape_item = scrape_item.create_child(web_url)
             filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(link, new_scrape_item, filename, ext)
