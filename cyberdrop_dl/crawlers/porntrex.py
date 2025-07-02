@@ -113,7 +113,7 @@ class PorntrexCrawler(Crawler):
         video = get_video_info(soup)
         filename, ext = self.get_filename_and_ext(video.url.name)
         scrape_item.url = canonical_url
-        custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}] [{video.res}]{ext}")
+        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.res)
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
         )
@@ -234,7 +234,7 @@ def get_video_info(soup: BeautifulSoup) -> Video:
                     resolutions.append((video_info[text_key], video_info[key]))
 
         if not resolutions:
-            resolutions.append((video_info["video_url"], "Unknown"))
+            resolutions.append((video_info["video_url"], ""))
 
         best = max(resolutions, key=lambda x: extract_resolution(x[0]))
         return Video(video_info["video_id"], video_info["video_title"], URL(best[1].strip("/")), best[0].split()[0])

@@ -270,6 +270,8 @@ class BunkrrCrawler(Crawler):
         if not link.query.get("n"):
             link = link.update_query(n=fallback_filename)
 
+        # Bunkr is a special case.
+        # It should NOT use `create_custom_filename` since the custom file name is actually used to validate the ext
         custom_filename, ext = self.get_filename_and_ext(link.query["n"], assume_ext=".mp4")
         try:
             filename, ext = self.get_filename_and_ext(link.name)

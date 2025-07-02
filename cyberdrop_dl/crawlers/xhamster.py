@@ -94,7 +94,9 @@ class XhamsterCrawler(Crawler):
         padding = max(3, len(str(gallery.quantity)))
         for index, image in enumerate(gallery.photos, 1):
             filename, ext = self.get_filename_and_ext(image.url.name)
-            custom_filename = f"{index:0{padding}d} - {filename.removesuffix(ext)} [{image.id}]{ext}"
+            # TODO: Adding an index prefix should be handled by `create_custom_filename`
+            custom_filename = f"{str(index).zfill(padding)} - {filename.removesuffix(ext)}"
+            custom_filename = self.create_custom_filename(custom_filename, ext, file_id=image.id)
             new_scrape_item = scrape_item.create_child(image.page_url)
             await self.handle_file(image.url, new_scrape_item, filename, ext, custom_filename=custom_filename)
             scrape_item.add_children()
@@ -111,9 +113,8 @@ class XhamsterCrawler(Crawler):
         scrape_item.possible_datetime = video.created
         _, resolution, download_url = max(video.get_formats())
         link = PRIMARY_URL / "movies" / video.id / "download" / resolution
-
         filename, ext = self.get_filename_and_ext(f"{video.id}.mp4")
-        custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}][{resolution}]{ext}")
+        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=resolution)
         await self.handle_file(
             link, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=download_url
         )
@@ -175,7 +176,7 @@ class Video(XHamsterItem):
     mp4_sources: dict[str, Any] = Field({}, validation_alias=AliasPath("sources", "mp4"))
 
     def get_formats(self) -> Generator[Format]:
-        yield Format(0, "Unknown", self.mp4_file)
+        yield Format(0, 0, self.mp4_file)
         for resolution, details in self.mp4_sources.items():
             height = int(resolution.removesuffix("p"))
             link: str = details["link"] if isinstance(details, dict) else details

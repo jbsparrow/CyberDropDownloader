@@ -73,7 +73,7 @@ class DoodStreamCrawler(Crawler):
         file_id = get_file_id(soup)
         debrid_link = await self.get_download_url(host, soup)
         filename, ext = self.get_filename_and_ext(f"{file_id}.mp4")
-        custom_filename, _ = self.get_filename_and_ext(f"{title}{ext}")
+        custom_filename = self.create_custom_filename(title, ext, file_id=file_id)
         scrape_item.url = canonical_url
         await self.handle_file(
             scrape_item.url, scrape_item, filename, ext, debrid_link=debrid_link, custom_filename=custom_filename

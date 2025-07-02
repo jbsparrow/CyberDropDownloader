@@ -7,6 +7,7 @@ VENV_DIR=""
 COMMANDLINE_ARGS=""
 AUTO_UPDATE=true
 AUTO_UPDATE_PIP=true
+CDL_VERSION=">=7.0,<8.0"
 
 # Parse arguments
 HELP=false
@@ -100,7 +101,7 @@ pip uninstall -y -qq cyberdrop-dl
 # Ensure Cyberdrop-DL is installed
 if ! command -v cyberdrop-dl >/dev/null 2>&1; then
     echo Cyberdrop-DL is not installed, installing...
-    pip install "cyberdrop-dl-patched>=6.0,<7.0"
+    pip install "cyberdrop-dl-patched${CDL_VERSION}"
     echo
     if [ $? -ne 0 ]; then
         echo "Failed to install Cyberdrop-DL."
@@ -113,7 +114,7 @@ if ! command -v cyberdrop-dl >/dev/null 2>&1; then
 else
     if [ "$AUTO_UPDATE" = true ] && [ "$SKIP_UPDATE" = false ]; then
         echo Updating Cyberdrop-DL...
-        pip install --upgrade "cyberdrop-dl-patched>=6.0,<7.0"
+        pip install --upgrade "cyberdrop-dl-patched${CDL_VERSION}"
         echo
     fi
 fi

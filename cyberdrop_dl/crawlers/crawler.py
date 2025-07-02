@@ -108,7 +108,7 @@ def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, C
 class Crawler(ABC):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ()
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {}
-    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {number} - {title}"
+    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {id} - {title}"
 
     UPDATE_UNSUPPORTED: ClassVar[bool] = False
     SKIP_PRE_CHECK: ClassVar[bool] = False
@@ -127,6 +127,7 @@ class Crawler(ABC):
         self.startup_lock = asyncio.Lock()
         self.request_limiter = AsyncLimiter(10, 1)
         self.ready: bool = False
+        self.disabled: bool = False
         self.logged_in: bool = False
         self.scraped_items: list[str] = []
         self.waiting_items = 0
@@ -199,6 +200,8 @@ class Crawler(ABC):
     async def run(self, item: ScrapeItem) -> None:
         """Runs the crawler loop."""
         if not item.url.host:
+            return
+        if self.disabled:
             return
 
         await self.manager.states.RUNNING.wait()
