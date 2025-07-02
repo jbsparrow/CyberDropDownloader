@@ -42,7 +42,7 @@ Line width to use when writing to the main log file
 | --------------------- | ------- |
 | `timedelta` or `null` | `null`  |
 
-With `rotate_logs` enabled, this setting specifies the retention period for log files before they are deleted
+With `rotate_logs` enabled, this setting specifies the retention period for log files before they are deleted.
 
 - A `timedelta` input is expected to be a valid ISO 8601 timespan, ex: `P10DT2H30M10S`
 - An `int` input is assumed to be the number of days
