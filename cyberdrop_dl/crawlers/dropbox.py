@@ -60,7 +60,7 @@ class DropboxCrawler(Crawler):
                 elif file_name_part:
                     file_name = file_name_part[0]
                 else:
-                    raise ValueError
+                    file_name = None
                 file = DropboxItem(file_id, rlkey, file_name, url)
                 return await self.folder_or_file(scrape_item, file)
             case _:
@@ -114,7 +114,7 @@ class DropboxItem:
 
     @property
     def is_folder(self) -> bool:
-        return not bool(self.filename)
+        return not bool(self.filename) and "fi" not in self.url.parts
 
     @property
     def download_url(self) -> AbsoluteHttpURL:
