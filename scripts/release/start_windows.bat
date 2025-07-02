@@ -8,6 +8,7 @@ set "VENV_DIR="
 set "COMMANDLINE_ARGS="
 set "AUTO_UPDATE=true"
 set "AUTO_UPDATE_PIP=true"
+set "CDL_VERSION=>=7.0,<8.0"
 
 rem Parse arguments
 set "HELP=false"
@@ -65,7 +66,7 @@ rem Ensure Cyberdrop-DL is installed
 where cyberdrop-dl >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo Cyberdrop-DL is not installed, installing...
-    pip install "cyberdrop-dl-patched>=6.0,<7.0"
+    pip install "cyberdrop-dl-patched%CDL_VERSION%"
     if %ERRORLEVEL% neq 0 (
         echo Failed to install Cyberdrop-DL.
         pause
@@ -80,7 +81,7 @@ if %ERRORLEVEL% neq 0 (
 ) else (
     if "%AUTO_UPDATE%"=="true" if "%SKIP_UPDATE%"=="false" (
         echo Updating Cyberdrop-DL...
-        pip install --upgrade "cyberdrop-dl-patched>=6.0,<7.0"
+        pip install --upgrade "cyberdrop-dl-patched%CDL_VERSION%"
     )
 )
 
