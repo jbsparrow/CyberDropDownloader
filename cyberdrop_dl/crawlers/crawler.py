@@ -8,7 +8,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, NoReturn, ParamSpec, TypeAlias, TypeVar, final
 
 import yarl
 from aiolimiter import AsyncLimiter
@@ -18,7 +18,7 @@ from cyberdrop_dl import constants
 from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.exceptions import NoExtensionError
+from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
@@ -100,6 +100,13 @@ def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, C
             log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
             self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
             await self.manager.log_manager.write_scrape_error_log(scrape_item.url, UNKNOWN_URL_PATH_MSG)
+        except MaxChildrenError:
+
+            @error_handling_wrapper
+            async def raise_e(self, scrape_item: ScrapeItem) -> NoReturn:
+                raise
+
+            await raise_e(self, scrape_item)
         finally:
             self.scraping_progress.remove_task(task_id)
 

@@ -282,7 +282,8 @@ class MessageBoardCrawler(Crawler, is_abc=True):
         if self.stop_thread_recursion(scrape_item):
             parents = f"{len(scrape_item.parent_threads)} parent thread(s)"
             msg = (
-                f"Skipping nested thread URL with {parents}: {scrape_item.url}\n"
+                f"Skipping nested thread URL with {parents}:"
+                f"URL: {scrape_item.url}\n"
                 f"Parent:  {scrape_item.parent}\n"
                 f"Origin:  {scrape_item.origin}\n"
             )
@@ -290,13 +291,12 @@ class MessageBoardCrawler(Crawler, is_abc=True):
 
     @final
     def stop_thread_recursion(self, scrape_item: ScrapeItem) -> bool:
-        if (
-            not self.SUPPORTS_THREAD_RECURSION
-            or self.scrape_single_forum_post
-            or not self.max_thread_depth
-            or (len(scrape_item.parent_threads) > self.max_thread_depth)
-        ):
-            return True
+        if n_parents := len(scrape_item.parent_threads):
+            if n_parents > self.max_thread_depth:
+                return True
+
+            return self.SUPPORTS_THREAD_RECURSION and bool(self.max_thread_depth)
+
         return False
 
     @final
@@ -497,7 +497,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
                 await self.process_child(scrape_item, link, embeds=True)
 
         if seen:
-            self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} stats = {stats}")
+            self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} stats = {dict(stats)}")
         if duplicates:
             self.log_bug_report(f"Found duplicate links. Selectors are too generic: {duplicates}")
 
