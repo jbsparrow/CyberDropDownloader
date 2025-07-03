@@ -29,6 +29,12 @@ CLOUDFLARE_ERRORS = {
 }
 
 
+class TooManyCrawlerErrors(Exception):  # noqa: N818
+    """This exception will be raised after a crawler had too many errors proccesing URLs"""
+
+    # This exception does not inherit from `CDLBaseError`` cause it not intented to ever by shown to the user
+
+
 class CDLBaseError(Exception):
     """Base exception for cyberdrop-dl errors."""
 

@@ -52,19 +52,20 @@ def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutin
     async def wrapper(*args, **kwargs) -> R:
         self: ScraperClient = args[0]
         domain: str = args[1]
-        domain_limiter = await self.client_manager.get_rate_limiter(domain)
-        async with self.client_manager.session_limit, self._global_limiter, domain_limiter:
-            await self.client_manager.manager.states.RUNNING.wait()
+        with self.client_manager.request_context(domain):
+            domain_limiter = await self.client_manager.get_rate_limiter(domain)
+            async with self.client_manager.session_limit, self._global_limiter, domain_limiter:
+                await self.client_manager.manager.states.RUNNING.wait()
 
-            if "cffi" in func.__name__:
-                if curl_import_error is not None:
-                    system = "Android" if env.RUNNING_IN_TERMUX else "the system"
-                    msg = f"curl_cffi is required to scrape URLs from {domain}, but a dependency it's not available on {system}.\n"
-                    msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{curl_import_error!r}"
-                    raise ScrapeError("Missing Dependency", msg)
+                if "cffi" in func.__name__:
+                    if curl_import_error is not None:
+                        system = "Android" if env.RUNNING_IN_TERMUX else "the system"
+                        msg = f"curl_cffi is required to scrape URLs from {domain}, but a dependency it's not available on {system}.\n"
+                        msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{curl_import_error!r}"
+                        raise ScrapeError("Missing Dependency", msg)
+                    return await func(*args, **kwargs)
+
                 return await func(*args, **kwargs)
-
-            return await func(*args, **kwargs)
 
     return wrapper
 

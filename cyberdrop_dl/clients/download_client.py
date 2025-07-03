@@ -46,20 +46,21 @@ def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutin
     async def wrapper(*args, **kwargs) -> R:
         self: DownloadClient = args[0]
         domain: str = args[1]
-        domain_limiter = await self.client_manager.get_rate_limiter(domain)
-        await asyncio.sleep(await self.client_manager.get_downloader_spacer(domain))
-        await self._global_limiter.acquire()
-        await domain_limiter.acquire()
+        with self.client_manager.request_context(domain):
+            domain_limiter = await self.client_manager.get_rate_limiter(domain)
+            await asyncio.sleep(await self.client_manager.get_downloader_spacer(domain))
+            await self._global_limiter.acquire()
+            await domain_limiter.acquire()
 
-        async with aiohttp.ClientSession(
-            headers=self._headers,
-            raise_for_status=False,
-            cookie_jar=self.client_manager.cookies,
-            timeout=self._timeouts,
-            trace_configs=self.trace_configs,
-        ) as client:
-            kwargs["client_session"] = client
-            return await func(*args, **kwargs)
+            async with aiohttp.ClientSession(
+                headers=self._headers,
+                raise_for_status=False,
+                cookie_jar=self.client_manager.cookies,
+                timeout=self._timeouts,
+                trace_configs=self.trace_configs,
+            ) as client:
+                kwargs["client_session"] = client
+                return await func(*args, **kwargs)
 
     return wrapper
 
