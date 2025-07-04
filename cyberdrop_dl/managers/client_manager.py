@@ -502,25 +502,25 @@ class Flaresolverr:
         return fs_resp.soup, fs_resp.url
 
 
-async def _set_dns_resolver() -> None:
+async def _set_dns_resolver(loop: asyncio.AbstractEventLoop | None = None) -> None:
     if constants.DNS_RESOLVER is not None:
         return
     try:
-        await _test_async_resolver()
+        await _test_async_resolver(loop)
         constants.DNS_RESOLVER = aiohttp.AsyncResolver
-    except Exception:
+    except Exception as e:
         constants.DNS_RESOLVER = aiohttp.ThreadedResolver
-        log("Unable to setup asynchronous DNS resolver. Falling back to thread based resolver", 30)
+        log(f"Unable to setup asynchronous DNS resolver. Falling back to thread based resolver: {e}", 30)
 
 
-async def _test_async_resolver() -> None:
+async def _test_async_resolver(loop: asyncio.AbstractEventLoop | None = None) -> None:
     """Test aiodns with a DNS lookup."""
 
-    # pycares (the underliying c extension library that aiodns uses) is installed successfully in most cases
-    # but it fails to actually connect to DNS servers on some platforms (android)
+    # pycares (the underlying C extension library that aiodns uses) installs successfully in most cases,
+    # but it fails to actually connect to DNS servers on some platforms (e.g., Android).
     import aiodns
 
-    _ = await aiodns.DNSResolver().query("github.com", "A")
+    _ = await aiodns.DNSResolver(loop=loop, timeout=5.0).query("github.com", "A")
 
 
 def _create_request_log_hooks(client_type: Literal["scrape", "download"]) -> list[aiohttp.TraceConfig]:
