@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import binascii
+from enum import IntEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
@@ -17,6 +18,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
+class PostType(IntEnum):
+    IMAGE = 0
+    VIDEO = 1
+
+
 class Selectors:
     JS_PLAYER = "script:contains('playerInstance.setup')"
     MODEL_NAME_COLLECTION = "div.actor-name > h1"
@@ -26,6 +32,7 @@ class Selectors:
 _SELECTORS = Selectors()
 
 PRIMARY_URL = AbsoluteHttpURL("https://leakedzone.com")
+IMAGES_CDN = AbsoluteHttpURL("https://image-cdn.leakedzone.com/storage/")
 
 
 class LeakedZoneCrawler(Crawler):
@@ -41,12 +48,9 @@ class LeakedZoneCrawler(Crawler):
         self.request_limiter = AsyncLimiter(3, 10)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if "video" in scrape_item.url.parts:
-            if len(scrape_item.url.parts) == 4:
-                return await self.video(scrape_item, video_id=scrape_item.url.parts[-1])
-            elif len(scrape_item.url.parts) == 3:
-                return await self.collection(scrape_item)
-        raise ValueError
+        if len(scrape_item.url.parts) >= 4 and "video" in scrape_item.url.parts:
+            return await self.video(scrape_item, video_id=scrape_item.url.parts[-1])
+        return await self.collection(scrape_item)
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
@@ -67,16 +71,28 @@ class LeakedZoneCrawler(Crawler):
             if not posts:
                 break
             for post in posts:
-                if post["type"] == 1:
-                    video_id: str = str(post["id"])
-                    canonical_url: AbsoluteHttpURL = PRIMARY_URL / scrape_item.url.parts[1] / "video" / video_id
-                    if await self.check_complete_from_referer(canonical_url):
-                        continue
-                    url: AbsoluteHttpURL = decode_video_url(post["stream_url_play"])
-                    m3u8_media = M3U8Media(await self._get_m3u8(url))
-                    filename, ext = self.get_filename_and_ext(f"{model_name} [{video_id}].mp4")
-                    await self.handle_file(canonical_url, scrape_item, filename, ext, m3u8_media=m3u8_media)
+                post_type = PostType(post["type"])
+                if post_type == PostType.VIDEO:
+                    await self.handle_gallery_video(scrape_item, post, model_name)
+                elif post_type == PostType.IMAGE:
+                    await self.handle_gallery_image(scrape_item, post)
             req_params["params"]["page"] += 1
+
+    async def handle_gallery_video(self, scrape_item, post, model_name):
+        video_id: str = str(post["id"])
+        canonical_url: AbsoluteHttpURL = PRIMARY_URL / scrape_item.url.parts[1] / "video" / video_id
+        if await self.check_complete_from_referer(canonical_url):
+            return
+        url: AbsoluteHttpURL = decode_video_url(post["stream_url_play"])
+        m3u8_media = M3U8Media(await self._get_m3u8(url))
+        filename, ext = self.get_filename_and_ext(f"{model_name} [{video_id}].mp4")
+        await self.handle_file(canonical_url, scrape_item, filename, ext, m3u8_media=m3u8_media)
+
+    async def handle_gallery_image(self, scrape_item, post):
+        image_url: AbsoluteHttpURL = IMAGES_CDN / post["image"]
+        filename, ext = self.get_filename_and_ext(image_url.name)
+        new_scrape_item = scrape_item.create_child(image_url)
+        await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:

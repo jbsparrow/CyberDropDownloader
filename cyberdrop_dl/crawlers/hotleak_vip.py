@@ -47,3 +47,9 @@ class HotLeakVipCrawler(LeakedZoneCrawler):
 
         filename, ext = self.get_filename_and_ext(f"{model_name} [{video_id}].mp4")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, m3u8_media=m3u8_media)
+
+    async def handle_gallery_image(self, scrape_item, post):
+        image_url: AbsoluteHttpURL = self.parse_url(post["player"])
+        filename, ext = self.get_filename_and_ext(image_url.name)
+        new_scrape_item = scrape_item.create_child(image_url)
+        await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)
