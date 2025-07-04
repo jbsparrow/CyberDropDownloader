@@ -6,7 +6,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media
+from cyberdrop_dl.utils.m3u8 import M3U8Media
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -62,12 +62,6 @@ class BeegComCrawler(Crawler):
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, m3u8_media=m3u8_media
         )
-
-    async def _get_m3u8(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
-        headers = headers or {}
-        async with self.request_limiter:
-            content = await self.client.get_text(self.DOMAIN, url, headers)
-        return M3U8(content, url.parent)
 
 
 def get_video_id(url: AbsoluteHttpURL) -> str | None:
