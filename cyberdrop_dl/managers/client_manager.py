@@ -80,16 +80,7 @@ class ClientManager:
 
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        global_settings_data = manager.config_manager.global_settings_data
-        self.connection_timeout = global_settings_data.rate_limiting_options.connection_timeout
-        self.read_timeout = global_settings_data.rate_limiting_options.read_timeout
-        self.rate_limit = global_settings_data.rate_limiting_options.rate_limit
-
-        self.download_delay = global_settings_data.rate_limiting_options.download_delay
-        self.user_agent = global_settings_data.general.user_agent
-        self.simultaneous_per_domain = global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
-
-        ssl_context = global_settings_data.general.ssl_context
+        ssl_context = self.manager.global_config.general.ssl_context
         if not ssl_context:
             self.ssl_context = False
         elif ssl_context == "certifi":
@@ -101,8 +92,6 @@ class ClientManager:
             ctx.load_verify_locations(cafile=certifi.where())
 
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy: AbsoluteHttpURL | None = global_settings_data.general.proxy  # type: ignore
-
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
             "cyberdrop": AsyncLimiter(5, 1),
@@ -125,19 +114,17 @@ class ClientManager:
             "nhentai.net": 1,
         }
 
-        self.global_rate_limiter = AsyncLimiter(self.rate_limit, 1)
+        self.global_rate_limiter = AsyncLimiter(self.manager.global_config.rate_limiting_options.rate_limit, 1)
         self.session_limit = asyncio.Semaphore(50)
         self.download_session_limit = asyncio.Semaphore(
-            self.manager.config_manager.global_settings_data.rate_limiting_options.max_simultaneous_downloads,
+            self.manager.global_config.rate_limiting_options.max_simultaneous_downloads
         )
 
         self.scraper_session = ScraperClient(self)
         self.speed_limiter = DownloadSpeedLimiter(manager)
         self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
-        self._headers = {"user-agent": self.user_agent}
-        self._timeout_tuple = self.connection_timeout + 60, self.connection_timeout
-        self._timeouts = aiohttp.ClientTimeout(*self._timeout_tuple)
+        self._headers = {"user-agent": self.manager.global_config.general.user_agent}
 
     async def startup(self) -> None:
         await _set_dns_resolver()
@@ -146,14 +133,17 @@ class ClientManager:
         # Calling code should have validated if curl is actually available
         from curl_cffi.requests import AsyncSession
 
-        proxy = str(self.proxy) if self.proxy else None
+        if proxy := self.manager.global_config.general.proxy:
+            proxy = str(proxy)
+        else:
+            proxy = None
         return AsyncSession(
             headers=self._headers,
             impersonate="chrome",
             verify=bool(self.ssl_context),
             proxy=proxy,
-            timeout=self._timeout_tuple,
-            cookies={c.key: c.value for c in self.cookies},
+            timeout=self.manager.global_config.rate_limiting_options._timeout,
+            cookies={cookie.key: cookie.value for cookie in self.cookies},
         )
 
     def new_scrape_session(self) -> CachedSession:
@@ -183,8 +173,9 @@ class ClientManager:
             headers=self._headers,
             raise_for_status=False,
             cookie_jar=self.cookies,
-            timeout=self._timeouts,
+            timeout=self.manager.global_config.rate_limiting_options._client_timeout,
             trace_configs=trace_configs,
+            proxy=self.manager.global_config.general.proxy,
             connector=self._new_tcp_connector(),
             **kwargs,
         )
@@ -385,10 +376,7 @@ class Flaresolverr:
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
-        self.flaresolverr_host: AbsoluteHttpURL = (
-            client_manager.manager.config_manager.global_settings_data.general.flaresolverr
-        )  # type: ignore
-        self.enabled = bool(self.flaresolverr_host)
+        self.enabled = bool(client_manager.manager.global_config.general.flaresolverr)
         self.session_id: str = ""
         self.session_lock = asyncio.Lock()
         self.request_lock = asyncio.Lock()
@@ -409,12 +397,10 @@ class Flaresolverr:
         return await self._make_request(command, client_session, **kwargs)
 
     async def _make_request(self, command: str, client_session: ClientSession, **kwargs) -> dict[str, Any]:
-        timeout = self.client_manager._timeouts
+        timeout = self.client_manager.manager.global_config.rate_limiting_options._client_timeout
         if command == "sessions.create":
             timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
 
-        headers = client_session.headers.copy()
-        headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
             if isinstance(value, AbsoluteHttpURL):
                 kwargs[key] = str(value)
@@ -427,15 +413,13 @@ class Flaresolverr:
 
         self.request_count += 1
         msg = f"Waiting For Flaresolverr Response [{self.request_count}]"
+        assert self.client_manager.manager.global_config.general.flaresolverr
         async with (
             self.request_lock,
             self.client_manager.manager.progress_manager.show_status_msg(msg),
         ):
             response = await client_session.post(
-                self.flaresolverr_host / "v1",
-                headers=headers,
-                ssl=self.client_manager.ssl_context,
-                proxy=self.client_manager.proxy,
+                self.client_manager.manager.global_config.general.flaresolverr / "v1",
                 json=data,
                 timeout=timeout,
             )

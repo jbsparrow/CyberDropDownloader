@@ -1,7 +1,8 @@
 import random
 from datetime import timedelta
-from typing import Literal
+from typing import Literal, NamedTuple
 
+import aiohttp
 from pydantic import BaseModel, ByteSize, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
@@ -11,6 +12,18 @@ from cyberdrop_dl.models.validators import falsy_as, to_bytesize, to_timedelta
 
 MIN_REQUIRED_FREE_SPACE = to_bytesize("512MB")
 DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
+
+
+class Timeout(NamedTuple):
+    connect: int
+    read: int
+
+    # Order is according to curl_cffi session
+    # connect_timeout, read_timeout
+
+    @property
+    def total(self) -> int:
+        return self.read + self.connect
 
 
 class General(BaseModel):
@@ -66,6 +79,10 @@ class RateLimiting(BaseModel):
     rate_limit: PositiveInt = 50
     read_timeout: PositiveInt = 300
 
+    def model_post_init(self, *_) -> None:
+        self._timeout = Timeout(self.connection_timeout, self.read_timeout)
+        self._client_timeout = aiohttp.ClientTimeout(self._timeout.total, self._timeout.connect)
+
     @field_validator("file_host_cache_expire_after", "forum_cache_expire_after", mode="before")
     @staticmethod
     def parse_cache_duration(input_date: timedelta | str | int) -> timedelta | str:
@@ -79,6 +96,10 @@ class RateLimiting(BaseModel):
     def get_jitter(self) -> NonNegativeFloat:
         """Get a random number in the range [0, self.jitter]"""
         return random.uniform(0, self.jitter)
+
+    @property
+    def client_timeout(self) -> aiohttp.ClientTimeout:
+        return aiohttp.ClientTimeout(self._timeout.total, self._timeout.connect)
 
 
 class UIOptions(BaseModel):

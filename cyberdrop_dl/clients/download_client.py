@@ -229,12 +229,7 @@ class DownloadClient:
         while True:
             resp = None
             try:
-                async with client_session.get(
-                    download_url,
-                    headers=download_headers,
-                    ssl=self.client_manager.ssl_context,
-                    proxy=self.client_manager.proxy,
-                ) as resp:
+                async with client_session.get(download_url, headers=download_headers) as resp:
                     return await process_response(resp)
             except (DownloadError, DDOSGuardError):
                 if resp is None:
