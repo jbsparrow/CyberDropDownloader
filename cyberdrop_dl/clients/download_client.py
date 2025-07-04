@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING, ParamSpec, TypeVar
 import aiofiles
 from dateutil import parser
 from videoprops import get_audio_properties, get_video_properties
-from yarl import URL
 
 from cyberdrop_dl.constants import FILE_FORMATS
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from aiohttp import ClientSession
     from multidict import CIMultiDictProxy
 
-    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
 
@@ -124,7 +124,7 @@ class DownloadClient:
                 "Cyberdrop-DL", auth_data.pixeldrain.api_key
             )
         elif domain == "gofile":
-            gofile_cookies = self.client_manager.cookies.filter_cookies(URL("https://gofile.io"))
+            gofile_cookies = self.client_manager.cookies.filter_cookies(AbsoluteHttpURL("https://gofile.io"))
             api_key = gofile_cookies.get("accountToken", "")
             if api_key:
                 download_headers["Authorization"] = f"Bearer {api_key.value}"  # type: ignore

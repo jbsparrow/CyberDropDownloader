@@ -30,8 +30,8 @@ if TYPE_CHECKING:
     from curl_cffi.requests.impersonate import BrowserTypeLiteral as BrowserTarget
     from curl_cffi.requests.models import Response as CurlResponse
     from multidict import CIMultiDictProxy
-    from yarl import URL
 
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
     from cyberdrop_dl.managers.client_manager import ClientManager
 
 _curl_import_error = None
@@ -146,7 +146,7 @@ class ScraperClient:
     async def _get_response_and_soup_cffi(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         headers: dict[str, str] | None = None,
         impersonate: BrowserTarget | None = "chrome",
         request_params: dict[str, Any] | None = None,
@@ -183,7 +183,7 @@ class ScraperClient:
     async def post_data_cffi(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         headers: dict[str, str] | None = None,
         impersonate: BrowserTarget | None = "chrome",
         data: Any = None,
@@ -211,7 +211,7 @@ class ScraperClient:
     # ~~~~~~~~~~~~~ AIOHTTP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     async def _resilient_get(
-        self, url: URL, headers: dict[str, str], request_params: dict[str, Any] | None = None
+        self, url: AbsoluteHttpURL, headers: dict[str, str], request_params: dict[str, Any] | None = None
     ) -> tuple[AnyResponse, BeautifulSoup | None]:
         """Makes a GET request and automatically retries it with flaresolverr (if needed)
 
@@ -243,7 +243,7 @@ class ScraperClient:
     async def _get(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         /,
         headers: dict[str, str] | None = None,
         request_params: dict[str, Any] | None = None,
@@ -258,7 +258,9 @@ class ScraperClient:
         return response, soup_or_none
 
     @copy_signature(_get)
-    async def _get_response_and_soup(self, domain: str, url: URL, *args, **kwargs) -> tuple[AnyResponse, BeautifulSoup]:
+    async def _get_response_and_soup(
+        self, domain: str, url: AbsoluteHttpURL, *args, **kwargs
+    ) -> tuple[AnyResponse, BeautifulSoup]:
         """
         Makes a GET request using aiohttp and creates a soup.
 
@@ -303,7 +305,7 @@ class ScraperClient:
     async def _post_data(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         headers: dict[str, str] | None = None,
         data: Any = None,
         json: Any = None,
@@ -349,7 +351,7 @@ class ScraperClient:
     async def _get_head(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         headers: dict[str, str] | None = None,
         request_params: dict[str, Any] | None = None,
         *,
@@ -378,7 +380,7 @@ class ScraperClient:
 
     async def write_soup_to_disk(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         response: CurlResponse | AnyResponse,
         soup: BeautifulSoup,
         exc: Exception | None = None,

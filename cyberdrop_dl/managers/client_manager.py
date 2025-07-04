@@ -17,7 +17,6 @@ from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiohttp_client_cache.session import CachedSession
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
-from yarl import URL
 
 from cyberdrop_dl import constants
 from cyberdrop_dl.clients.download_client import DownloadClient
@@ -259,7 +258,10 @@ class ClientManager:
                     expired_cookies_domains.add(simplified_domain)
 
                 domains_seen.add(simplified_domain)
-                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
+                self.cookies.update_cookies(
+                    {cookie.name: cookie.value},
+                    response_url=AbsoluteHttpURL(f"https://{cookie.domain}"),  # type: ignore
+                )
 
             for simplified_domain in expired_cookies_domains:
                 log(f"Cookies for {simplified_domain} are expired", 30)
@@ -283,7 +285,7 @@ class ClientManager:
         cls,
         response: ClientResponse | CurlResponse | CachedResponse,
         download: bool = False,
-        origin: ScrapeItem | URL | None = None,
+        origin: ScrapeItem | AbsoluteHttpURL | None = None,
     ) -> BeautifulSoup | None:
         """Checks the HTTP status code and raises an exception if it's not acceptable.
 
@@ -366,7 +368,7 @@ class FlaresolverrResponse:
     cookies: dict
     user_agent: str
     soup: BeautifulSoup | None
-    url: URL
+    url: AbsoluteHttpURL
 
     @classmethod
     def from_dict(cls, flaresolverr_resp: dict) -> FlaresolverrResponse:
@@ -377,7 +379,7 @@ class FlaresolverrResponse:
         url_str: str = solution["url"]
         cookies: dict = solution.get("cookies") or {}
         soup = BeautifulSoup(response, "html.parser") if response else None
-        url = URL(url_str)
+        url = AbsoluteHttpURL(url_str)
         return cls(status, cookies, user_agent, soup, url)
 
 
@@ -386,7 +388,9 @@ class Flaresolverr:
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
-        self.flaresolverr_host: URL = client_manager.manager.config_manager.global_settings_data.general.flaresolverr  # type: ignore
+        self.flaresolverr_host: AbsoluteHttpURL = (
+            client_manager.manager.config_manager.global_settings_data.general.flaresolverr
+        )  # type: ignore
         self.enabled = bool(self.flaresolverr_host)
         self.session_id: str = ""
         self.session_lock = asyncio.Lock()
@@ -397,7 +401,7 @@ class Flaresolverr:
         self,
         command: str,
         client_session: ClientSession,
-        origin: ScrapeItem | URL | None = None,
+        origin: ScrapeItem | AbsoluteHttpURL | None = None,
         **kwargs,
     ) -> dict:
         """Base request function to call flaresolverr."""
@@ -416,7 +420,7 @@ class Flaresolverr:
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
-            if isinstance(value, URL):
+            if isinstance(value, AbsoluteHttpURL):
                 kwargs[key] = str(value)
 
         data = {
@@ -453,7 +457,7 @@ class Flaresolverr:
             raise DDOSGuardError(message="Failed to create flaresolverr session")
         self.session_id = session_id
 
-    async def _destroy_session(self):
+    async def _destroy_session(self) -> None:
         if self.session_id:
             async with self.client_manager._new_session() as client_session:
                 await self._make_request("sessions.destroy", client_session, session=self.session_id)
@@ -461,11 +465,11 @@ class Flaresolverr:
 
     async def get(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         client_session: ClientSession,
-        origin: ScrapeItem | URL | None = None,
+        origin: ScrapeItem | AbsoluteHttpURL | None = None,
         update_cookies: bool = True,
-    ) -> tuple[BeautifulSoup | None, URL]:
+    ) -> tuple[BeautifulSoup | None, AbsoluteHttpURL]:
         """Returns the resolved URL from the given URL."""
         json_resp: dict = await self._request("request.get", client_session, origin, url=url)
 
