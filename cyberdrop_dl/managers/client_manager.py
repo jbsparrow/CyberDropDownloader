@@ -520,7 +520,8 @@ async def _test_async_resolver(loop: asyncio.AbstractEventLoop | None = None) ->
     # but it fails to actually connect to DNS servers on some platforms (e.g., Android).
     import aiodns
 
-    _ = await aiodns.DNSResolver(loop=loop, timeout=5.0).query("github.com", "A")
+    async with aiodns.DNSResolver(loop=loop, timeout=5.0) as resolver:
+        _ = await resolver.query("github.com", "A")
 
 
 def _create_request_log_hooks(client_type: Literal["scrape", "download"]) -> list[aiohttp.TraceConfig]:
