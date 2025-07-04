@@ -18,7 +18,7 @@ from aiohttp_client_cache.session import CachedSession
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl import constants
+from cyberdrop_dl import constants, env
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -48,7 +48,6 @@ DOWNLOAD_ERROR_ETAGS = {
 }
 
 _crawler_errors: dict[str, int] = defaultdict(int)
-MAX_CRAWLER_ERRORS = 10
 
 
 class DDosGuard:
@@ -200,10 +199,10 @@ class ClientManager:
         return conn
 
     def check_domain_errors(self, domain: str) -> None:
-        if _crawler_errors[domain] >= MAX_CRAWLER_ERRORS:
+        if _crawler_errors[domain] >= env.MAX_CRAWLER_ERRORS:
             if crawler := self.manager.scrape_mapper.disable_crawler(domain):
                 msg = (
-                    f"{crawler.__name__} has been disabled after too many errors. "
+                    f"{crawler.__class__.__name__} has been disabled after too many errors. "
                     f"URLs from the following domains will be ignored: {crawler.SCRAPE_MAPPER_KEYS}"
                 )
                 log(msg, 40)
@@ -259,8 +258,8 @@ class ClientManager:
 
                 domains_seen.add(simplified_domain)
                 self.cookies.update_cookies(
-                    {cookie.name: cookie.value},
-                    response_url=AbsoluteHttpURL(f"https://{cookie.domain}"),  # type: ignore
+                    {cookie.name: cookie.value},  # type: ignore
+                    response_url=AbsoluteHttpURL(f"https://{cookie.domain}"),
                 )
 
             for simplified_domain in expired_cookies_domains:
