@@ -46,6 +46,10 @@ class BeegComCrawler(Crawler):
         async with self.request_limiter:
             json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, JSON_URL / video_id)
 
+        canonical_url = PRIMARY_URL / "videos" / video_id
+        if await self.check_complete_from_referer(canonical_url):
+            return
+
         facts: dict[str, Any] = min(json_resp["fc_facts"], key=lambda x: int(x["id"]))
         file: dict[str, Any] = json_resp["file"]
         title = next(data for data in file["data"] if data.get("cd_column") == "sf_name")["cd_value"]
@@ -55,7 +59,7 @@ class BeegComCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(best_format.url.name)
         custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_format.heigth)
         await self.handle_file(
-            best_format.url, scrape_item, filename, ext, custom_filename=custom_filename, m3u8_media=m3u8_media
+            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, m3u8_media=m3u8_media
         )
 
     async def _get_m3u8(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
