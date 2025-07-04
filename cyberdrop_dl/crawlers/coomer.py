@@ -28,6 +28,8 @@ class CoomerCrawler(KemonoBaseCrawler):
         self.session_cookie = self.manager.config_manager.authentication_data.coomer.session
 
     async def async_startup(self) -> None:
+        await super().async_startup()
+
         def check_coomer_page(response: AnyResponse) -> bool:
             if any(p in response.url.parts for p in ("onlyfans", "fansly", "data")):
                 return False

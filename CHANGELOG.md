@@ -22,6 +22,19 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.1] - 2025-07-04
+
+### Changed
+
+- Do not try to download thumbnails (redgifs)
+
+### Fixed
+
+- Handle new player script format and HLS videos (ashemaletube)
+- Custom filename creation (4chan)
+- Usernames not being fetch at startup (coomer)
+- Handle file URLs with unknown filenames (dropbox)
+
 ## [7.0.0] - 2025-07-02
 
 ### Added

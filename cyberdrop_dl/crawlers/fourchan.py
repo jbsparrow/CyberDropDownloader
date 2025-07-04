@@ -82,7 +82,7 @@ class FourChanCrawler(Crawler):
                 if self.check_album_results(url, results):
                     continue
 
-                custom_filename, ext = self.create_custom_filename(file_stem, ext)
+                custom_filename = self.create_custom_filename(file_stem, ext)
                 filename, _ = self.get_filename_and_ext(url.name)
                 new_scrape_item = scrape_item.copy()
                 new_scrape_item.possible_datetime = post["time"]
