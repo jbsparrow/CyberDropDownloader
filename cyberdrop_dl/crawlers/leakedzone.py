@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 class Selectors:
     JS_PLAYER = "script:contains('playerInstance.setup')"
+    MODEL_NAME_COLLECTION = "div.actor-name > h1"
     MODEL_NAME = "h2.actor-title-port"
 
 
@@ -43,8 +44,39 @@ class LeakedZoneCrawler(Crawler):
         if "video" in scrape_item.url.parts:
             if len(scrape_item.url.parts) == 4:
                 return await self.video(scrape_item, video_id=scrape_item.url.parts[-1])
-
+            elif len(scrape_item.url.parts) == 3:
+                return await self.collection(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def collection(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        model_name: str = soup.select_one(_SELECTORS.MODEL_NAME_COLLECTION).get_text(strip=True)
+        title = self.create_title(model_name)
+        scrape_item.setup_as_profile(title)
+
+        req_params = {"params": {"page": 1}}
+        user_agent: str = self.manager.config_manager.global_settings_data.general.user_agent
+        headers = {"user-agent": user_agent, "X-Requested-With": "XMLHttpRequest"}
+        while True:
+            async with self.request_limiter:
+                posts = await self.client.get_json(
+                    self.DOMAIN, scrape_item.url, headers=headers, request_params=req_params
+                )
+            if not posts:
+                break
+            for post in posts:
+                if post["type"] == 1:
+                    video_id: str = str(post["id"])
+                    canonical_url: AbsoluteHttpURL = PRIMARY_URL / scrape_item.url.parts[1] / "video" / video_id
+                    if await self.check_complete_from_referer(canonical_url):
+                        continue
+                    url: AbsoluteHttpURL = decode_video_url(post["stream_url_play"])
+                    m3u8_media = M3U8Media(await self._get_m3u8(url))
+                    filename, ext = self.get_filename_and_ext(f"{model_name} [{video_id}].mp4")
+                    await self.handle_file(canonical_url, scrape_item, filename, ext, m3u8_media=m3u8_media)
+            req_params["params"]["page"] += 1
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
