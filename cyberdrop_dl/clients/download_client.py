@@ -183,7 +183,7 @@ class DownloadClient:
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 await asyncio.to_thread(media_item.partial_file.unlink)
 
-            await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
+            await self.client_manager.check_http_status(resp, download=True)
 
             _ = get_content_type(media_item.ext, resp.headers)
 

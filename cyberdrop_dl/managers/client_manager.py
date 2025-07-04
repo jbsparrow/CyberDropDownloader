@@ -35,7 +35,6 @@ if TYPE_CHECKING:
     from curl_cffi.requests import AsyncSession
     from curl_cffi.requests.models import Response as CurlResponse
 
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
 DOWNLOAD_ERROR_ETAGS = {
@@ -284,7 +283,6 @@ class ClientManager:
         cls,
         response: ClientResponse | CurlResponse | CachedResponse,
         download: bool = False,
-        origin: ScrapeItem | AbsoluteHttpURL | None = None,
     ) -> BeautifulSoup | None:
         """Checks the HTTP status code and raises an exception if it's not acceptable.
 
@@ -298,12 +296,12 @@ class ClientManager:
         def check_etag() -> None:
             if download and (e_tag := headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
                 message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
-                raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
+                raise DownloadError(HTTPStatus.NOT_FOUND, message=message)
 
         async def check_ddos_guard() -> BeautifulSoup | None:
             if soup := await get_soup_no_error(response):
                 if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
-                    raise DDOSGuardError(origin=origin)
+                    raise DDOSGuardError
                 return soup
 
         async def check_json_status() -> None:
@@ -316,10 +314,10 @@ class ClientManager:
                     return
                 json_status: str | int | None = json_resp.get("status")
                 if json_status and isinstance(status, str) and "notFound" in status:
-                    raise ScrapeError(404, origin=origin)
+                    raise ScrapeError(404)
 
                 if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
-                    raise ScrapeError(json_status or status, data["error"], origin=origin)
+                    raise ScrapeError(json_status or status, data["error"])
 
         check_etag()
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
@@ -329,7 +327,7 @@ class ClientManager:
 
         await check_json_status()
         await check_ddos_guard()
-        raise DownloadError(status=status, message=message, origin=origin)
+        raise DownloadError(status=status, message=message)
 
     @staticmethod
     def check_content_length(headers: Mapping[str, Any]) -> None:
@@ -400,12 +398,11 @@ class Flaresolverr:
         self,
         command: str,
         client_session: ClientSession,
-        origin: ScrapeItem | AbsoluteHttpURL | None = None,
         **kwargs,
     ) -> dict:
         """Base request function to call flaresolverr."""
         if not self.enabled:
-            raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
+            raise DDOSGuardError(message="FlareSolverr is not configured")
         async with self.session_lock:
             if not (self.session_id or kwargs.get("session")):
                 await self._create_session()
@@ -466,19 +463,18 @@ class Flaresolverr:
         self,
         url: AbsoluteHttpURL,
         client_session: ClientSession,
-        origin: ScrapeItem | AbsoluteHttpURL | None = None,
         update_cookies: bool = True,
     ) -> tuple[BeautifulSoup | None, AbsoluteHttpURL]:
         """Returns the resolved URL from the given URL."""
-        json_resp: dict = await self._request("request.get", client_session, origin, url=url)
+        json_resp: dict = await self._request("request.get", client_session, url=url)
 
         try:
             fs_resp = FlaresolverrResponse.from_dict(json_resp)
         except (AttributeError, KeyError):
-            raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin) from None
+            raise DDOSGuardError(message="Invalid response from flaresolverr") from None
 
         if fs_resp.status != "ok":
-            raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
+            raise DDOSGuardError(message="Failed to resolve URL with flaresolverr")
 
         user_agent = client_session.headers["User-Agent"].strip()
         mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: '{user_agent}'\n  Flaresolverr: '{fs_resp.user_agent}'"
@@ -486,9 +482,9 @@ class Flaresolverr:
             self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup)
         ):
             if not update_cookies:
-                raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
+                raise DDOSGuardError(message="Invalid response from flaresolverr")
             if fs_resp.user_agent != user_agent:
-                raise DDOSGuardError(message=mismatch_msg, origin=origin)
+                raise DDOSGuardError(message=mismatch_msg)
 
         if update_cookies:
             if fs_resp.user_agent != user_agent:
