@@ -74,8 +74,10 @@ def get_video_id(url: AbsoluteHttpURL) -> str | None:
     # https://beeg.com/1277207756"
 
     index = 2 if "video" in url.parts else 1
-    if len(url.parts) > index and (video_id := url.parts[index].removeprefix("-")).isdigit():
-        return video_id
+    try:
+        return str(int(url.parts[index].removeprefix("-")))
+    except Exception:
+        return
 
 
 def get_best_format(sources: dict[str, str]) -> Format:
