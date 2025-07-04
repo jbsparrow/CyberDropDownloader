@@ -43,10 +43,11 @@ class BeegComCrawler(Crawler):
         self.request_limiter = AsyncLimiter(4, 1)
 
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
-        canonical_url = PRIMARY_URL / "videos" / video_id
+        canonical_url = PRIMARY_URL / video_id
         if await self.check_complete_from_referer(canonical_url):
             return
 
+        scrape_item.url = canonical_url
         async with self.request_limiter:
             json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, JSON_URL / video_id)
 
