@@ -389,8 +389,6 @@ class Flaresolverr:
         self.flaresolverr_host: URL = client_manager.manager.config_manager.global_settings_data.general.flaresolverr  # type: ignore
         self.enabled = bool(self.flaresolverr_host)
         self.session_id: str = ""
-        self.session_create_timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
-        self.timeout = client_manager.scraper_session._timeouts  # Config timeout for normal requests
         self.session_lock = asyncio.Lock()
         self.request_lock = asyncio.Lock()
         self.request_count = 0
@@ -411,9 +409,9 @@ class Flaresolverr:
         return await self._make_request(command, client_session, **kwargs)
 
     async def _make_request(self, command: str, client_session: ClientSession, **kwargs) -> dict[str, Any]:
-        timeout = self.timeout
+        timeout = self.client_manager._timeouts
         if command == "sessions.create":
-            timeout = self.session_create_timeout
+            timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
 
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
