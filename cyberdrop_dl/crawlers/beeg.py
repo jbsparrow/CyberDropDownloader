@@ -53,9 +53,9 @@ class BeegComCrawler(Crawler):
 
         facts: dict[str, Any] = min(json_resp["fc_facts"], key=lambda x: int(x["id"]))
         file: dict[str, Any] = json_resp["file"]
-        title = next(data for data in file["data"] if data.get("cd_column") == "sf_name")["cd_value"]
+        title: str = next(data for data in file["data"] if data.get("cd_column") == "sf_name")["cd_value"]
         best_format = get_best_format(file["hls_resources"])
-        scrape_item.possible_datetime = self.parse_date(facts.get("fc_created", ""))
+        scrape_item.possible_datetime = self.parse_iso_date(facts.get("fc_created", ""))
         m3u8_media = M3U8Media(await self._get_m3u8(best_format.url))
         filename, ext = self.get_filename_and_ext(best_format.url.name)
         custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_format.heigth)
