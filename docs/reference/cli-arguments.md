@@ -315,7 +315,7 @@ sorting:
   --sorted-video SORTED_VIDEO
 
 general:
-  --allow-insecure-connections, --no-allow-insecure-connections
+  --ssl-context SSL_CONTEXT
   --disable-crawlers [DISABLE_CRAWLERS ...]
   --enable-generic-crawler, --no-enable-generic-crawler
   --flaresolverr FLARESOLVERR
@@ -344,5 +344,10 @@ ui_options:
   --refresh-rate REFRESH_RATE
   --scraping-item-limit SCRAPING_ITEM_LIMIT
   --vi-mode, --no-vi-mode
+
+generic_crawlers_instances:
+  --wordpress-media [WORDPRESS_MEDIA ...]
+  --wordpress-html [WORDPRESS_HTML ...]
+  --discourse [DISCOURSE ...]
 
 ```

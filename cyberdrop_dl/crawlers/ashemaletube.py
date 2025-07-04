@@ -10,6 +10,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils.m3u8 import M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -24,7 +25,7 @@ class Selectors:
     USER_NAME = "h1.username"
     PLAYLIST_VIDEOS = "a.playlist-video-item__thumbnail"
     VIDEO_PROPS_JS = "script:contains('uploadDate')"
-    JS_PLAYER = "script:contains('var player = new VideoPlayer')"
+    JS_PLAYER = "script:contains('var playerConfig =')"
     LOGIN_REQUIRED = "div.loginLinks:contains('To watch this video please')"
     IMAGE_ITEM = "div.imgItem"
     ALBUM_IMAGES = "div.gallery-detail div.thumb"
@@ -38,7 +39,8 @@ _SELECTORS = Selectors()
 
 class Format(NamedTuple):
     resolution: str
-    link_str: str
+    url: AbsoluteHttpURL
+    hls: bool
 
 
 class CollectionType(StrEnum):
@@ -180,9 +182,10 @@ class AShemaleTubeCrawler(Crawler):
         player = soup.select_one(_SELECTORS.JS_PLAYER)
         if not player:
             raise ScrapeError(422)
-        is_hls, best_format = parse_player_info(player.text)
-        if is_hls:
-            raise ScrapeError(422)
+
+        best_format = parse_player_info(player.text)
+        if best_format.hls:
+            m3u8_media = M3U8Media(await self._get_m3u8(best_format.url))
 
         if video_object := soup.select_one(_SELECTORS.VIDEO_PROPS_JS):
             json_data = json.loads(video_object.text.strip())
@@ -190,21 +193,24 @@ class AShemaleTubeCrawler(Crawler):
                 scrape_item.possible_datetime = self.parse_iso_date(json_data["uploadDate"])
 
         title: str = css.select_one_get_text(soup, "title").split("- aShemaletube.com")[0].strip()
-        link = self.parse_url(best_format.link_str)
 
         scrape_item.url = canonical_url
-        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
+        filename, ext = self.get_filename_and_ext(best_format.url.name, assume_ext=".mp4")
         custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_format.resolution)
-        await self.handle_file(
-            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
-        )
+
+        handle_file_kwargs = {"custom_filename": custom_filename}
+        if best_format.hls:
+            handle_file_kwargs["m3u8_media"] = m3u8_media
+        else:
+            handle_file_kwargs["debrid_link"] = best_format.url
+
+        return await self.handle_file(canonical_url, scrape_item, filename, ext, **handle_file_kwargs)
 
 
 def parse_player_info(script_text: str) -> tuple[bool, Format]:
     def get_resolution(video):
         return int(video["desc"].rstrip("p"))
 
-    sources = get_text_between(script_text, "sources:", "poster:").strip().strip(",")
+    sources = get_text_between(script_text, "var sources = ", "var playerConfig").strip().strip(";")
     video_data = max(json.loads(sources), key=get_resolution)
-    format: Format = Format(video_data["desc"], video_data["src"])
-    return video_data["hls"], format
+    return Format(video_data["desc"], AbsoluteHttpURL(video_data["src"]), video_data["hls"])

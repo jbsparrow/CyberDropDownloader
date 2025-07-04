@@ -435,7 +435,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 try:
                     url = self.parse_url(link)
                     yield url
-                except ValueError:
+                except Exception:
                     pass
 
         for link in gen_yarl_urls():
