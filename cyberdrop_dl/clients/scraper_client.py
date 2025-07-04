@@ -153,6 +153,12 @@ class ScraperClient:
         except Exception:
             pass
 
+    def update_headers(self, headers: dict[str, str]) -> None:
+        """Updates the headers of the scraper client"""
+        self._headers.update(headers)
+        if hasattr(self, "_curl_session"):
+            self._curl_session.headers.update(headers)
+
     def is_ddos(self, soup: BeautifulSoup) -> bool:
         return self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
 
