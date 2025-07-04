@@ -159,7 +159,7 @@ class DownloadClient:
             gofile_cookies = self.client_manager.cookies.filter_cookies(URL("https://gofile.io"))
             api_key = gofile_cookies.get("accountToken", "")
             if api_key:
-                download_headers["Authorization"] = f"Bearer {api_key.value}"
+                download_headers["Authorization"] = f"Bearer {api_key.value}"  # type: ignore
         return download_headers
 
     @limiter
@@ -349,13 +349,14 @@ class DownloadClient:
             return False
 
         async def save_content(content: aiohttp.StreamReader) -> None:
+            assert media_item.task_id is not None
             await self._append_content(
                 media_item,
                 content,
                 partial(manager.progress_manager.file_progress.advance_file, media_item.task_id),
             )
 
-        downloaded = await self._download(domain, manager, media_item, save_content)
+        downloaded = await self._download(domain, manager, media_item, save_content)  # type: ignore
         if downloaded:
             await asyncio.to_thread(media_item.partial_file.rename, media_item.complete_file)
             if not media_item.is_segment:
@@ -460,6 +461,7 @@ class DownloadClient:
             if media_item.filename == downloaded_filename:
                 if media_item.partial_file.exists():
                     log(f"Found {downloaded_filename} locally, trying to resume")
+                    assert media_item.filesize
                     if media_item.partial_file.stat().st_size >= media_item.filesize != 0:
                         log(f"Deleting partial file {media_item.partial_file}")
                         media_item.partial_file.unlink()
@@ -504,9 +506,9 @@ class DownloadClient:
         await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
         return proceed, skip
 
-    async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path | None]:
+    async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path]:
         """Iterates the filename until it is unique."""
-        partial_file = None
+        partial_file = complete_file.with_suffix(complete_file.suffix + ".part")
         for iteration in itertools.count(1):
             filename = f"{complete_file.stem} ({iteration}){complete_file.suffix}"
             temp_complete_file = media_item.download_folder / filename
