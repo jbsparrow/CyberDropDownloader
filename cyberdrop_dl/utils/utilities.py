@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeGuard,
 
 import aiofiles
 import rich
-from aiohttp import ClientConnectorError, ClientSession, FormData
+from aiohttp import ClientConnectorError, FormData
 from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
 from yarl import URL
@@ -349,7 +349,7 @@ async def send_webhook_message(manager: Manager) -> None:
         ("username", "CyberDrop-DL"),
     )
 
-    async with ClientSession() as session, session.post(url, data=form) as response:
+    async with manager.client_manager._new_session() as session, session.post(url, data=form) as response:
         successful = 200 <= response.status <= 300
         result = [constants.NotificationResult.SUCCESS.value]
         result_to_log = result

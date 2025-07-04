@@ -1,7 +1,8 @@
 import random
 from datetime import timedelta
-from typing import Literal
+from typing import Literal, NamedTuple
 
+import aiohttp
 from pydantic import BaseModel, ByteSize, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
@@ -11,6 +12,15 @@ from cyberdrop_dl.models.validators import falsy_as, to_bytesize, to_timedelta
 
 MIN_REQUIRED_FREE_SPACE = to_bytesize("512MB")
 DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
+
+
+class Timeout(NamedTuple):
+    connect: int
+    read: int
+
+    @property
+    def total(self) -> int:
+        return self.read + self.connect
 
 
 class General(BaseModel):
@@ -65,6 +75,10 @@ class RateLimiting(BaseModel):
     max_simultaneous_downloads: PositiveInt = 15
     rate_limit: PositiveInt = 50
     read_timeout: PositiveInt = 300
+
+    def model_post_init(self, *_) -> None:
+        self._timeout = Timeout(self.connection_timeout, self.read_timeout)
+        self._aiohttp_timeout = aiohttp.ClientTimeout(self._timeout.total, self._timeout.connect)
 
     @field_validator("file_host_cache_expire_after", "forum_cache_expire_after", mode="before")
     @staticmethod

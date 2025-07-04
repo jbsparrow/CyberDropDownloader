@@ -8,32 +8,33 @@ from collections import defaultdict
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import aiohttp
 import certifi
 import truststore
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
+from aiohttp_client_cache.session import CachedSession
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
-from yarl import URL
 
+from cyberdrop_dl import constants, env
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError, TooManyCrawlerErrors
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
-from cyberdrop_dl.utils.logger import log, log_spacer
+from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping
 
     from aiohttp_client_cache.response import CachedResponse
+    from curl_cffi.requests import AsyncSession
     from curl_cffi.requests.models import Response as CurlResponse
 
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
 DOWNLOAD_ERROR_ETAGS = {
@@ -46,7 +47,6 @@ DOWNLOAD_ERROR_ETAGS = {
 }
 
 _crawler_errors: dict[str, int] = defaultdict(int)
-MAX_CRAWLER_ERRORS = 10
 
 
 class DDosGuard:
@@ -80,16 +80,7 @@ class ClientManager:
 
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        global_settings_data = manager.config_manager.global_settings_data
-        self.connection_timeout = global_settings_data.rate_limiting_options.connection_timeout
-        self.read_timeout = global_settings_data.rate_limiting_options.read_timeout
-        self.rate_limit = global_settings_data.rate_limiting_options.rate_limit
-
-        self.download_delay = global_settings_data.rate_limiting_options.download_delay
-        self.user_agent = global_settings_data.general.user_agent
-        self.simultaneous_per_domain = global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
-
-        ssl_context = global_settings_data.general.ssl_context
+        ssl_context = self.manager.global_config.general.ssl_context
         if not ssl_context:
             self.ssl_context = False
         elif ssl_context == "certifi":
@@ -101,8 +92,6 @@ class ClientManager:
             ctx.load_verify_locations(cafile=certifi.where())
 
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
-
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
             "cyberdrop": AsyncLimiter(5, 1),
@@ -125,22 +114,80 @@ class ClientManager:
             "nhentai.net": 1,
         }
 
-        self.global_rate_limiter = AsyncLimiter(self.rate_limit, 1)
+        self.global_rate_limiter = AsyncLimiter(self.manager.global_config.rate_limiting_options.rate_limit, 1)
         self.session_limit = asyncio.Semaphore(50)
         self.download_session_limit = asyncio.Semaphore(
-            self.manager.config_manager.global_settings_data.rate_limiting_options.max_simultaneous_downloads,
+            self.manager.global_config.rate_limiting_options.max_simultaneous_downloads
         )
 
         self.scraper_session = ScraperClient(self)
         self.speed_limiter = DownloadSpeedLimiter(manager)
         self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
+        self._headers = {"user-agent": self.manager.global_config.general.user_agent}
+
+    async def startup(self) -> None:
+        await _set_dns_resolver()
+
+    def new_curl_cffi_session(self) -> AsyncSession:
+        # Calling code should have validated if curl is actually available
+        from curl_cffi.requests import AsyncSession
+
+        proxy_or_none = str(proxy) if (proxy := self.manager.global_config.general.proxy) else None
+        return AsyncSession(
+            headers=self._headers,
+            impersonate="chrome",
+            verify=bool(self.ssl_context),
+            proxy=proxy_or_none,
+            timeout=self.manager.global_config.rate_limiting_options._timeout,
+            cookies={cookie.key: cookie.value for cookie in self.cookies},
+        )
+
+    def new_scrape_session(self) -> CachedSession:
+        trace_configs = _create_request_log_hooks("scrape")
+        return self._new_session(cached=True, trace_configs=trace_configs)
+
+    def new_download_session(self) -> ClientSession:
+        trace_configs = _create_request_log_hooks("download")
+        return self._new_session(cached=False, trace_configs=trace_configs)
+
+    @overload
+    def _new_session(
+        self, cached: Literal[True], trace_configs: list[aiohttp.TraceConfig] | None = None
+    ) -> CachedSession: ...
+
+    @overload
+    def _new_session(
+        self, cached: Literal[False] = False, trace_configs: list[aiohttp.TraceConfig] | None = None
+    ) -> ClientSession: ...
+
+    def _new_session(
+        self, cached: bool = False, trace_configs: list[aiohttp.TraceConfig] | None = None
+    ) -> CachedSession | ClientSession:
+        session_cls = CachedSession if cached else ClientSession
+        kwargs: dict[str, Any] = {"cache": self.manager.cache_manager.request_cache} if cached else {}
+        return session_cls(
+            headers=self._headers,
+            raise_for_status=False,
+            cookie_jar=self.cookies,
+            timeout=self.manager.global_config.rate_limiting_options._aiohttp_timeout,
+            trace_configs=trace_configs,
+            proxy=self.manager.global_config.general.proxy,
+            connector=self._new_tcp_connector(),
+            **kwargs,
+        )
+
+    def _new_tcp_connector(self) -> aiohttp.TCPConnector:
+        assert constants.DNS_RESOLVER is not None
+        conn = aiohttp.TCPConnector(ssl=self.ssl_context, resolver=constants.DNS_RESOLVER())
+        conn._resolver_owner = True
+        return conn
 
     def check_domain_errors(self, domain: str) -> None:
-        if _crawler_errors[domain] >= MAX_CRAWLER_ERRORS:
+        if _crawler_errors[domain] >= env.MAX_CRAWLER_ERRORS:
             if crawler := self.manager.scrape_mapper.disable_crawler(domain):
                 msg = (
-                    f"{crawler.__name__} has been disabled after too many errors. "
+                    f"{crawler.__class__.__name__} has been disabled after too many errors. "
                     f"URLs from the following domains will be ignored: {crawler.SCRAPE_MAPPER_KEYS}"
                 )
                 log(msg, 40)
@@ -195,7 +242,10 @@ class ClientManager:
                     expired_cookies_domains.add(simplified_domain)
 
                 domains_seen.add(simplified_domain)
-                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
+                self.cookies.update_cookies(
+                    {cookie.name: cookie.value},  # type: ignore
+                    response_url=AbsoluteHttpURL(f"https://{cookie.domain}"),
+                )
 
             for simplified_domain in expired_cookies_domains:
                 log(f"Cookies for {simplified_domain} are expired", 30)
@@ -219,7 +269,6 @@ class ClientManager:
         cls,
         response: ClientResponse | CurlResponse | CachedResponse,
         download: bool = False,
-        origin: ScrapeItem | URL | None = None,
     ) -> BeautifulSoup | None:
         """Checks the HTTP status code and raises an exception if it's not acceptable.
 
@@ -233,12 +282,12 @@ class ClientManager:
         def check_etag() -> None:
             if download and (e_tag := headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
                 message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
-                raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
+                raise DownloadError(HTTPStatus.NOT_FOUND, message=message)
 
         async def check_ddos_guard() -> BeautifulSoup | None:
             if soup := await get_soup_no_error(response):
                 if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
-                    raise DDOSGuardError(origin=origin)
+                    raise DDOSGuardError
                 return soup
 
         async def check_json_status() -> None:
@@ -251,10 +300,10 @@ class ClientManager:
                     return
                 json_status: str | int | None = json_resp.get("status")
                 if json_status and isinstance(status, str) and "notFound" in status:
-                    raise ScrapeError(404, origin=origin)
+                    raise ScrapeError(404)
 
                 if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
-                    raise ScrapeError(json_status or status, data["error"], origin=origin)
+                    raise ScrapeError(json_status or status, data["error"])
 
         check_etag()
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
@@ -264,7 +313,7 @@ class ClientManager:
 
         await check_json_status()
         await check_ddos_guard()
-        raise DownloadError(status=status, message=message, origin=origin)
+        raise DownloadError(status=status, message=message)
 
     @staticmethod
     def check_content_length(headers: Mapping[str, Any]) -> None:
@@ -302,7 +351,7 @@ class FlaresolverrResponse:
     cookies: dict
     user_agent: str
     soup: BeautifulSoup | None
-    url: URL
+    url: AbsoluteHttpURL
 
     @classmethod
     def from_dict(cls, flaresolverr_resp: dict) -> FlaresolverrResponse:
@@ -313,7 +362,7 @@ class FlaresolverrResponse:
         url_str: str = solution["url"]
         cookies: dict = solution.get("cookies") or {}
         soup = BeautifulSoup(response, "html.parser") if response else None
-        url = URL(url_str)
+        url = AbsoluteHttpURL(url_str)
         return cls(status, cookies, user_agent, soup, url)
 
 
@@ -322,11 +371,8 @@ class Flaresolverr:
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
-        self.flaresolverr_host: URL = client_manager.manager.config_manager.global_settings_data.general.flaresolverr  # type: ignore
-        self.enabled = bool(self.flaresolverr_host)
+        self.enabled = bool(client_manager.manager.global_config.general.flaresolverr)
         self.session_id: str = ""
-        self.session_create_timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
-        self.timeout = client_manager.scraper_session._timeouts  # Config timeout for normal requests
         self.session_lock = asyncio.Lock()
         self.request_lock = asyncio.Lock()
         self.request_count = 0
@@ -335,26 +381,23 @@ class Flaresolverr:
         self,
         command: str,
         client_session: ClientSession,
-        origin: ScrapeItem | URL | None = None,
         **kwargs,
     ) -> dict:
         """Base request function to call flaresolverr."""
         if not self.enabled:
-            raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
+            raise DDOSGuardError(message="FlareSolverr is not configured")
         async with self.session_lock:
             if not (self.session_id or kwargs.get("session")):
                 await self._create_session()
         return await self._make_request(command, client_session, **kwargs)
 
     async def _make_request(self, command: str, client_session: ClientSession, **kwargs) -> dict[str, Any]:
-        timeout = self.timeout
+        timeout = self.client_manager.manager.global_config.rate_limiting_options._aiohttp_timeout
         if command == "sessions.create":
-            timeout = self.session_create_timeout
+            timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
 
-        headers = client_session.headers.copy()
-        headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
-            if isinstance(value, URL):
+            if isinstance(value, AbsoluteHttpURL):
                 kwargs[key] = str(value)
 
         data = {
@@ -365,15 +408,13 @@ class Flaresolverr:
 
         self.request_count += 1
         msg = f"Waiting For Flaresolverr Response [{self.request_count}]"
+        assert self.client_manager.manager.global_config.general.flaresolverr
         async with (
             self.request_lock,
             self.client_manager.manager.progress_manager.show_status_msg(msg),
         ):
             response = await client_session.post(
-                self.flaresolverr_host / "v1",
-                headers=headers,
-                ssl=self.client_manager.ssl_context,
-                proxy=self.client_manager.proxy,
+                self.client_manager.manager.global_config.general.flaresolverr / "v1",
                 json=data,
                 timeout=timeout,
             )
@@ -384,36 +425,35 @@ class Flaresolverr:
     async def _create_session(self) -> None:
         """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
-        async with ClientSession() as client_session:
+        async with self.client_manager._new_session() as client_session:
             flaresolverr_resp = await self._make_request("sessions.create", client_session, session=session_id)
         status = flaresolverr_resp.get("status")
         if status != "ok":
             raise DDOSGuardError(message="Failed to create flaresolverr session")
         self.session_id = session_id
 
-    async def _destroy_session(self):
+    async def _destroy_session(self) -> None:
         if self.session_id:
-            async with ClientSession() as client_session:
+            async with self.client_manager._new_session() as client_session:
                 await self._make_request("sessions.destroy", client_session, session=self.session_id)
             self.session_id = ""
 
     async def get(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         client_session: ClientSession,
-        origin: ScrapeItem | URL | None = None,
         update_cookies: bool = True,
-    ) -> tuple[BeautifulSoup | None, URL]:
+    ) -> tuple[BeautifulSoup | None, AbsoluteHttpURL]:
         """Returns the resolved URL from the given URL."""
-        json_resp: dict = await self._request("request.get", client_session, origin, url=url)
+        json_resp: dict = await self._request("request.get", client_session, url=url)
 
         try:
             fs_resp = FlaresolverrResponse.from_dict(json_resp)
         except (AttributeError, KeyError):
-            raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin) from None
+            raise DDOSGuardError(message="Invalid response from flaresolverr") from None
 
         if fs_resp.status != "ok":
-            raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
+            raise DDOSGuardError(message="Failed to resolve URL with flaresolverr")
 
         user_agent = client_session.headers["User-Agent"].strip()
         mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: '{user_agent}'\n  Flaresolverr: '{fs_resp.user_agent}'"
@@ -421,9 +461,9 @@ class Flaresolverr:
             self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup)
         ):
             if not update_cookies:
-                raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
+                raise DDOSGuardError(message="Invalid response from flaresolverr")
             if fs_resp.user_agent != user_agent:
-                raise DDOSGuardError(message=mismatch_msg, origin=origin)
+                raise DDOSGuardError(message=mismatch_msg)
 
         if update_cookies:
             if fs_resp.user_agent != user_agent:
@@ -431,7 +471,46 @@ class Flaresolverr:
 
             for cookie in fs_resp.cookies:
                 self.client_manager.cookies.update_cookies(
-                    {cookie["name"]: cookie["value"]}, URL(f"https://{cookie['domain']}")
+                    {cookie["name"]: cookie["value"]}, AbsoluteHttpURL(f"https://{cookie['domain']}")
                 )
 
         return fs_resp.soup, fs_resp.url
+
+
+async def _set_dns_resolver(loop: asyncio.AbstractEventLoop | None = None) -> None:
+    if constants.DNS_RESOLVER is not None:
+        return
+    try:
+        await _test_async_resolver(loop)
+        constants.DNS_RESOLVER = aiohttp.AsyncResolver
+    except Exception as e:
+        constants.DNS_RESOLVER = aiohttp.ThreadedResolver
+        log(f"Unable to setup asynchronous DNS resolver. Falling back to thread based resolver: {e}", 30)
+
+
+async def _test_async_resolver(loop: asyncio.AbstractEventLoop | None = None) -> None:
+    """Test aiodns with a DNS lookup."""
+
+    # pycares (the underlying C extension library that aiodns uses) installs successfully in most cases,
+    # but it fails to actually connect to DNS servers on some platforms (e.g., Android).
+    import aiodns
+
+    async with aiodns.DNSResolver(loop=loop, timeout=5.0) as resolver:
+        _ = await resolver.query("github.com", "A")
+
+
+def _create_request_log_hooks(client_type: Literal["scrape", "download"]) -> list[aiohttp.TraceConfig]:
+    async def on_request_start(*args) -> None:
+        params: aiohttp.TraceRequestStartParams = args[2]
+        log_debug(f"Starting {client_type} {params.method} request to {params.url}", 10)
+
+    async def on_request_end(*args) -> None:
+        params: aiohttp.TraceRequestEndParams = args[2]
+        msg = f"Finishing {client_type} {params.method} request to {params.url}"
+        msg += f" -> response status: {params.response.status}"
+        log_debug(msg, 10)
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+    trace_config.on_request_end.append(on_request_end)
+    return [trace_config]
