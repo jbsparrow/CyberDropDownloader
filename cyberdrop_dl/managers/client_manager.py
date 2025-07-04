@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import ssl
 import time
+from collections import defaultdict
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
@@ -20,14 +21,14 @@ from yarl import URL
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError
+from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError, TooManyCrawlerErrors
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Generator, Mapping
 
     from aiohttp_client_cache.response import CachedResponse
     from curl_cffi.requests.models import Response as CurlResponse
@@ -43,6 +44,9 @@ DOWNLOAD_ERROR_ETAGS = {
     "63a05f27-11d2b": "eFukt Video removed",
     "5a56b09d-1485eb": "eFukt Video removed",
 }
+
+_crawler_errors: dict[str, int] = defaultdict(int)
+MAX_CRAWLER_ERRORS = 10
 
 
 class DDosGuard:
@@ -131,6 +135,32 @@ class ClientManager:
         self.speed_limiter = DownloadSpeedLimiter(manager)
         self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
+
+    def check_domain_errors(self, domain: str) -> None:
+        if _crawler_errors[domain] >= MAX_CRAWLER_ERRORS:
+            if crawler := self.manager.scrape_mapper.disable_crawler(domain):
+                msg = (
+                    f"{crawler.__name__} has been disabled after too many errors. "
+                    f"URLs from the following domains will be ignored: {crawler.SCRAPE_MAPPER_KEYS}"
+                )
+                log(msg, 40)
+            raise TooManyCrawlerErrors
+
+    @contextlib.contextmanager
+    def request_context(self, domain: str) -> Generator[None]:
+        self.check_domain_errors(domain)
+        try:
+            yield
+        except DDOSGuardError:
+            _crawler_errors[domain] += 1
+            self.check_domain_errors(domain)
+            raise
+        else:
+            # we could potencially reset the counter here
+            # _crawler_errors[domain] = 0
+            pass
+        finally:
+            pass
 
     def load_cookie_files(self) -> None:
         if self.manager.config_manager.settings_data.browser_cookies.auto_import:

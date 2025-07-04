@@ -32,6 +32,7 @@ from cyberdrop_dl.exceptions import (
     InvalidExtensionError,
     InvalidURLError,
     NoExtensionError,
+    TooManyCrawlerErrors,
     get_origin,
 )
 from cyberdrop_dl.utils import css
@@ -96,6 +97,8 @@ def error_handling_wrapper(
         link_to_show: URL | str = ""
         try:
             return await func(*args, **kwargs)
+        except TooManyCrawlerErrors:
+            return
         except CDLBaseError as e:
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
