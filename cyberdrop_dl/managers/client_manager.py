@@ -139,7 +139,7 @@ class ClientManager:
             impersonate="chrome",
             verify=bool(self.ssl_context),
             proxy=proxy_or_none,
-            timeout=self.manager.global_config.rate_limiting_options.timeout,
+            timeout=self.manager.global_config.rate_limiting_options._timeout,
             cookies={cookie.key: cookie.value for cookie in self.cookies},
         )
 
@@ -170,7 +170,7 @@ class ClientManager:
             headers=self._headers,
             raise_for_status=False,
             cookie_jar=self.cookies,
-            timeout=self.manager.global_config.rate_limiting_options.aiohttp_timeout,
+            timeout=self.manager.global_config.rate_limiting_options._aiohttp_timeout,
             trace_configs=trace_configs,
             proxy=self.manager.global_config.general.proxy,
             connector=self._new_tcp_connector(),
@@ -392,7 +392,7 @@ class Flaresolverr:
         return await self._make_request(command, client_session, **kwargs)
 
     async def _make_request(self, command: str, client_session: ClientSession, **kwargs) -> dict[str, Any]:
-        timeout = self.client_manager.manager.global_config.rate_limiting_options.aiohttp_timeout
+        timeout = self.client_manager.manager.global_config.rate_limiting_options._aiohttp_timeout
         if command == "sessions.create":
             timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
 
