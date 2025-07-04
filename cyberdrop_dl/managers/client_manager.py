@@ -140,7 +140,7 @@ class ClientManager:
         if _crawler_errors[domain] >= MAX_CRAWLER_ERRORS:
             if crawler := self.manager.scrape_mapper.disable_crawler(domain):
                 msg = (
-                    f"crawler {crawler.INFO.site} has been disabled after too many errors. "
+                    f"{crawler.__name__} has been disabled after too many errors. "
                     f"URLs from the following domains will be ignored: {crawler.SCRAPE_MAPPER_KEYS}"
                 )
                 log(msg, 40)
@@ -154,6 +154,7 @@ class ClientManager:
         except DDOSGuardError:
             _crawler_errors[domain] += 1
             self.check_domain_errors(domain)
+            raise
         else:
             # we could potencially reset the counter here
             # _crawler_errors[domain] = 0
