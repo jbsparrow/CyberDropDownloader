@@ -133,16 +133,13 @@ class ClientManager:
         # Calling code should have validated if curl is actually available
         from curl_cffi.requests import AsyncSession
 
-        if proxy := self.manager.global_config.general.proxy:
-            proxy = str(proxy)
-        else:
-            proxy = None
+        proxy_or_none = str(proxy) if (proxy := self.manager.global_config.general.proxy) else None
         return AsyncSession(
             headers=self._headers,
             impersonate="chrome",
             verify=bool(self.ssl_context),
-            proxy=proxy,
-            timeout=self.manager.global_config.rate_limiting_options._timeout,
+            proxy=proxy_or_none,
+            timeout=self.manager.global_config.rate_limiting_options.timeout,
             cookies={cookie.key: cookie.value for cookie in self.cookies},
         )
 
@@ -173,7 +170,7 @@ class ClientManager:
             headers=self._headers,
             raise_for_status=False,
             cookie_jar=self.cookies,
-            timeout=self.manager.global_config.rate_limiting_options._client_timeout,
+            timeout=self.manager.global_config.rate_limiting_options.aiohttp_timeout,
             trace_configs=trace_configs,
             proxy=self.manager.global_config.general.proxy,
             connector=self._new_tcp_connector(),
@@ -181,10 +178,8 @@ class ClientManager:
         )
 
     def _new_tcp_connector(self) -> aiohttp.TCPConnector:
-        loop = asyncio.get_running_loop()
         assert constants.DNS_RESOLVER is not None
-        resolver = constants.DNS_RESOLVER(loop=loop)
-        conn = aiohttp.TCPConnector(ssl=self.ssl_context, loop=loop, resolver=resolver)
+        conn = aiohttp.TCPConnector(ssl=self.ssl_context, resolver=constants.DNS_RESOLVER())
         conn._resolver_owner = True
         return conn
 
@@ -397,7 +392,7 @@ class Flaresolverr:
         return await self._make_request(command, client_session, **kwargs)
 
     async def _make_request(self, command: str, client_session: ClientSession, **kwargs) -> dict[str, Any]:
-        timeout = self.client_manager.manager.global_config.rate_limiting_options._client_timeout
+        timeout = self.client_manager.manager.global_config.rate_limiting_options.aiohttp_timeout
         if command == "sessions.create":
             timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
 

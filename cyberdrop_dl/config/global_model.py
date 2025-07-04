@@ -18,9 +18,6 @@ class Timeout(NamedTuple):
     connect: int
     read: int
 
-    # Order is according to curl_cffi session
-    # connect_timeout, read_timeout
-
     @property
     def total(self) -> int:
         return self.read + self.connect
@@ -80,8 +77,8 @@ class RateLimiting(BaseModel):
     read_timeout: PositiveInt = 300
 
     def model_post_init(self, *_) -> None:
-        self._timeout = Timeout(self.connection_timeout, self.read_timeout)
-        self._client_timeout = aiohttp.ClientTimeout(self._timeout.total, self._timeout.connect)
+        self.timeout = Timeout(self.connection_timeout, self.read_timeout)
+        self.aiohttp_timeout = aiohttp.ClientTimeout(self.timeout.total, self.timeout.connect)
 
     @field_validator("file_host_cache_expire_after", "forum_cache_expire_after", mode="before")
     @staticmethod
@@ -96,10 +93,6 @@ class RateLimiting(BaseModel):
     def get_jitter(self) -> NonNegativeFloat:
         """Get a random number in the range [0, self.jitter]"""
         return random.uniform(0, self.jitter)
-
-    @property
-    def client_timeout(self) -> aiohttp.ClientTimeout:
-        return aiohttp.ClientTimeout(self._timeout.total, self._timeout.connect)
 
 
 class UIOptions(BaseModel):
