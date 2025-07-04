@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 
 class Selectors:
     JS_PLAYER = "script:contains('playerInstance.setup')"
-    DATE_UPLOADED = "span.updated_at"
     MODEL_NAME = "h2.actor-title-port"
 
 
@@ -59,7 +58,7 @@ class LeakedZoneCrawler(Crawler):
         if not player:
             raise ScrapeError(422)
 
-        url: AbsoluteHttpURL = decode_video_url(player.text)
+        url: AbsoluteHttpURL = decode_video_url(get_encoded_video_url(player.text))
         m3u8_media = M3U8Media(await self._get_m3u8(url))
         model_name = soup.select_one(_SELECTORS.MODEL_NAME).get_text(strip=True)
 
@@ -67,7 +66,10 @@ class LeakedZoneCrawler(Crawler):
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, m3u8_media=m3u8_media)
 
 
-def decode_video_url(script_text: str) -> AbsoluteHttpURL:
-    url = get_text_between(script_text, 'file: f("', '"),')
+def get_encoded_video_url(script_text: str) -> str:
+    return get_text_between(script_text, 'file: f("', '"),')
+
+
+def decode_video_url(url: str) -> AbsoluteHttpURL:
     # cut first and last 16 characters, reverse, base64 decode
     return AbsoluteHttpURL(binascii.a2b_base64(url[-17:15:-1]).decode())
