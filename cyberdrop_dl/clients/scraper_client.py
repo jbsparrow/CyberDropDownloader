@@ -34,22 +34,22 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.client_manager import ClientManager
 
-curl_import_error = None
+_curl_import_error = None
 try:
     from curl_cffi.requests import AsyncSession
 except ImportError as e:
-    curl_import_error = e
+    _curl_import_error = e
 
-P = ParamSpec("P")
-R = TypeVar("R")
-T = TypeVar("T")
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+_T = TypeVar("_T")
 
 
-def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
+def limiter(func: Callable[_P, Coroutine[None, None, _R]]) -> Callable[_P, Coroutine[None, None, _R]]:
     """Wrapper to handle limits for scrape session."""
 
     @wraps(func)
-    async def wrapper(*args, **kwargs) -> R:
+    async def wrapper(*args, **kwargs) -> _R:
         self: ScraperClient = args[0]
         domain: str = args[1]
         with self.client_manager.request_context(domain):
@@ -58,25 +58,20 @@ def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutin
                 await self.client_manager.manager.states.RUNNING.wait()
 
                 if "cffi" in func.__name__:
-                    if curl_import_error is not None:
-                        system = "Android" if env.RUNNING_IN_TERMUX else "the system"
-                        msg = f"curl_cffi is required to scrape URLs from {domain}, but a dependency it's not available on {system}.\n"
-                        msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{curl_import_error!r}"
-                        raise ScrapeError("Missing Dependency", msg)
-                    return await func(*args, **kwargs)
+                    _check_curl_cffi_is_available(domain)
 
                 return await func(*args, **kwargs)
 
     return wrapper
 
 
-def copy_signature(target: Callable[P, R]) -> Callable[[Callable[..., T]], Callable[P, T]]:
+def copy_signature(target: Callable[_P, _R]) -> Callable[[Callable[..., _T]], Callable[_P, _T]]:
     """Decorator to make a function mimic the signature of another function,
     but preserve the return type of the decorated function."""
 
-    def decorator(func: Callable[..., T]) -> Callable[P, T]:
+    def decorator(func: Callable[..., _T]) -> Callable[_P, _T]:
         @functools.wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T:
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(target).replace(  # type: ignore
@@ -126,7 +121,7 @@ class ScraperClient:
         add_request_log_hooks(self._trace_configs)
         self._session = self.new_session()
         self.reddit_session = self.new_session()
-        if curl_import_error is not None:
+        if _curl_import_error is not None:
             return
 
         proxy = str(self.client_manager.proxy) if self.client_manager.proxy else None
@@ -151,7 +146,7 @@ class ScraperClient:
     ) -> None:
         await self._session.close()
         await self.reddit_session.close()
-        if curl_import_error is not None:
+        if _curl_import_error is not None:
             return
         try:
             await self._curl_session.close()
@@ -480,3 +475,11 @@ def add_request_log_hooks(trace_configs: list[aiohttp.TraceConfig]) -> None:
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
     trace_configs.append(trace_config)
+
+
+def _check_curl_cffi_is_available(domain: str) -> None:
+    if _curl_import_error is not None:
+        system = "Android" if env.RUNNING_IN_TERMUX else "the system"
+        msg = f"curl_cffi is required to scrape URLs from {domain}, but a dependency it's not available on {system}.\n"
+        msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{_curl_import_error!r}"
+        raise ScrapeError("Missing Dependency", msg)
