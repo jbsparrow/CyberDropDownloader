@@ -8,29 +8,32 @@ from collections import defaultdict
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import aiohttp
 import certifi
 import truststore
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
+from aiohttp_client_cache.session import CachedSession
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
+from cyberdrop_dl import constants
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError, TooManyCrawlerErrors
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
-from cyberdrop_dl.utils.logger import log, log_spacer
+from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping
 
     from aiohttp_client_cache.response import CachedResponse
+    from curl_cffi.requests import AsyncSession
     from curl_cffi.requests.models import Response as CurlResponse
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -101,7 +104,7 @@ class ClientManager:
             ctx.load_verify_locations(cafile=certifi.where())
 
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
+        self.proxy: AbsoluteHttpURL | None = global_settings_data.general.proxy  # type: ignore
 
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
@@ -135,6 +138,67 @@ class ClientManager:
         self.speed_limiter = DownloadSpeedLimiter(manager)
         self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
+        self._headers = {"user-agent": self.user_agent}
+        self._timeout_tuple = self.connection_timeout + 60, self.connection_timeout
+        self._timeouts = aiohttp.ClientTimeout(*self._timeout_tuple)
+
+    async def startup(self) -> None:
+        await _set_dns_resolver()
+
+    def new_curl_cffi_session(self) -> AsyncSession:
+        # Calling code should have validated if curl is actually available
+        from curl_cffi.requests import AsyncSession
+
+        proxy = str(self.proxy) if self.proxy else None
+        return AsyncSession(
+            headers=self._headers,
+            impersonate="chrome",
+            verify=bool(self.ssl_context),
+            proxy=proxy,
+            timeout=self._timeout_tuple,
+            cookies={c.key: c.value for c in self.cookies},
+        )
+
+    def new_scrape_session(self) -> CachedSession:
+        trace_configs = _create_request_log_hooks("scrape")
+        return self._new_session(cached=True, trace_configs=trace_configs)
+
+    def new_download_session(self) -> ClientSession:
+        trace_configs = _create_request_log_hooks("download")
+        return self._new_session(cached=False, trace_configs=trace_configs)
+
+    @overload
+    def _new_session(
+        self, cached: Literal[True], trace_configs: list[aiohttp.TraceConfig] | None = None
+    ) -> CachedSession: ...
+
+    @overload
+    def _new_session(
+        self, cached: Literal[False] = False, trace_configs: list[aiohttp.TraceConfig] | None = None
+    ) -> ClientSession: ...
+
+    def _new_session(
+        self, cached: bool = False, trace_configs: list[aiohttp.TraceConfig] | None = None
+    ) -> CachedSession | ClientSession:
+        session_cls = CachedSession if cached else ClientSession
+        kwargs: dict[str, Any] = {"cache": self.manager.cache_manager.request_cache} if cached else {}
+        return session_cls(
+            headers=self._headers,
+            raise_for_status=False,
+            cookie_jar=self.cookies,
+            timeout=self._timeouts,
+            trace_configs=trace_configs,
+            connector=self._new_tcp_connector(),
+            **kwargs,
+        )
+
+    def _new_tcp_connector(self) -> aiohttp.TCPConnector:
+        loop = asyncio.get_running_loop()
+        assert constants.DNS_RESOLVER is not None
+        resolver = constants.DNS_RESOLVER(loop=loop)
+        conn = aiohttp.TCPConnector(ssl=self.ssl_context, loop=loop, resolver=resolver)
+        conn._resolver_owner = True
+        return conn
 
     def check_domain_errors(self, domain: str) -> None:
         if _crawler_errors[domain] >= MAX_CRAWLER_ERRORS:
@@ -384,7 +448,7 @@ class Flaresolverr:
     async def _create_session(self) -> None:
         """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
-        async with ClientSession() as client_session:
+        async with self.client_manager._new_session() as client_session:
             flaresolverr_resp = await self._make_request("sessions.create", client_session, session=session_id)
         status = flaresolverr_resp.get("status")
         if status != "ok":
@@ -393,7 +457,7 @@ class Flaresolverr:
 
     async def _destroy_session(self):
         if self.session_id:
-            async with ClientSession() as client_session:
+            async with self.client_manager._new_session() as client_session:
                 await self._make_request("sessions.destroy", client_session, session=self.session_id)
             self.session_id = ""
 
@@ -431,7 +495,45 @@ class Flaresolverr:
 
             for cookie in fs_resp.cookies:
                 self.client_manager.cookies.update_cookies(
-                    {cookie["name"]: cookie["value"]}, URL(f"https://{cookie['domain']}")
+                    {cookie["name"]: cookie["value"]}, AbsoluteHttpURL(f"https://{cookie['domain']}")
                 )
 
         return fs_resp.soup, fs_resp.url
+
+
+async def _set_dns_resolver() -> None:
+    if constants.DNS_RESOLVER is not None:
+        return
+    try:
+        await _test_async_resolver()
+        constants.DNS_RESOLVER = aiohttp.AsyncResolver
+    except Exception:
+        constants.DNS_RESOLVER = aiohttp.ThreadedResolver
+        log("Unable to setup asynchronous DNS resolver. Falling back to thread based resolver", 30)
+
+
+async def _test_async_resolver() -> None:
+    """Test aiodns with a DNS lookup."""
+
+    # pycares (the underliying c extension library that aiodns uses) is installed successfully in most cases
+    # but it fails to actually connect to DNS servers on some platforms (android)
+    import aiodns
+
+    _ = await aiodns.DNSResolver().query("github.com", "A")
+
+
+def _create_request_log_hooks(client_type: Literal["scrape", "download"]) -> list[aiohttp.TraceConfig]:
+    async def on_request_start(*args) -> None:
+        params: aiohttp.TraceRequestStartParams = args[2]
+        log_debug(f"Starting {client_type} {params.method} request to {params.url}", 10)
+
+    async def on_request_end(*args) -> None:
+        params: aiohttp.TraceRequestEndParams = args[2]
+        msg = f"Finishing {client_type} {params.method} request to {params.url}"
+        msg += f" -> response status: {params.response.status}"
+        log_debug(msg, 10)
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+    trace_config.on_request_end.append(on_request_end)
+    return [trace_config]
