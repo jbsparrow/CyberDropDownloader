@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -14,10 +15,14 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-GALLERY_TITLE_SELECTOR = "a#gallery-name"
-IMAGES_SELECTOR = "ul.images a.thumbnail"
-IMAGE_SELECTOR = "img.main-image"
-GALLERY_INFO_SELECTOR = "div.view-navigation a:has(i.fas.fa-reply)"
+class Selectors:
+    GALLERY_TITLE = "a#gallery-name"
+    IMAGES = "ul.images a.thumbnail"
+    IMAGE = "img.main-image"
+    GALLERY_INFO = "div.view-navigation a:has(i.fas.fa-reply)"
+
+
+_SELECTORS = Selectors()
 PRIMARY_URL = AbsoluteHttpURL("https://www.imagebam.com/")
 
 
@@ -35,29 +40,32 @@ class ImageBamCrawler(Crawler):
         self.update_cookies({"nsfw_inter": "1"})
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if is_cdn(scrape_item.url):
-            scrape_item.url = get_view_url(scrape_item.url)
+        if is_thumbnail(scrape_item.url):
+            scrape_item.url = thumbnail_to_img(scrape_item.url)
+            self.manager.task_group.create_task(self.run(scrape_item))
+            return
         if any(part in scrape_item.url.parts for part in ("gallery", "image", "view")):
             return await self.view(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
     async def view(self, scrape_item: ScrapeItem) -> None:
+        # view URLs can either lead to a gallery or a single image.
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         if "Share this gallery" in soup.text:
             return await self.gallery(scrape_item, soup)
         await self.image(scrape_item, soup)
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        gallery_name = css.select_one_get_text(soup, GALLERY_TITLE_SELECTOR)
+        gallery_name = css.select_one_get_text(soup, _SELECTORS.GALLERY_TITLE)
         gallery_id = scrape_item.url.name
         title = self.create_title(gallery_name, gallery_id)
         scrape_item.setup_as_album(title, album_id=gallery_id)
         results = await self.get_album_results(gallery_id)
 
-        for _, new_scrape_item in self.iter_children(scrape_item, soup, IMAGES_SELECTOR):
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.IMAGES):
             if not self.check_album_results(new_scrape_item.url, results):
                 self.manager.task_group.create_task(self.image(new_scrape_item, soup))
 
@@ -66,11 +74,11 @@ class ImageBamCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        image_tag = soup.select_one(IMAGE_SELECTOR)
+        image_tag = soup.select_one(_SELECTORS.IMAGE)
         if not image_tag:
             raise ScrapeError(422)
 
-        gallery_info = soup.select_one(GALLERY_INFO_SELECTOR)
+        gallery_info = soup.select_one(_SELECTORS.GALLERY_INFO)
         if gallery_info and not scrape_item.album_id:
             gallery_url = self.parse_url(css.get_attr(gallery_info, "href"))
             gallery_id = gallery_url.name
@@ -83,10 +91,13 @@ class ImageBamCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
-def is_cdn(url: AbsoluteHttpURL) -> bool:
-    return "imagebam" in url.host.split(".") and "." in url.host.rstrip(".com")
+def is_thumbnail(url: AbsoluteHttpURL) -> bool:
+    return "thumbs" in url.host
 
 
-def get_view_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-    view_id = url.name.rsplit("_", 1)[0]
-    return PRIMARY_URL / "view" / view_id
+def thumbnail_to_img(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+    stem = Path(url.name).stem
+    image_id = stem.removesuffix("_t")
+    if stem.endswith("_t"):
+        return PRIMARY_URL / "view" / image_id
+    return PRIMARY_URL / "image" / image_id
