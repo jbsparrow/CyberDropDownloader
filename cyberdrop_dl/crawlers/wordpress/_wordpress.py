@@ -164,8 +164,6 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
         if self.PRIMARY_URL.host == link.host:
             return
         new_scrape_item = scrape_item.create_new(link)
-        new_scrape_item.type = None
-        new_scrape_item.reset_childen()
         self.handle_external_links(new_scrape_item)
         scrape_item.add_children()
 
