@@ -579,7 +579,7 @@ class Crawler(ABC):
         )
         return M3U8Media(video, audio, subtitle), rendition_group
 
-    async def get_m3u8(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
+    async def get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> M3U8:
         """Get m3u8 media from a video only index (non variant m3u8)"""
         return M3U8Media(await self._get_m3u8(url, headers))
 

@@ -10,7 +10,6 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.m3u8 import M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -185,7 +184,7 @@ class AShemaleTubeCrawler(Crawler):
 
         best_format = parse_player_info(player.text)
         if best_format.hls:
-            m3u8_media = M3U8Media(await self._get_m3u8(best_format.url))
+            m3u8_media = await self.get_m3u8(best_format.url)
 
         if video_object := soup.select_one(_SELECTORS.VIDEO_PROPS_JS):
             json_data = json.loads(video_object.text.strip())
