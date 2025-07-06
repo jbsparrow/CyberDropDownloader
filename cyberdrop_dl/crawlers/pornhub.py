@@ -328,7 +328,7 @@ def get_date_from_hls_url(url: str) -> datetime.date:
 
 def get_medias(soup: BeautifulSoup) -> list[Media]:
     flashvars: str = css.select_one(soup, _SELECTORS.JS_VIDEO_INFO).text
-    media_text = get_text_between(flashvars, 'mediaDefinitions":', ',"isVertical"')
+    media_text = get_text_between(flashvars, '"mediaDefinitions":', '"isVertical"').strip().removesuffix(",")
     return json.loads(media_text)
 
 
