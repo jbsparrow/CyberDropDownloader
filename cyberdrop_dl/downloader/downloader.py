@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media
+    from cyberdrop_dl.utils.m3u8 import M3U8, RenditionGroup
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -148,7 +148,7 @@ class Downloader:
                 return await self.start_download(media_item)
 
     @error_handling_wrapper
-    async def download_hls(self, media_item: MediaItem, m3u8_media: M3U8Media) -> None:
+    async def download_hls(self, media_item: MediaItem, m3u8_media: RenditionGroup) -> None:
         await self.client.mark_incomplete(media_item, self.domain)
         if not self.manager.ffmpeg.is_available:
             raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
@@ -172,7 +172,7 @@ class Downloader:
         await self.finalize_download(media_item, downloaded=True)
 
     async def _process_m3u8_media(
-        self, media_item: MediaItem, m3u8_media: M3U8Media
+        self, media_item: MediaItem, m3u8_media: RenditionGroup
     ) -> tuple[Path, Path | None, Path | None]:
         results: list[Path | None] = []
         for media_type, m3u8 in zip(("video", "audio", "subtitles"), m3u8_media, strict=True):

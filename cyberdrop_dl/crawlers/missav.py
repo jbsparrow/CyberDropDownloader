@@ -53,10 +53,10 @@ class MissAVCrawler(Crawler):
 
         uuid = get_uuid(soup)
         m3u8_playlist_url = M3U8_SERVER / uuid / "playlist.m3u8"
-        m3u8_media, rendition_group = await self.get_m3u8_playlist(m3u8_playlist_url)
+        m3u8, rendition_group = await self.get_m3u8_from_playlist_url(m3u8_playlist_url)
         title = Path(title).as_posix().replace("/", "-")  # remove OS separators
         filename, ext = self.get_filename_and_ext(f"{title} [{rendition_group.resolution.name}].mp4")
-        await self.handle_file(m3u8_playlist_url, scrape_item, filename, ext, m3u8_media=m3u8_media)
+        await self.handle_file(m3u8_playlist_url, scrape_item, filename, ext, m3u8=m3u8)
 
 
 def get_uuid(soup: BeautifulSoup) -> str:

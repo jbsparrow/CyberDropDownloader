@@ -184,7 +184,7 @@ class AShemaleTubeCrawler(Crawler):
 
         best_format = parse_player_info(player.text)
         if best_format.hls:
-            m3u8_media = await self.get_m3u8_single_video(best_format.url)
+            m3u8 = await self.get_m3u8_from_index_url(best_format.url)
 
         if video_object := soup.select_one(_SELECTORS.VIDEO_PROPS_JS):
             json_data = json.loads(video_object.text.strip())
@@ -199,7 +199,7 @@ class AShemaleTubeCrawler(Crawler):
 
         handle_file_kwargs = {"custom_filename": custom_filename}
         if best_format.hls:
-            handle_file_kwargs["m3u8_media"] = m3u8_media
+            handle_file_kwargs["m3u8"] = m3u8
         else:
             handle_file_kwargs["debrid_link"] = best_format.url
 

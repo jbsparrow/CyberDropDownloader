@@ -133,7 +133,7 @@ class FikFapCrawler(Crawler):
 
     async def handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
         m3u8_playlist_url = self.parse_url(post.stream_url)
-        m3u8_media, rendition_group = await self.get_m3u8_playlist(m3u8_playlist_url)
+        m3u8_media, rendition_group = await self.get_m3u8_from_playlist_url(m3u8_playlist_url)
 
         scrape_item.url = post.url
         scrape_item.possible_datetime = to_timestamp(post.created_at)
@@ -150,5 +150,5 @@ class FikFapCrawler(Crawler):
             ext,
             custom_filename=custom_filename,
             debrid_link=m3u8_playlist_url,
-            m3u8_media=m3u8_media,
+            m3u8=m3u8_media,
         )
