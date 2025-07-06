@@ -76,7 +76,7 @@ class GenericCrawler(Crawler):
         filename, _ = self.get_filename_and_ext(fullname.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
-    async def get_content_type(self, url: URL) -> str:
+    async def get_content_type(self, url: AbsoluteHttpURL) -> str:
         async with self.request_limiter:
             headers = await self.client.get_head(self.DOMAIN, url)
         content_type: str = headers.get("Content-Type", "")

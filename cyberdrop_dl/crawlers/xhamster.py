@@ -78,7 +78,7 @@ class XhamsterCrawler(Crawler):
             await self.process_children(scrape_item, gallerys_url, _SELECTORS.GALLERY, "galleries")
 
     @error_handling_wrapper
-    async def process_children(self, scrape_item: ScrapeItem, url: URL, selector: str, name: str) -> None:
+    async def process_children(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL, selector: str, name: str) -> None:
         async for soup in self.web_pager(url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -119,7 +119,7 @@ class XhamsterCrawler(Crawler):
             link, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=download_url
         )
 
-    async def get_model_details(self, url: URL, *model_name_choices: str) -> dict:
+    async def get_model_details(self, url: AbsoluteHttpURL, *model_name_choices: str) -> dict:
         model_names = model_name_choices or []
 
         async with self.request_limiter:
@@ -128,7 +128,7 @@ class XhamsterCrawler(Crawler):
         json_info = get_window_initials_json(soup)
         del soup
 
-        def get_model_value():
+        def get_model_value() -> dict[str, Any] | None:
             for model_name in model_names:
                 if (value := json_info.get(model_name)) is not None:
                     return value
