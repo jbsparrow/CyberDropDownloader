@@ -26,11 +26,11 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
     from types import TracebackType
 
-    from aiohttp_client_cache.session import CachedSession
     from curl_cffi.requests.impersonate import BrowserTypeLiteral as BrowserTarget
     from curl_cffi.requests.models import Response as CurlResponse
     from multidict import CIMultiDictProxy
 
+    from cyberdrop_dl.cached_session import CDLCachedSession
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
     from cyberdrop_dl.managers.client_manager import ClientManager
 
@@ -82,7 +82,7 @@ def copy_signature(target: Callable[_P, _R]) -> Callable[[Callable[..., _T]], Ca
 
 
 @asynccontextmanager
-async def cache_control_manager(client_session: CachedSession, disabled: bool = False):
+async def cache_control_manager(client_session: CDLCachedSession, disabled: bool = False):
     try:
         client_session.cache.disabled = constants.DISABLE_CACHE or disabled
         yield
@@ -100,7 +100,7 @@ class ScraperClient:
         # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
         min_html_file_path_len = len(str(self._pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
         self._max_html_stem_len = 245 - min_html_file_path_len
-        self._session: CachedSession
+        self._session: CDLCachedSession
         self._curl_session: AsyncSession
 
     def _startup(self) -> None:
@@ -251,7 +251,7 @@ class ScraperClient:
         cache_disabled: bool = False,
     ) -> tuple[AnyResponse, BeautifulSoup | None]:
         """_resilient_get with cache_control."""
-        headers = self.client_manager._headers | (headers or {})
+        headers = self.client_manager._headers | {"CDL_DOMAIN": domain} | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response, soup_or_none = await self._resilient_get(url, headers, request_params)
 

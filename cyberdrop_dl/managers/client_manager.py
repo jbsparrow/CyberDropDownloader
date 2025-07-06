@@ -14,11 +14,11 @@ import aiohttp
 import certifi
 import truststore
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
-from aiohttp_client_cache.session import CachedSession
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl import constants, env
+from cyberdrop_dl.cached_session import CDLCachedSession
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -125,6 +125,7 @@ class ClientManager:
         self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
         self._headers = {"user-agent": self.manager.global_config.general.user_agent}
+        self.crawler_limiters: dict[str, AsyncLimiter] = {}
 
     async def startup(self) -> None:
         await _set_dns_resolver()
@@ -143,7 +144,7 @@ class ClientManager:
             cookies={cookie.key: cookie.value for cookie in self.cookies},
         )
 
-    def new_scrape_session(self) -> CachedSession:
+    def new_scrape_session(self) -> CDLCachedSession:
         trace_configs = _create_request_log_hooks("scrape")
         return self._new_session(cached=True, trace_configs=trace_configs)
 
@@ -154,7 +155,7 @@ class ClientManager:
     @overload
     def _new_session(
         self, cached: Literal[True], trace_configs: list[aiohttp.TraceConfig] | None = None
-    ) -> CachedSession: ...
+    ) -> CDLCachedSession: ...
 
     @overload
     def _new_session(
@@ -163,9 +164,16 @@ class ClientManager:
 
     def _new_session(
         self, cached: bool = False, trace_configs: list[aiohttp.TraceConfig] | None = None
-    ) -> CachedSession | ClientSession:
-        session_cls = CachedSession if cached else ClientSession
-        kwargs: dict[str, Any] = {"cache": self.manager.cache_manager.request_cache} if cached else {}
+    ) -> CDLCachedSession | ClientSession:
+        session_cls = CDLCachedSession if cached else ClientSession
+        kwargs: dict[str, Any] = (
+            {
+                "cache": self.manager.cache_manager.request_cache,
+                "crawler_limiters": self.crawler_limiters,
+            }
+            if cached
+            else {}
+        )
         return session_cls(
             headers=self._headers,
             raise_for_status=False,
