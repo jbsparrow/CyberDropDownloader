@@ -148,7 +148,7 @@ class Downloader:
                 return await self.start_download(media_item)
 
     @error_handling_wrapper
-    async def download_hls(self, media_item: MediaItem, m3u8_media: RenditionGroup) -> None:
+    async def download_hls(self, media_item: MediaItem, m3u8_group: RenditionGroup) -> None:
         await self.client.mark_incomplete(media_item, self.domain)
         if not self.manager.ffmpeg.is_available:
             raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
@@ -157,7 +157,7 @@ class Downloader:
         self.update_queued_files()
         task_id = self.manager.progress_manager.file_progress.add_task(domain=self.domain, filename=media_item.filename)
         media_item.set_task_id(task_id)
-        video, audio, subtitles = await self._process_m3u8_media(media_item, m3u8_media)
+        video, audio, subtitles = await self._process_m3u8_rendition_group(media_item, m3u8_group)
         if not subtitles and not audio:
             await asyncio.to_thread(video.rename, media_item.complete_file)
         else:
@@ -171,11 +171,11 @@ class Downloader:
         await self.client.handle_media_item_completion(media_item, downloaded=True)
         await self.finalize_download(media_item, downloaded=True)
 
-    async def _process_m3u8_media(
-        self, media_item: MediaItem, m3u8_media: RenditionGroup
+    async def _process_m3u8_rendition_group(
+        self, media_item: MediaItem, m3u8_group: RenditionGroup
     ) -> tuple[Path, Path | None, Path | None]:
         results: list[Path | None] = []
-        for media_type, m3u8 in zip(("video", "audio", "subtitles"), m3u8_media, strict=True):
+        for media_type, m3u8 in zip(("video", "audio", "subtitles"), m3u8_group, strict=True):
             if not m3u8:
                 results.append(None)
                 continue

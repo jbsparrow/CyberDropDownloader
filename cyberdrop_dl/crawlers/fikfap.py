@@ -133,16 +133,12 @@ class FikFapCrawler(Crawler):
 
     async def handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
         m3u8_playlist_url = self.parse_url(post.stream_url)
-        m3u8_media, rendition_group = await self.get_m3u8_from_playlist_url(m3u8_playlist_url)
-
+        m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_playlist_url)
         scrape_item.url = post.url
         scrape_item.possible_datetime = to_timestamp(post.created_at)
         scrape_item.setup_as_album(self.create_title(f"{post.user} [user]", post.user_id), album_id=post.user_id)
         filename, ext = self.get_filename_and_ext(f"{post.media_id}.mp4")
-        custom_filename = self.create_custom_filename(
-            post.label, ext, file_id=post.id, resolution=rendition_group.resolution.name
-        )
-
+        custom_filename = self.create_custom_filename(post.label, ext, file_id=post.id, resolution=info.resolution.name)
         await self.handle_file(
             post.url,
             scrape_item,
@@ -150,5 +146,5 @@ class FikFapCrawler(Crawler):
             ext,
             custom_filename=custom_filename,
             debrid_link=m3u8_playlist_url,
-            m3u8=m3u8_media,
+            m3u8=m3u8,
         )

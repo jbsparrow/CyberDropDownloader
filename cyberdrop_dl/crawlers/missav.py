@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -53,9 +52,9 @@ class MissAVCrawler(Crawler):
 
         uuid = get_uuid(soup)
         m3u8_playlist_url = M3U8_SERVER / uuid / "playlist.m3u8"
-        m3u8, rendition_group = await self.get_m3u8_from_playlist_url(m3u8_playlist_url)
-        title = Path(title).as_posix().replace("/", "-")  # remove OS separators
-        filename, ext = self.get_filename_and_ext(f"{title} [{rendition_group.resolution.name}].mp4")
+        m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_playlist_url)
+        ext = ".mp4"
+        filename = self.create_custom_filename(title, ext, resolution=info.resolution.name)
         await self.handle_file(m3u8_playlist_url, scrape_item, filename, ext, m3u8=m3u8)
 
 
