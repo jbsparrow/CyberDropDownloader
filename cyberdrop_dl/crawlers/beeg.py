@@ -55,7 +55,7 @@ class BeegComCrawler(Crawler):
         title: str = next(data for data in file["data"] if data.get("cd_column") == "sf_name")["cd_value"]
         best_format = get_best_format(file["hls_resources"])
         scrape_item.possible_datetime = self.parse_iso_date(facts.get("fc_created", ""))
-        m3u8_media = await self.get_m3u8(best_format.url)
+        m3u8_media = await self.get_m3u8_single_video(best_format.url)
         filename, ext = self.get_filename_and_ext(best_format.url.name)
         custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_format.heigth)
         await self.handle_file(

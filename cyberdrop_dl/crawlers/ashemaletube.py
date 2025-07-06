@@ -184,7 +184,7 @@ class AShemaleTubeCrawler(Crawler):
 
         best_format = parse_player_info(player.text)
         if best_format.hls:
-            m3u8_media = await self.get_m3u8(best_format.url)
+            m3u8_media = await self.get_m3u8_single_video(best_format.url)
 
         if video_object := soup.select_one(_SELECTORS.VIDEO_PROPS_JS):
             json_data = json.loads(video_object.text.strip())
