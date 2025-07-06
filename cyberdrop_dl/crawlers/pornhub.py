@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import json
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, TypedDict
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 
 PRIMARY_URL = AbsoluteHttpURL("https://www.pornhub.com")
 ALBUM_API_URL = PRIMARY_URL / "album/show_album_json"
+REQUIRES_PREMIUM_SINCE = datetime.date(2025, 6, 29)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -285,14 +287,14 @@ class PornHubCrawler(Crawler):
     async def get_best_format(self, soup: BeautifulSoup) -> Format:
         mp4_format = next(get_mp4_formats(soup), None)
         if not mp4_format:
-            raise ScrapeError(422)
+            raise ScrapeError(422, message="Unable to get mp4 format")
 
         mp4_media_url = self.parse_url(mp4_format.url)
         async with self.request_limiter:
             mp4_media: list[Media] = await self.client.get_json(self.DOMAIN, mp4_media_url, cache_disabled=True)
 
         if not mp4_media:
-            raise ScrapeError(422)
+            raise ScrapeError(422, message="Video has no mp4 formats available")
 
         return max(Format.new(media) for media in mp4_media)
 
@@ -303,9 +305,25 @@ def get_upload_date_str(soup: BeautifulSoup) -> str:
 
 
 def get_mp4_formats(soup: BeautifulSoup) -> Generator[Format]:
+    date: datetime.date | None = None
     for media in get_medias(soup):
         if media["format"] == "mp4":
             yield Format.new(media)
+        elif not date:
+            date = get_date_from_hls_url(media["videoUrl"])
+            if date >= REQUIRES_PREMIUM_SINCE:
+                # TODO: download best hls instead
+                # TODO: add date as scrape item possible datetime
+                raise ScrapeError(
+                    HTTPStatus.PAYMENT_REQUIRED, message="Downloading this video requires a premium account"
+                )
+
+
+def get_date_from_hls_url(url: str) -> datetime.date:
+    # ex: https://ev.phncdn.com/videos/202506/29/13012925/....
+    year_and_month, day, _ = url.split("/videos/", 1)[-1].split("/", 2)
+    year, month, day = int(year_and_month[:4]), int(year_and_month[4:]), int(day)
+    return datetime.date(year, month, day)
 
 
 def get_medias(soup: BeautifulSoup) -> list[Media]:
