@@ -225,11 +225,14 @@ class VariantM3U8Parser:
             if group.codecs.video not in exclude:
                 yield group
 
+    def get_best_group(self, only: Iterable[str] = (), *, exclude: Iterable[str] = ()) -> RenditionGroupDetails:
+        return next(self.get_rendition_groups(only=only, exclude=exclude))
+
 
 def get_best_group_from_playlist(
     m3u8_playlist: M3U8, only: Iterable[str] = (), *, exclude: Iterable[str] = ()
 ) -> RenditionGroupDetails:
-    return next(VariantM3U8Parser(m3u8_playlist).get_rendition_groups(only=only, exclude=exclude))
+    return VariantM3U8Parser(m3u8_playlist).get_best_group(only=only, exclude=exclude)
 
 
 def get_resolution_from_url(url: AbsoluteHttpURL | str) -> Resolution:
