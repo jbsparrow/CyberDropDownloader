@@ -217,7 +217,7 @@ class VariantM3U8:
         self, only: Iterable[str] = (), *, exclude: Iterable[str] = ()
     ) -> Generator[RenditionGroup]:
         """Yields M3U8 options, best to worst"""
-        assert not (only and exclude)
+        assert not (only and exclude), "only one of `only` or `exclude` can be supplied, not both"
         if isinstance(exclude, str):
             exclude = (exclude,)
         if isinstance(only, str):

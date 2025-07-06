@@ -559,16 +559,31 @@ class Crawler(ABC):
     ) -> None:
         filters.cache_filter_functions[url.host] = filter_fn
 
-    async def get_m3u8_playlist(self, m3u8_playlist_url: AbsoluteHttpURL, /) -> tuple[M3U8Media, RenditionGroup]:
-        m3u8_playlist = await self._get_m3u8(m3u8_playlist_url)
+    async def get_m3u8_playlist(
+        self,
+        m3u8_playlist_url: AbsoluteHttpURL,
+        /,
+        headers: dict[str, str] | None = None,
+        *,
+        only: Iterable[str] = (),
+        exclude: Iterable[str] = ("vp09",),
+    ) -> tuple[M3U8Media, RenditionGroup]:
+        """Get m3u8 media from a playlist m3u8 (variant m3u8)"""
+        m3u8_playlist = await self._get_m3u8(m3u8_playlist_url, headers)
         assert m3u8_playlist.is_variant
-        rendition_group = m3u8_playlist.as_variant().get_best_group(exclude="vp09")
-        video = await self._get_m3u8(rendition_group.urls.video)
-        audio = await self._get_m3u8(rendition_group.urls.audio) if rendition_group.urls.audio else None
-        subtitle = await self._get_m3u8(rendition_group.urls.subtitle) if rendition_group.urls.subtitle else None
+        rendition_group = m3u8_playlist.as_variant().get_best_group(only=only, exclude=exclude)
+        video = await self._get_m3u8(rendition_group.urls.video, headers)
+        audio = await self._get_m3u8(rendition_group.urls.audio, headers) if rendition_group.urls.audio else None
+        subtitle = (
+            await self._get_m3u8(rendition_group.urls.subtitle, headers) if rendition_group.urls.subtitle else None
+        )
         return M3U8Media(video, audio, subtitle), rendition_group
 
-    async def _get_m3u8(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
+    async def get_m3u8(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
+        """Get m3u8 media from a video only index (non variant m3u8)"""
+        return M3U8Media(await self._get_m3u8(url, headers))
+
+    async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> M3U8:
         headers = headers or {}
         async with self.request_limiter:
             content = await self.client.get_text(self.DOMAIN, url, headers)
