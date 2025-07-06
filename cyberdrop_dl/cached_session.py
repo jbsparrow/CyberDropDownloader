@@ -45,11 +45,8 @@ with warnings.catch_warnings():
             **kwargs,
         ) -> ClientResponse:
             headers = self._prepare_headers(kwargs.get("headers"))
-            if domain := headers.pop("CDL_DOMAIN", None):
-                limiter = self._crawler_limiters[domain]
-            else:
-                limiter = self._null_cdl_limiter
-
+            domain = headers.pop("CDL_DOMAIN", "")
+            limiter = self._crawler_limiters.get(domain, self._null_cdl_limiter)
             kwargs["headers"] = headers
             async with limiter:
                 return await super()._request(method, str_or_url, **kwargs)
