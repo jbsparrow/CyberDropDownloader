@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import binascii
+import itertools
 from enum import IntEnum
 from typing import TYPE_CHECKING, ClassVar
 
@@ -60,13 +61,10 @@ class LeakedZoneCrawler(Crawler):
         title = self.create_title(model_name)
         scrape_item.setup_as_profile(title)
 
-        req_params = {"params": {"page": 1}}
         headers = {"X-Requested-With": "XMLHttpRequest"}
-        while True:
+        for page in itertools.count(1):
             async with self.request_limiter:
-                posts = await self.client.get_json(
-                    self.DOMAIN, scrape_item.url, headers=headers, request_params=req_params
-                )
+                posts = await self.client.get_json(self.DOMAIN, scrape_item.url.with_query(page=page), headers=headers)
             if not posts:
                 break
             for post in posts:
@@ -75,7 +73,6 @@ class LeakedZoneCrawler(Crawler):
                     await self.handle_gallery_video(scrape_item, post, model_name)
                 elif post_type == PostType.IMAGE:
                     await self.handle_gallery_image(scrape_item, post)
-            req_params["params"]["page"] += 1
 
     async def handle_gallery_video(self, scrape_item, post, model_name):
         video_id: str = str(post["id"])
