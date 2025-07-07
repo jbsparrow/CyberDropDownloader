@@ -31,17 +31,14 @@ class Gif:
     id: str
     urls: Links
     date: TimeStamp
-    download_url: AbsoluteHttpURL
-    web_url: AbsoluteHttpURL
+    url: AbsoluteHttpURL
     title: str | None = None
 
     @staticmethod
     def from_dict(gif: dict[str, Any]) -> Gif:
-        id_: str = gif["id"]
         urls: Links = gif["urls"]
-        download_url = parse_url(urls.get("hd") or urls["sd"], relative_to=PRIMARY_URL_WWW)
-        web_url = _canonical_url(id_)
-        return Gif(id_, urls, gif["createDate"], download_url, web_url, gif.get("title"))
+        url = parse_url(urls.get("hd") or urls["sd"], relative_to=PRIMARY_URL_WWW)
+        return Gif(gif["id"], urls, gif["createDate"], url, gif.get("title"))
 
 
 class RedGifsCrawler(Crawler):
@@ -79,14 +76,13 @@ class RedGifsCrawler(Crawler):
         title = self.create_title(user_id)
         scrape_item.setup_as_album(title)
 
-        async for gifs in self.user_profile_pager(user_id):
+        async for gifs in self._user_profile_pager(user_id):
             for gif in gifs:
-                filename, ext = self.get_filename_and_ext(gif.download_url.name)
-                new_scrape_item = scrape_item.create_child(gif.web_url, possible_datetime=gif.date)
-                await self.handle_file(gif.download_url, new_scrape_item, filename, ext)
+                new_scrape_item = scrape_item.create_child(_canonical_url(gif.id))
+                await self._handle_gif(new_scrape_item, gif)
                 scrape_item.add_children()
 
-    async def user_profile_pager(self, user_id: str) -> AsyncIterable[list[Gif]]:
+    async def _user_profile_pager(self, user_id: str) -> AsyncIterable[list[Gif]]:
         total_pages: int | None = None
         for page in itertools.count(1):
             async with self.request_limiter:
@@ -121,13 +117,14 @@ class RedGifsCrawler(Crawler):
         title_part: str = json_resp["gif"].get("title") or "Loose Files"
         title = self.create_title(title_part)
         scrape_item.setup_as_album(title)
-        scrape_item.possible_datetime = json_resp["gif"]["createDate"]
 
-        links: dict[str, str] = json_resp["gif"]["urls"]
-        link_str: str = links.get("hd") or links["sd"]
-        link = self.parse_url(link_str)
-        filename, ext = self.get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
+        gif = Gif.from_dict(json_resp["gif"])
+        await self._handle_gif(scrape_item, gif)
+
+    async def _handle_gif(self, scrape_item: ScrapeItem, gif: Gif) -> None:
+        scrape_item.possible_datetime = gif.date
+        filename, ext = self.get_filename_and_ext(gif.url.name)
+        await self.handle_file(gif.url, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def get_auth_token(self, token_url: AbsoluteHttpURL) -> None:
