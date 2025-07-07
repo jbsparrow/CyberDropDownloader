@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.leakedzone import LeakedZoneCrawler, decode_video_url
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -21,12 +21,13 @@ class Selectors:
 
 
 _SELECTORS = Selectors()
+PRIMARY_URL = AbsoluteHttpURL("https://hotleak.vip")
 
 
 class HotLeakVipCrawler(LeakedZoneCrawler):
-    DOMAIN = "hotleak.vip"
-    FOLDER_DOMAIN = "HotLeakVip"
-    PRIMARY_URL = AbsoluteHttpURL("https://hotleak.vip")
+    DOMAIN: ClassVar[str] = "hotleak.vip"
+    FOLDER_DOMAIN: ClassVar[str] = "HotLeakVip"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:

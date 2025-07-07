@@ -44,6 +44,7 @@ class LeakedZoneCrawler(Crawler):
     DOMAIN: ClassVar[str] = "leakedzone"
     FOLDER_DOMAIN: ClassVar[str] = "LeakedZone"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    IMAGES_CDN: ClassVar[AbsoluteHttpURL] = IMAGES_CDN
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)
@@ -87,9 +88,8 @@ class LeakedZoneCrawler(Crawler):
 
     async def handle_gallery_image(self, scrape_item: ScrapeItem, post: dict[str, Any]) -> None:
         image_url: AbsoluteHttpURL = IMAGES_CDN / post["image"]
-        image_web_url = PRIMARY_URL / "photo" / str(post["id"])
         filename, ext = self.get_filename_and_ext(image_url.name)
-        new_scrape_item = scrape_item.create_child(image_web_url)
+        new_scrape_item = scrape_item.create_child(image_url)
         await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)
 
     @error_handling_wrapper
