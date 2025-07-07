@@ -79,10 +79,11 @@ class LeakedZoneCrawler(Crawler):
         canonical_url: AbsoluteHttpURL = PRIMARY_URL / scrape_item.url.parts[1] / "video" / video_id
         if await self.check_complete_from_referer(canonical_url):
             return
+        scrape_item.url = canonical_url
         url: AbsoluteHttpURL = decode_video_url(post["stream_url_play"])
         m3u8_media = M3U8Media(await self._get_m3u8(url))
         filename, ext = self.get_filename_and_ext(f"{model_name} [{video_id}].mp4")
-        await self.handle_file(canonical_url, scrape_item, filename, ext, m3u8_media=m3u8_media)
+        await self.handle_file(scrape_item.url, scrape_item, filename, ext, m3u8_media=m3u8_media)
 
     async def handle_gallery_image(self, scrape_item, post):
         image_url: AbsoluteHttpURL = IMAGES_CDN / post["image"]
