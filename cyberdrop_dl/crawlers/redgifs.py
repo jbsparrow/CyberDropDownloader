@@ -27,7 +27,7 @@ class RedGifsCrawler(Crawler):
         await self.get_auth_token(API_ENTRYPOINT / "v2/auth/temporary")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if scrape_item.url.host != self.PRIMARY_URL.host:
+        if self.is_subdomain(scrape_item.url):
             raise ValueError
         if "users" in scrape_item.url.parts:
             return await self.user(scrape_item)
