@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.leakedzone import LeakedZoneCrawler, decode_video_url
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -49,7 +49,7 @@ class HotLeakVipCrawler(LeakedZoneCrawler):
         filename, ext = self.get_filename_and_ext(f"{model_name} [{video_id}].mp4")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, m3u8_media=m3u8_media)
 
-    async def handle_gallery_image(self, scrape_item, post):
+    async def handle_gallery_image(self, scrape_item: ScrapeItem, post: dict[str, Any]) -> None:
         image_url: AbsoluteHttpURL = self.parse_url(post["player"])
         filename, ext = self.get_filename_and_ext(image_url.name)
         new_scrape_item = scrape_item.create_child(image_url)
