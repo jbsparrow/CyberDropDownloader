@@ -230,8 +230,8 @@ class Crawler(ABC):
                 log(f"Skipping {item.url} as it has already been scraped", 10)
 
     @classmethod
-    def is_subdomain(cls, url: AbsoluteHttpURL) -> bool:
-        primary_domain = cls.PRIMARY_URL.host.removeprefix("www.")
+    def is_subdomain(cls, url: AbsoluteHttpURL, domain_to_compare: str | None = None) -> bool:
+        primary_domain = (domain_to_compare or cls.PRIMARY_URL.host).removeprefix("www.")
         other_domain = url.host.removeprefix("www.")
         if primary_domain == other_domain:
             return False
