@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.leakedzone import LeakedZoneCrawler, decode_video_url
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -22,12 +22,14 @@ class Selectors:
 
 _SELECTORS = Selectors()
 PRIMARY_URL = AbsoluteHttpURL("https://hotleak.vip")
+IMAGES_CDN = AbsoluteHttpURL("https://image-cdn.hotleak.vip")
 
 
 class HotLeakVipCrawler(LeakedZoneCrawler):
     DOMAIN: ClassVar[str] = "hotleak.vip"
     FOLDER_DOMAIN: ClassVar[str] = "HotLeakVip"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    IMAGES_CDN: ClassVar[AbsoluteHttpURL] = IMAGES_CDN
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
@@ -48,9 +50,3 @@ class HotLeakVipCrawler(LeakedZoneCrawler):
 
         filename, ext = self.get_filename_and_ext(f"{model_name} [{video_id}].mp4")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, m3u8_media=m3u8_media)
-
-    async def handle_gallery_image(self, scrape_item: ScrapeItem, post: dict[str, Any]) -> None:
-        image_url: AbsoluteHttpURL = self.parse_url(post["player"])
-        filename, ext = self.get_filename_and_ext(image_url.name)
-        new_scrape_item = scrape_item.create_child(image_url)
-        await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)
