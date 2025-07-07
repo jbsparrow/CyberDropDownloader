@@ -22,7 +22,7 @@ class Selectors:
     IMAGE_THUMB = "div[id*='_photo_'] img[id^='album_photo_']"
     VIDEO_DIV = "div[id*='video_']"
     VIDEO = 'a[href^="/video/"]'
-    SEARCH_DIV_selector = "div[class^='well']"
+    SEARCH_DIV = "div[class^='well']"
     VIDEO_DATE = "div.pull-right.big-views-xs.visible-xs > span.text-white"
     ALBUM_TITLE = "div.panel.panel-default > div.panel-heading > div.pull-left"
     VIDEO_SRC_SD = 'source[title="SD"]'
@@ -175,7 +175,7 @@ class TokioMotionCrawler(Crawler):
             search_title = self.create_title(search_title)
 
         scrape_item.setup_as_album(search_title)
-        selector = f"{_SELECTORS.SEARCH_DIV_selector} "
+        selector = f"{_SELECTORS.SEARCH_DIV} "
         selector += _SELECTORS.ALBUM if is_album else _SELECTORS.VIDEO
         scraper = self.album if is_album else self.video
 
