@@ -61,8 +61,7 @@ class LeakedZoneCrawler(Crawler):
         scrape_item.setup_as_profile(title)
 
         req_params = {"params": {"page": 1}}
-        user_agent: str = self.manager.config_manager.global_settings_data.general.user_agent
-        headers = {"user-agent": user_agent, "X-Requested-With": "XMLHttpRequest"}
+        headers = {"X-Requested-With": "XMLHttpRequest"}
         while True:
             async with self.request_limiter:
                 posts = await self.client.get_json(
