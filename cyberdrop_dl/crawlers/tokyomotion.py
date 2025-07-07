@@ -76,14 +76,13 @@ class TokioMotionCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        scrape_item.possible_datetime = self.parse_date(css.select_one_get_text(soup, self.video_date_selector))
-
         src = soup.select_one('source[title="SD"]') or soup.select_one('source[title="HD"]')
         if not src:
             if "This is a private" in soup.text:
                 raise ScrapeError(401, "Private video")
             raise ScrapeError(422, "Couldn't find video source")
 
+        scrape_item.possible_datetime = self.parse_date(css.select_one_get_text(soup, self.video_date_selector))
         link_str: str = css.get_attr(src, "src")
         link = self.parse_url(link_str)
         title = css.select_one_get_text(soup, "title").rsplit(" - TOKYO Motion")[0].strip()
