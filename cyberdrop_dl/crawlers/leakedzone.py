@@ -118,4 +118,5 @@ def get_encoded_video_url(script_text: str) -> str:
 
 def decode_video_url(url: str) -> str:
     # cut first and last 16 characters, reverse, base64 decode
+    # TODO: Research if this work on any JW Player
     return binascii.a2b_base64(url[-17:15:-1]).decode()
