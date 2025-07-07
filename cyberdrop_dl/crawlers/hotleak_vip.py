@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.leakedzone import LeakedZoneCrawler, decode_video_url
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.m3u8 import M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -39,14 +39,11 @@ class HotLeakVipCrawler(LeakedZoneCrawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        light_gallery_item = soup.select_one(_SELECTORS.LIGHT_GALLERY_ITEM)
-        if not light_gallery_item:
-            raise ScrapeError(422)
-
-        video_data = json.loads(light_gallery_item["data-video"])
-        url: AbsoluteHttpURL = self.parse_url(decode_video_url(video_data["source"][0]["src"]))
+        video_info_text = css.select_one_get_attr(soup, _SELECTORS.LIGHT_GALLERY_ITEM, "data-video")
+        video_data: dict[str, Any] = json.loads(video_info_text)
+        url = self.parse_url(decode_video_url(video_data["source"][0]["src"]))
         m3u8_media = M3U8Media(await self._get_m3u8(url))
-        model_name = soup.select_one(_SELECTORS.MODEL_NAME).get_text(strip=True)
-
-        filename, ext = self.get_filename_and_ext(f"{model_name} [{video_id}].mp4")
+        model_name = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME)
+        ext = ".mp4"
+        filename = self.create_custom_filename(model_name, ext, file_id=video_id)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, m3u8_media=m3u8_media)
