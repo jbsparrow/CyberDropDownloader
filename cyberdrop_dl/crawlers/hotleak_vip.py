@@ -41,7 +41,7 @@ class HotLeakVipCrawler(LeakedZoneCrawler):
             raise ScrapeError(422)
 
         video_data = json.loads(light_gallery_item["data-video"])
-        url: AbsoluteHttpURL = decode_video_url(video_data["source"][0]["src"])
+        url: AbsoluteHttpURL = self.parse_url(decode_video_url(video_data["source"][0]["src"]))
         m3u8_media = M3U8Media(await self._get_m3u8(url))
         model_name = soup.select_one(_SELECTORS.MODEL_NAME).get_text(strip=True)
 
