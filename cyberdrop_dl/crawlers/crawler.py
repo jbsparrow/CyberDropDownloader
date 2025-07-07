@@ -61,7 +61,7 @@ SupportedDomains: TypeAlias = OneOrTuple[str]
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
 HASH_PREFIXES = "md5:", "sha1:", "sha256:", "xxh128:"
-VALID_RESOLUTION_NAMES = "4K", "8K", "Unknown"
+VALID_RESOLUTION_NAMES = "4K", "8K", "HQ", "Unknown"
 
 
 @dataclass(slots=True, frozen=True)
