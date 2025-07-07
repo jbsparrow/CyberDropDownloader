@@ -3,7 +3,7 @@ from __future__ import annotations
 import binascii
 import itertools
 from enum import IntEnum
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from aiolimiter import AsyncLimiter
 
@@ -74,7 +74,7 @@ class LeakedZoneCrawler(Crawler):
                 elif post_type == PostType.IMAGE:
                     await self.handle_gallery_image(scrape_item, post)
 
-    async def handle_gallery_video(self, scrape_item, post, model_name):
+    async def handle_gallery_video(self, scrape_item: ScrapeItem, post: dict[str, Any], model_name: str) -> None:
         video_id: str = str(post["id"])
         canonical_url: AbsoluteHttpURL = PRIMARY_URL / scrape_item.url.parts[1] / "video" / video_id
         if await self.check_complete_from_referer(canonical_url):
@@ -85,10 +85,11 @@ class LeakedZoneCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(f"{model_name} [{video_id}].mp4")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, m3u8_media=m3u8_media)
 
-    async def handle_gallery_image(self, scrape_item, post):
+    async def handle_gallery_image(self, scrape_item: ScrapeItem, post: dict[str, Any]) -> None:
         image_url: AbsoluteHttpURL = IMAGES_CDN / post["image"]
+        image_web_url = PRIMARY_URL / "photo" / str(post["id"])
         filename, ext = self.get_filename_and_ext(image_url.name)
-        new_scrape_item = scrape_item.create_child(image_url)
+        new_scrape_item = scrape_item.create_child(image_web_url)
         await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)
 
     @error_handling_wrapper
