@@ -16,8 +16,7 @@ if TYPE_CHECKING:
 
 # Primary URL needds `www.` to prevent redirect
 # TODO: add `www.`` to primary to Primary URL and update all database entries
-PRIMARY_URL = AbsoluteHttpURL("https://redgifs.com/")
-PRIMARY_URL_WWW = AbsoluteHttpURL("https://www.redgifs.com/")
+PRIMARY_URL = AbsoluteHttpURL("https://www.redgifs.com/")
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
 
 
@@ -37,7 +36,7 @@ class Gif:
     @staticmethod
     def from_dict(gif: dict[str, Any]) -> Gif:
         urls: Links = gif["urls"]
-        url = parse_url(urls.get("hd") or urls["sd"], relative_to=PRIMARY_URL_WWW)
+        url = parse_url(urls.get("hd") or urls["sd"], relative_to=PRIMARY_URL)
         return Gif(gif["id"], urls, gif["createDate"], url, gif.get("title"))
 
 
@@ -140,7 +139,7 @@ def _id(name: str) -> str:
 
 
 def _canonical_url(name_or_id: str) -> AbsoluteHttpURL:
-    return PRIMARY_URL_WWW / "watch" / _id(name_or_id)
+    return PRIMARY_URL / "watch" / _id(name_or_id)
 
 
 def fix_db_referer(referer: str) -> str:
