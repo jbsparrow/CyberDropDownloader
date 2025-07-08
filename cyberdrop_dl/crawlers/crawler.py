@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import datetime
 import re
 from abc import ABC, abstractmethod
@@ -8,7 +9,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, NoReturn, ParamSpec, TypeAlias, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, NamedTuple, NoReturn, ParamSpec, TypeAlias, TypeVar, final
 
 import yarl
 from aiolimiter import AsyncLimiter
@@ -18,7 +19,7 @@ from cyberdrop_dl import constants
 from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError
+from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
@@ -50,6 +51,7 @@ if TYPE_CHECKING:
 
     from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup, Tag
+    from rich.progress import TaskID
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
@@ -59,7 +61,7 @@ OneOrTuple: TypeAlias = T | tuple[T, ...]
 SupportedPaths: TypeAlias = Mapping[str, OneOrTuple[str]]
 SupportedDomains: TypeAlias = OneOrTuple[str]
 
-UNKNOWN_URL_PATH_MSG = "Unknown URL path"
+
 HASH_PREFIXES = "md5:", "sha1:", "sha256:", "xxh128:"
 VALID_RESOLUTION_NAMES = "4K", "8K", "HQ", "Unknown"
 
@@ -83,36 +85,6 @@ class CrawlerInfo(NamedTuple):
     supported_paths: SupportedPaths
 
 
-def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R | None]]:
-    """Wrapper that handles `task_id` creation and removal for scrape items"""
-
-    @wraps(func)
-    async def wrapper(*args, **kwargs) -> R | None:
-        self: Crawler = args[0]
-        scrape_item: ScrapeItem = args[1]
-        await self.manager.states.RUNNING.wait()
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-        try:
-            if not self.SKIP_PRE_CHECK:
-                _pre_check_scrape_item(scrape_item)
-            return await func(scrape_item, **kwargs)  # type: ignore
-        except ValueError:
-            log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
-            self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
-            await self.manager.log_manager.write_scrape_error_log(scrape_item.url, UNKNOWN_URL_PATH_MSG)
-        except MaxChildrenError:
-
-            @error_handling_wrapper
-            async def raise_e(self, scrape_item: ScrapeItem) -> NoReturn:
-                raise
-
-            await raise_e(self, scrape_item)
-        finally:
-            self.scraping_progress.remove_task(task_id)
-
-    return wrapper
-
-
 class Crawler(ABC):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ()
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {}
@@ -129,8 +101,8 @@ class Crawler(ABC):
     @final
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
+        self.create_task = manager.task_group.create_task
         self.downloader: Downloader = field(init=False)
-        self.scraping_progress = manager.progress_manager.scraping_progress
         self.client: ScraperClient = field(init=False)
         self.startup_lock = asyncio.Lock()
         self.request_limiter = AsyncLimiter(10, 1)
@@ -205,29 +177,58 @@ class Crawler(ABC):
     async def async_startup(self) -> None: ...  # noqa: B027
 
     @final
-    async def run(self, item: ScrapeItem) -> None:
+    async def run(self, scrape_item: ScrapeItem) -> None:
         """Runs the crawler loop."""
-        if not item.url.host:
+        if not scrape_item.url.host:
             return
         if self.disabled:
             return
 
-        await self.manager.states.RUNNING.wait()
         self.waiting_items += 1
+        async with self._semaphore:
+            await self.manager.states.RUNNING.wait()
+            self.waiting_items -= 1
+            if scrape_item.url.path_qs in self.scraped_items:
+                return log(f"Skipping {scrape_item.url} as it has already been scraped", 10)
+
+            self.scraped_items.append(scrape_item.url.path_qs)
+            with self._fetch_context(scrape_item):
+                await self.fetch(scrape_item)
+
+    @final
+    @contextlib.contextmanager
+    def _fetch_context(self, scrape_item: ScrapeItem) -> Generator[TaskID]:
+        with self.new_task_id(scrape_item.url) as task_id:
+            try:
+                if not self.SKIP_PRE_CHECK:
+                    _pre_check_scrape_item(scrape_item)
+                yield task_id
+            except ValueError:
+                self.create_task(self.raise_e(scrape_item, ScrapeError("Unknown URL path")))
+            except MaxChildrenError as e:
+                self.create_task(self.raise_e(scrape_item, e))
+            finally:
+                pass
+
+    @error_handling_wrapper
+    async def raise_e(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception) -> NoReturn:
+        raise exc
+
+    @final
+    @contextlib.contextmanager
+    def new_task_id(self, url: AbsoluteHttpURL) -> Generator[TaskID]:
+        """Creates a new task_id (shows the URL in the UI and logs)"""
         scrape_prefix = "Scraping"
         if self.IS_FALLBACK_GENERIC:
             scrape_prefix += " (unsupported domain)"
         else:
             scrape_prefix += f" [{self.FOLDER_DOMAIN}]"
-
-        async with self._semaphore:
-            self.waiting_items -= 1
-            if item.url.path_qs not in self.scraped_items:
-                log(f"{scrape_prefix}: {item.url}", 20)
-                self.scraped_items.append(item.url.path_qs)
-                await create_task_id(self.fetch)(self, item)  # type: ignore
-            else:
-                log(f"Skipping {item.url} as it has already been scraped", 10)
+        log(f"{scrape_prefix}: {url}", 20)
+        task_id = self.manager.progress_manager.scraping_progress.add_task(url)
+        try:
+            yield task_id
+        finally:
+            self.manager.progress_manager.scraping_progress.remove_task(task_id)
 
     async def handle_file(
         self,
@@ -705,3 +706,17 @@ def _validate_supported_paths(cls: type[Crawler]) -> None:
             paths = (paths,)
         for path in paths:
             assert "`" not in path, f"{cls.__name__}, Invalid path {path_name}: {path}"
+
+
+def auto_task_id(
+    func: Callable[Concatenate[_CrawlerT, ScrapeItem, P], Coroutine[None, None, R]],
+) -> Callable[Concatenate[_CrawlerT, ScrapeItem, P], Coroutine[None, None, R]]:
+    """Autocreate a new `task_id` from the scrape_item of the method"""
+
+    @wraps(func)
+    async def wrapper(self: _CrawlerT, scrape_item: ScrapeItem, *args: P.args, **kwargs: P.kwargs) -> R:
+        await self.manager.states.RUNNING.wait()
+        with self.new_task_id(scrape_item.url):
+            return await func(self, scrape_item, *args, **kwargs)
+
+    return wrapper
