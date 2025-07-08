@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.dates import TimeStamp
 
 # Primary URL needds `www.` to prevent redirect
-# TODO: add `www.`` to primary to Primary URL and update all database entries
 PRIMARY_URL = AbsoluteHttpURL("https://www.redgifs.com/")
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
 
@@ -43,7 +42,7 @@ class Gif:
 class RedGifsCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "User": "/users/<user>",
-        "Video": "/watch/<gif_id>",
+        "Gif": "/watch/<gif_id>",
         "Embeds": "/ifr/<gif_id>",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
@@ -109,10 +108,9 @@ class RedGifsCrawler(Crawler):
 
         scrape_item.url = canonical_url
         async with self.request_limiter:
-            api_url = API_ENTRYPOINT / "v2/gifs" / post_id
+            api_url = API_ENTRYPOINT / "v2/gifs" / post_id.lower()
             json_resp: dict[str, dict] = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
 
-        # TODO: cast response as Gif object
         title_part: str = json_resp["gif"].get("title") or "Loose Files"
         title = self.create_title(title_part)
         scrape_item.setup_as_album(title)
@@ -143,5 +141,6 @@ def _canonical_url(name_or_id: str) -> AbsoluteHttpURL:
 
 
 def fix_db_referer(referer: str) -> str:
-    id_ = _id(referer.rsplit("/", 1)[-1])
-    return str(_canonical_url(id_))
+    url = AbsoluteHttpURL(referer)
+    name = url.name or url.parent.name
+    return str(_canonical_url(name))
