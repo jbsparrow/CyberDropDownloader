@@ -470,7 +470,7 @@ class Crawler(ABC):
             scrape_item.add_children()
 
     async def web_pager(
-        self, url: URL, next_page_selector: str | None = None, *, cffi: bool = False, **kwargs: Any
+        self, url: AbsoluteHttpURL, next_page_selector: str | None = None, *, cffi: bool = False, **kwargs: Any
     ) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages.
 
@@ -483,7 +483,7 @@ class Crawler(ABC):
 
     async def _web_pager(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         selector: Callable[[BeautifulSoup], str | None] | str | None = None,
         *,
         cffi: bool = False,
