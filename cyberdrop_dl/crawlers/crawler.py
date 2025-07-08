@@ -44,6 +44,7 @@ from cyberdrop_dl.utils.utilities import (
 P = ParamSpec("P")
 R = TypeVar("R")
 T = TypeVar("T")
+_T_co = TypeVar("_T_co", covariant=True)
 
 
 if TYPE_CHECKING:
@@ -101,7 +102,6 @@ class Crawler(ABC):
     @final
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.create_task = manager.task_group.create_task
         self.downloader: Downloader = field(init=False)
         self.client: ScraperClient = field(init=False)
         self.startup_lock = asyncio.Lock()
@@ -115,6 +115,10 @@ class Crawler(ABC):
         self.log_debug = log_debug
         self._semaphore = asyncio.Semaphore(20)
         self.__post_init__()
+
+    @final
+    def create_task(self, coro: Coroutine[Any, Any, _T_co]) -> asyncio.Task[T]:
+        return self.manager.task_group.create_task(coro)
 
     def __post_init__(self) -> None: ...  # noqa: B027
 
@@ -211,7 +215,7 @@ class Crawler(ABC):
                 pass
 
     @error_handling_wrapper
-    async def raise_e(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception) -> NoReturn:
+    def raise_e(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception) -> NoReturn:
         raise exc
 
     @final
