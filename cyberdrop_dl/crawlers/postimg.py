@@ -3,8 +3,6 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
@@ -17,11 +15,15 @@ if TYPE_CHECKING:
 
 PRIMARY_URL = AbsoluteHttpURL("https://postimages.org/")
 DOWNLOAD_BUTTON_SELECTOR = "a[id=download]"
-API_ENTRYPOINT = URL("https://postimg.cc/json")
+API_ENTRYPOINT = AbsoluteHttpURL("https://postimg.cc/json")
 
 
 class PostImgCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/gallery/...", "Image": "/...", "Direct links": ""}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/gallery/...",
+        "Image": "/...",
+        "Direct links": "",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "postimg"
     FOLDER_DOMAIN: ClassVar[str] = "PostImg"

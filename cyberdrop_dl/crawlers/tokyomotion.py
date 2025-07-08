@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -14,14 +13,36 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 PRIMARY_URL = AbsoluteHttpURL("https://www.tokyomotion.net")
+
+
+class Selectors:
+    ALBUM = 'a[href^="/album/"]'
+    IMAGE = "img[class='img-responsive-mw']"
+    IMAGE_THUMB = "div[id*='_photo_'] img[id^='album_photo_']"
+    VIDEO_DIV = "div[id*='video_']"
+    VIDEO = 'a[href^="/video/"]'
+    SEARCH_DIV = "div[class^='well']"
+    VIDEO_DATE = "div.pull-right.big-views-xs.visible-xs > span.text-white"
+    ALBUM_TITLE = "div.panel.panel-default > div.panel-heading > div.pull-left"
+    VIDEO_SRC_SD = 'source[title="SD"]'
+    VIDEO_SRC_HD = 'source[title="HD"]'
+    VIDEO_SRC = f"{VIDEO_SRC_HD}, {VIDEO_SRC_SD}"
+
+
+_SELECTORS = Selectors()
 
 
 class TokioMotionCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Albums": ("/user/<user>/albums/", "/album/<album_id>"),
-        "Photo": ("/photo/<photo_id>", "/user/<user>/favorite/photos"),
+        "Albums": (
+            "/user/<user>/albums/",
+            "/album/<album_id>",
+        ),
+        "Photo": (
+            "/photo/<photo_id>",
+            "/user/<user>/favorite/photos",
+        ),
         "Playlist": "/user/<user>/favorite/videos",
         "Profiles": "/user/<user>",
         "Search Results": "/search?...",
@@ -30,18 +51,6 @@ class TokioMotionCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a.prevnext"
     DOMAIN: ClassVar[str] = "tokyomotion"
-
-    def __post_init__(self) -> None:
-        self.album_selector = 'a[href^="/album/"]'
-        self.image_link_selector = 'a[href^="/photo/"]'
-        self.image_selector = "img[class='img-responsive-mw']"
-        self.image_thumb_selector = "div[id*='_photo_'] img[id^='album_photo_']"
-        self.title_selector = "meta[property='og:title']"
-        self.video_div_selector = "div[id*='video_']"
-        self.video_selector = 'a[href^="/video/"]'
-        self.search_div_selector = "div[class^='well']"
-        self.video_date_selector = "div.pull-right.big-views-xs.visible-xs > span.text-white"
-        self.album_title_selector = "div.panel.panel-default > div.panel-heading > div.pull-left"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = scrape_item.url.without_query_params("page")
@@ -76,15 +85,14 @@ class TokioMotionCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        scrape_item.possible_datetime = self.parse_date(css.select_one_get_text(soup, self.video_date_selector))
-
-        src = soup.select_one('source[title="SD"]') or soup.select_one('source[title="HD"]')
+        src = soup.select_one(_SELECTORS.VIDEO_SRC)
         if not src:
             if "This is a private" in soup.text:
                 raise ScrapeError(401, "Private video")
             raise ScrapeError(422, "Couldn't find video source")
 
-        link_str: str = css.get_attr(src, "src")
+        scrape_item.possible_datetime = self.parse_date(css.select_one_get_text(soup, _SELECTORS.VIDEO_DATE))
+        link_str = css.get_attr(src, "src")
         link = self.parse_url(link_str)
         title = css.select_one_get_text(soup, "title").rsplit(" - TOKYO Motion")[0].strip()
         filename, ext = f"{video_id}.mp4", ".mp4"
@@ -99,7 +107,7 @@ class TokioMotionCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        img = soup.select_one(self.image_selector)
+        img = soup.select_one(_SELECTORS.IMAGE)
         if not img:
             if "This is a private" in soup.text:
                 raise ScrapeError(401, "Private Photo")
@@ -133,7 +141,7 @@ class TokioMotionCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
                 raise ScrapeError(401, "Private album")
-            for _, link in self.iter_tags(soup, self.image_thumb_selector, "src"):
+            for _, link in self.iter_tags(soup, _SELECTORS.IMAGE_THUMB, "src"):
                 link = remove_parts(link, "tmb")
                 filename, ext = self.get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
@@ -144,9 +152,7 @@ class TokioMotionCrawler(Crawler):
     async def albums(self, scrape_item: ScrapeItem) -> None:
         self.add_user_title(scrape_item)
         async for soup in self.web_pager(scrape_item.url):
-            for _, new_scrape_item in self.iter_children(
-                scrape_item, soup, self.album_selector, new_title_part="albums"
-            ):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM, new_title_part="albums"):
                 await self.album(new_scrape_item)
 
     @error_handling_wrapper
@@ -169,8 +175,8 @@ class TokioMotionCrawler(Crawler):
             search_title = self.create_title(search_title)
 
         scrape_item.setup_as_album(search_title)
-        selector = f"{self.search_div_selector} "
-        selector += self.album_selector if is_album else self.video_selector
+        selector = f"{_SELECTORS.SEARCH_DIV} "
+        selector += _SELECTORS.ALBUM if is_album else _SELECTORS.VIDEO
         scraper = self.album if is_album else self.video
 
         async for soup in self.web_pager(scrape_item.url):
@@ -184,7 +190,7 @@ class TokioMotionCrawler(Crawler):
             scrape_item.add_to_parent_title("favorite")
 
         scrape_item.setup_as_album("videos")
-        selector = f"{self.video_div_selector} {self.video_selector}"
+        selector = f"{_SELECTORS.VIDEO_DIV} {_SELECTORS.VIDEO}"
 
         async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
@@ -201,7 +207,7 @@ class TokioMotionCrawler(Crawler):
             return scrape_item.url.parts[3]
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        return css.select_one_get_text(soup, self.album_title_selector)
+        return css.select_one_get_text(soup, _SELECTORS.ALBUM_TITLE)
 
     def add_user_title(self, scrape_item: ScrapeItem) -> None:
         try:

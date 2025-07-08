@@ -20,11 +20,10 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem,
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils import css, m3u8
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
-from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media, RenditionGroup
 from cyberdrop_dl.utils.strings import safe_format
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
@@ -61,7 +60,7 @@ SupportedDomains: TypeAlias = OneOrTuple[str]
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
 HASH_PREFIXES = "md5:", "sha1:", "sha256:", "xxh128:"
-VALID_RESOLUTION_NAMES = "4K", "8K", "Unknown"
+VALID_RESOLUTION_NAMES = "4K", "8K", "HQ", "Unknown"
 
 
 @dataclass(slots=True, frozen=True)
@@ -238,7 +237,7 @@ class Crawler(ABC):
         *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
-        m3u8_media: M3U8Media | None = None,
+        m3u8: m3u8.RenditionGroup | None = None,
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
 
@@ -254,13 +253,13 @@ class Crawler(ABC):
             assert is_absolute_http_url(debrid_link)
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
-        await self.handle_media_item(media_item, m3u8_media)
+        await self.handle_media_item(media_item, m3u8)
 
     def log_bug_report(self, msg: str, level: int = 30) -> None:
         msg += f". Please file a bug report at {NEW_ISSUE_URL}"
         log(msg, level)
 
-    async def handle_media_item(self, media_item: MediaItem, m3u8_media: M3U8Media | None = None) -> None:
+    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int. "
@@ -281,11 +280,11 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if not m3u8_media:
+        if not m3u8:
             self.manager.task_group.create_task(self.downloader.run(media_item))
             return
 
-        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_media))
+        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8))
 
     @final
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
@@ -329,10 +328,9 @@ class Crawler(ABC):
         """Checks whether an album has completed given its domain and album id."""
         return await self.manager.db_manager.history_table.check_album(self.DOMAIN, album_id)
 
-    def handle_external_links(self, scrape_item: ScrapeItem, reset: bool = False) -> None:
+    def handle_external_links(self, scrape_item: ScrapeItem) -> None:
         """Maps external links to the scraper class."""
-        if reset:
-            scrape_item.reset()
+        scrape_item.reset()
         self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -471,7 +469,7 @@ class Crawler(ABC):
             scrape_item.add_children()
 
     async def web_pager(
-        self, url: URL, next_page_selector: str | None = None, *, cffi: bool = False, **kwargs: Any
+        self, url: AbsoluteHttpURL, next_page_selector: str | None = None, *, cffi: bool = False, **kwargs: Any
     ) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages.
 
@@ -484,7 +482,7 @@ class Crawler(ABC):
 
     async def _web_pager(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         selector: Callable[[BeautifulSoup], str | None] | str | None = None,
         *,
         cffi: bool = False,
@@ -559,20 +557,35 @@ class Crawler(ABC):
     ) -> None:
         filters.cache_filter_functions[url.host] = filter_fn
 
-    async def get_m3u8_playlist(self, m3u8_playlist_url: AbsoluteHttpURL, /) -> tuple[M3U8Media, RenditionGroup]:
-        m3u8_playlist = await self._get_m3u8(m3u8_playlist_url)
-        assert m3u8_playlist.is_variant
-        rendition_group = m3u8_playlist.as_variant().get_best_group(exclude="vp09")
-        video = await self._get_m3u8(rendition_group.urls.video)
-        audio = await self._get_m3u8(rendition_group.urls.audio) if rendition_group.urls.audio else None
-        subtitle = await self._get_m3u8(rendition_group.urls.subtitle) if rendition_group.urls.subtitle else None
-        return M3U8Media(video, audio, subtitle), rendition_group
+    async def get_m3u8_from_playlist_url(
+        self,
+        m3u8_playlist_url: AbsoluteHttpURL,
+        /,
+        headers: dict[str, str] | None = None,
+        *,
+        only: Iterable[str] = (),
+        exclude: Iterable[str] = ("vp09",),
+    ) -> tuple[m3u8.RenditionGroup, m3u8.RenditionGroupDetails]:
+        """Get m3u8 rendition group from a playlist m3u8 (variant m3u8), selecting the best format"""
+        m3u8_playlist = await self._get_m3u8(m3u8_playlist_url, headers)
+        rendition_group_info = m3u8.get_best_group_from_playlist(m3u8_playlist, only=only, exclude=exclude)
+        renditions_urls = rendition_group_info.urls
+        video = await self._get_m3u8(renditions_urls.video, headers)
+        audio = await self._get_m3u8(renditions_urls.audio, headers) if renditions_urls.audio else None
+        subtitle = await self._get_m3u8(renditions_urls.subtitle, headers) if renditions_urls.subtitle else None
+        return m3u8.RenditionGroup(video, audio, subtitle), rendition_group_info
 
-    async def _get_m3u8(self, url: AbsoluteHttpURL, headers: dict[str, str] | None = None) -> M3U8:
+    async def get_m3u8_from_index_url(
+        self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None
+    ) -> m3u8.RenditionGroup:
+        """Get m3u8 rendition group from an index that only has 1 rendition, a video (non variant m3u8)"""
+        return m3u8.RenditionGroup(await self._get_m3u8(url, headers))
+
+    async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> m3u8.M3U8:
         headers = headers or {}
         async with self.request_limiter:
             content = await self.client.get_text(self.DOMAIN, url, headers)
-        return M3U8(content, url.parent)
+        return m3u8.M3U8(content, url.parent)
 
     def create_custom_filename(
         self,

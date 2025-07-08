@@ -310,8 +310,6 @@ class MessageBoardCrawler(Crawler, is_abc=True):
             self.manager.task_group.create_task(self.run(scrape_item.create_child(link)))
             return
         new_scrape_item = scrape_item.create_child(link)
-        new_scrape_item.type = None
-        new_scrape_item.reset_childen()
         self.handle_external_links(new_scrape_item)
         scrape_item.add_children()
 
