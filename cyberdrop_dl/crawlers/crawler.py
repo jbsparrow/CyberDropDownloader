@@ -9,7 +9,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, NamedTuple, NoReturn, ParamSpec, TypeAlias, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
 
 import yarl
 from aiolimiter import AsyncLimiter
@@ -117,7 +117,7 @@ class Crawler(ABC):
         self.__post_init__()
 
     @final
-    def create_task(self, coro: Coroutine[Any, Any, _T_co]) -> asyncio.Task[T]:
+    def create_task(self, coro: Coroutine[Any, Any, _T_co]) -> asyncio.Task[_T_co]:
         return self.manager.task_group.create_task(coro)
 
     def __post_init__(self) -> None: ...  # noqa: B027
@@ -192,30 +192,45 @@ class Crawler(ABC):
         async with self._semaphore:
             await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
-            if scrape_item.url.path_qs in self.scraped_items:
-                return log(f"Skipping {scrape_item.url} as it has already been scraped", 10)
+            og_url = scrape_item.url
+            scrape_item.url = url = self.transform_url(scrape_item.url)
+            if og_url != url:
+                log(f"URL transformed: \n old: {og_url} \n new: {url}")
 
-            self.scraped_items.append(scrape_item.url.path_qs)
-            with self._fetch_context(scrape_item):
+            if url.path_qs in self.scraped_items:
+                return log(f"Skipping {url} as it has already been scraped", 10)
+
+            self.scraped_items.append(url.path_qs)
+            async with self._fetch_context(scrape_item):
                 await self.fetch(scrape_item)
 
+    def pre_check_scrape_item(self, scrape_item: ScrapeItem) -> None:
+        if not self.SKIP_PRE_CHECK and scrape_item.url.path == "/":
+            raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        """Transforms an URL before it reaches the fetch method
+
+        Override it to transform thumbnail URLs into full res URLs or URLs in an old unsupported format into a new one"""
+        return url
+
     @final
-    @contextlib.contextmanager
-    def _fetch_context(self, scrape_item: ScrapeItem) -> Generator[TaskID]:
+    @contextlib.asynccontextmanager
+    async def _fetch_context(self, scrape_item: ScrapeItem) -> AsyncGenerator[TaskID]:
         with self.new_task_id(scrape_item.url) as task_id:
             try:
-                if not self.SKIP_PRE_CHECK:
-                    _pre_check_scrape_item(scrape_item)
+                self.pre_check_scrape_item(scrape_item)
                 yield task_id
             except ValueError:
-                self.create_task(self.raise_e(scrape_item, ScrapeError("Unknown URL path")))
+                await self.raise_e(scrape_item, ScrapeError("Unknown URL path"))
             except MaxChildrenError as e:
-                self.create_task(self.raise_e(scrape_item, e))
+                await self.raise_e(scrape_item, e)
             finally:
                 pass
 
     @error_handling_wrapper
-    def raise_e(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception) -> NoReturn:
+    def raise_e(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception) -> None:
         raise exc
 
     @final
@@ -635,11 +650,6 @@ def _make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
     if isinstance(hosts, str):
         hosts = (hosts,)
     return tuple(sorted(host.removeprefix("www.") for host in hosts))
-
-
-def _pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
-    if scrape_item.url.path == "/":
-        raise ValueError
 
 
 def _make_custom_filename(stem: str, ext: str, extra_info: list[str], only_truncate_stem: bool) -> tuple[str, bool]:
