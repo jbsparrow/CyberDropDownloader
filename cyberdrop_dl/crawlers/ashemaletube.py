@@ -10,7 +10,6 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.m3u8 import M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -184,16 +183,15 @@ class AShemaleTubeCrawler(Crawler):
             raise ScrapeError(422)
 
         best_format = parse_player_info(player.text)
-        m3u8_media = debrid_link = None
+        m3u8 = debrid_link = None
         if best_format.hls:
-            m3u8_media = M3U8Media(await self._get_m3u8(best_format.url))
+            m3u8 = await self.get_m3u8_from_index_url(best_format.url)
         else:
             debrid_link = best_format.url
 
         if video_object := soup.select_one(_SELECTORS.VIDEO_PROPS_JS):
-            json_data = json.loads(video_object.text.strip())
-            if "uploadDate" in json_data:
-                scrape_item.possible_datetime = self.parse_iso_date(json_data["uploadDate"])
+            json_data = json.loads(css.get_text(video_object))
+            scrape_item.possible_datetime = self.parse_iso_date(json_data.get("uploadDate", ""))
 
         title = css.select_one_get_text(soup, "title").split("- aShemaletube.com")[0].strip()
         scrape_item.url = canonical_url
@@ -206,7 +204,7 @@ class AShemaleTubeCrawler(Crawler):
             filename,
             ext,
             custom_filename=custom_filename,
-            m3u8_media=m3u8_media,
+            m3u8=m3u8,
             debrid_link=debrid_link,
         )
 

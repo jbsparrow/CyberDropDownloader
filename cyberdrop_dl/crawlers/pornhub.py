@@ -273,11 +273,11 @@ class PornHubCrawler(Crawler):
         title = css.select_one_get_text(soup, _SELECTORS.TITLE)
         formats = [Format.new(media) for media in get_media_list(soup)]
         best_hls = max(f for f in formats if f.format == "hls")
-        debrid_link = m3u8_media = None
+        debrid_link = m3u8 = None
         scrape_item.possible_datetime = date = self.parse_iso_date(get_upload_date_str(soup))
         assert date
         if date >= MP4_NOT_AVAILABLE_SINCE:
-            m3u8_media, _ = await self.get_m3u8_playlist(self.parse_url(best_hls.url))
+            m3u8, _ = await self.get_m3u8_from_playlist_url(self.parse_url(best_hls.url))
             best_format = best_hls
         else:
             best_format = await self.get_best_mp4_format(formats)
@@ -293,7 +293,7 @@ class PornHubCrawler(Crawler):
             ext,
             custom_filename=custom_filename,
             debrid_link=debrid_link,
-            m3u8_media=m3u8_media,
+            m3u8=m3u8,
         )
 
     async def get_best_mp4_format(self, formats: list[Format]) -> Format:
