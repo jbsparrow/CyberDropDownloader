@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -149,7 +148,7 @@ class PMVHavenCrawler(Crawler):
         await self._generic_search_pager(scrape_item, add_data, tag_name, "tag")
 
     @error_handling_wrapper
-    async def video_from_api(self, scrape_item: ScrapeItem):
+    async def video_from_api(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -213,7 +212,9 @@ class PMVHavenCrawler(Crawler):
             await self.process_video_info(new_scrape_item, video)
             scrape_item.add_children()
 
-    async def api_pager(self, api_url: URL, add_data: dict, *, check_key: str = "data") -> AsyncGenerator[dict]:
+    async def api_pager(
+        self, api_url: AbsoluteHttpURL, add_data: dict, *, check_key: str = "data"
+    ) -> AsyncGenerator[dict]:
         """Generator of API pages."""
         page: int = 1
         is_profile = api_url.name == "profileInput"
@@ -236,9 +237,9 @@ class PMVHavenCrawler(Crawler):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def create_canonical_video_url(video_info: dict) -> URL:
-    title: str = video_info.get("title") or video_info["uploadTitle"]
-    video_id: str = video_info["_id"]
+def create_canonical_video_url(video_info: dict[str, str]) -> AbsoluteHttpURL:
+    title = video_info.get("title") or video_info["uploadTitle"]
+    video_id = video_info["_id"]
     path = f"{title}_{video_id}"
     return PRIMARY_URL / "video" / path
 
