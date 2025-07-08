@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import copy
 from dataclasses import InitVar, dataclass, field
 from enum import IntEnum
@@ -239,8 +238,10 @@ class ScrapeItem:
         self.children = self.children_limit = 0
         if self.type is None:
             return
-        with contextlib.suppress(IndexError, TypeError):
+        try:
             self.children_limit = self.children_limits[self.type]
+        except (IndexError, TypeError):
+            pass
 
     def add_children(self, number: int = 1) -> None:
         self.children += number
@@ -250,9 +251,10 @@ class ScrapeItem:
     def reset(self, reset_parents: bool = False, reset_parent_title: bool = False) -> None:
         """Resets `album_id`, `type` and `posible_datetime` back to `None`
 
-        Only useful when the scrape item will be send to a different crawler and you want to get a diferent download path
+        Reset `part_of_album` back to `False`
         """
         self.album_id = self.possible_datetime = self.type = None
+        self.part_of_album = False
         self.reset_childen()
         if reset_parents:
             self.parents = []

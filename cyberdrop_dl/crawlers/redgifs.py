@@ -27,7 +27,7 @@ class RedGifsCrawler(Crawler):
         await self.get_auth_token(API_ENTRYPOINT / "v2/auth/temporary")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if scrape_item.url.host != self.PRIMARY_URL.host:
+        if scrape_item.url.host.removeprefix("www.") != self.PRIMARY_URL.host:
             raise ValueError
         if "users" in scrape_item.url.parts:
             return await self.user(scrape_item)
@@ -74,9 +74,9 @@ class RedGifsCrawler(Crawler):
             api_url = API_ENTRYPOINT / "v2/gifs" / post_id
             json_resp: dict[str, dict] = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
 
-        title_part: str = json_resp["gif"].get("title") or "Loose Files"
-        title = self.create_title(title_part)
-        scrape_item.setup_as_album(title)
+        if title_part := json_resp["gif"].get("title"):
+            scrape_item.setup_as_album(self.create_title(title_part))
+
         scrape_item.possible_datetime = json_resp["gif"]["createDate"]
 
         links: dict[str, str] = json_resp["gif"]["urls"]

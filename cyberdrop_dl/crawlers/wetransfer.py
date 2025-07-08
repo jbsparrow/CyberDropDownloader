@@ -82,11 +82,11 @@ class FileInfo:
         return json.dumps(details)
 
     @property
-    def download_url(self) -> URL:
+    def download_url(self) -> AbsoluteHttpURL:
         return API_ENTRYPOINT / self.id / "download"
 
 
-def get_file_info(url: URL) -> FileInfo:
+def get_file_info(url: AbsoluteHttpURL) -> FileInfo:
     parts = [p for p in url.parts if p not in ("/", "downloads")]
     assert len(parts) >= 2
     if len(parts) >= 3:
