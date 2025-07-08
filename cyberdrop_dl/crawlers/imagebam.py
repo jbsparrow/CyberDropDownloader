@@ -63,7 +63,7 @@ class ImageBamCrawler(Crawler):
                 raise ValueError
 
     @error_handling_wrapper
-    async def view(self, scrape_item: ScrapeItem, is_gallery: bool | None = None) -> None:
+    async def view(self, scrape_item: ScrapeItem) -> None:
         # view URLs can be either a gallery or a single image.
         async with self.request_limiter:
             soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
