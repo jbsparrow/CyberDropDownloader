@@ -132,7 +132,8 @@ class LeakedZoneCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(image_url.name)
         assert post.created_at
         scrape_item.possible_datetime = self.parse_iso_date(post.created_at)
-        await self.handle_file(image_url, scrape_item, filename, ext)
+        custom_filename = self.create_custom_filename(filename, ext, file_id=post.id)
+        await self.handle_file(image_url, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
 def _decode_video_url(url: str) -> str:
