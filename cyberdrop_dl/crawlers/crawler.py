@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import datetime
+import inspect
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping
@@ -723,7 +724,7 @@ def _validate_supported_paths(cls: type[Crawler]) -> None:
 
 
 def auto_task_id(
-    func: Callable[Concatenate[_CrawlerT, ScrapeItem, P], Coroutine[None, None, R]],
+    func: Callable[Concatenate[_CrawlerT, ScrapeItem, P], R | Coroutine[None, None, R]],
 ) -> Callable[Concatenate[_CrawlerT, ScrapeItem, P], Coroutine[None, None, R]]:
     """Autocreate a new `task_id` from the scrape_item of the method"""
 
@@ -731,6 +732,9 @@ def auto_task_id(
     async def wrapper(self: _CrawlerT, scrape_item: ScrapeItem, *args: P.args, **kwargs: P.kwargs) -> R:
         await self.manager.states.RUNNING.wait()
         with self.new_task_id(scrape_item.url):
-            return await func(self, scrape_item, *args, **kwargs)
+            result = func(self, scrape_item, *args, **kwargs)
+            if inspect.isawaitable(result):
+                return await result
+            return result
 
     return wrapper
