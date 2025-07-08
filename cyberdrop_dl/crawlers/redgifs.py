@@ -35,6 +35,7 @@ class Gif:
     @staticmethod
     def from_dict(gif: dict[str, Any]) -> Gif:
         urls: Links = gif["urls"]
+        # sometimes the HD version is missing in the response, even though it is available?
         url = parse_url(urls.get("hd") or urls["sd"], relative_to=PRIMARY_URL)
         return Gif(gif["id"], urls, gif["createDate"], url, gif.get("title"))
 
@@ -108,7 +109,7 @@ class RedGifsCrawler(Crawler):
 
         scrape_item.url = canonical_url
         async with self.request_limiter:
-            api_url = API_ENTRYPOINT / "v2/gifs" / post_id.lower()
+            api_url = API_ENTRYPOINT / "v2/gifs" / post_id
             json_resp: dict[str, dict] = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
 
         title_part: str = json_resp["gif"].get("title") or "Loose Files"
@@ -132,8 +133,9 @@ class RedGifsCrawler(Crawler):
 
 
 def _id(name: str) -> str:
-    # PaleturquoiseLostStickinsect-mobile.m4s -> PaleturquoiseLostStickinsect
-    return name.split(".", 1)[0].split("-", 1)[0]
+    # PaleturquoiseLostStickinsect-mobile.m4s -> paleturquoiseLoststickinsect
+    # Id needs to be lower case for requests to the api, but final files (media.redgifs) need each word capitalized
+    return name.lower().split(".", 1)[0].split("-", 1)[0]
 
 
 def _canonical_url(name_or_id: str) -> AbsoluteHttpURL:
