@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - CDL will automatically disable crawlers that have 10 `DDoS-Guard` errors in the current run. All URLs mapping to that crawler will be ignored.
 - URLs from forums will be processed as completely new items with their own subfolder (same behavior as v6)
+- Fallback to HLS for newer videos that do not have MP4 formats available (PornHub)
 
 ### Fixed
 
@@ -41,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Do not download videos downloaded before (beeg.com)
 - Handle attachments without name (kemono)
 - Handle old and new URL formats (imagebam)
+- Private videos not being logged as private (tokyomotion)
+- Handling host with "www." prefix (redgifs)
+- Parsing HQ resolution (thisvid)
 
 ## [7.0.1] - 2025-07-04
 
