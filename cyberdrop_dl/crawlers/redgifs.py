@@ -112,11 +112,9 @@ class RedGifsCrawler(Crawler):
             api_url = API_ENTRYPOINT / "v2/gifs" / post_id
             json_resp: dict[str, dict] = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
 
-        title_part: str = json_resp["gif"].get("title") or "Loose Files"
-        title = self.create_title(title_part)
-        scrape_item.setup_as_album(title)
-
         gif = Gif.from_dict(json_resp["gif"])
+        if gif.title:
+            scrape_item.setup_as_album(self.create_title(gif.title))
         await self._handle_gif(scrape_item, gif)
 
     async def _handle_gif(self, scrape_item: ScrapeItem, gif: Gif) -> None:

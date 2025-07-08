@@ -337,10 +337,9 @@ class Crawler(ABC):
         """Checks whether an album has completed given its domain and album id."""
         return await self.manager.db_manager.history_table.check_album(self.DOMAIN, album_id)
 
-    def handle_external_links(self, scrape_item: ScrapeItem, reset: bool = False) -> None:
+    def handle_external_links(self, scrape_item: ScrapeItem) -> None:
         """Maps external links to the scraper class."""
-        if reset:
-            scrape_item.reset()
+        scrape_item.reset()
         self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -479,7 +478,7 @@ class Crawler(ABC):
             scrape_item.add_children()
 
     async def web_pager(
-        self, url: URL, next_page_selector: str | None = None, *, cffi: bool = False, **kwargs: Any
+        self, url: AbsoluteHttpURL, next_page_selector: str | None = None, *, cffi: bool = False, **kwargs: Any
     ) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages.
 
@@ -492,7 +491,7 @@ class Crawler(ABC):
 
     async def _web_pager(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         selector: Callable[[BeautifulSoup], str | None] | str | None = None,
         *,
         cffi: bool = False,

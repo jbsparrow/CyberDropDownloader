@@ -107,7 +107,7 @@ class User(NamedTuple):
 
 
 class File(TypedDict):
-    name: str
+    name: NotRequired[str]  # Sometimes present
     path: str
     server: NotRequired[str]  # Sometimes present in attachments
 
@@ -463,8 +463,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     def __make_file_url(self, file: File) -> AbsoluteHttpURL:
         server = self.__known_attachment_servers.get(file["path"], "")
-        url = server + f"/data{file['path']}"
-        return self.parse_url(url).with_query(f=file["name"])
+        url = self.parse_url(server + f"/data{file['path']}")
+        return url.with_query(f=file.get("name") or url.name)
 
     def __make_api_url_w_offset(self, path: str, og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         api_url = self.API_ENTRYPOINT / path

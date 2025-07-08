@@ -1,25 +1,25 @@
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import json
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, TypedDict
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://www.pornhub.com")
 ALBUM_API_URL = PRIMARY_URL / "album/show_album_json"
+MP4_NOT_AVAILABLE_SINCE = datetime.datetime(2025, 6, 25).timestamp()
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -270,29 +270,43 @@ class PornHubCrawler(Crawler):
             soup = await self.client.get_soup(self.DOMAIN, page_url, cache_disabled=True)
 
         check_video_is_available(soup)
-        title: str = css.select_one_get_text(soup, _SELECTORS.TITLE)
-        best_format = await self.get_best_format(soup)
-        link = self.parse_url(best_format.url)
-        scrape_item.url = page_url
-        scrape_item.possible_datetime = self.parse_date(get_upload_date_str(soup))
-        try:
-            filename, ext = self.get_filename_and_ext(link.name)
-        except NoExtensionError:
-            filename, ext = self.get_filename_and_ext(f"{video_id}.mp4")
-        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_format.quality)
-        await self.handle_file(embed_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)
+        title = css.select_one_get_text(soup, _SELECTORS.TITLE)
+        formats = [Format.new(media) for media in get_media_list(soup)]
+        best_hls = max(f for f in formats if f.format == "hls")
+        debrid_link = m3u8_media = None
+        scrape_item.possible_datetime = date = self.parse_iso_date(get_upload_date_str(soup))
+        assert date
+        if date >= MP4_NOT_AVAILABLE_SINCE:
+            m3u8_media, _ = await self.get_m3u8_playlist(self.parse_url(best_hls.url))
+            best_format = best_hls
+        else:
+            best_format = await self.get_best_mp4_format(formats)
+            debrid_link = self.parse_url(best_format.url)
 
-    async def get_best_format(self, soup: BeautifulSoup) -> Format:
-        mp4_format = next(get_mp4_formats(soup), None)
+        scrape_item.url = page_url
+        filename, ext = self.get_filename_and_ext(f"{video_id}.mp4")
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=best_format.quality)
+        await self.handle_file(
+            embed_url,
+            scrape_item,
+            filename,
+            ext,
+            custom_filename=custom_filename,
+            debrid_link=debrid_link,
+            m3u8_media=m3u8_media,
+        )
+
+    async def get_best_mp4_format(self, formats: list[Format]) -> Format:
+        mp4_format = next((f for f in formats if f.format == "mp4"), None)
         if not mp4_format:
-            raise ScrapeError(422)
+            raise ScrapeError(422, message="Unable to get mp4 format")
 
         mp4_media_url = self.parse_url(mp4_format.url)
         async with self.request_limiter:
             mp4_media: list[Media] = await self.client.get_json(self.DOMAIN, mp4_media_url, cache_disabled=True)
 
         if not mp4_media:
-            raise ScrapeError(422)
+            raise ScrapeError(422, message="Video has no mp4 formats available")
 
         return max(Format.new(media) for media in mp4_media)
 
@@ -302,15 +316,9 @@ def get_upload_date_str(soup: BeautifulSoup) -> str:
     return get_text_between(date_text, 'uploadDate": "', '",')
 
 
-def get_mp4_formats(soup: BeautifulSoup) -> Generator[Format]:
-    for media in get_medias(soup):
-        if media["format"] == "mp4":
-            yield Format.new(media)
-
-
-def get_medias(soup: BeautifulSoup) -> list[Media]:
+def get_media_list(soup: BeautifulSoup) -> list[Media]:
     flashvars: str = css.select_one(soup, _SELECTORS.JS_VIDEO_INFO).text
-    media_text = get_text_between(flashvars, 'mediaDefinitions":', ',"isVertical"')
+    media_text = get_text_between(flashvars, '"mediaDefinitions":', '"isVertical"').strip().removesuffix(",")
     return json.loads(media_text)
 
 
