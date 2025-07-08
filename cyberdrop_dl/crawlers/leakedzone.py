@@ -5,6 +5,8 @@ import dataclasses
 import itertools
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from aiolimiter import AsyncLimiter
+
 from cyberdrop_dl.compat import IntEnum
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -73,6 +75,9 @@ class LeakedZoneCrawler(Crawler):
             case _:
                 raise ValueError
 
+    def __post_init__(self) -> None:
+        self.request_limiter = AsyncLimiter(3, 10)
+
     @classmethod
     def get_encoded_video_url(cls, soup: BeautifulSoup) -> str:
         js_text = css.select_one_get_text(soup, _SELECTORS.JW_PLAYER)
@@ -97,10 +102,9 @@ class LeakedZoneCrawler(Crawler):
                 if post.type is PostType.VIDEO:
                     post_url = self.PRIMARY_URL / model_name / "video" / post.id
                     await self._handle_video(scrape_item.create_child(post_url), post)
-                    continue
-
-                post_url = self.PRIMARY_URL / model_name / "photo" / post.id
-                await self._handle_image(scrape_item.create_child(post_url), post)
+                else:
+                    post_url = self.PRIMARY_URL / model_name / "photo" / post.id
+                    await self._handle_image(scrape_item.create_child(post_url), post)
                 scrape_item.add_children()
 
     @error_handling_wrapper
