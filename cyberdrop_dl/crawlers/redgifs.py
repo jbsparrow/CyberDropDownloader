@@ -135,9 +135,14 @@ class RedGifsCrawler(Crawler):
 
 
 def _id(name: str) -> str:
-    # PaleturquoiseLostStickinsect-mobile.m4s -> paleturquoiseloststickinsect
-    return name.lower().split(".", 1)[0].split("-", 1)[0]
+    # PaleturquoiseLostStickinsect-mobile.m4s -> PaleturquoiseLostStickinsect
+    return name.split(".", 1)[0].split("-", 1)[0]
 
 
 def _canonical_url(name_or_id: str) -> AbsoluteHttpURL:
     return PRIMARY_URL_WWW / "watch" / _id(name_or_id)
+
+
+def fix_db_referer(referer: str) -> str:
+    id_ = _id(referer.rsplit("/", 1)[-1])
+    return str(_canonical_url(id_))
