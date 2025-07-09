@@ -63,11 +63,11 @@ from enum import IntEnum
 from functools import partial
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, Self, TypeAlias, TypedDict, TypeVar, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypeAlias, TypedDict, TypeVar, cast
 
 import aiofiles
 import aiohttp
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientTimeout
 from Crypto.Cipher import AES
 from Crypto.Math.Numbers import Integer
 from Crypto.PublicKey import RSA
@@ -80,8 +80,8 @@ from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator, Mapping
-    from types import TracebackType
 
+    from aiohttp_client_cache.session import CachedSession
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import MediaItem
@@ -460,7 +460,6 @@ class MegaApi:
         self.request_id: str = "".join(random.choice(VALID_REQUEST_ID_CHARS) for _ in range(10))
         self.user_agent = manager.config_manager.global_settings_data.general.user_agent
         self.default_headers = {"Content-Type": "application/json", "User-Agent": self.user_agent}
-        self.session: ClientSession
         self.entrypoint = f"{self.schema}://{self.api_domain}/cs"
         self.logged_in = False
         self.root_id: str = ""
@@ -468,14 +467,9 @@ class MegaApi:
         self.trashbin_id: str = ""
         self._files = {}
 
-    async def __aenter__(self) -> Self:
-        self.session = ClientSession()
-        return self
-
-    async def __aexit__(
-        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
-    ) -> None:
-        await self.session.close()
+    @property
+    def session(self) -> CachedSession:
+        return self.manager.client_manager.scraper_session._session
 
     async def request(self, data_input: list[AnyDict] | AnyDict, add_params: AnyDict | None = None) -> Any:
         add_params = add_params or {}
@@ -798,9 +792,6 @@ class MegaDownloadClient(DownloadClient):
         self.api = api
         self.decrypt_mapping: dict[URL, DecryptData] = {}
 
-    async def close(self):
-        await self.api.__aexit__()
-
     def _decrypt_chunks(
         self,
         iv: U32IntTupleArray,
@@ -875,7 +866,7 @@ class MegaDownloadClient(DownloadClient):
 
         last_slow_speed_read = None
 
-        def check_download_speed():
+        def check_download_speed() -> None:
             nonlocal last_slow_speed_read
             speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)  # type: ignore
             if speed > self.download_speed_threshold:
@@ -914,7 +905,7 @@ class MegaDownloadClient(DownloadClient):
 
 
 class MegaDownloader(Downloader):
-    def __init__(self, api: MegaApi, domain: str):
+    def __init__(self, api: MegaApi, domain: str) -> None:
         self.client: MegaDownloadClient
         super().__init__(api.manager, domain)
         self.api = api
@@ -924,11 +915,5 @@ class MegaDownloader(Downloader):
         self.client = MegaDownloadClient(self.api)
         self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
 
-        self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
-        if self.manager.config_manager.settings_data.sorting.sort_downloads:
-            self.manager.path_manager.sorted_folder.mkdir(parents=True, exist_ok=True)
-
-    def register(
-        self, url: URL, iv: U32IntTupleArray, k_decrypted: U32IntTupleArray, meta_mac: U32IntTupleArray, file_size: int
-    ) -> None:
-        self.client.decrypt_mapping[url] = DecryptData(iv, k_decrypted, meta_mac, file_size)
+    def register(self, url: URL, crypto: DecryptData) -> None:
+        self.client.decrypt_mapping[url] = crypto

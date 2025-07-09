@@ -50,7 +50,7 @@ class MegaNzCrawler(Crawler):
         return self.manager.auth_config.meganz.password or None
 
     # TODO: define in base crawler
-    def _get_downloader(self) -> MegaDownloader:
+    def _init_downloader(self) -> MegaDownloader:
         self.downloader = dl = MegaDownloader(self.api, self.DOMAIN)
         dl.startup()
         return dl
@@ -60,7 +60,7 @@ class MegaNzCrawler(Crawler):
             if self.ready:
                 return
             self.client = self.manager.client_manager.scraper_session
-            self.downloader = self._get_downloader()
+            self.downloader = self._init_downloader()
             await self.async_startup()
             self.ready = True
 
@@ -115,7 +115,8 @@ class MegaNzCrawler(Crawler):
         if "g" not in file_data:
             raise ScrapeError(410, "File not accessible anymore")
 
-        self.downloader.register(scrape_item.url, file.crypto.iv, file.crypto.k, file.crypto.meta_mac, file_size)
+        decrypt_data = file.crypto._replace(file_size=file_size)
+        self.downloader.register(scrape_item.url, decrypt_data)
         file_url = self.parse_url(file_data["g"])
         attribs_bytes = mega.base64_url_decode(file_data["at"])
         filename = mega.decrypt_attr(attribs_bytes, file.crypto.k)["n"]
@@ -130,7 +131,6 @@ class MegaNzCrawler(Crawler):
         root_id = next(iter(nodes))
         folder_name = nodes[root_id]["attributes"]["n"]
         filesystem = await self.api._build_file_system(nodes, [root_id])
-
         title = self.create_title(folder_name, folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)
 
