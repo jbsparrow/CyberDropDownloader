@@ -57,11 +57,8 @@ import math
 import random
 import string
 import struct
-import time
-from collections.abc import Sequence
+from collections.abc import Coroutine, Sequence
 from enum import IntEnum
-from functools import partial
-from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypeAlias, TypedDict, TypeVar, cast
 
@@ -75,11 +72,12 @@ from Crypto.Util import Counter
 
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.exceptions import CDLBaseError, DownloadError, SlowDownloadError
+from cyberdrop_dl.exceptions import CDLBaseError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator, Mapping
+    from functools import partial
 
     from aiohttp_client_cache.session import CachedSession
     from yarl import URL
@@ -792,63 +790,6 @@ class MegaDownloadClient(DownloadClient):
         self.api = api
         self.decrypt_mapping: dict[URL, DecryptData] = {}
 
-    def _decrypt_chunks(
-        self,
-        iv: U32IntTupleArray,
-        k_decrypted: U32IntTupleArray,
-        meta_mac: U32IntTupleArray,
-    ) -> Generator[bytes, bytes, None]:
-        """
-        Decrypts chunks of data received via `send()` and yields the decrypted chunks.
-        It decrypts chunks indefinitely until a sentinel value (`None`) is sent.
-
-        NOTE: You MUST send `None` after decrypting every chunk to execute the mac check
-
-        Args:
-            iv (AnyArray):  Initialization vector (iv) as a list or tuple of two 32-bit unsigned integers.
-            k_decrypted (TupleArray):  Decryption key as a tuple of four 32-bit unsigned integers.
-            meta_mac (AnyArray):  The expected MAC value of the final file.
-
-        Yields:
-            bytes:  Decrypted chunk of data. The first `yield` is a blank (`b''`) to initialize generator.
-
-        """
-        k_bytes = a32_to_bytes(k_decrypted)
-        counter = Counter.new(128, initial_value=((iv[0] << 32) + iv[1]) << 64)
-        aes = AES.new(k_bytes, AES.MODE_CTR, counter=counter)
-
-        # mega.nz improperly uses CBC as a MAC mode, so after each chunk
-        # the computed mac_bytes are used as IV for the next chunk MAC accumulation
-        mac_bytes = b"\0" * 16
-        mac_encryptor = AES.new(k_bytes, AES.MODE_CBC, mac_bytes)
-        iv_bytes = a32_to_bytes([iv[0], iv[1], iv[0], iv[1]])
-        raw_chunk = yield b""
-        while True:
-            if raw_chunk is None:
-                break
-            decrypted_chunk = aes.decrypt(raw_chunk)
-            raw_chunk = yield decrypted_chunk
-            encryptor = AES.new(k_bytes, AES.MODE_CBC, iv_bytes)
-
-            # take last 16-N bytes from chunk (with N between 1 and 16, including extremes)
-            mem_view = memoryview(decrypted_chunk)  # avoid copying memory for the entire chunk when slicing
-            modchunk = len(decrypted_chunk) % CHUNK_BLOCK_LEN
-            if modchunk == 0:
-                # ensure we reserve the last 16 bytes anyway, we have to feed them into mac_encryptor
-                modchunk = CHUNK_BLOCK_LEN
-
-            # pad last block to 16 bytes
-            last_block = pad_bytes(mem_view[-modchunk:])
-            rest_of_chunk = mem_view[:-modchunk]
-            _ = encryptor.encrypt(rest_of_chunk)
-            input_to_mac = encryptor.encrypt(last_block)
-            mac_bytes = mac_encryptor.encrypt(input_to_mac)
-
-        file_mac = str_to_a32(mac_bytes)
-        computed_mac = file_mac[0] ^ file_mac[1], file_mac[2] ^ file_mac[3]
-        if computed_mac != meta_mac:
-            raise RuntimeError("Mismatched mac")
-
     async def _append_content(
         self,
         media_item: MediaItem,
@@ -857,51 +798,36 @@ class MegaDownloadClient(DownloadClient):
     ) -> None:
         """Appends content to a file."""
 
-        check_free_space = partial(self.manager.storage_manager.check_free_space, media_item)
+        check_free_space = self.make_free_space_checker(media_item)
+        check_download_speed = self.make_speed_checker(media_item)
         await check_free_space()
+        await self._pre_download_check(media_item)
 
-        media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)  # type: ignore
-        media_item.partial_file.unlink(missing_ok=True)  # type: ignore # We can't resume
-        media_item.partial_file.touch()  # type: ignore
+        crypto_data = self.decrypt_mapping[media_item.url]
+        chunk_decryptor = MegaDecryptor(crypto_data)
 
-        last_slow_speed_read = None
-
-        def check_download_speed() -> None:
-            nonlocal last_slow_speed_read
-            speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)  # type: ignore
-            if speed > self.download_speed_threshold:
-                last_slow_speed_read = None
-            elif not last_slow_speed_read:
-                last_slow_speed_read = time.perf_counter()
-            elif time.perf_counter() - last_slow_speed_read > self.slow_download_period:
-                raise SlowDownloadError(origin=media_item)
-
-        data = self.decrypt_mapping[media_item.url]
-        chunk_decryptor = self._decrypt_chunks(data.iv, data.k, data.meta_mac)
-        _ = next(chunk_decryptor)  # Prime chunk decryptor
-
-        async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
-            for _, chunk_size in get_chunks(data.file_size):
+        async with aiofiles.open(media_item.partial_file, mode="ab") as f:
+            for _, chunk_size in get_chunks(crypto_data.file_size):
                 await self.manager.states.RUNNING.wait()
                 raw_chunk = await content.readexactly(chunk_size)
-                decrypted_chunk: bytes = chunk_decryptor.send(raw_chunk)
+                chunk: bytes = chunk_decryptor.decrypt(raw_chunk)
                 await check_free_space()
-                chunk_size = len(decrypted_chunk)
+                chunk_size = len(chunk)
                 await self.client_manager.speed_limiter.acquire(chunk_size)
-                await f.write(decrypted_chunk)
+                await f.write(chunk)
                 update_progress(chunk_size)
+                check_download_speed()
 
-                if self.download_speed_threshold:
-                    check_download_speed()
+        self._post_download_check(media_item, content)
+        chunk_decryptor.check_mac_integrity()
 
-        if not content.total_bytes and not media_item.partial_file.stat().st_size:  # type: ignore
-            media_item.partial_file.unlink()  # type: ignore
-            raise DownloadError(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
-        try:
-            # Stop chunk decryptor and do a mac integrity check
-            chunk_decryptor.send(None)  # type: ignore
-        except StopIteration:
-            pass
+    def _pre_download_check(self, media_item: MediaItem) -> Coroutine[Any, Any, None]:
+        def prepare() -> None:
+            media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
+            media_item.partial_file.unlink(missing_ok=True)  # We can't resume
+            media_item.partial_file.touch()
+
+        return asyncio.to_thread(prepare)
 
 
 class MegaDownloader(Downloader):
@@ -917,3 +843,74 @@ class MegaDownloader(Downloader):
 
     def register(self, url: URL, crypto: DecryptData) -> None:
         self.client.decrypt_mapping[url] = crypto
+
+
+class MegaDecryptor:
+    def __init__(self, crypto: DecryptData) -> None:
+        iv, k_decrypted, meta_mac, _ = crypto
+        self.chunk_decryptor = _decrypt_chunks(iv, k_decrypted, meta_mac)
+        _ = next(self.chunk_decryptor)  # Prime chunk decryptor
+
+    def decrypt(self, raw_chunk: bytes) -> bytes:
+        return self.chunk_decryptor.send(raw_chunk)
+
+    def check_mac_integrity(self) -> None:
+        try:
+            self.chunk_decryptor.send(None)  # type: ignore
+        except StopIteration:
+            pass
+
+
+def _decrypt_chunks(
+    iv: U32IntTupleArray, k_decrypted: U32IntTupleArray, meta_mac: U32IntTupleArray
+) -> Generator[bytes, bytes, None]:
+    """
+    Decrypts chunks of data received via `send()` and yields the decrypted chunks.
+    It decrypts chunks indefinitely until a sentinel value (`None`) is sent.
+
+    NOTE: You MUST send `None` after decrypting every chunk to execute the mac check
+
+    Args:
+        iv (AnyArray):  Initialization vector (iv) as a list or tuple of two 32-bit unsigned integers.
+        k_decrypted (TupleArray):  Decryption key as a tuple of four 32-bit unsigned integers.
+        meta_mac (AnyArray):  The expected MAC value of the final file.
+
+    Yields:
+        bytes:  Decrypted chunk of data. The first `yield` is a blank (`b''`) to initialize generator.
+
+    """
+    k_bytes = a32_to_bytes(k_decrypted)
+    counter = Counter.new(128, initial_value=((iv[0] << 32) + iv[1]) << 64)
+    aes = AES.new(k_bytes, AES.MODE_CTR, counter=counter)
+
+    # mega.nz improperly uses CBC as a MAC mode, so after each chunk
+    # the computed mac_bytes are used as IV for the next chunk MAC accumulation
+    mac_bytes = b"\0" * 16
+    mac_encryptor = AES.new(k_bytes, AES.MODE_CBC, mac_bytes)
+    iv_bytes = a32_to_bytes([iv[0], iv[1], iv[0], iv[1]])
+    raw_chunk = yield b""
+    while True:
+        if raw_chunk is None:
+            break
+        decrypted_chunk = aes.decrypt(raw_chunk)
+        raw_chunk = yield decrypted_chunk
+        encryptor = AES.new(k_bytes, AES.MODE_CBC, iv_bytes)
+
+        # take last 16-N bytes from chunk (with N between 1 and 16, including extremes)
+        mem_view = memoryview(decrypted_chunk)  # avoid copying memory for the entire chunk when slicing
+        modchunk = len(decrypted_chunk) % CHUNK_BLOCK_LEN
+        if modchunk == 0:
+            # ensure we reserve the last 16 bytes anyway, we have to feed them into mac_encryptor
+            modchunk = CHUNK_BLOCK_LEN
+
+        # pad last block to 16 bytes
+        last_block = pad_bytes(mem_view[-modchunk:])
+        rest_of_chunk = mem_view[:-modchunk]
+        _ = encryptor.encrypt(rest_of_chunk)
+        input_to_mac = encryptor.encrypt(last_block)
+        mac_bytes = mac_encryptor.encrypt(input_to_mac)
+
+    file_mac = str_to_a32(mac_bytes)
+    computed_mac = file_mac[0] ^ file_mac[1], file_mac[2] ^ file_mac[3]
+    if computed_mac != meta_mac:
+        raise RuntimeError("Mismatched mac")
