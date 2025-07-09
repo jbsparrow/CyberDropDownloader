@@ -785,9 +785,8 @@ class MegaApi:
 
 
 class MegaDownloadClient(DownloadClient):
-    def __init__(self, api: MegaApi) -> None:
-        super().__init__(api.manager, api.manager.client_manager)
-        self.api = api
+    def __init__(self, manager: Manager) -> None:
+        super().__init__(manager, manager.client_manager)
         self.decrypt_mapping: dict[URL, DecryptData] = {}
 
     async def _append_content(
@@ -831,14 +830,14 @@ class MegaDownloadClient(DownloadClient):
 
 
 class MegaDownloader(Downloader):
-    def __init__(self, api: MegaApi, domain: str) -> None:
+    def __init__(self, manager: Manager, domain: str) -> None:
+        super().__init__(manager, domain)
+        self.api = MegaApi(manager)
         self.client: MegaDownloadClient
-        super().__init__(api.manager, domain)
-        self.api = api
 
     def startup(self) -> None:
         """Starts the downloader."""
-        self.client = MegaDownloadClient(self.api)
+        self.client = MegaDownloadClient(self.manager)
         self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
 
     def register(self, url: URL, crypto: DecryptData) -> None:

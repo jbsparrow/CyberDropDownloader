@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader import mega_nz as mega
-from cyberdrop_dl.downloader.mega_nz import DecryptData, File, MegaApi, MegaDownloader, NodeType
+from cyberdrop_dl.downloader.mega_nz import DecryptData, File, MegaDownloader, NodeType
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -38,7 +38,6 @@ class MegaNzCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "MegaNz"
 
     def __post_init__(self) -> None:
-        self.api = MegaApi(self.manager)
         self.downloader: MegaDownloader
 
     @property
@@ -51,7 +50,7 @@ class MegaNzCrawler(Crawler):
 
     # TODO: define in base crawler
     def _init_downloader(self) -> MegaDownloader:
-        self.downloader = dl = MegaDownloader(self.api, self.DOMAIN)
+        self.downloader = dl = MegaDownloader(self.manager, self.DOMAIN)
         dl.startup()
         return dl
 
@@ -110,7 +109,7 @@ class MegaNzCrawler(Crawler):
         await self.proccess_file(scrape_item, file)
 
     async def proccess_file(self, scrape_item: ScrapeItem, file: FileTuple) -> None:
-        file_data: dict[str, Any] = await self.api.request({"a": "g", "g": 1, "p": file.id})
+        file_data: dict[str, Any] = await self.downloader.api.request({"a": "g", "g": 1, "p": file.id})
         file_size: int = file_data["s"]
         if "g" not in file_data:
             raise ScrapeError(410, "File not accessible anymore")
@@ -127,10 +126,10 @@ class MegaNzCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem, folder_id: str, shared_key: str) -> None:
         canonical_url = PRIMARY_URL / "folder" / folder_id / shared_key
         scrape_item.url = canonical_url
-        nodes = await self.api.get_nodes_public_folder(folder_id, shared_key)
+        nodes = await self.downloader.api.get_nodes_public_folder(folder_id, shared_key)
         root_id = next(iter(nodes))
         folder_name = nodes[root_id]["attributes"]["n"]
-        filesystem = await self.api._build_file_system(nodes, [root_id])
+        filesystem = await self.downloader.api._build_file_system(nodes, [root_id])
         title = self.create_title(folder_name, folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)
 
@@ -152,4 +151,4 @@ class MegaNzCrawler(Crawler):
 
     @error_handling_wrapper
     async def login(self, *_) -> None:
-        await self.api.login(self.user, self.password)
+        await self.downloader.api.login(self.user, self.password)
