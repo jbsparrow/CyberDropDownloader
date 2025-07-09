@@ -4,16 +4,8 @@ from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.downloader.mega_nz import (
-    DecryptData,
-    File,
-    MegaApi,
-    MegaDownloader,
-    NodeType,
-    base64_to_a32,
-    base64_url_decode,
-    decrypt_attr,
-)
+from cyberdrop_dl.downloader import mega_nz as mega
+from cyberdrop_dl.downloader.mega_nz import DecryptData, File, MegaApi, MegaDownloader, NodeType
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -30,9 +22,15 @@ class FileTuple(NamedTuple):
 
 class MegaNzCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "File": ("/file/<handle>#<share_key>", "/!#<handle>!<share_key>"),
-        "Folder": ("/folder/<handle>#<share_key>", "/!F#<handle>!<share_key>"),
-        "**NOTE**": "Downloads can not be resumed. Partial downloads will always be deleted ans a new downloa dwill start from 0",
+        "File": (
+            "/file/<handle>#<share_key>",
+            "/!#<handle>!<share_key>",
+        ),
+        "Folder": (
+            "/folder/<handle>#<share_key>",
+            "/F!#<handle>!<share_key>",
+        ),
+        "**NOTE**": "Downloads can not be resumed. Partial downloads will always be deleted and a new downloads will start over",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     SKIP_PRE_CHECK: ClassVar[bool] = True
@@ -41,18 +39,28 @@ class MegaNzCrawler(Crawler):
 
     def __post_init__(self) -> None:
         self.api = MegaApi(self.manager)
-        self.user = self.manager.config_manager.authentication_data.meganz.email or None
-        self.password = self.manager.config_manager.authentication_data.meganz.password or None
         self.downloader: MegaDownloader
 
+    @property
+    def user(self) -> str | None:
+        return self.manager.auth_config.meganz.email or None
+
+    @property
+    def password(self) -> str | None:
+        return self.manager.auth_config.meganz.password or None
+
+    # TODO: define in base crawler
+    def _get_downloader(self) -> MegaDownloader:
+        self.downloader = dl = MegaDownloader(self.api, self.DOMAIN)
+        dl.startup()
+        return dl
+
     async def startup(self) -> None:
-        """Starts the crawler."""
         async with self.startup_lock:
             if self.ready:
                 return
             self.client = self.manager.client_manager.scraper_session
-            self.downloader = MegaDownloader(self.api, self.DOMAIN)
-            self.downloader.startup()
+            self.downloader = self._get_downloader()
             await self.async_startup()
             self.ready = True
 
@@ -60,32 +68,35 @@ class MegaNzCrawler(Crawler):
         await self.login(PRIMARY_URL)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if scrape_item.url.fragment:  # Mega stores access key in fragment. We can't do anything without the key
-            if "file" in scrape_item.url.parts or scrape_item.url.fragment.startswith("!"):
-                return await self.file(scrape_item)
-            if "folder" in scrape_item.url.parts or scrape_item.url.fragment.startswith("F!"):
-                return await self.folder(scrape_item)
+        if frag := scrape_item.url.fragment:  # Mega stores access key in fragment. We can't do anything without the key
+            # v1 URLs
+            if frag.count("!") == 2:
+                if frag.startswith("F!"):
+                    folder_id, shared_key = frag.removeprefix("F!").rsplit("!", 1)
+                    return await self.folder(scrape_item, folder_id, shared_key)
+                if frag.startswith("!"):
+                    # https://mega.nz/#!Ue5VRSIQ!kC2E4a4JwfWWCWYNJovGFHlbz8F
+                    file_id, shared_key = frag.removeprefix("!").rsplit("!", 1)
+                    return await self.file(scrape_item, file_id, shared_key)
+
+            # v2 URLs
+            match scrape_item.url.parts[1:]:
+                case ["folder", folder_id]:
+                    return await self.folder(scrape_item, folder_id, frag)
+                # https://mega.nz/file/cH51DYDR#qH7QOfRcM-7N9riZWdSjsRq
+                case ["file", file_id]:
+                    return await self.file(scrape_item, file_id, frag)
+
         raise ValueError
 
     @error_handling_wrapper
-    async def file(self, scrape_item: ScrapeItem) -> None:
-        if "file" in scrape_item.url.parts:
-            # V2 URL structure, ex: https://mega.nz/file/cH51DYDR#qH7QOfRcM-7N9riZWdSjsRq
-            file_id = scrape_item.url.name
-            shared_key = scrape_item.url.fragment
-
-        elif scrape_item.url.fragment.startswith("!"):
-            # V1 URL structure, ex: https://mega.nz/#!Ue5VRSIQ!kC2E4a4JwfWWCWYNJovGFHlbz8F
-            file_id, shared_key = scrape_item.url.fragment.rsplit("!", 1)
-        else:
-            raise ScrapeError(422)
-
+    async def file(self, scrape_item: ScrapeItem, file_id: str, shared_key: str) -> None:
         canonical_url = PRIMARY_URL / "file" / file_id / shared_key
         if await self.check_complete_from_referer(canonical_url):
             return
 
         scrape_item.url = canonical_url
-        file_key = base64_to_a32(shared_key)
+        file_key = mega.base64_to_a32(shared_key)
 
         k: tuple[int, ...] = (
             file_key[0] ^ file_key[4],
@@ -106,22 +117,13 @@ class MegaNzCrawler(Crawler):
 
         self.downloader.register(scrape_item.url, file.crypto.iv, file.crypto.k, file.crypto.meta_mac, file_size)
         file_url = self.parse_url(file_data["g"])
-        attribs_bytes = base64_url_decode(file_data["at"])
-        filename = decrypt_attr(attribs_bytes, file.crypto.k)["n"]
+        attribs_bytes = mega.base64_url_decode(file_data["at"])
+        filename = mega.decrypt_attr(attribs_bytes, file.crypto.k)["n"]
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=file_url)
 
     @error_handling_wrapper
-    async def folder(self, scrape_item: ScrapeItem) -> None:
-        if "folder" in scrape_item.url.parts:
-            folder_id = scrape_item.url.name
-            shared_key = scrape_item.url.fragment
-
-        elif scrape_item.url.fragment.startswith("!F"):
-            folder_id, shared_key = scrape_item.url.fragment.removeprefix("F").rsplit("!", 1)
-        else:
-            raise ScrapeError(422)
-
+    async def folder(self, scrape_item: ScrapeItem, folder_id: str, shared_key: str) -> None:
         canonical_url = PRIMARY_URL / "folder" / folder_id / shared_key
         scrape_item.url = canonical_url
         nodes = await self.api.get_nodes_public_folder(folder_id, shared_key)
@@ -149,5 +151,5 @@ class MegaNzCrawler(Crawler):
             scrape_item.add_children()
 
     @error_handling_wrapper
-    async def login(self, *_):
+    async def login(self, *_) -> None:
         await self.api.login(self.user, self.password)
