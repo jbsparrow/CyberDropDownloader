@@ -22,6 +22,30 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.0] - 2025-07-12
+
+### Added
+
+- Hotleak.vip support
+- Leakedzone.com support
+- Support for galleries with multiple pages (imagebam)
+
+### Changed
+
+- CDL will automatically disable crawlers that have 10 `DDoS-Guard` errors in the current run. All URLs mapping to that crawler will be ignored.
+- URLs from forums will be processed as completely new items with their own subfolder (same behavior as v6)
+- Fallback to HLS for newer videos that do not have MP4 formats available (PornHub)
+
+### Fixed
+
+- Fallback to the old threaded DNS resolver if the async resolver does not work on the current platform (e.g: Android)
+- Do not download videos downloaded before (beeg.com)
+- Handle attachments without name (kemono)
+- Handle old and new URL formats (imagebam)
+- Private videos not being logged as private (tokyomotion)
+- Handling host with "www." prefix (redgifs)
+- Parsing HQ resolution (thisvid)
+
 ## [7.0.1] - 2025-07-04
 
 ### Changed
