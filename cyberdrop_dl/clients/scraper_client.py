@@ -208,6 +208,35 @@ class ScraperClient:
         await self.client_manager.check_http_status(response)
         return response
 
+    @limiter
+    async def _get_cffi(
+        self,
+        domain: str,
+        url: AbsoluteHttpURL,
+        headers: dict[str, str] | None = None,
+        impersonate: BrowserTarget | None = "chrome",
+        data: Any = None,
+        json: Any = None,
+        request_params: dict[str, Any] | None = None,
+    ) -> CurlResponse:
+        """Makes a GET request using curl-cffi
+
+        :param domain: The crawler's domain (for rate limiting)
+        :param url: The URL to fetch.
+        :param headers: Optional headers to include in the request. Will be added to session's default headers.
+        :param impersonate: Optional browser target to impersonate. Defaults to `chrome`.
+        :param data: Data to include in the requests. Will be sent as is (FormData).
+        :param json: JSON data to include in the request. This will be serialized into a JSON string, and the `Content-Type` header will be set to `application/json`.
+        :param request_params: Additional keyword arguments to pass to `curl_session.post` (e.g., `timeout`).
+        """
+        request_params = request_params or {}
+        headers = self.client_manager._headers | (headers or {})
+        response: CurlResponse = await self._curl_session.get(
+            str(url), data=data, json=json, impersonate=impersonate, headers=headers, **request_params
+        )
+        await self.client_manager.check_http_status(response)
+        return response
+
     # ~~~~~~~~~~~~~ AIOHTTP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     async def _resilient_get(
