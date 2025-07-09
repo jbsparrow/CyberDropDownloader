@@ -2,7 +2,7 @@
 
 You can provide the maximum and minimum file size for each file "type".
 
-All options on this category take a `ByteSize` input ([more info here](../special_setting_types.mds#bytesize)).
+All options on this category take a `ByteSize` input ([more info here](../special_setting_types.md#bytesize)).
 
 | Type       | Default |
 | ---------- | ------- |
