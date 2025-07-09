@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.utils.dates import TimeStamp
 
-# Primary URL needds `www.` to prevent redirect
+# Primary URL needs `www.` to prevent redirect
 PRIMARY_URL = AbsoluteHttpURL("https://www.redgifs.com/")
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
 
@@ -35,7 +35,6 @@ class Gif:
     @staticmethod
     def from_dict(gif: dict[str, Any]) -> Gif:
         urls: Links = gif["urls"]
-        # sometimes the HD version is missing in the response, even though it is available?
         url = parse_url(urls.get("hd") or urls["sd"], relative_to=PRIMARY_URL)
         return Gif(gif["id"], urls, gif["createDate"], url, gif.get("title"))
 
