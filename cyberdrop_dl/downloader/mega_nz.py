@@ -810,7 +810,7 @@ class MegaDownloadClient(DownloadClient):
             for _, chunk_size in get_chunks(crypto_data.file_size):
                 await self.manager.states.RUNNING.wait()
                 raw_chunk = await content.readexactly(chunk_size)
-                chunk: bytes = chunk_decryptor.decrypt(raw_chunk)
+                chunk = chunk_decryptor.decrypt(raw_chunk)
                 await check_free_space()
                 chunk_size = len(chunk)
                 await self.client_manager.speed_limiter.acquire(chunk_size)

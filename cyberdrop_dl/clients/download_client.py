@@ -270,7 +270,6 @@ class DownloadClient:
                 await check_free_space()
                 chunk_size = len(chunk)
                 await self.client_manager.speed_limiter.acquire(chunk_size)
-                await asyncio.sleep(0)
                 await f.write(chunk)
                 update_progress(chunk_size)
                 check_download_speed()
