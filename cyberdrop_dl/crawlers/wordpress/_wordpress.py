@@ -46,7 +46,7 @@ Selector = css.CssAttributeSelector
 @dataclasses.dataclass(frozen=True, slots=True)
 class Selectors:
     POST_TITLE: str = "#content .single-post-title"
-    POST_CONTENT: str = "#content, .entry-content [id*='post-']"
+    POST_CONTENT: str = "#content .entry-content"
     POST_ID: Selector = Selector("[id*='post-']", "id")
     IMG: Selector = Selector("img[class*='wp-image']", "srcset")
     POST_LINK_FROM_PAGE: Selector = Selector(".post a[href]", "href")
@@ -171,8 +171,6 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
     async def handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
         for link in self.iter_parse_url(_iter_links(post.content, self.WP_USE_REGEX)):
             if link:
-                if "tag" not in link.parts:
-                    pass
                 await self.handle_link(scrape_item, link)
 
     def parse_url(self, link: str) -> AbsoluteHttpURL:
@@ -305,6 +303,7 @@ class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
         }
         return Post.model_validate(data, by_name=True)
 
+    @error_handling_wrapper
     async def all_posts(self, scrape_item: ScrapeItem, date_range: QueryDatetimeRange | None = None) -> None:
         scrape_item.setup_as_profile(self.create_title("Posts"))
         await self.post_url_pager(scrape_item, date_range)
