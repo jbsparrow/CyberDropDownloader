@@ -40,7 +40,7 @@ class MegaNzCrawler(Crawler):
             "/folder/<folder_id>#<share_key>",
             "/F!#<folder_id>!<share_key>",
         ),
-        "**NOTE**": "Downloads can not be resumed. Partial downloads will always be deleted and an new downloads will start over",
+        "**NOTE**": "Downloads can not be resumed. Partial downloads will always be deleted and new downloads will start over",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     SKIP_PRE_CHECK: ClassVar[bool] = True
