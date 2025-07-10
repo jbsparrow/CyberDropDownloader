@@ -97,11 +97,9 @@ U32IntTupleArray: TypeAlias = tuple[U32Int, ...]
 AnyDict: TypeAlias = dict[str, Any]
 
 
-class MegaNzError(CDLBaseError): ...
-
-
-class ValidationError(MegaNzError):
-    """Error in validation stage"""
+class MegaNzError(CDLBaseError):
+    def __init__(self, msg: str | int, **kwargs) -> None:
+        super().__init__(f"MegaNZ Error ({msg})", **kwargs)
 
 
 ERROR_CODES = {
@@ -150,15 +148,11 @@ class RequestError(MegaNzError):
     def __init__(self, msg: str | int) -> None:
         self.code = code = msg if isinstance(msg, int) else None
         if code is not None:
-            name, desc = ERROR_CODES[code]
-            ui_failure = f"MegaNZ Error: {name}({code})"
-            message = f"{ui_failure} {desc}".strip()
+            name, message = ERROR_CODES[code]
+            ui_failure = f"{name}({code})"
         else:
-            ui_failure = message = f"MegaNZ Error ({msg})"
+            ui_failure = message = f"({msg})"
         super().__init__(ui_failure, message=message)
-
-    def __str__(self) -> str:
-        return self.message
 
 
 CHUNK_BLOCK_LEN = 16  # Hexadecimal
@@ -439,11 +433,11 @@ async def generate_hashcash_token(challenge: str) -> str:
     for i in range(262144):
         buffer[4 + i * 48 : 4 + (i + 1) * 48] = token
 
-    def hash_val(val: bytes):
+    def hash_buffer():
         return hashlib.sha256(buffer).digest()
 
     while True:
-        digest = await asyncio.to_thread(hash_val, buffer)
+        digest = await asyncio.to_thread(hash_buffer)
         view = struct.unpack(">I", digest[:4])[0]  # big-endian uint32
         if view <= threshold:
             return f"1:{token_str}:{base64_url_encode(buffer[:4])}"
