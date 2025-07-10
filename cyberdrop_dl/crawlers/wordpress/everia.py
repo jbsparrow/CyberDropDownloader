@@ -8,6 +8,7 @@ from ._wordpress import WordPressHTMLCrawler
 
 
 class EveriaClubCrawler(WordPressHTMLCrawler):
-    DOMAIN: ClassVar[str] = "everia"
+    DOMAIN: ClassVar[str] = "everia.club"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://everia.club/")
+    FOLDER_DOMAIN: ClassVar[str] = "EveriaClub"
     WP_USE_REGEX: ClassVar[bool] = False
