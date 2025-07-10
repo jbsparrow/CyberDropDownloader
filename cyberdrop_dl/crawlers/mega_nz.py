@@ -106,9 +106,9 @@ class MegaNzCrawler(Crawler):
         iv: tuple[int, ...] = (*file_key[4:6], 0, 0)
         meta_mac: tuple[int, ...] = file_key[6:8]
         file = FileTuple(file_id, DecryptData(iv, k, meta_mac))
-        await self.proccess_file(scrape_item, file)
+        await self._process_file(scrape_item, file)
 
-    async def proccess_file(self, scrape_item: ScrapeItem, file: FileTuple) -> None:
+    async def _process_file(self, scrape_item: ScrapeItem, file: FileTuple) -> None:
         file_data: dict[str, Any] = await self.downloader.api.request({"a": "g", "g": 1, "p": file.id})
         file_size: int = file_data["s"]
         if "g" not in file_data:
@@ -146,9 +146,12 @@ class MegaNzCrawler(Crawler):
                     new_scrape_item.add_to_parent_title(part)
 
             file = FileTuple(file_id, DecryptData(file["iv"], file["k_decrypted"], file["meta_mac"]))
-            await self.proccess_file(new_scrape_item, file)
+            await self._process_file(new_scrape_item, file)
             scrape_item.add_children()
 
     @error_handling_wrapper
     async def login(self, *_) -> None:
+        # This takes a really long times (docens of seconds)
+        # TODO: Add a way to cache this login
+        # TODO: Show some logging message / UI about login
         await self.downloader.api.login(self.user, self.password)

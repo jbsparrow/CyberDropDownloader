@@ -302,7 +302,7 @@ class DownloadClient:
             nonlocal last_slow_speed_read
             if self.download_speed_threshold:
                 return
-            assert media_item.task_id
+            assert media_item.task_id is not None
             speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
             if speed > self.download_speed_threshold:
                 last_slow_speed_read = None

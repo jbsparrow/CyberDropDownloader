@@ -65,6 +65,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypeAlias, Typed
 import aiofiles
 import aiohttp
 from aiohttp import ClientTimeout
+from aiolimiter import AsyncLimiter
 from Crypto.Cipher import AES
 from Crypto.Math.Numbers import Integer
 from Crypto.PublicKey import RSA
@@ -463,6 +464,7 @@ class MegaApi:
         self.root_id: str = ""
         self.inbox_id: str = ""
         self.trashbin_id: str = ""
+        self.request_limiter = AsyncLimiter(100, 60)
         self._files = {}
 
     @property
@@ -482,9 +484,10 @@ class MegaApi:
         else:
             data: list[AnyDict] = data_input
 
-        response = await self.session.post(
-            self.entrypoint, params=params, json=data, timeout=self.timeout, headers=self.default_headers
-        )
+        async with self.request_limiter, self.session.disabled():
+            response = await self.session.post(
+                self.entrypoint, params=params, json=data, timeout=self.timeout, headers=self.default_headers
+            )
 
         # Since around feb 2025, MEGA requires clients to solve a challenge during each login attempt.
         # When that happens, initial responses returns "402 Payment Required".
@@ -496,9 +499,10 @@ class MegaApi:
             log("Solving xhashcash login challenge, this could take a few seconds...")
             xhashcash_token = await generate_hashcash_token(xhashcash_challenge)
             headers = self.default_headers | {"X-Hashcash": xhashcash_token}
-            response = await self.session.post(
-                self.entrypoint, params=params, json=data, timeout=self.timeout, headers=headers
-            )
+            async with self.request_limiter, self.session.disabled():
+                response = await self.session.post(
+                    self.entrypoint, params=params, json=data, timeout=self.timeout, headers=headers
+                )
 
         if xhashcash_challenge := response.headers.get("X-Hashcash"):
             # Computed token failed
