@@ -661,20 +661,13 @@ class MegaApi:
                 file["sk_decrypted"] = shared_key
 
             if key is not None:
-                # file
-                if file["t"] == NodeType.FILE:
-                    file = cast("File", file)
-                    k, iv, meta_mac, _ = get_decrypt_data(NodeType.FILE, key)
-                    file["iv"] = iv
-                    file["meta_mac"] = meta_mac
-                # folder
-                else:
-                    k = key
-
+                crypto = get_decrypt_data(file["t"], key)
+                file["k_decrypted"] = crypto.k
+                file["iv"] = crypto.iv
+                file["meta_mac"] = crypto.meta_mac
                 file["key_decrypted"] = key
-                file["k_decrypted"] = k
                 attributes_bytes = base64_url_decode(file["a"])
-                attributes = decrypt_attr(attributes_bytes, k)
+                attributes = decrypt_attr(attributes_bytes, crypto.k)
                 file["attributes"] = cast("Attributes", attributes)
 
             # other => wrong object
@@ -753,12 +746,12 @@ class MegaApi:
                 node = cast("FileOrFolder", node)
                 encrypted_key = base64_to_a32(node["k"].split(":")[1])
                 key = decrypt_key(encrypted_key, shared_key)
-                k, iv, meta_mac, _ = get_decrypt_data(node["t"], key)
-                attrs = decrypt_attr(base64_url_decode(node["a"]), k)
+                crypto = get_decrypt_data(node["t"], key)
+                attrs = decrypt_attr(base64_url_decode(node["a"]), crypto.k)
                 node["attributes"] = cast("Attributes", attrs)
-                node["k_decrypted"] = k
-                node["iv"] = iv
-                node["meta_mac"] = meta_mac
+                node["k_decrypted"] = crypto.k
+                node["iv"] = crypto.iv
+                node["meta_mac"] = crypto.meta_mac
                 yield node
 
         nodes = {node["h"]: node async for node in prepare_nodes()}
