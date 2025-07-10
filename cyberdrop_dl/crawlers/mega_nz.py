@@ -107,8 +107,7 @@ class MegaNzCrawler(Crawler):
     @error_handling_wrapper
     async def _process_file(self, scrape_item: ScrapeItem, file: FileTuple, *, folder_id: str | None = None) -> None:
         file_data = await self._get_file_info(file.id, folder_id)
-        file_size: int = file_data["s"]
-        decrypt_data = file.crypto._replace(file_size=file_size)
+        decrypt_data = file.crypto._replace(file_size=file_data["s"])
         self.downloader.register(scrape_item.url, decrypt_data)
         file_url = self.parse_url(file_data["g"])
         attribs_bytes = mega.base64_url_decode(file_data["at"])

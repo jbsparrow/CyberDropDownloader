@@ -61,7 +61,7 @@ from collections.abc import Coroutine, Sequence
 from enum import IntEnum
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypeAlias, TypedDict, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, NotRequired, TypeAlias, TypedDict, TypeVar, cast
 
 import aiofiles
 import aiohttp
@@ -434,7 +434,7 @@ async def generate_hashcash_token(challenge: str) -> str:
     for i in range(262144):
         buffer[4 + i * 48 : 4 + (i + 1) * 48] = token
 
-    def hash_buffer():
+    def hash_buffer() -> bytes:
         return hashlib.sha256(buffer).digest()
 
     while True:
@@ -472,22 +472,23 @@ def _check_response_status(response: aiohttp.ClientResponse) -> None:
 class MegaApi:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.schema = "https"
-        self.domain = "mega.nz"
-        self.api_domain = "g.api.mega.co.nz"  # api still uses the old mega.co.nz domain
         self.timeout = ClientTimeout(160)
         self.sid: str | None = None
         self.sequence_num: U32Int = random_u32int()
         self.request_id: str = "".join(random.choice(VALID_REQUEST_ID_CHARS) for _ in range(10))
-        self.user_agent = manager.config_manager.global_settings_data.general.user_agent
-        self.default_headers = {"Content-Type": "application/json", "User-Agent": self.user_agent}
-        self.entrypoint = f"{self.schema}://{self.api_domain}/cs"
+
+        self.default_headers = {
+            "Content-Type": "application/json",
+            "User-Agent": manager.config_manager.global_settings_data.general.user_agent,
+        }
+        self.entrypoint = "https://g.api.mega.co.nz/cs"  # api still uses the old mega.co.nz domain
         self.logged_in = False
         self.root_id: str = ""
         self.inbox_id: str = ""
         self.trashbin_id: str = ""
         self.request_limiter = AsyncLimiter(100, 60)
         self._files = {}
+        self.shared_keys: SharedkeysDict
 
     @property
     def session(self) -> CachedSession:
@@ -533,7 +534,7 @@ class MegaApi:
 
         json_resp: list[Any] | list[int] | int = await response.json()
 
-        def handle_int_resp(int_resp: int):
+        def handle_int_resp(int_resp: int) -> Literal[0]:
             if int_resp == 0:
                 return int_resp
             if int_resp == -3:
@@ -565,7 +566,7 @@ class MegaApi:
         log("[MegaNZ] Login complete")
         return self
 
-    def _process_login(self, resp: AnyDict, password: U32IntArray):
+    def _process_login(self, resp: AnyDict, password: U32IntArray) -> None:
         encrypted_master_key = base64_to_a32(resp["k"])
         self.master_key = decrypt_key(encrypted_master_key, password)
         if b64_tsid := resp.get("tsid"):
@@ -739,14 +740,14 @@ class MegaApi:
             if index % 100 == 0:
                 await asyncio.sleep(0)
 
-    async def get_nodes_public_folder(self, folder_id: str, b64_share_key: str) -> dict[str, FileOrFolder]:
-        shared_key = base64_to_a32(b64_share_key)
+    async def get_nodes_public_folder(self, folder_id: str, share_key: str) -> dict[str, FileOrFolder]:
+        folder_key = base64_to_a32(share_key)
 
         async def prepare_nodes() -> AsyncIterable[FileOrFolder]:
             async for node in self._get_nodes_in_shared_folder(folder_id):
                 node = cast("FileOrFolder", node)
                 encrypted_key = base64_to_a32(node["k"].split(":")[1])
-                full_key = decrypt_key(encrypted_key, shared_key)
+                full_key = decrypt_key(encrypted_key, folder_key)
                 crypto = get_decrypt_data(node["t"], full_key)
                 attrs = decrypt_attr(base64_url_decode(node["a"]), crypto.k)
                 node["attributes"] = cast("Attributes", attrs)
