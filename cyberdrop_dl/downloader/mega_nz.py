@@ -749,6 +749,7 @@ class MegaApi:
                 crypto = get_decrypt_data(node["t"], key)
                 attrs = decrypt_attr(base64_url_decode(node["a"]), crypto.k)
                 node["attributes"] = cast("Attributes", attrs)
+                node["key_decrypted"] = key
                 node["k_decrypted"] = crypto.k
                 node["iv"] = crypto.iv
                 node["meta_mac"] = crypto.meta_mac
