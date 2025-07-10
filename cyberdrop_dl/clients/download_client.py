@@ -294,11 +294,9 @@ class DownloadClient:
 
         async def check_free_space() -> None:
             nonlocal current_chunk
-            if current_chunk < 5:
-                current_chunk += 1
-                return
-            current_chunk = 0
-            return await self.manager.storage_manager.check_free_space(media_item)
+            current_chunk += 1
+            if current_chunk % 5 == 0:
+                return await self.manager.storage_manager.check_free_space(media_item)
 
         return check_free_space
 
@@ -307,7 +305,7 @@ class DownloadClient:
 
         def check_download_speed() -> None:
             nonlocal last_slow_speed_read
-            if self.download_speed_threshold:
+            if not self.download_speed_threshold:
                 return
             assert media_item.task_id is not None
             speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
