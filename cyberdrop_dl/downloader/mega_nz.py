@@ -221,8 +221,8 @@ FilesMapping = dict[str, FileOrFolder]  # key is parent_id ('p')
 
 
 class DecryptData(NamedTuple):
-    iv: U32IntTupleArray
     k: U32IntTupleArray
+    iv: U32IntTupleArray
     meta_mac: U32IntTupleArray
     file_size: int = 0
 
@@ -870,8 +870,7 @@ class MegaDownloader(Downloader):
 
 class MegaDecryptor:
     def __init__(self, crypto: DecryptData) -> None:
-        iv, k_decrypted, meta_mac, _ = crypto
-        self.chunk_decryptor = _decrypt_chunks(iv, k_decrypted, meta_mac)
+        self.chunk_decryptor = _decrypt_chunks(crypto.k, crypto.iv, crypto.meta_mac)
         _ = next(self.chunk_decryptor)  # Prime chunk decryptor
 
     def decrypt(self, raw_chunk: bytes) -> bytes:
@@ -885,7 +884,7 @@ class MegaDecryptor:
 
 
 def _decrypt_chunks(
-    iv: U32IntTupleArray, k_decrypted: U32IntTupleArray, meta_mac: U32IntTupleArray
+    k_decrypted: U32IntTupleArray, iv: U32IntTupleArray, meta_mac: U32IntTupleArray
 ) -> Generator[bytes, bytes, None]:
     """
     Decrypts chunks of data received via `send()` and yields the decrypted chunks.

@@ -155,7 +155,7 @@ class MegaNzCrawler(Crawler):
             for part in path.parent.parts[1:]:
                 new_scrape_item.add_to_parent_title(part)
 
-            file = FileTuple(file_id, mega.DecryptData(file["iv"], file["k_decrypted"], file["meta_mac"]))
+            file = FileTuple(file_id, mega.DecryptData(file["k_decrypted"], file["iv"], file["meta_mac"]))
             self.manager.task_group.create_task(self._process_file(new_scrape_item, file, folder_id=folder_id))
             processed_files += 1
             if processed_files % 10 == 0:
