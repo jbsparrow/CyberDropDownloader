@@ -5,6 +5,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pydantic import ValidationError
 from yaml import YAMLError
 from yarl import URL
 
@@ -55,9 +56,13 @@ class CDLBaseError(Exception):
             super().__init__(self.status)
 
     def __str__(self) -> str:
-        if self.ui_failure == self.message:
-            return self.message
-        return f"{self.ui_failure} - {self.message}"
+        return _format_error(self.ui_failure, self.message)
+
+
+def _format_error(ui_failure: str, message: str) -> str:
+    if ui_failure == message:
+        return message
+    return f"{ui_failure} - {message}"
 
 
 class InvalidContentTypeError(CDLBaseError):
@@ -253,8 +258,13 @@ class ErrorLogMessage:
 
     @classmethod
     def from_unknown_exc(cls, e: Exception) -> ErrorLogMessage:
-        e_status = getattr(e, "status", None)
-        e_message = getattr(e, "message", None)
+        if isinstance(e, ValidationError):
+            e_status = 422
+            e_message = str(e).split("For further information", 1)[0].strip()
+        else:
+            e_status = getattr(e, "status", None)
+            e_message = getattr(e, "message", None)
+            log_msg = None
         ui_failure = create_error_msg(e_status) if e_status else "Unknown"
-        log_msg = e_message or str(e)
+        log_msg = _format_error(ui_failure, e_message or str(e))
         return ErrorLogMessage(ui_failure, log_msg)
