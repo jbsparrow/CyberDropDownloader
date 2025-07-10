@@ -290,7 +290,14 @@ class DownloadClient:
             raise DownloadError(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
 
     def make_free_space_checker(self, media_item: MediaItem) -> Callable[[], Coroutine[Any, Any, None]]:
+        current_chunk = 0
+
         async def check_free_space() -> None:
+            nonlocal current_chunk
+            if current_chunk < 5:
+                current_chunk += 1
+                return
+            current_chunk = 0
             return await self.manager.storage_manager.check_free_space(media_item)
 
         return check_free_space
