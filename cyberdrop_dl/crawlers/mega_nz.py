@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -109,8 +110,17 @@ class MegaNzCrawler(Crawler):
         await self._process_file(scrape_item, file)
 
     @error_handling_wrapper
-    async def _process_file(self, scrape_item: ScrapeItem, file: FileTuple) -> None:
-        file_data: dict[str, Any] = await self.downloader.api.request({"a": "g", "g": 1, "p": file.id})
+    async def _process_file(self, scrape_item: ScrapeItem, file: FileTuple, *, folder_id: str | None = None) -> None:
+        params = {"a": "g", "g": 1}
+        add_params = None
+        if folder_id is not None:
+            params = params | {"n": file.id}
+            add_params = {"n": folder_id}
+        else:
+            params = params | {"p": file.id}
+            add_params = None
+
+        file_data: dict[str, Any] = await self.downloader.api.request(params, add_params)
         file_size: int = file_data["s"]
         if "g" not in file_data:
             raise ScrapeError(410, "File not accessible anymore")
@@ -134,6 +144,7 @@ class MegaNzCrawler(Crawler):
         title = self.create_title(folder_name, folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)
 
+        processed_files = 0
         for path, node in filesystem.items():
             if node["t"] != NodeType.FILE:
                 continue
@@ -146,7 +157,11 @@ class MegaNzCrawler(Crawler):
                 new_scrape_item.add_to_parent_title(part)
 
             file = FileTuple(file_id, DecryptData(file["iv"], file["k_decrypted"], file["meta_mac"]))
-            await self._process_file(new_scrape_item, file)
+            self.manager.task_group.create_task(self._process_file(new_scrape_item, file, folder_id=folder_id))
+            processed_files += 1
+            if processed_files >= 10:
+                processed_files = 0
+                await asyncio.sleep(0)
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -158,4 +173,4 @@ class MegaNzCrawler(Crawler):
             await self.downloader.api.login(self.user, self.password)
         except Exception as e:
             self.disabled = True
-            raise LoginError("[MegaNZ] unable to login to mega. Crawler has being disabled") from e
+            raise LoginError(f"[MegaNZ] {e}") from e
