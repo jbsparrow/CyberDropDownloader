@@ -1,3 +1,10 @@
+"""Crawler to download files and folders from mega.nz
+
+This crawler does several CPU intensive operations
+
+It calls checks_complete_by_referer several times even if no request is going to be made, to skip unnecesary compute time
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -33,7 +40,7 @@ class MegaNzCrawler(Crawler):
             "/folder/<handle>#<share_key>",
             "/F!#<handle>!<share_key>",
         ),
-        "**NOTE**": "Downloads can not be resumed. Partial downloads will always be deleted and a new downloads will start over",
+        "**NOTE**": "Downloads can not be resumed. Partial downloads will always be deleted and an new downloads will start over",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     SKIP_PRE_CHECK: ClassVar[bool] = True
@@ -60,6 +67,8 @@ class MegaNzCrawler(Crawler):
         await self.login(PRIMARY_URL)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
+        if not self.logged_in:
+            return
         if frag := scrape_item.url.fragment:  # Mega stores access key in fragment. We can't do anything without the key
             # v1 URLs
             if frag.count("!") == 2:
@@ -86,8 +95,10 @@ class MegaNzCrawler(Crawler):
         canonical_url = (PRIMARY_URL / "file" / file_id).with_fragment(shared_key)
         if await self.check_complete_from_referer(canonical_url):
             return
-
         scrape_item.url = canonical_url
+
+        # TODO: move file_key decrypt logic to the API.
+        # The API itself does this multiple times
         file_key = mega.base64_to_a32(shared_key)
 
         k: tuple[int, ...] = (
@@ -159,18 +170,18 @@ class MegaNzCrawler(Crawler):
             file = FileTuple(file_id, DecryptData(file["iv"], file["k_decrypted"], file["meta_mac"]))
             self.manager.task_group.create_task(self._process_file(new_scrape_item, file, folder_id=folder_id))
             processed_files += 1
-            if processed_files >= 10:
-                processed_files = 0
+            if processed_files % 10 == 0:
                 await asyncio.sleep(0)
             scrape_item.add_children()
 
     @error_handling_wrapper
     async def login(self, *_) -> None:
-        # This takes a really long times (dozens of seconds)
+        # This takes a really long time (dozens of seconds)
         # TODO: Add a way to cache this login
         # TODO: Show some logging message / UI about login
         try:
             await self.downloader.api.login(self.user, self.password)
+            self.logged_in = True
         except Exception as e:
             self.disabled = True
             raise LoginError(f"[MegaNZ] {e}") from e

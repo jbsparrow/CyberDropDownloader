@@ -776,21 +776,28 @@ class MegaApi:
         path_mapping: dict[Path, Node] = {}
         parents_mapping: dict[str, list[Node]] = {}
 
-        for _, item in nodes_map.items():
+        for index, item in enumerate(nodes_map.values()):
             parent_id = item["p"]
             if parent_id not in parents_mapping:
                 parents_mapping[parent_id] = []
             parents_mapping[parent_id].append(item)
+            if index % 100 == 0:
+                await asyncio.sleep(0)
+
+        n_paths = 0
 
         async def build_tree(parent_id: str, current_path: Path) -> None:
+            nonlocal n_paths
             for item in parents_mapping.get(parent_id, []):
                 item_path = current_path / item["attributes"]["n"]
                 path_mapping[item_path] = item
+                n_paths += 1
 
                 if item["t"] == NodeType.FOLDER:
                     await build_tree(item["h"], item_path)
 
-            await asyncio.sleep(0)
+            if n_paths % 100 == 0:
+                await asyncio.sleep(0)
 
         for root_id in root_ids:
             root_item = nodes_map[root_id]
