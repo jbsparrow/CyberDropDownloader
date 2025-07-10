@@ -6,11 +6,13 @@ from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader import mega_nz as mega
-from cyberdrop_dl.downloader.mega_nz import DecryptData, File, MegaDownloader, NodeType
+from cyberdrop_dl.downloader.mega_nz import DecryptData, File, MegaDownloader, Node, NodeType
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://mega.nz")
@@ -49,20 +51,10 @@ class MegaNzCrawler(Crawler):
     def password(self) -> str | None:
         return self.manager.auth_config.meganz.password or None
 
-    # TODO: define in base crawler
     def _init_downloader(self) -> MegaDownloader:
         self.downloader = dl = MegaDownloader(self.manager, self.DOMAIN)
         dl.startup()
         return dl
-
-    async def startup(self) -> None:
-        async with self.startup_lock:
-            if self.ready:
-                return
-            self.client = self.manager.client_manager.scraper_session
-            self.downloader = self._init_downloader()
-            await self.async_startup()
-            self.ready = True
 
     async def async_startup(self) -> None:
         await self.login(PRIMARY_URL)
@@ -111,20 +103,8 @@ class MegaNzCrawler(Crawler):
 
     @error_handling_wrapper
     async def _process_file(self, scrape_item: ScrapeItem, file: FileTuple, *, folder_id: str | None = None) -> None:
-        params = {"a": "g", "g": 1}
-        add_params = None
-        if folder_id is not None:
-            params = params | {"n": file.id}
-            add_params = {"n": folder_id}
-        else:
-            params = params | {"p": file.id}
-            add_params = None
-
-        file_data: dict[str, Any] = await self.downloader.api.request(params, add_params)
+        file_data = await self._get_file_info(file.id, folder_id)
         file_size: int = file_data["s"]
-        if "g" not in file_data:
-            raise ScrapeError(410, "File not accessible anymore")
-
         decrypt_data = file.crypto._replace(file_size=file_size)
         self.downloader.register(scrape_item.url, decrypt_data)
         file_url = self.parse_url(file_data["g"])
@@ -133,17 +113,34 @@ class MegaNzCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=file_url)
 
+    async def _get_file_info(self, file_id: str, folder_id: str | None) -> dict[str, Any]:
+        params = {"a": "g", "g": 1}
+        add_params = None
+        if folder_id is not None:
+            params = params | {"n": file_id}
+            add_params = {"n": folder_id}
+        else:
+            params = params | {"p": file_id}
+            add_params = None
+
+        file_data: dict[str, Any] = await self.downloader.api.request(params, add_params)
+        if "g" not in file_data:
+            raise ScrapeError(410, "File not accessible anymore")
+        return file_data
+
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, folder_id: str, shared_key: str) -> None:
-        canonical_url = PRIMARY_URL / "folder" / folder_id / shared_key
-        scrape_item.url = canonical_url
+        scrape_item.url = PRIMARY_URL / "folder" / folder_id / shared_key
         nodes = await self.downloader.api.get_nodes_public_folder(folder_id, shared_key)
         root_id = next(iter(nodes))
         folder_name = nodes[root_id]["attributes"]["n"]
         filesystem = await self.downloader.api._build_file_system(nodes, [root_id])
         title = self.create_title(folder_name, folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)
+        await self._process_folder_fs(scrape_item, filesystem)
 
+    async def _process_folder_fs(self, scrape_item: ScrapeItem, filesystem: dict[Path, Node]) -> None:
+        folder_id, shared_key = scrape_item.url.parts[-2:]
         processed_files = 0
         for path, node in filesystem.items():
             if node["t"] != NodeType.FILE:

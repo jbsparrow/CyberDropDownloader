@@ -189,6 +189,11 @@ class Crawler(ABC):
     def allow_no_extension(self) -> bool:
         return not self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
 
+    def _init_downloader(self) -> Downloader:
+        self.downloader = dl = Downloader(self.manager, self.DOMAIN)
+        dl.startup()
+        return dl
+
     @final
     async def startup(self) -> None:
         """Starts the crawler."""
@@ -196,8 +201,7 @@ class Crawler(ABC):
             if self.ready:
                 return
             self.client = self.manager.client_manager.scraper_session
-            self.downloader = Downloader(self.manager, self.DOMAIN)
-            self.downloader.startup()
+            self.downloader = self._init_downloader()
             await self.async_startup()
             self.ready = True
 
