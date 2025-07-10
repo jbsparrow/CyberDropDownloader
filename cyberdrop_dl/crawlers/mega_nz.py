@@ -83,7 +83,7 @@ class MegaNzCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem, file_id: str, shared_key: str) -> None:
-        canonical_url = PRIMARY_URL / "file" / file_id / shared_key
+        canonical_url = (PRIMARY_URL / "file" / file_id).with_fragment(shared_key)
         if await self.check_complete_from_referer(canonical_url):
             return
 
@@ -130,7 +130,8 @@ class MegaNzCrawler(Crawler):
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, folder_id: str, shared_key: str) -> None:
-        scrape_item.url = PRIMARY_URL / "folder" / folder_id / shared_key
+        canonical_url = (PRIMARY_URL / "folder" / folder_id).with_fragment(shared_key)
+        scrape_item.url = canonical_url
         nodes = await self.downloader.api.get_nodes_public_folder(folder_id, shared_key)
         root_id = next(iter(nodes))
         folder_name = nodes[root_id]["attributes"]["n"]
@@ -140,7 +141,7 @@ class MegaNzCrawler(Crawler):
         await self._process_folder_fs(scrape_item, filesystem)
 
     async def _process_folder_fs(self, scrape_item: ScrapeItem, filesystem: dict[Path, Node]) -> None:
-        folder_id, shared_key = scrape_item.url.parts[-2:]
+        folder_id, shared_key = scrape_item.url.name, scrape_item.url.fragment
         processed_files = 0
         for path, node in filesystem.items():
             if node["t"] != NodeType.FILE:
@@ -148,7 +149,7 @@ class MegaNzCrawler(Crawler):
 
             file = cast("File", node)
             file_id = file["h"]
-            canonical_url = PRIMARY_URL / "file" / file_id / shared_key
+            canonical_url = (PRIMARY_URL / "file" / file_id).with_fragment(shared_key)
             if await self.check_complete_from_referer(canonical_url):
                 continue
             new_scrape_item = scrape_item.create_child(canonical_url)
