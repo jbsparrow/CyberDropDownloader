@@ -78,7 +78,7 @@ from cyberdrop_dl.exceptions import CDLBaseError, DownloadError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Mapping
+    from collections.abc import AsyncIterable, Generator, Mapping
     from functools import partial
 
     from aiohttp_client_cache.session import CachedSession
@@ -449,6 +449,17 @@ async def generate_hashcash_token(challenge: str) -> str:
                 break
 
 
+def get_decrypt_data(node_type: NodeType, key: U32IntTupleArray) -> DecryptData:
+    if node_type == NodeType.FILE:
+        k = (key[0] ^ key[4], key[1] ^ key[5], key[2] ^ key[6], key[3] ^ key[7])
+    elif node_type == NodeType.FOLDER:
+        k = key
+
+    iv: U32IntTupleArray = (*key[4:6], 0, 0)
+    meta_mac: U32IntTupleArray = key[6:8]
+    return DecryptData(k, iv, meta_mac)
+
+
 VALID_REQUEST_ID_CHARS = string.ascii_letters + string.digits
 
 
@@ -653,9 +664,9 @@ class MegaApi:
                 # file
                 if file["t"] == NodeType.FILE:
                     file = cast("File", file)
-                    k = (key[0] ^ key[4], key[1] ^ key[5], key[2] ^ key[6], key[3] ^ key[7])
-                    file["iv"] = (*key[4:6], 0, 0)
-                    file["meta_mac"] = key[6:8]
+                    k, iv, meta_mac, _ = get_decrypt_data(NodeType.FILE, key)
+                    file["iv"] = iv
+                    file["meta_mac"] = meta_mac
                 # folder
                 else:
                     k = key
@@ -715,7 +726,7 @@ class MegaApi:
         self._files = files_dict
         return files_dict
 
-    async def _get_nodes(self) -> AsyncGenerator[Node]:
+    async def _get_nodes(self) -> AsyncIterable[Node]:
         files: Folder = await self.request({"a": "f", "c": 1, "r": 1})
         shared_keys: SharedkeysDict = {}
         self._init_shared_keys(files, shared_keys)
@@ -724,7 +735,7 @@ class MegaApi:
             if index % 100 == 0:
                 await asyncio.sleep(0)
 
-    async def _get_nodes_in_shared_folder(self, folder_id: str) -> AsyncGenerator[Node]:
+    async def _get_nodes_in_shared_folder(self, folder_id: str) -> AsyncIterable[Node]:
         files: Folder = await self.request(
             {"a": "f", "c": 1, "ca": 1, "r": 1},
             {"n": folder_id},
@@ -737,19 +748,12 @@ class MegaApi:
     async def get_nodes_public_folder(self, folder_id: str, b64_share_key: str) -> dict[str, FileOrFolder]:
         shared_key = base64_to_a32(b64_share_key)
 
-        async def prepare_nodes():
+        async def prepare_nodes() -> AsyncIterable[FileOrFolder]:
             async for node in self._get_nodes_in_shared_folder(folder_id):
                 node = cast("FileOrFolder", node)
                 encrypted_key = base64_to_a32(node["k"].split(":")[1])
                 key = decrypt_key(encrypted_key, shared_key)
-                if node["t"] == NodeType.FILE:
-                    k = (key[0] ^ key[4], key[1] ^ key[5], key[2] ^ key[6], key[3] ^ key[7])
-                elif node["t"] == NodeType.FOLDER:
-                    k = key
-
-                iv: U32IntSequence = (*key[4:6], 0, 0)
-                meta_mac: U32IntTupleArray = key[6:8]
-
+                k, iv, meta_mac, _ = get_decrypt_data(node["t"], key)
                 attrs = decrypt_attr(base64_url_decode(node["a"]), k)
                 node["attributes"] = cast("Attributes", attrs)
                 node["k_decrypted"] = k

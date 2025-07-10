@@ -95,20 +95,9 @@ class MegaNzCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
         scrape_item.url = canonical_url
-
-        # TODO: move file_key decrypt logic to the API.
-        # The API itself does this multiple times
         file_key = mega.base64_to_a32(shared_key)
-
-        k: tuple[int, ...] = (
-            file_key[0] ^ file_key[4],
-            file_key[1] ^ file_key[5],
-            file_key[2] ^ file_key[6],
-            file_key[3] ^ file_key[7],
-        )
-        iv: tuple[int, ...] = (*file_key[4:6], 0, 0)
-        meta_mac: tuple[int, ...] = file_key[6:8]
-        file = FileTuple(file_id, mega.DecryptData(iv, k, meta_mac))
+        crypto = mega.get_decrypt_data(mega.NodeType.FILE, file_key)
+        file = FileTuple(file_id, crypto)
         await self._process_file(scrape_item, file)
 
     @error_handling_wrapper
