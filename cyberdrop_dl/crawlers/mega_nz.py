@@ -73,11 +73,11 @@ class MegaNzCrawler(Crawler):
             # v1 URLs
             if frag.count("!") == 2:
                 if frag.startswith("F!"):
-                    folder_id, shared_key = frag.removeprefix("F!").rsplit("!", 1)
+                    folder_id, _, shared_key = frag.removeprefix("F!").partition("!")
                     return await self.folder(scrape_item, folder_id, shared_key)
                 if frag.startswith("!"):
                     # https://mega.nz/#!Ue5VRSIQ!kC2E4a4JwfWWCWYNJovGFHlbz8F
-                    file_id, shared_key = frag.removeprefix("!").rsplit("!", 1)
+                    file_id, _, shared_key = frag.removeprefix("!").partition("!")
                     return await self.file(scrape_item, file_id, shared_key)
 
             # v2 URLs
@@ -158,13 +158,13 @@ class MegaNzCrawler(Crawler):
 
             file = cast("mega.File", node)
             file_id = file["h"]
-            if single_file_id is not None and file_id != single_file_id:
+            if single_file_id and file_id != single_file_id:
                 continue
             file_fragment = f"{shared_key}/file/{file_id}"
             canonical_url = scrape_item.url.with_fragment(file_fragment)
             if not single_file_id and await self.check_complete_from_referer(canonical_url):
                 continue
-            new_scrape_item = scrape_item.create_child(canonical_url)
+            new_scrape_item = scrape_item.create_child(canonical_url, possible_datetime=file["ts"])
             for part in path.parent.parts[1:]:
                 new_scrape_item.add_to_parent_title(part)
 

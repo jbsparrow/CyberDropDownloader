@@ -178,26 +178,26 @@ class NodeType(IntEnum):
 
 
 class Node(TypedDict):
-    t: NodeType
-    h: str  # Id
-    p: str  # Parent Id
-    a: str  # Encrypted attributes (within this: 'n' Name)
-    k: str  # Node key
-    u: str  # User Id
-    s: int  # Size
-    ts: int  # Timestamp
-    g: str  # Access URL
-    k: str  # Public access key (parent folder + file)
+    t: NodeType  # type
+    h: str  # id (aka handle)
+    p: str  # parent id
+    a: str  # attributes (within this: 'n' Name)
+    k: str  # key
+    u: str  # user id
+    s: int  # size
+    ts: int  # creation date (timestamp)
+    g: NotRequired[str]  # Access URL
 
     #  Non standard properties, only used internally
     attributes: Attributes  # Decrypted attributes
     k_decrypted: U32IntTupleArray
-    key_decrypted: U32IntTupleArray  # Decrypted access key (for folders, its values if the same as 'k_decrypted')
+    # full key, computed from value of `k` and the master key of the owner. This is the public access key
+    key_decrypted: U32IntTupleArray
 
 
 class FileOrFolder(Node):
-    su: NotRequired[str]  # Shared user Id, only present present in shared files / folder
-    sk: NotRequired[str]  # Shared key, only present present in shared (public) files / folder
+    su: NotRequired[str]  # shared user id, only present in shared files / folder. The id of the owner
+    sk: NotRequired[str]  # shared key. It's the base64 of `key_decrypted`
 
     #  Non standard properties, only used internally
     iv: U32IntTupleArray
@@ -207,6 +207,7 @@ class FileOrFolder(Node):
 
 class File(FileOrFolder):
     at: str  # File specific attributes (encrypted)
+    fa: str  # File attributes
 
 
 class Folder(FileOrFolder):
@@ -449,14 +450,14 @@ async def generate_hashcash_token(challenge: str) -> str:
                 break
 
 
-def get_decrypt_data(node_type: NodeType, key: U32IntTupleArray) -> DecryptData:
+def get_decrypt_data(node_type: NodeType, full_key: U32IntTupleArray) -> DecryptData:
     if node_type == NodeType.FILE:
-        k = (key[0] ^ key[4], key[1] ^ key[5], key[2] ^ key[6], key[3] ^ key[7])
+        k = (full_key[0] ^ full_key[4], full_key[1] ^ full_key[5], full_key[2] ^ full_key[6], full_key[3] ^ full_key[7])
     elif node_type == NodeType.FOLDER:
-        k = key
+        k = full_key
 
-    iv: U32IntTupleArray = (*key[4:6], 0, 0)
-    meta_mac: U32IntTupleArray = key[6:8]
+    iv: U32IntTupleArray = (*full_key[4:6], 0, 0)
+    meta_mac: U32IntTupleArray = full_key[6:8]
     return DecryptData(k, iv, meta_mac)
 
 
@@ -745,11 +746,11 @@ class MegaApi:
             async for node in self._get_nodes_in_shared_folder(folder_id):
                 node = cast("FileOrFolder", node)
                 encrypted_key = base64_to_a32(node["k"].split(":")[1])
-                key = decrypt_key(encrypted_key, shared_key)
-                crypto = get_decrypt_data(node["t"], key)
+                full_key = decrypt_key(encrypted_key, shared_key)
+                crypto = get_decrypt_data(node["t"], full_key)
                 attrs = decrypt_attr(base64_url_decode(node["a"]), crypto.k)
                 node["attributes"] = cast("Attributes", attrs)
-                node["key_decrypted"] = key
+                node["key_decrypted"] = full_key
                 node["k_decrypted"] = crypto.k
                 node["iv"] = crypto.iv
                 node["meta_mac"] = crypto.meta_mac
