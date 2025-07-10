@@ -264,7 +264,6 @@ class ErrorLogMessage:
         else:
             e_status = getattr(e, "status", None)
             e_message = getattr(e, "message", None)
-            log_msg = None
         ui_failure = create_error_msg(e_status) if e_status else "Unknown"
         log_msg = _format_error(ui_failure, e_message or str(e))
         return ErrorLogMessage(ui_failure, log_msg)
