@@ -99,8 +99,8 @@ class MegaNzCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
         scrape_item.url = canonical_url
-        file_key = mega.base64_to_a32(shared_key)
-        crypto = mega.get_decrypt_data(mega.NodeType.FILE, file_key)
+        full_key = mega.base64_to_a32(shared_key)
+        crypto = mega.get_decrypt_data(mega.NodeType.FILE, full_key)
         file = FileTuple(file_id, crypto)
         await self._process_file(scrape_item, file)
 
@@ -116,16 +116,15 @@ class MegaNzCrawler(Crawler):
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=file_url)
 
     async def _get_file_info(self, file_id: str, folder_id: str | None) -> dict[str, Any]:
-        params = {"a": "g", "g": 1}
-        add_params = None
-        if folder_id is not None:
-            params = params | {"n": file_id}
-            add_params = {"n": folder_id}
+        data = {"a": "g", "g": 1}
+        if folder_id:
+            data = data | {"n": file_id}
+            query_params = {"n": folder_id}
         else:
-            params = params | {"p": file_id}
-            add_params = None
+            data = data | {"p": file_id}
+            query_params = None
 
-        file_data: dict[str, Any] = await self.downloader.api.request(params, add_params)
+        file_data: dict[str, Any] = await self.downloader.api.request(data, query_params)
         if "g" not in file_data:
             raise ScrapeError(410, "File not accessible anymore")
         return file_data
