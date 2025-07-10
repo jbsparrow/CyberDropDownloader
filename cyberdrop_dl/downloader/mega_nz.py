@@ -89,7 +89,6 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 Array: TypeAlias = list[T] | tuple[T, ...]
-CMD: TypeAlias = Array[str]
 U32Int: TypeAlias = int
 U32IntArray: TypeAlias = Array[U32Int]
 U32IntSequence: TypeAlias = Sequence[U32Int]
@@ -165,7 +164,7 @@ class Chunk(NamedTuple):
 
 
 class Attributes(TypedDict):
-    n: str  # Name
+    n: str  # name
 
 
 class NodeType(IntEnum):
@@ -299,12 +298,6 @@ def encrypt_key(array: U32IntSequence, key: U32IntSequence) -> U32IntTupleArray:
 
 def decrypt_key(array: U32IntSequence, key: U32IntSequence) -> U32IntTupleArray:
     return sum((_aes_cbc_decrypt_a32(array[index : index + 4], key) for index in range(0, len(array), 4)), ())
-
-
-def encrypt_attr(attr_dict: dict, key: U32IntSequence) -> bytes:
-    attr: bytes = f"MEGA{json.dumps(attr_dict)}".encode()
-    attr = pad_bytes(attr)
-    return _aes_cbc_encrypt(attr, a32_to_bytes(key))
 
 
 def decrypt_attr(attr: bytes, key: U32IntSequence) -> AnyDict:
