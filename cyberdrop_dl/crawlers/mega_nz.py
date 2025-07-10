@@ -152,6 +152,8 @@ class MegaNzCrawler(Crawler):
             file = cast("File", node)
             file_id = file["h"]
             canonical_url = PRIMARY_URL / "file" / file_id / shared_key
+            if await self.check_complete_from_referer(canonical_url):
+                continue
             new_scrape_item = scrape_item.create_child(canonical_url)
             for part in path.parent.parts[1:]:
                 new_scrape_item.add_to_parent_title(part)
