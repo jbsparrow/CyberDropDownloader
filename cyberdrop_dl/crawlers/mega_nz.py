@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader import mega_nz as mega
-from cyberdrop_dl.downloader.mega_nz import DecryptData, File, MegaDownloader, Node, NodeType
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -27,7 +26,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://mega.nz")
 
 class FileTuple(NamedTuple):
     id: str
-    crypto: DecryptData
+    crypto: mega.DecryptData
 
 
 class MegaNzCrawler(Crawler):
@@ -48,7 +47,7 @@ class MegaNzCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "MegaNz"
 
     def __post_init__(self) -> None:
-        self.downloader: MegaDownloader
+        self.downloader: mega.MegaDownloader
 
     @property
     def user(self) -> str | None:
@@ -58,8 +57,8 @@ class MegaNzCrawler(Crawler):
     def password(self) -> str | None:
         return self.manager.auth_config.meganz.password or None
 
-    def _init_downloader(self) -> MegaDownloader:
-        self.downloader = dl = MegaDownloader(self.manager, self.DOMAIN)
+    def _init_downloader(self) -> mega.MegaDownloader:
+        self.downloader = dl = mega.MegaDownloader(self.manager, self.DOMAIN)
         dl.startup()
         return dl
 
@@ -109,7 +108,7 @@ class MegaNzCrawler(Crawler):
         )
         iv: tuple[int, ...] = (*file_key[4:6], 0, 0)
         meta_mac: tuple[int, ...] = file_key[6:8]
-        file = FileTuple(file_id, DecryptData(iv, k, meta_mac))
+        file = FileTuple(file_id, mega.DecryptData(iv, k, meta_mac))
         await self._process_file(scrape_item, file)
 
     @error_handling_wrapper
@@ -151,14 +150,14 @@ class MegaNzCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=folder_id)
         await self._process_folder_fs(scrape_item, filesystem)
 
-    async def _process_folder_fs(self, scrape_item: ScrapeItem, filesystem: dict[Path, Node]) -> None:
+    async def _process_folder_fs(self, scrape_item: ScrapeItem, filesystem: dict[Path, mega.Node]) -> None:
         folder_id, shared_key = scrape_item.url.name, scrape_item.url.fragment
         processed_files = 0
         for path, node in filesystem.items():
-            if node["t"] != NodeType.FILE:
+            if node["t"] != mega.NodeType.FILE:
                 continue
 
-            file = cast("File", node)
+            file = cast("mega.File", node)
             file_id = file["h"]
             canonical_url = (PRIMARY_URL / "file" / file_id).with_fragment(shared_key)
             if await self.check_complete_from_referer(canonical_url):
@@ -167,7 +166,7 @@ class MegaNzCrawler(Crawler):
             for part in path.parent.parts[1:]:
                 new_scrape_item.add_to_parent_title(part)
 
-            file = FileTuple(file_id, DecryptData(file["iv"], file["k_decrypted"], file["meta_mac"]))
+            file = FileTuple(file_id, mega.DecryptData(file["iv"], file["k_decrypted"], file["meta_mac"]))
             self.manager.task_group.create_task(self._process_file(new_scrape_item, file, folder_id=folder_id))
             processed_files += 1
             if processed_files % 10 == 0:
