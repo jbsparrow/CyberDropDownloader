@@ -133,15 +133,14 @@ class MegaNzCrawler(Crawler):
 
     @error_handling_wrapper
     async def folder(
-        self, scrape_item: ScrapeItem, folder_id: str, shared_key: str, single_file_id: str | None
+        self, scrape_item: ScrapeItem, folder_id: str, shared_key: str, single_file_id: str | None = None
     ) -> None:
         if single_file_id and await self.check_complete_from_referer(scrape_item.url):
             return
         nodes = await self.downloader.api.get_nodes_public_folder(folder_id, shared_key)
         root_id = next(iter(nodes))
         folder_name = nodes[root_id]["attributes"]["n"]
-        # TODO:  build file system in another thread
-        filesystem = await self.downloader.api._build_file_system(nodes, [root_id])
+        filesystem = await self.downloader.api.build_file_system(nodes, [root_id])
         title = self.create_title(folder_name, folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)
         canonical_url = (PRIMARY_URL / "folder" / folder_id).with_fragment(shared_key)
