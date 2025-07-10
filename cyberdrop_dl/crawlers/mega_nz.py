@@ -6,7 +6,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader import mega_nz as mega
 from cyberdrop_dl.downloader.mega_nz import DecryptData, File, MegaDownloader, NodeType
-from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.exceptions import LoginError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -108,6 +108,7 @@ class MegaNzCrawler(Crawler):
         file = FileTuple(file_id, DecryptData(iv, k, meta_mac))
         await self._process_file(scrape_item, file)
 
+    @error_handling_wrapper
     async def _process_file(self, scrape_item: ScrapeItem, file: FileTuple) -> None:
         file_data: dict[str, Any] = await self.downloader.api.request({"a": "g", "g": 1, "p": file.id})
         file_size: int = file_data["s"]
@@ -141,9 +142,8 @@ class MegaNzCrawler(Crawler):
             file_id = file["h"]
             canonical_url = PRIMARY_URL / "file" / file_id / shared_key
             new_scrape_item = scrape_item.create_child(canonical_url)
-            for part in path.parent.parts:
-                if part != folder_name:
-                    new_scrape_item.add_to_parent_title(part)
+            for part in path.parent.parts[1:]:
+                new_scrape_item.add_to_parent_title(part)
 
             file = FileTuple(file_id, DecryptData(file["iv"], file["k_decrypted"], file["meta_mac"]))
             await self._process_file(new_scrape_item, file)
@@ -151,7 +151,11 @@ class MegaNzCrawler(Crawler):
 
     @error_handling_wrapper
     async def login(self, *_) -> None:
-        # This takes a really long times (docens of seconds)
+        # This takes a really long times (dozens of seconds)
         # TODO: Add a way to cache this login
         # TODO: Show some logging message / UI about login
-        await self.downloader.api.login(self.user, self.password)
+        try:
+            await self.downloader.api.login(self.user, self.password)
+        except Exception as e:
+            self.disabled = True
+            raise LoginError("[MegaNZ] unable to login to mega. Crawler has being disabled") from e

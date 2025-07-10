@@ -59,6 +59,7 @@ import string
 import struct
 from collections.abc import Coroutine, Sequence
 from enum import IntEnum
+from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple, NotRequired, TypeAlias, TypedDict, TypeVar, cast
 
@@ -73,7 +74,7 @@ from Crypto.Util import Counter
 
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.exceptions import CDLBaseError
+from cyberdrop_dl.exceptions import CDLBaseError, DownloadError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
@@ -104,47 +105,57 @@ class ValidationError(MegaNzError):
 
 
 ERROR_CODES = {
-    -1: "EINTERNAL (-1): An internal error has occurred. Please submit a bug report, detailing the exact circumstances in which this error occurred.",
-    -2: "EARGS (-2): You have passed invalid arguments to this command.",
-    -3: "EAGAIN (-3): A temporary congestion or server malfunction prevented your request from being processed. No data was altered",
-    -4: "ERATELIMIT (-4): You have exceeded your command weight per time quota. Please wait a few seconds, then try again (this should never happen in sane real-life applications).",
-    -5: "EFAILED (-5): The upload failed. Please restart it from scratch.",
-    -6: "ETOOMANY (-6): Too many concurrent IP addresses are accessing this upload target URL.",
-    -7: "ERANGE (-7): The upload file packet is out of range or not starting and ending on a chunk boundary.",
-    -8: "EEXPIRED (-8): The upload target URL you are trying to access has expired. Please request a fresh one.",
-    -9: "ENOENT (-9): Object (typically, node or user) not found. Wrong password?",
-    -10: "ECIRCULAR (-10): Circular linkage attempted",
-    -11: "EACCESS (-11): Access violation (e.g., trying to write to a read-only share)",
-    -12: "EEXIST (-12): Trying to create an object that already exists",
-    -13: "EINCOMPLETE (-13): Trying to access an incomplete resource",
-    -14: "EKEY (-14): A decryption operation failed (never returned by the API)",
-    -15: "ESID (-15): Invalid or expired user session, please relogin",
-    -16: "EBLOCKED (-16): User blocked",
-    -17: "EOVERQUOTA (-17): Request over quota",
-    -18: "ETEMPUNAVAIL (-18): Resource temporarily not available, please try again later",
-    -19: "ETOOMANYCONNECTIONS (-19)",
-    -24: "EGOINGOVERQUOTA (-24)",
-    -25: "EROLLEDBACK (-25)",
-    -26: "EMFAREQUIRED (-26): Multi-Factor Authentication Required",
-    -27: "EMASTERONLY (-27)",
-    -28: "EBUSINESSPASTDUE (-28)",
-    -29: "EPAYWALL (-29): ODQ paywall state",
-    -400: "ETOOERR (-400)",
-    -401: "ESHAREROVERQUOTA (-401)",
+    -1: (
+        "EINTERNAL",
+        "An internal error has occurred. Please submit a bug report, detailing the exact circumstances in which this error occurred",
+    ),
+    -2: ("EARGS", "You have passed invalid arguments to this command"),
+    -3: (
+        "EAGAIN",
+        "A temporary congestion or server malfunction prevented your request from being processed. No data was altered",
+    ),
+    -4: (
+        "ERATELIMIT",
+        "You have exceeded your command weight per time quota. Please wait a few seconds, then try again (this should never happen in sane real-life applications)",
+    ),
+    -5: ("EFAILED", "The upload failed. Please restart it from scratch"),
+    -6: ("ETOOMANY", "Too many concurrent IP addresses are accessing this upload target URL"),
+    -7: ("ERANGE", "The upload file packet is out of range or not starting and ending on a chunk boundary"),
+    -8: ("EEXPIRED", "The upload target URL you are trying to access has expired. Please request a fresh one"),
+    -9: ("ENOENT", "Object (typically, node or user) not found. Wrong password?"),
+    -10: ("ECIRCULAR", "Circular linkage attempted"),
+    -11: ("EACCESS", "Access violation (e.g., trying to write to a read-only share)"),
+    -12: ("EEXIST", "Trying to create an object that already exists"),
+    -13: ("EINCOMPLETE", "Trying to access an incomplete resource"),
+    -14: ("EKEY", "A decryption operation failed (never returned by the API)"),
+    -15: ("ESID", "Invalid or expired user session, please relogin"),
+    -16: ("EBLOCKED", "User blocked"),
+    -17: ("EOVERQUOTA", "Request over quota"),
+    -18: ("ETEMPUNAVAIL", "Resource temporarily not available, please try again later"),
+    -19: ("ETOOMANYCONNECTIONS", ""),
+    -24: ("EGOINGOVERQUOTA", ""),
+    -25: ("EROLLEDBACK", ""),
+    -26: ("EMFAREQUIRED", "Multi-Factor Authentication Required"),
+    -27: ("EMASTERONLY", ""),
+    -28: ("EBUSINESSPASTDUE", ""),
+    -29: ("EPAYWALL", "ODQ paywall state"),
+    -400: ("ETOOERR", ""),
+    -401: ("ESHAREROVERQUOTA", ""),
 }
 
 
 class RequestError(MegaNzError):
-    """
-    Error in API request
-    """
+    """Error in API request."""
 
     def __init__(self, msg: str | int) -> None:
         self.code = code = msg if isinstance(msg, int) else None
-        if code:
-            self.message = ERROR_CODES[code]
+        if code is not None:
+            name, desc = ERROR_CODES[code]
+            ui_failure = f"MegaNZ Error: {name}({code})"
+            message = f"{ui_failure} {desc}".strip()
         else:
-            self.message = str(msg)
+            ui_failure = message = f"MegaNZ Error ({msg})"
+        super().__init__(ui_failure, message=message)
 
     def __str__(self) -> str:
         return self.message
@@ -447,6 +458,11 @@ async def generate_hashcash_token(challenge: str) -> str:
 VALID_REQUEST_ID_CHARS = string.ascii_letters + string.digits
 
 
+def _check_response_status(response: aiohttp.ClientResponse) -> None:
+    if response.status > 0 and not (HTTPStatus.OK <= response.status < HTTPStatus.BAD_REQUEST):
+        raise DownloadError(response.status)
+
+
 class MegaApi:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
@@ -496,14 +512,14 @@ class MegaApi:
         # See:  https://github.com/gpailler/MegaApiClient/issues/248#issuecomment-2692361193
 
         if xhashcash_challenge := response.headers.get("X-Hashcash"):
-            log("Solving xhashcash login challenge, this could take a few seconds...")
+            log("[MegaNZ] Solving xhashcash login challenge, this could take a few seconds...")
             xhashcash_token = await generate_hashcash_token(xhashcash_challenge)
             headers = self.default_headers | {"X-Hashcash": xhashcash_token}
             async with self.request_limiter, self.session.disabled():
                 response = await self.session.post(
                     self.entrypoint, params=params, json=data, timeout=self.timeout, headers=headers
                 )
-
+        _check_response_status(response)
         if xhashcash_challenge := response.headers.get("X-Hashcash"):
             # Computed token failed
             msg = f"Login failed. Mega requested a proof of work with xhashcash: {xhashcash_challenge}"
@@ -533,12 +549,14 @@ class MegaApi:
 
     async def login(self, email: str | None = None, password: str | None = None):
         if email and password:
+            log("[MegaNZ] Logging as user [REDACTED]. This may take several seconds...")
             await self._login_user(email, password)
         else:
+            log("[MegaNZ] Logging as anonymous temporary user. This may take several seconds...")
             await self.login_anonymous()
         _ = await self.get_files()  # This is to set the special folders id
         self.logged_in = True
-        log("Login complete [Mega]")
+        log("[MegaNZ] Login complete")
         return self
 
     def _process_login(self, resp: AnyDict, password: U32IntArray):
@@ -567,10 +585,8 @@ class MegaApi:
             self.sid = sid
 
     async def _login_user(self, email: str, password: str) -> None:
-        log("Logging in user...")
         email = email.lower()
         get_user_salt_resp: dict = await self.request({"a": "us0", "user": email})
-
         if b64_salt := get_user_salt_resp.get("s"):
             # v2 user account
             user_salt = base64_to_a32(b64_salt)
@@ -593,7 +609,6 @@ class MegaApi:
         self._process_login(resp, password_aes)
 
     async def login_anonymous(self) -> None:
-        log("Logging in anonymous temporary user...")
         master_key = [random_u32int()] * 4
         password_key = [random_u32int()] * 4
         session_self_challenge = [random_u32int()] * 4
