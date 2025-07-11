@@ -113,7 +113,7 @@ async def _create_concat_input_file(*input: Path, file_path: Path) -> None:
 async def _fixup_concatenated_video_file(input_file: Path, output_file: Path) -> SubProcessResult:
     command = *FFMPEG_CALL_PREFIX, "-i", str(input_file), *FFMPEG_FIXUP_INPUT_ARGS
     probe_result = await FFmpeg.probe(input_file)
-    if probe_result.audio.codec_name == "aac":
+    if probe_result and probe_result.audio.codec_name == "aac":
         command += FFMPEG_FIXUP_AUDIO_FILTER_ARGS
     command = *command, str(output_file)
     result = await _run_command(command)
