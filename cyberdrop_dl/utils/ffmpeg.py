@@ -130,7 +130,7 @@ async def _fixup_concatenated_video_file(input_file: Path, output_file: Path) ->
 
 
 async def _concat(concat_input_file: Path, output_file: Path) -> SubProcessResult:
-    concatenated_file_name = str(output_file).replace(".video.ts", ".video.concat.ts")
+    concatenated_file_name = str(output_file.with_suffix(".concat" + output_file.suffix))
     command = *FFMPEG_CALL_PREFIX, *CONCAT_INPUT_ARGS, str(concat_input_file), *CODEC_COPY, concatenated_file_name
     result = await _run_command(command)
     if not result.success:
