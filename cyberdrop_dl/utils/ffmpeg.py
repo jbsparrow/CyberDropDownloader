@@ -30,7 +30,6 @@ FFMPEG_CALL_PREFIX = "ffmpeg", "-y", "-loglevel", "error"
 FFMPEG_FIXUP_INPUT_ARGS = (
     "-map",
     "0",
-    "-dn",
     "-ignore_unknown",
     "-c",
     "copy",
