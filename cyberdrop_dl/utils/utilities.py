@@ -117,6 +117,7 @@ def error_handling_wrapper(
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except ValidationError as e:
             ui_failure = create_error_msg(422)
+            exc_info = e
             log_msg = str(e).partition("For further information")[0].strip()
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except Exception as e:
