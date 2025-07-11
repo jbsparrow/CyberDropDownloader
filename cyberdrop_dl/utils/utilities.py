@@ -22,6 +22,7 @@ import rich
 from aiohttp import ClientConnectorError, FormData
 from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
+from pydantic import ValidationError
 from yarl import URL
 
 from cyberdrop_dl import constants
@@ -33,6 +34,7 @@ from cyberdrop_dl.exceptions import (
     InvalidURLError,
     NoExtensionError,
     TooManyCrawlerErrors,
+    create_error_msg,
     get_origin,
 )
 from cyberdrop_dl.utils import css
@@ -112,6 +114,10 @@ def error_handling_wrapper(
             ui_failure = "Client Connector Error"
             # link_to_show = link.with_host(e.host) # For bunkr and jpg5, to make sure the log message matches the actual URL we tried to connect
             log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            error_log_msg = ErrorLogMessage(ui_failure, log_msg)
+        except ValidationError as e:
+            ui_failure = create_error_msg(422)
+            log_msg = str(e).partition("For further information")[0].strip()
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except Exception as e:
             exc_info = e

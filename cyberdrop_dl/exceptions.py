@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from functools import singledispatch
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pydantic import ValidationError
 from yaml import YAMLError
 from yarl import URL
 
@@ -15,6 +13,12 @@ if TYPE_CHECKING:
     from requests import Response
 
     from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
+
+
+def _format_error(ui_failure: str, message: str) -> str:
+    if ui_failure == message:
+        return message
+    return f"{ui_failure} - {message}"
 
 
 # See: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-5xx-errors/
@@ -57,12 +61,6 @@ class CDLBaseError(Exception):
 
     def __str__(self) -> str:
         return _format_error(self.ui_failure, self.message)
-
-
-def _format_error(ui_failure: str, message: str) -> str:
-    if ui_failure == message:
-        return message
-    return f"{ui_failure} - {message}"
 
 
 class InvalidContentTypeError(CDLBaseError):
@@ -221,8 +219,9 @@ class InvalidYamlError(CDLBaseError):
         super().__init__(ui_failure, message=msg, origin=file)
 
 
-@singledispatch
-def create_error_msg(error: int) -> str:
+def create_error_msg(error: int | str) -> str:
+    if isinstance(error, str):
+        return error
     try:
         msg = HTTPStatus(error).phrase
         return f"{error} {msg}"
@@ -231,11 +230,6 @@ def create_error_msg(error: int) -> str:
         if cloudflare_error:
             return f"{error} {cloudflare_error}"
     return f"{error} HTTP Error"
-
-
-@create_error_msg.register
-def _(error: str) -> str:
-    return error
 
 
 def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Path | URL | None:
@@ -256,14 +250,10 @@ class ErrorLogMessage:
         if self.csv_log_msg == "Unknown":
             self.csv_log_msg = "See Logs for details"
 
-    @classmethod
-    def from_unknown_exc(cls, e: Exception) -> ErrorLogMessage:
-        if isinstance(e, ValidationError):
-            e_status = 422
-            e_message = str(e).split("For further information", 1)[0].strip()
-        else:
-            e_status = getattr(e, "status", None)
-            e_message = getattr(e, "message", None)
+    @staticmethod
+    def from_unknown_exc(e: Exception) -> ErrorLogMessage:
+        e_status = getattr(e, "status", None)
+        e_message = getattr(e, "message", None)
         ui_failure = create_error_msg(e_status) if e_status else "Unknown"
         log_msg = _format_error(ui_failure, e_message or str(e))
         return ErrorLogMessage(ui_failure, log_msg)
