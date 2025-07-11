@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 
 FFPROBE_CALL_PREFIX = "ffprobe", "-hide_banner", "-loglevel", "error", "-show_streams", "-print_format", "json"
 FFMPEG_CALL_PREFIX = "ffmpeg", "-y", "-loglevel", "error"
+FFMPEG_FIXUP_INPUT_ARGS = "-map", "0", "-ignore_unknown", "-c", "copy", "-f", "mp4", "-movflags", "+faststart"
+FFMPEG_FIXUP_AUDIO_FILTER_ARGS = "-bsf:a", "aac_adtstoasc"
 MERGE_INPUT_ARGS = "-map", "0"
 CONCAT_INPUT_ARGS = "-f", "concat", "-safe", "0", "-i"
 CODEC_COPY = "-c", "copy"
@@ -108,9 +110,25 @@ async def _create_concat_input_file(*input: Path, file_path: Path) -> None:
             await f.write(f"file '{file}'\n")
 
 
+async def _fixup_concatenated_video_file(input_file: Path, output_file: Path) -> SubProcessResult:
+    command = *FFMPEG_CALL_PREFIX, "-i", str(input_file), *FFMPEG_FIXUP_INPUT_ARGS
+    probe_result = await FFmpeg.probe(input_file)
+    if probe_result and probe_result.audio.codec_name == "aac":
+        command += FFMPEG_FIXUP_AUDIO_FILTER_ARGS
+    command = *command, str(output_file)
+    result = await _run_command(command)
+    if result.success:
+        await asyncio.to_thread(input_file.unlink)
+    return result
+
+
 async def _concat(concat_input_file: Path, output_file: Path) -> SubProcessResult:
-    command = *FFMPEG_CALL_PREFIX, *CONCAT_INPUT_ARGS, str(concat_input_file), *CODEC_COPY, str(output_file)
-    return await _run_command(command)
+    concatenated_file_name = output_file.with_suffix(".concat" + output_file.suffix)
+    command = *FFMPEG_CALL_PREFIX, *CONCAT_INPUT_ARGS, str(concat_input_file), *CODEC_COPY, str(concatenated_file_name)
+    result = await _run_command(command)
+    if not result.success:
+        return result
+    return await _fixup_concatenated_video_file(concatenated_file_name, output_file)
 
 
 async def _merge(*input_files: Path, output_file: Path) -> SubProcessResult:
