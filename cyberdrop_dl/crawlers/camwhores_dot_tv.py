@@ -9,11 +9,21 @@ from cyberdrop_dl.utils.utilities import get_og_properties
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.crawlers.crawler import SupportedPaths
+
 
 PRIMARY_URL = AbsoluteHttpURL("https://www.camwhores.tv")
 
 
 class CamwhoresTVCrawler(KernelVideoSharingCrawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Search": "/search/?q=...",
+        "Categories": "/categories/...",
+        "Tags": "/tags/...",
+        "Videos": "/videos/...",
+        "Members": "/members/<member_id>",
+    }
+
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "camwhores.tv"
 
@@ -29,3 +39,13 @@ class CamwhoresTVCrawler(KernelVideoSharingCrawler):
 
     def parse_url(self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *_) -> AbsoluteHttpURL:
         return super().parse_url(link_str, relative_to, trim=False)
+
+    async def picture(self, scrape_item: ScrapeItem) -> None:
+        # images are encrypted, similar to the video URLS
+        # https://www.camwhores.tv/get_image/93/9da0742b1fb753388286b95c2a66d766/sources/100000/100557/1472879.jpg/
+        # TODO: Foind out license to decrypt them
+        # Almost all albums are private anyways..
+        raise NotImplementedError
+
+    async def album(self, scrape_item: ScrapeItem) -> None:
+        raise NotImplementedError
