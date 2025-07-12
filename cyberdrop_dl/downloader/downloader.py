@@ -166,7 +166,7 @@ class Downloader:
             await asyncio.to_thread(video.rename, media_item.complete_file)
         else:
             parts = [part for part in (video, audio, subtitles) if part]
-            ffmpeg_result = await ffmpeg.merge(*parts, output_file=media_item.complete_file)
+            ffmpeg_result = await ffmpeg.merge(parts, media_item.complete_file)
 
             if not ffmpeg_result.success:
                 raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
@@ -196,7 +196,7 @@ class Downloader:
 
             seg_paths = [item.complete_file for item in items if item.complete_file]
             output = media_item.complete_file.with_suffix(f".{media_type}.ts")
-            ffmpeg_result = await ffmpeg.concat(*seg_paths, output_file=output)
+            ffmpeg_result = await ffmpeg.concat(seg_paths, output)
             if not ffmpeg_result.success:
                 raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
             results.append(output)

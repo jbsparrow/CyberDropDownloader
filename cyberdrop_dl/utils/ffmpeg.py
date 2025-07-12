@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import asyncio
+import itertools
 import json
 import shutil
 import subprocess
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import timedelta
 from fractions import Fraction
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Required, Self, TypedDict, overload
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Required, Self, TypeAlias, TypedDict, overload
 
 import aiofiles
 import aiofiles.os
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from videoprops import which_ffprobe as _builtin_ffprobe
 from yarl import URL
 
@@ -23,14 +24,16 @@ from cyberdrop_dl.utils.utilities import get_valid_dict, is_absolute_http_url
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping, Sequence
 
+    _CMD: TypeAlias = Sequence[str | Path]
 
-FFPROBE_CALL_PREFIX = "ffprobe", "-hide_banner", "-loglevel", "error", "-show_streams", "-print_format", "json"
-FFMPEG_CALL_PREFIX = "ffmpeg", "-y", "-loglevel", "error"
-FFMPEG_FIXUP_INPUT_ARGS = "-map", "0", "-ignore_unknown", "-c", "copy", "-f", "mp4", "-movflags", "+faststart"
-FFMPEG_FIXUP_AUDIO_FILTER_ARGS = "-bsf:a", "aac_adtstoasc"
+
+CODEC_COPY = "-c", "copy"
 MERGE_INPUT_ARGS = "-map", "0"
 CONCAT_INPUT_ARGS = "-f", "concat", "-safe", "0", "-i"
-CODEC_COPY = "-c", "copy"
+FFMPEG_CALL_PREFIX = "ffmpeg", "-y", "-loglevel", "error"
+FFMPEG_FIXUP_INPUT_ARGS = "-map", "0", "-ignore_unknown", *CODEC_COPY, "-f", "mp4", "-movflags", "+faststart"
+FFMPEG_FIXUP_AUDIO_DTS_FILTER_ARGS = "-bsf:a", "aac_adtstoasc"
+FFPROBE_CALL_PREFIX = "ffprobe", "-hide_banner", "-loglevel", "error", "-show_streams", "-print_format", "json"
 _FFPROBE_AVAILABLE = False
 _EMPTY_FFPROBE_OUTPUT: FFprobeOutput = {"streams": []}
 
@@ -68,30 +71,25 @@ def get_ffprobe_version() -> str | None:
         return _get_bin_version(bin_path)
 
 
-async def concat(*input_files: Path, output_file: Path, same_folder: bool = True) -> SubProcessResult:
+async def concat(input_files: Sequence[Path], output_file: Path, *, same_folder: bool = True) -> SubProcessResult:
     concat_file_path = output_file.with_suffix(output_file.suffix + ".ffmpeg_concat.txt")
-    await _create_concat_input_file(*input_files, output_file=concat_file_path)
+    await _create_concat_input_file(input_files, output_file=concat_file_path)
     result = await _concat(concat_file_path, output_file)
     if result.success:
         if same_folder:
             folder = input_files[0].parent
-
-            def clean_up() -> None:
-                shutil.rmtree(folder, ignore_errors=True)
-                concat_file_path.unlink()
-
-            await asyncio.to_thread(clean_up)
+            await asyncio.to_thread(shutil.rmtree, folder, ignore_errors=True)
         else:
-            await _async_delete_files(concat_file_path, *input_files)
-    else:
-        await asyncio.to_thread(concat_file_path.unlink)
+            await _async_delete_files(input_files)
+
+    await asyncio.to_thread(concat_file_path.unlink)
     return result
 
 
-async def merge(*input_files: Path, output_file: Path) -> SubProcessResult:
-    result = await _merge(*input_files, output_file=output_file)
+async def merge(input_files: Sequence[Path], output_file: Path) -> SubProcessResult:
+    result = await _merge(input_files, output_file=output_file)
     if result.success:
-        await _async_delete_files(*input_files)
+        await _async_delete_files(input_files)
     return result
 
 
@@ -117,31 +115,28 @@ async def probe(input: Path | URL, /, *, headers: Mapping[str, str] | None = Non
 
     command = *FFPROBE_CALL_PREFIX, str(input)
     if headers:
-        add_headers: list[str] = []
-        for name, value in headers.items():
-            add_headers.extend(["-headers", f"{name}: {value}"])
-
-        command = *command, *add_headers
+        headers_cmd = itertools.chain.from_iterable(("-headers", f"{name}: {value}") for name, value in headers.items())
+        command = *command, *headers_cmd
     result = await _run_command(command)
     output = json.loads(result.stdout) if result.success else _EMPTY_FFPROBE_OUTPUT
-    return FFprobeResult(output)
+    return FFprobeResult.from_output(output)
 
 
-async def _async_delete_files(*files: Path) -> None:
+async def _async_delete_files(files: Sequence[Path]) -> None:
     await asyncio.gather(*[aiofiles.os.unlink(file) for file in files])
 
 
-async def _create_concat_input_file(*input_files: Path, output_file: Path) -> None:
+async def _create_concat_input_file(input_files: Sequence[Path], output_file: Path) -> None:
     """Input paths MUST be absolute!!."""
     async with aiofiles.open(output_file, "w", encoding="utf8") as f:
-        await f.writelines(f"file '{file}'" for file in input_files)
+        await f.writelines(f"file '{file}'\n" for file in input_files)
 
 
 async def _fixup_concatenated_video_file(input_file: Path, output_file: Path) -> SubProcessResult:
     command = *FFMPEG_CALL_PREFIX, "-i", input_file, *FFMPEG_FIXUP_INPUT_ARGS
     probe_result = await probe(input_file)
-    if probe_result and probe_result.audio.codec_name == "aac":
-        command += FFMPEG_FIXUP_AUDIO_FILTER_ARGS
+    if probe_result and (audio := probe_result.audio) and audio.codec == "aac":
+        command += FFMPEG_FIXUP_AUDIO_DTS_FILTER_ARGS
     command = *command, output_file
     result = await _run_command(command)
     if result.success:
@@ -158,8 +153,8 @@ async def _concat(concat_input_file: Path, output_file: Path) -> SubProcessResul
     return await _fixup_concatenated_video_file(concatenated_file, output_file)
 
 
-async def _merge(*input_files: Path, output_file: Path) -> SubProcessResult:
-    input_args = sum([("-i", path) for path in input_files], ())
+async def _merge(input_files: Sequence[Path], output_file: Path) -> SubProcessResult:
+    input_args = itertools.chain.from_iterable(("-i", path) for path in input_files)
     command = *FFMPEG_CALL_PREFIX, *input_args, *MERGE_INPUT_ARGS, *CODEC_COPY, output_file
     return await _run_command(command)
 
@@ -221,7 +216,7 @@ class FFprobeOutput(TypedDict, total=False):
     streams: Required[list[StreamDict]]
 
 
-class Tags(CIMultiDict[Any]): ...
+class Tags(CIMultiDictProxy[Any]): ...
 
 
 class FPS(float):
@@ -229,7 +224,7 @@ class FPS(float):
         return str(int(self)) if self.is_integer() else f"{self:.2f}"
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Stream:
     index: int
     codec_name: str
@@ -249,33 +244,33 @@ class Stream:
     @classmethod
     def validate(cls, stream_info: Mapping[str, Any]) -> dict[str, Any]:
         info = get_valid_dict(cls, stream_info)
-        tags = Tags(stream_info.get("tags", {}))
+        tags = Tags(CIMultiDict(stream_info.get("tags", {})))
         duration: float | str | None = stream_info.get("duration") or tags.get("duration")
         bitrate = int(stream_info.get("bitrate") or stream_info.get("bit_rate") or 0) or None
         duration = Duration.parse(duration) if duration else None
         return info | {"tags": tags, "duration": duration, "bitrate": bitrate}
 
     @classmethod
-    def new(cls, stream_info: Mapping[str, Any]) -> Self:
+    def from_dict(cls, stream_info: Mapping[str, Any]) -> Self:
         return cls(**cls.validate(stream_info))
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self) | {"tags": dict(self.tags)}
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class AudioStream(Stream):
     sample_rate: int | None
     codec_type: Literal["audio"] = "audio"
 
     @classmethod
     def validate(cls, stream_info: StreamDict) -> dict[str, Any]:
+        defaults = super(AudioStream, cls).validate(stream_info)
         sample_rate = int(float(stream_info.get("sample_rate", 0))) or None
-        defaults = super().validate(stream_info)
         return defaults | {"sample_rate": sample_rate}
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class VideoStream(Stream):
     width: int | None
     height: int | None
@@ -294,24 +289,25 @@ class VideoStream(Stream):
         if (avg_fps := stream_info.get("avg_frame_rate")) and str(avg_fps) not in {"0/0", "0", "0.0"}:
             fps: FPS | None = FPS(Fraction(avg_fps))
 
-        defaults = super().validate(stream_info)
+        defaults = super(VideoStream, cls).validate(stream_info)
         return defaults | {"width": width, "height": height, "fps": fps, "resolution": resolution}
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class FFprobeResult:
     ffprobe_output: FFprobeOutput
-    streams: tuple[Stream, ...] = field(init=False)
+    streams: tuple[Stream, ...]
 
-    def __post_init__(self) -> None:
+    @staticmethod
+    def from_output(ffprobe_output: FFprobeOutput) -> FFprobeResult:
         streams: list[Stream] = []
-        for stream in self.ffprobe_output.get("streams", []):
+        for stream in ffprobe_output.get("streams", []):
             if stream["codec_type"] == "video":
-                streams.append(VideoStream.new(stream))
+                streams.append(VideoStream.from_dict(stream))
             elif stream["codec_type"] == "audio":
-                streams.append(AudioStream.new(stream))
+                streams.append(AudioStream.from_dict(stream))
 
-        self.streams = tuple(streams)
+        return FFprobeResult(ffprobe_output, tuple(streams))
 
     def video_streams(self) -> Generator[VideoStream]:
         for stream in self.streams:
@@ -324,14 +320,14 @@ class FFprobeResult:
                 yield stream
 
     @property
-    def audio(self) -> AudioStream:
+    def audio(self) -> AudioStream | None:
         """First audio stream"""
-        return next(self.audio_streams())
+        return next(self.audio_streams(), None)
 
     @property
-    def video(self) -> VideoStream:
+    def video(self) -> VideoStream | None:
         """First video stream"""
-        return next(self.video_streams())
+        return next(self.video_streams(), None)
 
     def __bool__(self) -> bool:
         return bool(self.ffprobe_output.get("streams"))
@@ -345,14 +341,14 @@ class SubProcessResult(NamedTuple):
     stdout: str
     stderr: str
     success: bool
-    command: tuple[str, ...]
+    command: _CMD
 
-    def as_dict(self) -> dict:
-        joined_command = " ".join(self.command)
+    def as_jsonable_dict(self) -> dict[str, Any]:
+        joined_command = " ".join(map(str, self.command))
         return self._asdict() | {"command": joined_command}
 
 
-async def _run_command(command: Sequence[str | Path]) -> SubProcessResult:
+async def _run_command(command: _CMD) -> SubProcessResult:
     assert not isinstance(command, str)
     bin_path, cmd = command[0], command[1:]
     if bin_path == "ffmpeg":
@@ -360,7 +356,7 @@ async def _run_command(command: Sequence[str | Path]) -> SubProcessResult:
     elif bin_path == "ffprobe":
         bin_path = which_ffprobe()
     assert bin_path
-    command_ = tuple(map(str, (bin_path, *cmd)))
+    command_ = bin_path, *cmd
     log_debug(f"Running command: {command_}")
     process = await asyncio.create_subprocess_exec(*command_, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = await process.communicate()
@@ -368,5 +364,5 @@ async def _run_command(command: Sequence[str | Path]) -> SubProcessResult:
     stdout_str = stdout.decode("utf-8", errors="ignore")
     stderr_str = stderr.decode("utf-8", errors="ignore")
     results = SubProcessResult(return_code, stdout_str, stderr_str, return_code == 0, command_)
-    log_debug(results.as_dict())
+    log_debug(results.as_jsonable_dict())
     return results
