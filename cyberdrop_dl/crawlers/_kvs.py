@@ -82,7 +82,8 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         title = ""
-        if search_query := scrape_item.url.query.get("q"):
+        if (search_query := scrape_item.url.query.get("q")) or scrape_item.url.parts[1] == "search":
+            search_query = search_query or scrape_item.url.parts[2]
             title = f"{search_query} [search]"
         else:
             common_title = css.select_one_get_text(soup, _SELECTORS.COMMON_VIDEOS_TITLE)
