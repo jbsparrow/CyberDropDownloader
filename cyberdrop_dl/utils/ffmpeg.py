@@ -99,7 +99,7 @@ async def async_delete_files(*files: Path) -> None:
 
 
 async def _create_concat_input_file(*input: Path, file_path: Path) -> None:
-    # input paths MUST be absolute!!
+    """Input paths MUST be absolute!!."""
     async with aiofiles.open(file_path, "w", encoding="utf8") as f:
         for file in input:
             await f.write(f"file '{file}'\n")
@@ -132,19 +132,25 @@ async def _merge(*input_files: Path, output_file: Path) -> SubProcessResult:
     return await _run_command(command)
 
 
-@lru_cache
 def get_ffmpeg_version() -> str | None:
-    try:
-        ffmpeg_path = shutil.which("ffmpeg")
-        if not ffmpeg_path:
-            return None
-        cmd = [ffmpeg_path, "-version"]
-        p = subprocess.run(cmd, timeout=5, check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        stdout = p.stdout.decode("utf-8", errors="ignore")
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired, OSError, ValueError):
-        return None
-    else:
-        return stdout.split("version", 1)[-1].split("Copyright")[0].strip()
+    return _get_bin_version("ffmpeg")
+
+
+def get_ffprobe_version() -> str | None:
+    return _get_bin_version("ffprobe")
+
+
+@lru_cache
+def _get_bin_version(name: str) -> str | None:
+    if bin_path := shutil.which(name):
+        try:
+            cmd = bin_path, "-version"
+            p = subprocess.run(cmd, timeout=5, check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            stdout = p.stdout.decode("utf-8", errors="ignore")
+        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired, OSError, ValueError):
+            return
+        else:
+            return stdout.split("version", 1)[-1].split("Copyright")[0].strip()
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~ FFprobe ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
