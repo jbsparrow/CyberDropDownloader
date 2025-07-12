@@ -31,25 +31,19 @@ FFMPEG_FIXUP_AUDIO_FILTER_ARGS = "-bsf:a", "aac_adtstoasc"
 MERGE_INPUT_ARGS = "-map", "0"
 CONCAT_INPUT_ARGS = "-f", "concat", "-safe", "0", "-i"
 CODEC_COPY = "-c", "copy"
-_AVAILABLE = False
 _FFPROBE_AVAILABLE = False
 
 
 def check_is_available() -> None:
-    global _AVAILABLE
-    if _AVAILABLE:
-        return
     if not get_ffmpeg_version():
         raise RuntimeError("ffmpeg is not available")
     if not get_ffprobe_version():
         raise RuntimeError("ffprobe is not available") from None
-    _AVAILABLE = True
 
 
 @lru_cache
 def which_ffmpeg() -> str | None:
-    if bin_path := shutil.which("ffmpeg"):
-        return bin_path
+    return shutil.which("ffmpeg")
 
 
 @lru_cache
@@ -72,7 +66,6 @@ def get_ffprobe_version() -> str | None:
 
 
 async def concat(*input_files: Path, output_file: Path, same_folder: bool = True) -> SubProcessResult:
-    assert _AVAILABLE
     concat_file_path = output_file.with_suffix(output_file.suffix + ".ffmpeg_concat.txt")
     await _create_concat_input_file(*input_files, output_file=concat_file_path)
     result = await _concat(concat_file_path, output_file)
@@ -93,7 +86,6 @@ async def concat(*input_files: Path, output_file: Path, same_folder: bool = True
 
 
 async def merge(*input_files: Path, output_file: Path) -> SubProcessResult:
-    assert _AVAILABLE
     result = await _merge(*input_files, output_file=output_file)
     if result.success:
         await _async_delete_files(*input_files)

@@ -22,8 +22,8 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
+from cyberdrop_dl.utils import ffmpeg
 from cyberdrop_dl.utils.args import ParsedArgs, parse_args
-from cyberdrop_dl.utils.ffmpeg import get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 from cyberdrop_dl.utils.utilities import close_if_defined, get_system_information
@@ -225,19 +225,23 @@ class Manager:
         cli_only_args = self.parsed_args.cli_only_args.model_dump_json(indent=4)
         system_info = get_system_information()
 
-        log("Starting Cyberdrop-DL Process")
-        log(f"Running Version: {__version__}")
-        log(f"System Info:{system_info}")
-        log(f"Using Config: {self.config_manager.loaded_config}")
-        log(f"Using Config File: {self.config_manager.settings}")
-        log(f"Using Input File: {self.path_manager.input_file}")
-        log(f"Using Download Folder: {self.path_manager.download_folder}")
-        log(f"Using Database File: {self.path_manager.history_db}")
-        log(f"Using CLI only options: {cli_only_args}")
-        log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}")
-        log(f"Using Settings: \n{config_settings}")
-        log(f"Using Global Settings: \n{global_settings}")
-        log(f"Using FFmpeg version: {get_ffmpeg_version()}")
+        args_info = (
+            "Starting Cyberdrop-DL Process",
+            f"Running Version: {__version__}",
+            f"System Info:{system_info}",
+            f"Using Config: {self.config_manager.loaded_config}",
+            f"Using Config File: {self.config_manager.settings}",
+            f"Using Input File: {self.path_manager.input_file}",
+            f"Using Download Folder: {self.path_manager.download_folder}",
+            f"Using Database File: {self.path_manager.history_db}",
+            f"Using CLI only options: {cli_only_args}",
+            f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}",
+            f"Using Settings: \n{config_settings}",
+            f"Using Global Settings: \n{global_settings}",
+            f"Using ffmpeg version: {ffmpeg.get_ffmpeg_version()}",
+            f"Using ffprobe version: {ffmpeg.get_ffprobe_version()}",
+        )
+        log("\n".join(args_info))
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"
