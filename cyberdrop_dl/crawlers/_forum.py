@@ -317,9 +317,10 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     async def handle_internal_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL | None = None) -> None:
         link = link or scrape_item.url
         filename, ext = self.get_filename_and_ext(link.name)
-        scrape_item.add_to_parent_title("Attachments")
-        scrape_item.part_of_album = True
-        await self.handle_file(link, scrape_item, filename, ext)
+        new_scrape_item = scrape_item.copy()
+        new_scrape_item.add_to_parent_title("Attachments")
+        new_scrape_item.part_of_album = True
+        await self.handle_file(link, new_scrape_item, filename, ext)
 
     @final
     async def write_last_forum_post(self, thread_url: AbsoluteHttpURL, last_post_url: AbsoluteHttpURL | None) -> None:
