@@ -59,11 +59,13 @@ def which_ffprobe() -> str | None:
 
 
 def get_ffmpeg_version() -> str | None:
-    return _get_bin_version(which_ffmpeg())
+    if bin_path := which_ffmpeg():
+        return _get_bin_version(bin_path)
 
 
 def get_ffprobe_version() -> str | None:
-    return _get_bin_version(which_ffprobe())
+    if bin_path := which_ffprobe():
+        return _get_bin_version(bin_path)
 
 
 async def concat(*input_files: Path, output_file: Path, same_folder: bool = True) -> SubProcessResult:
