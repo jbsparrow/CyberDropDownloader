@@ -5,7 +5,7 @@ import json
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
+from datetime import timedelta
 from fractions import Fraction
 from functools import lru_cache
 from pathlib import Path
@@ -22,8 +22,6 @@ from cyberdrop_dl.utils.utilities import get_valid_dict, is_absolute_http_url
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping, Sequence
 
-    from cyberdrop_dl.managers.manager import Manager
-
 
 FFPROBE_CALL_PREFIX = "ffprobe", "-hide_banner", "-loglevel", "error", "-show_streams", "-print_format", "json"
 FFMPEG_CALL_PREFIX = "ffmpeg", "-y", "-loglevel", "error"
@@ -35,18 +33,14 @@ CODEC_COPY = "-c", "copy"
 
 
 class FFmpeg:
-    def __init__(self, manager: Manager) -> None:
-        self.manager = manager
-        self.cache_folder = self.manager.path_manager.cache_folder.resolve()
+    def __init__(self) -> None:
         self.version = get_ffmpeg_version()
         self.is_available = bool(self.version)
 
     async def concat(self, *input_files: Path, output_file: Path, same_folder: bool = True) -> SubProcessResult:
         if not self.is_available:
             raise RuntimeError("ffmpeg is not available")
-        now = datetime.now().strftime("%Y%m%d_%H%M%S")
-        concat_file_name = f"{now} - {output_file.name[:40]}.ffmpeg_input.txt"
-        concat_file_path = self.cache_folder / concat_file_name
+        concat_file_path = output_file.with_suffix(output_file.suffix + ".ffmpeg_concat.txt")
         await _create_concat_input_file(*input_files, file_path=concat_file_path)
         result = await _concat(concat_file_path, output_file)
         if result.success:
@@ -55,6 +49,7 @@ class FFmpeg:
                 await asyncio.to_thread(shutil.rmtree, folder, True)
             else:
                 await async_delete_files(concat_file_path, *input_files)
+        await asyncio.to_thread(concat_file_path.unlink)
         return result
 
     async def merge(self, *input_files: Path, output_file: Path) -> SubProcessResult:

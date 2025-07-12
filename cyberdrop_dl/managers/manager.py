@@ -58,7 +58,7 @@ class Manager:
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
         self.textual_log_queue: queue.Queue = field(init=False)
-        self.ffmpeg: FFmpeg = field(init=False)
+        self.ffmpeg: FFmpeg = FFmpeg()
         self._textual_ui: TextualUI = field(init=False)
 
         self._loaded_args_config: bool = False
@@ -169,9 +169,6 @@ class Manager:
             self.download_manager = DownloadManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
-
-        if not isinstance(self.ffmpeg, FFmpeg):
-            self.ffmpeg = FFmpeg(self)
 
         await self.async_db_hash_startup()
 
