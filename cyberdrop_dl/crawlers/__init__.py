@@ -28,7 +28,6 @@ from .eightmuses import EightMusesCrawler
 from .eporner import EpornerCrawler
 from .erome import EromeCrawler
 from .fapello import FapelloCrawler
-from .fikfap import FikFapCrawler
 from .fileditch import FileditchCrawler
 from .files_vc import FilesVcCrawler
 from .flugel_anime import FlugelAnimeCrawler
@@ -110,7 +109,7 @@ ALL_CRAWLERS: set[type[Crawler]] = {
     crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
 }
 ALL_CRAWLERS.update(WP_CRAWLERS, GENERIC_CRAWLERS, FORUM_CRAWLERS)
-DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler, FikFapCrawler}
+DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MegaNzCrawler}
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
     CRAWLERS = ALL_CRAWLERS
 else:
