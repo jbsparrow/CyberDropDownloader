@@ -9,6 +9,7 @@ If the message board needs to scrape the actual HTML of page, Inherit for HTMLMe
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import datetime
 import re
@@ -479,26 +480,36 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         scrape_item.setup_as_post("")
         post_title = self.create_separate_post_title(None, str(post.id), post.date)
         scrape_item.add_to_parent_title(post_title)
-
-        seen: set[str] = set()
-        duplicates: set[str] = set()
+        seen, duplicates, tasks = set(), set(), []
         stats: dict[str, int] = defaultdict(int)
-        for scraper in (self._attachments, self._images, self._videos, self._external_links):
-            for link in scraper(post):
-                duplicates.add(link) if link in seen else seen.add(link)
-                stats[scraper.__name__.removeprefix("_")] += 1
-                await self.process_child(scrape_item, link)
-
-        for scraper in (self._embeds, self._lazy_load_embeds):
-            for link in scraper(post):
-                duplicates.add(link) if link in seen else seen.add(link)
-                stats[scraper.__name__.removeprefix("_")] += 1
-                await self.process_child(scrape_item, link, embeds=True)
+        _max_children_error: MaxChildrenError | None = None
+        try:
+            for scraper in (
+                self._attachments,
+                self._images,
+                self._videos,
+                self._external_links,
+                self._embeds,
+                self._lazy_load_embeds,
+            ):
+                for link in scraper(post):
+                    duplicates.add(link) if link in seen else seen.add(link)
+                    scraper_name = scraper.__name__.removeprefix("_")
+                    stats[scraper_name] += 1
+                    tasks.append(self.process_child(scrape_item, link, embeds="embeds" in scraper_name))
+                    scrape_item.add_children()
+        except MaxChildrenError as e:
+            _max_children_error = e
 
         if seen:
             self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} stats = {dict(stats)}")
         if duplicates:
-            self.log_bug_report(f"Found duplicate links. Selectors are too generic: {duplicates}")
+            self.log_bug_report(
+                f"Found duplicate links in post {scrape_item.url}. Selectors are too generic: {duplicates}"
+            )
+        await asyncio.gather(*tasks)
+        if _max_children_error is not None:
+            raise _max_children_error
 
     def _external_links(self, post: ForumPostProtocol) -> Iterable[str]:
         selector = self.SELECTORS.posts.links
