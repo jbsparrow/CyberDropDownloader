@@ -17,7 +17,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://www.camwhores.tv")
 
 class CamwhoresTVCrawler(KernelVideoSharingCrawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Search": "/search/?q=...",
+        "Search": "/search/...",
         "Categories": "/categories/...",
         "Tags": "/tags/...",
         "Videos": "/videos/...",
