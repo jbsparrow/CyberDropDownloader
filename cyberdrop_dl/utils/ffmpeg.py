@@ -32,13 +32,14 @@ MERGE_INPUT_ARGS = "-map", "0"
 CONCAT_INPUT_ARGS = "-f", "concat", "-safe", "0", "-i"
 CODEC_COPY = "-c", "copy"
 _FFPROBE_AVAILABLE = False
+_EMPTY_FFPROBE_OUTPUT: FFprobeOutput = {"streams": []}
 
 
 def check_is_available() -> None:
     if not get_ffmpeg_version():
         raise RuntimeError("ffmpeg is not available")
     if not get_ffprobe_version():
-        raise RuntimeError("ffprobe is not available") from None
+        raise RuntimeError("ffprobe is not available")
 
 
 @lru_cache
@@ -114,14 +115,13 @@ async def probe(input: Path | URL, /, *, headers: Mapping[str, str] | None = Non
 
     command = *FFPROBE_CALL_PREFIX, str(input)
     if headers:
-        add_headers = []
+        add_headers: list[str] = []
         for name, value in headers.items():
             add_headers.extend(["-headers", f"{name}: {value}"])
 
         command = *command, *add_headers
     result = await _run_command(command)
-    default: FFprobeOutput = {"streams": []}
-    output = json.loads(result.stdout) if result.success else default
+    output = json.loads(result.stdout) if result.success else _EMPTY_FFPROBE_OUTPUT
     return FFprobeResult(output)
 
 
@@ -132,15 +132,15 @@ async def _async_delete_files(*files: Path) -> None:
 async def _create_concat_input_file(*input_files: Path, output_file: Path) -> None:
     """Input paths MUST be absolute!!."""
     async with aiofiles.open(output_file, "w", encoding="utf8") as f:
-        await f.writelines(f"file '{file}'\n" for file in input_files)
+        await f.writelines(f"file '{file}'" for file in input_files)
 
 
 async def _fixup_concatenated_video_file(input_file: Path, output_file: Path) -> SubProcessResult:
-    command = *FFMPEG_CALL_PREFIX, "-i", str(input_file), *FFMPEG_FIXUP_INPUT_ARGS
+    command = *FFMPEG_CALL_PREFIX, "-i", input_file, *FFMPEG_FIXUP_INPUT_ARGS
     probe_result = await probe(input_file)
     if probe_result and probe_result.audio.codec_name == "aac":
         command += FFMPEG_FIXUP_AUDIO_FILTER_ARGS
-    command = *command, str(output_file)
+    command = *command, output_file
     result = await _run_command(command)
     if result.success:
         await asyncio.to_thread(input_file.unlink)
@@ -148,17 +148,17 @@ async def _fixup_concatenated_video_file(input_file: Path, output_file: Path) ->
 
 
 async def _concat(concat_input_file: Path, output_file: Path) -> SubProcessResult:
-    concatenated_file_name = output_file.with_suffix(".concat" + output_file.suffix)
-    command = *FFMPEG_CALL_PREFIX, *CONCAT_INPUT_ARGS, str(concat_input_file), *CODEC_COPY, str(concatenated_file_name)
+    concatenated_file = output_file.with_suffix(".concat" + output_file.suffix)
+    command = *FFMPEG_CALL_PREFIX, *CONCAT_INPUT_ARGS, concat_input_file, *CODEC_COPY, concatenated_file
     result = await _run_command(command)
     if not result.success:
         return result
-    return await _fixup_concatenated_video_file(concatenated_file_name, output_file)
+    return await _fixup_concatenated_video_file(concatenated_file, output_file)
 
 
 async def _merge(*input_files: Path, output_file: Path) -> SubProcessResult:
-    input_args = sum([("-i", str(path)) for path in input_files], ())
-    command = *FFMPEG_CALL_PREFIX, *input_args, *MERGE_INPUT_ARGS, *CODEC_COPY, str(output_file)
+    input_args = sum([("-i", path) for path in input_files], ())
+    command = *FFMPEG_CALL_PREFIX, *input_args, *MERGE_INPUT_ARGS, *CODEC_COPY, output_file
     return await _run_command(command)
 
 
@@ -189,7 +189,7 @@ class Duration(NamedTuple):
     @staticmethod
     def parse(duration: float | str) -> float:
         if isinstance(duration, float | int):
-            return duration
+            return float(duration)
         try:
             return float(duration)
         except (ValueError, TypeError):
@@ -343,14 +343,14 @@ class SubProcessResult(NamedTuple):
     stdout: str
     stderr: str
     success: bool
-    command: tuple
+    command: tuple[str, ...]
 
     def as_dict(self) -> dict:
         joined_command = " ".join(self.command)
         return self._asdict() | {"command": joined_command}
 
 
-async def _run_command(command: Sequence[str]) -> SubProcessResult:
+async def _run_command(command: Sequence[str | Path]) -> SubProcessResult:
     assert not isinstance(command, str)
     bin_path, cmd = command[0], command[1:]
     if bin_path == "ffmpeg":
@@ -358,14 +358,13 @@ async def _run_command(command: Sequence[str]) -> SubProcessResult:
     elif bin_path == "ffprobe":
         bin_path = which_ffprobe()
     assert bin_path
-    command_ = bin_path, *cmd
-    joined_command = " ".join(command_)
-    log_debug(f"Running command: {joined_command}")
+    command_ = tuple(map(str, (bin_path, *cmd)))
+    log_debug(f"Running command: {command_}")
     process = await asyncio.create_subprocess_exec(*command_, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = await process.communicate()
     return_code = process.returncode
     stdout_str = stdout.decode("utf-8", errors="ignore")
     stderr_str = stderr.decode("utf-8", errors="ignore")
-    results = SubProcessResult(return_code, stdout_str, stderr_str, return_code == 0, tuple(command_))
+    results = SubProcessResult(return_code, stdout_str, stderr_str, return_code == 0, command_)
     log_debug(results.as_dict())
     return results
