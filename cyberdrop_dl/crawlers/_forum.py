@@ -14,7 +14,6 @@ import dataclasses
 import datetime
 import re
 from abc import abstractmethod
-from collections import defaultdict
 from typing import TYPE_CHECKING, ClassVar, Protocol, final
 
 from bs4 import BeautifulSoup, Tag
@@ -481,7 +480,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         post_title = self.create_separate_post_title(None, str(post.id), post.date)
         scrape_item.add_to_parent_title(post_title)
         seen, duplicates, tasks = set(), set(), []
-        stats: dict[str, int] = defaultdict(int)
+        stats: dict[str, int] = {}
         _max_children_error: MaxChildrenError | None = None
         try:
             for scraper in (
@@ -495,14 +494,14 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
                 for link in scraper(post):
                     duplicates.add(link) if link in seen else seen.add(link)
                     scraper_name = scraper.__name__.removeprefix("_")
-                    stats[scraper_name] += 1
+                    stats[scraper_name] = stats.get(scraper_name, 0) + 1
                     tasks.append(self.process_child(scrape_item, link, embeds="embeds" in scraper_name))
                     scrape_item.add_children()
         except MaxChildrenError as e:
             _max_children_error = e
 
         if seen:
-            self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} stats = {dict(stats)}")
+            self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} {stats = }")
         if duplicates:
             self.log_bug_report(
                 f"Found duplicate links in post {scrape_item.url}. Selectors are too generic: {duplicates}"
