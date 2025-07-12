@@ -43,7 +43,7 @@ class CamwhoresTVCrawler(KernelVideoSharingCrawler):
     async def picture(self, scrape_item: ScrapeItem) -> None:
         # images are encrypted, similar to the video URLS
         # https://www.camwhores.tv/get_image/93/9da0742b1fb753388286b95c2a66d766/sources/100000/100557/1472879.jpg/
-        # TODO: Foind out license to decrypt them
+        # TODO: Find out license to decrypt them
         # Almost all albums are private anyways..
         raise NotImplementedError
 
