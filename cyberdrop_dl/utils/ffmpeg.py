@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Required, Self, Type
 import aiofiles
 import aiofiles.os
 from multidict import CIMultiDict
+from videoprops import which_ffprobe as _builtin_ffprobe
 from yarl import URL
 
 from cyberdrop_dl.utils.logger import log_debug
@@ -30,6 +31,7 @@ FFMPEG_FIXUP_AUDIO_FILTER_ARGS = "-bsf:a", "aac_adtstoasc"
 MERGE_INPUT_ARGS = "-map", "0"
 CONCAT_INPUT_ARGS = "-f", "concat", "-safe", "0", "-i"
 CODEC_COPY = "-c", "copy"
+_AVAILABLE = False
 
 
 class FFmpeg:
@@ -40,6 +42,7 @@ class FFmpeg:
     async def concat(self, *input_files: Path, output_file: Path, same_folder: bool = True) -> SubProcessResult:
         if not self.is_available:
             raise RuntimeError("ffmpeg is not available")
+
         concat_file_path = output_file.with_suffix(output_file.suffix + ".ffmpeg_concat.txt")
         await _create_concat_input_file(*input_files, file_path=concat_file_path)
         result = await _concat(concat_file_path, output_file)
@@ -132,25 +135,51 @@ async def _merge(*input_files: Path, output_file: Path) -> SubProcessResult:
     return await _run_command(command)
 
 
-def get_ffmpeg_version() -> str | None:
-    return _get_bin_version("ffmpeg")
-
-
-def get_ffprobe_version() -> str | None:
-    return _get_bin_version("ffprobe")
+def check_is_available() -> None:
+    global _AVAILABLE
+    if _AVAILABLE:
+        return
+    if not get_ffmpeg_version():
+        raise RuntimeError("ffmpeg is not available")
+    if not get_ffprobe_version():
+        raise RuntimeError("ffprobe is not available") from None
+    _AVAILABLE = True
 
 
 @lru_cache
-def _get_bin_version(name: str) -> str | None:
-    if bin_path := shutil.which(name):
-        try:
-            cmd = bin_path, "-version"
-            p = subprocess.run(cmd, timeout=5, check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-            stdout = p.stdout.decode("utf-8", errors="ignore")
-        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired, OSError, ValueError):
-            return
-        else:
-            return stdout.split("version", 1)[-1].split("Copyright")[0].strip()
+def which_ffmpeg() -> str | None:
+    if bin_path := shutil.which("ffmpeg"):
+        return bin_path
+
+
+@lru_cache
+def which_ffprobe() -> str | None:
+    try:
+        return shutil.which("ffprobe") or (_builtin_ffprobe() + "[CDL builtin]")
+    except RuntimeError:
+        return
+
+
+def get_ffmpeg_version() -> str | None:
+    return _get_bin_version(which_ffmpeg())
+
+
+def get_ffprobe_version() -> str | None:
+    return _get_bin_version(which_ffprobe())
+
+
+@lru_cache
+def _get_bin_version(bin_path: str) -> str | None:
+    try:
+        cmd = bin_path, "-version"
+        p = subprocess.run(
+            cmd, timeout=5, check=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+        )
+        stdout = p.stdout.decode("utf-8", errors="ignore")
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired, OSError, ValueError):
+        return
+    else:
+        return stdout.partition("version")[-1].partition("Copyright")[0].strip()
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~ FFprobe ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -328,13 +357,21 @@ class SubProcessResult(NamedTuple):
 
 
 async def _run_command(command: Sequence[str]) -> SubProcessResult:
-    joined_command = " ".join(command)
+    assert not isinstance(command, str)
+    bin_path, cmd = command[0], command[1:]
+    if bin_path == "ffmpeg":
+        bin_path = which_ffmpeg()
+    elif bin_path == "ffprobe":
+        bin_path = which_ffprobe()
+    assert bin_path
+    command_ = bin_path, *cmd
+    joined_command = " ".join(command_)
     log_debug(f"Running command: {joined_command}")
-    process = await asyncio.create_subprocess_exec(*command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = await asyncio.create_subprocess_exec(*command_, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = await process.communicate()
     return_code = process.returncode
     stdout_str = stdout.decode("utf-8", errors="ignore")
     stderr_str = stderr.decode("utf-8", errors="ignore")
-    results = SubProcessResult(return_code, stdout_str, stderr_str, return_code == 0, tuple(command))
+    results = SubProcessResult(return_code, stdout_str, stderr_str, return_code == 0, tuple(command_))
     log_debug(results.as_dict())
     return results
