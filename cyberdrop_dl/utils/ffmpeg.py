@@ -32,85 +32,120 @@ MERGE_INPUT_ARGS = "-map", "0"
 CONCAT_INPUT_ARGS = "-f", "concat", "-safe", "0", "-i"
 CODEC_COPY = "-c", "copy"
 _AVAILABLE = False
+_FFPROBE_AVAILABLE = False
 
 
-class FFmpeg:
-    def __init__(self) -> None:
-        self.version = get_ffmpeg_version()
-        self.is_available = bool(self.version)
+def check_is_available() -> None:
+    global _AVAILABLE
+    if _AVAILABLE:
+        return
+    if not get_ffmpeg_version():
+        raise RuntimeError("ffmpeg is not available")
+    if not get_ffprobe_version():
+        raise RuntimeError("ffprobe is not available") from None
+    _AVAILABLE = True
 
-    async def concat(self, *input_files: Path, output_file: Path, same_folder: bool = True) -> SubProcessResult:
-        if not self.is_available:
-            raise RuntimeError("ffmpeg is not available")
 
-        concat_file_path = output_file.with_suffix(output_file.suffix + ".ffmpeg_concat.txt")
-        await _create_concat_input_file(*input_files, file_path=concat_file_path)
-        result = await _concat(concat_file_path, output_file)
-        if result.success:
-            if same_folder:
-                folder = input_files[0].parent
-                await asyncio.to_thread(shutil.rmtree, folder, True)
-            else:
-                await async_delete_files(concat_file_path, *input_files)
-        await asyncio.to_thread(concat_file_path.unlink)
-        return result
+@lru_cache
+def which_ffmpeg() -> str | None:
+    if bin_path := shutil.which("ffmpeg"):
+        return bin_path
 
-    async def merge(self, *input_files: Path, output_file: Path) -> SubProcessResult:
-        if not self.is_available:
-            raise RuntimeError("ffmpeg is not available")
 
-        result = await _merge(*input_files, output_file=output_file)
-        if result.success:
-            await async_delete_files(*input_files)
-        return result
+@lru_cache
+def which_ffprobe() -> str | None:
+    global _FFPROBE_AVAILABLE
+    try:
+        bin_path = shutil.which("ffprobe") or (_builtin_ffprobe() + "[CDL builtin]")
+        _FFPROBE_AVAILABLE = True
+        return bin_path
+    except RuntimeError:
+        return
 
-    @overload
-    @staticmethod
-    async def probe(input: Path, /) -> FFprobeResult: ...
 
-    @overload
-    @staticmethod
-    async def probe(input: URL, /, *, headers: Mapping[str, str] | None = None) -> FFprobeResult: ...
+def get_ffmpeg_version() -> str | None:
+    return _get_bin_version(which_ffmpeg())
 
-    @staticmethod
-    async def probe(input: Path | URL, /, *, headers: Mapping[str, str] | None = None) -> FFprobeResult:
-        if isinstance(input, URL):
-            assert is_absolute_http_url(input)
 
-        elif isinstance(input, Path):
-            assert input.is_absolute()
-            assert not headers
+def get_ffprobe_version() -> str | None:
+    return _get_bin_version(which_ffprobe())
 
+
+async def concat(*input_files: Path, output_file: Path, same_folder: bool = True) -> SubProcessResult:
+    assert _AVAILABLE
+    concat_file_path = output_file.with_suffix(output_file.suffix + ".ffmpeg_concat.txt")
+    await _create_concat_input_file(*input_files, output_file=concat_file_path)
+    result = await _concat(concat_file_path, output_file)
+    if result.success:
+        if same_folder:
+            folder = input_files[0].parent
+
+            def clean_up() -> None:
+                shutil.rmtree(folder, ignore_errors=True)
+                concat_file_path.unlink()
+
+            await asyncio.to_thread(clean_up)
         else:
-            raise ValueError("Can only probe a Path or a yarl.URL")
-
-        command = *FFPROBE_CALL_PREFIX, str(input)
-        if headers:
-            add_headers = []
-            for name, value in headers.items():
-                add_headers.extend(["-headers", f"{name}: {value}"])
-
-            command = *command, *add_headers
-        result = await _run_command(command)
-        default: FFprobeOutput = {"streams": []}
-        output = json.loads(result.stdout) if result.success else default
-        return FFprobeResult(output)
+            await _async_delete_files(concat_file_path, *input_files)
+    else:
+        await asyncio.to_thread(concat_file_path.unlink)
+    return result
 
 
-async def async_delete_files(*files: Path) -> None:
+async def merge(*input_files: Path, output_file: Path) -> SubProcessResult:
+    assert _AVAILABLE
+    result = await _merge(*input_files, output_file=output_file)
+    if result.success:
+        await _async_delete_files(*input_files)
+    return result
+
+
+@overload
+async def probe(input: Path, /) -> FFprobeResult: ...
+
+
+@overload
+async def probe(input: URL, /, *, headers: Mapping[str, str] | None = None) -> FFprobeResult: ...
+
+
+async def probe(input: Path | URL, /, *, headers: Mapping[str, str] | None = None) -> FFprobeResult:
+    assert _FFPROBE_AVAILABLE
+    if isinstance(input, URL):
+        assert is_absolute_http_url(input)
+
+    elif isinstance(input, Path):
+        assert input.is_absolute()
+        assert not headers
+
+    else:
+        raise ValueError("Can only probe a Path or a yarl.URL")
+
+    command = *FFPROBE_CALL_PREFIX, str(input)
+    if headers:
+        add_headers = []
+        for name, value in headers.items():
+            add_headers.extend(["-headers", f"{name}: {value}"])
+
+        command = *command, *add_headers
+    result = await _run_command(command)
+    default: FFprobeOutput = {"streams": []}
+    output = json.loads(result.stdout) if result.success else default
+    return FFprobeResult(output)
+
+
+async def _async_delete_files(*files: Path) -> None:
     await asyncio.gather(*[aiofiles.os.unlink(file) for file in files])
 
 
-async def _create_concat_input_file(*input: Path, file_path: Path) -> None:
+async def _create_concat_input_file(*input_files: Path, output_file: Path) -> None:
     """Input paths MUST be absolute!!."""
-    async with aiofiles.open(file_path, "w", encoding="utf8") as f:
-        for file in input:
-            await f.write(f"file '{file}'\n")
+    async with aiofiles.open(output_file, "w", encoding="utf8") as f:
+        await f.writelines(f"file '{file}'\n" for file in input_files)
 
 
 async def _fixup_concatenated_video_file(input_file: Path, output_file: Path) -> SubProcessResult:
     command = *FFMPEG_CALL_PREFIX, "-i", str(input_file), *FFMPEG_FIXUP_INPUT_ARGS
-    probe_result = await FFmpeg.probe(input_file)
+    probe_result = await probe(input_file)
     if probe_result and probe_result.audio.codec_name == "aac":
         command += FFMPEG_FIXUP_AUDIO_FILTER_ARGS
     command = *command, str(output_file)
@@ -133,39 +168,6 @@ async def _merge(*input_files: Path, output_file: Path) -> SubProcessResult:
     input_args = sum([("-i", str(path)) for path in input_files], ())
     command = *FFMPEG_CALL_PREFIX, *input_args, *MERGE_INPUT_ARGS, *CODEC_COPY, str(output_file)
     return await _run_command(command)
-
-
-def check_is_available() -> None:
-    global _AVAILABLE
-    if _AVAILABLE:
-        return
-    if not get_ffmpeg_version():
-        raise RuntimeError("ffmpeg is not available")
-    if not get_ffprobe_version():
-        raise RuntimeError("ffprobe is not available") from None
-    _AVAILABLE = True
-
-
-@lru_cache
-def which_ffmpeg() -> str | None:
-    if bin_path := shutil.which("ffmpeg"):
-        return bin_path
-
-
-@lru_cache
-def which_ffprobe() -> str | None:
-    try:
-        return shutil.which("ffprobe") or (_builtin_ffprobe() + "[CDL builtin]")
-    except RuntimeError:
-        return
-
-
-def get_ffmpeg_version() -> str | None:
-    return _get_bin_version(which_ffmpeg())
-
-
-def get_ffprobe_version() -> str | None:
-    return _get_bin_version(which_ffprobe())
 
 
 @lru_cache

@@ -23,7 +23,7 @@ from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils.args import ParsedArgs, parse_args
-from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
+from cyberdrop_dl.utils.ffmpeg import get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 from cyberdrop_dl.utils.utilities import close_if_defined, get_system_information
@@ -58,7 +58,6 @@ class Manager:
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
         self.textual_log_queue: queue.Queue = field(init=False)
-        self.ffmpeg: FFmpeg = FFmpeg()
         self._textual_ui: TextualUI = field(init=False)
 
         self._loaded_args_config: bool = False
