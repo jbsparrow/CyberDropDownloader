@@ -103,7 +103,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
         async for soup in self.web_pager(sort_by_new(scrape_item.url), trim=False):
             if not title:
                 if is_password_protected(soup):
-                    soup = await self.unlock_password_protected_soup(scrape_item, soup)
+                    soup = await self._get_soup_w_password(scrape_item)
                 title: str = css.select_one_get_text(soup, ALBUM_TITLE_SELECTOR)
                 title = self.create_title(title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
@@ -128,7 +128,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
             for _, sub_album in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(sub_album))
 
-    async def unlock_password_protected_soup(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> BeautifulSoup:
+    async def _get_soup_w_password(self, scrape_item: ScrapeItem) -> BeautifulSoup:
         password = scrape_item.pop_query("password")
         if not password:
             raise PasswordProtectedError
