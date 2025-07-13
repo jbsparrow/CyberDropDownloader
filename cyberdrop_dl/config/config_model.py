@@ -28,7 +28,16 @@ from cyberdrop_dl.utils.utilities import purge_dir_tree
 from ._common import ConfigModel, Field, PathAliasModel
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
-SORTING_COMMON_KEYS = {"sort_dir", "base_dir", "parent_dir", "filename", "ext"}
+_SORTING_COMMON_FIELDS = {
+    "base_dir",
+    "ext",
+    "file_date",
+    "file_date_iso",
+    "file_date_us",
+    "filename",
+    "parent_dir",
+    "sort_dir",
+}
 
 
 class DownloadOptions(BaseModel):
@@ -196,11 +205,19 @@ class Sorting(BaseModel):
     sorted_other: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
     sorted_video: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
 
+    @field_validator("sort_incrementer_format", mode="after")
+    @classmethod
+    def valid_sort_incrementer_format(cls, value: str | None) -> str | None:
+        if value is not None:
+            valid_keys = {"i"}
+            validate_format_string(value, valid_keys)
+        return value
+
     @field_validator("sorted_audio", mode="after")
     @classmethod
     def valid_sorted_audio(cls, value: str | None) -> str | None:
         if value is not None:
-            valid_keys = SORTING_COMMON_KEYS.union("bitrate", "duration", "length", "sample_rate")
+            valid_keys = _SORTING_COMMON_FIELDS | {"bitrate", "duration", "length", "sample_rate"}
             validate_format_string(value, valid_keys)
         return value
 
@@ -208,7 +225,7 @@ class Sorting(BaseModel):
     @classmethod
     def valid_sorted_image(cls, value: str | None) -> str | None:
         if value is not None:
-            valid_keys = SORTING_COMMON_KEYS.union("height", "width", "resolution")
+            valid_keys = _SORTING_COMMON_FIELDS | {"height", "resolution", "width"}
             validate_format_string(value, valid_keys)
         return value
 
@@ -216,7 +233,7 @@ class Sorting(BaseModel):
     @classmethod
     def valid_sorted_other(cls, value: str | None) -> str | None:
         if value is not None:
-            valid_keys = SORTING_COMMON_KEYS.union("bitrate", "duration", "length", "sample_rate")
+            valid_keys = _SORTING_COMMON_FIELDS | {"bitrate", "duration", "length", "sample_rate"}
             validate_format_string(value, valid_keys)
         return value
 
@@ -224,9 +241,15 @@ class Sorting(BaseModel):
     @classmethod
     def valid_sorted_video(cls, value: str | None) -> str | None:
         if value is not None:
-            valid_keys = SORTING_COMMON_KEYS.union(
-                "codec", "duration", "fps", "length", "height", "width", "resolution"
-            )
+            valid_keys = _SORTING_COMMON_FIELDS | {
+                "codec",
+                "duration",
+                "fps",
+                "height",
+                "length",
+                "resolution",
+                "width",
+            }
             validate_format_string(value, valid_keys)
         return value
 
