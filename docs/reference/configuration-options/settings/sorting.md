@@ -11,15 +11,15 @@ Common fields for sorting format options (supported for `audio`, `videos`, `imag
 >
 > `ext`: the file extension (suffix)
 >
-> `file_date`: The file date. This is a datetime object, which means it accepts a custom format spec ex: `{file_date:%Y-%m}`
+> `file_date`: the file date. This is a datetime object, which means it accepts a custom format spec ex: `{file_date:%Y-%m}`
 >
-> `file_date_iso`: The file date as an iso 8601 string (`%Y-%d-%m`)
+> `file_date_iso`: the file date as an iso 8601 string (`%Y-%m-%d`)
 >
-> `file_date_us`: The file date in the US format (`%Y-%d-%m`)
+> `file_date_us`: the file date in the US format (`%Y-%d-%m`)
 >
 > `filename`: the file's name (stem)
 >
-> `parent_dir`: the name of the folder where the file is located at, aka its parent folder.  The is normally the album name for albums or the post name for forums or reddit if `separate_post` is enabled
+> `parent_dir`: the name of the folder where the file is located at (its parent folder).  This is normally the album name for photos or the post name for forums/reddit if `separate_post` is enabled
 >
 > `sort_dir`: the same path as `sort_folder` from the download options
 
