@@ -74,7 +74,7 @@ def validate_format_string(format_string: str, valid_keys: set[str]) -> None:
         msg += " ".join(
             (
                 f"{tuple(sorted(unknown_field_names))}",
-                f"{'is not a valid field' if len(unknown_field_names) == 1 else 'are not valid field'}",
+                f"{'is not a valid field' if len(unknown_field_names) == 1 else 'are not valid fields'}",
                 f"for this option. \n\n  Valid fields: {sorted(valid_keys)}",
             )
         )
