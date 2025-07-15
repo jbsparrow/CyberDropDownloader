@@ -31,11 +31,11 @@ def parse_js_vars(js_text: str, use_regex: bool = False) -> dict:
         value = value.strip()
         data[name] = value
         if value.startswith("{") or value.startswith("["):
-            data[name] = parse_json_to_dict(value, use_regex)
+            data[name] = parse_obj(value, use_regex)
     return data
 
 
-def parse_json_to_dict(js_text: str, use_regex: bool = False) -> Any:
+def parse_obj(js_text: str, use_regex: bool = False) -> Any:
     json_str = js_text.replace("\t", "").replace("\n", "").strip()
     json_str = replace_quotes(json_str)
     if use_regex:
