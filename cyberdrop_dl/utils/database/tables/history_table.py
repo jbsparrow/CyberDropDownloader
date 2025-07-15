@@ -17,6 +17,12 @@ if TYPE_CHECKING:
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.data_structures.url_objects import MediaItem
 
+DB_UPDATES = (
+    "UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'",
+    "UPDATE OR REPLACE media SET domain = 'nudostar.tv' WHERE domain = 'nudostartv'",
+    "UPDATE OR REPLACE media SET referer = FIX_REDGIFS_REFERER(referer) WHERE domain = 'redgifs';",
+)
+
 
 def get_db_path(url: URL, referer: str = "") -> str:
     """Gets the URL path to be put into the DB and checked from the DB."""
@@ -38,6 +44,9 @@ class HistoryTable:
 
     async def startup(self) -> None:
         """Startup process for the HistoryTable."""
+        from cyberdrop_dl.crawlers import redgifs
+
+        await self.db_conn.create_function("FIX_REDGIFS_REFERER", 1, redgifs.fix_db_referer, deterministic=True)
         await self.db_conn.execute(create_history)
         await self.db_conn.commit()
         await self.fix_primary_keys()
@@ -62,10 +71,8 @@ class HistoryTable:
 
     async def run_updates(self) -> None:
         cursor = await self.db_conn.cursor()
-        query = """UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
-        await cursor.execute(query)
-        query = """UPDATE OR REPLACE media SET domain = 'nudostar.tv' WHERE domain = 'nudostartv'"""
-        await cursor.execute(query)
+        for query in DB_UPDATES:
+            await cursor.execute(query)
         await self.db_conn.commit()
 
     async def delete_invalid_rows(self) -> None:
