@@ -69,6 +69,7 @@ class HashClient:
             return
         await self.manager.states.RUNNING.wait()
         try:
+            assert media_item.original_filename
             hash = await self.update_db_and_retrive_hash(
                 media_item.complete_file, media_item.original_filename, media_item.referer
             )
@@ -78,7 +79,7 @@ class HashClient:
 
     async def update_db_and_retrive_hash(
         self, file: Path | str, original_filename: str | None = None, referer: URL | None = None
-    ):
+    ) -> str | None:
         file = Path(file)
         if file.suffix == ".part":
             return
@@ -94,10 +95,10 @@ class HashClient:
     async def _update_db_and_retrive_hash_helper(
         self,
         file: Path | str,
-        original_filename: str | None = None,
-        referer: URL | None = None,
-        hash_type: str | None = None,
-    ) -> str:
+        original_filename: str | None,
+        referer: URL | None,
+        hash_type: str,
+    ) -> str | None:
         """Generates hash of a file."""
         self.manager.progress_manager.hash_progress.update_currently_hashing(file)
         hash = await self.manager.db_manager.hash_table.get_file_hash_exists(file, hash_type)
@@ -123,9 +124,12 @@ class HashClient:
                 )
         except Exception as e:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
-        return hash
+        else:
+            return hash
 
-    async def save_hash_data(self, media_item: MediaItem, hash: str):
+    async def save_hash_data(self, media_item: MediaItem, hash: str | None) -> None:
+        if not hash:
+            return
         absolute_path = await asyncio.to_thread(media_item.complete_file.resolve)
         size = await asyncio.to_thread(get_size_or_none, media_item.complete_file)
         assert size
