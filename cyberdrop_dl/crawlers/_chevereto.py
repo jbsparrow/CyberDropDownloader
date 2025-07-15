@@ -129,7 +129,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
             for _, sub_album in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(sub_album))
 
-    async def check_password_protected(self, soup: BeautifulSoup, url: URL) -> None:
+    async def check_password_protected(self, soup: BeautifulSoup, url: AbsoluteHttpURL) -> None:
         password = url.query.get("password", "")
         url = url.with_query(None)
 

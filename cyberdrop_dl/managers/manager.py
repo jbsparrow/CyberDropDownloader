@@ -158,6 +158,7 @@ class Manager:
 
         if not isinstance(self.client_manager, ClientManager):
             self.client_manager = ClientManager(self)
+            await self.client_manager.startup()
         if not isinstance(self.storage_manager, StorageManager):
             self.storage_manager = StorageManager(self)
 

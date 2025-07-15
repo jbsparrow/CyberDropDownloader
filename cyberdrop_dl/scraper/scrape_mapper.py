@@ -347,6 +347,24 @@ class ScrapeMapper:
 
         return False
 
+    def disable_crawler(self, domain: str) -> Crawler | None:
+        """Disables a crawler at runtime, after the scrape mapper is already running.
+
+        It does not remove the crawler from the crawlers map, it just sets it as `disabled"`
+
+        This has the effect to silently ignore any URL that maps to that crawler, without any "unsupported" or "errors" log messages
+
+        `domain` must match _exactly_, AKA: it must be the value of `crawler.DOMAIN`
+
+        Returns the crawler instance that was disabled (if Any)
+
+        """
+
+        crawler = next((crawler for crawler in self.existing_crawlers.values() if crawler.DOMAIN == domain), None)
+        if crawler and not crawler.disabled:
+            crawler.disabled = True
+            return crawler
+
 
 def regex_links(line: str) -> list[AbsoluteHttpURL]:
     """Regex grab the links from the URLs.txt file.

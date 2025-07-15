@@ -145,14 +145,14 @@ class MediaURLs(NamedTuple):
     subtitle: AbsoluteHttpURL | None
 
 
-class M3U8Media(NamedTuple):
+class RenditionGroup(NamedTuple):
     video: M3U8
     audio: M3U8 | None = None
     subtitle: M3U8 | None = None
 
 
 @dataclass(frozen=True, slots=True, order=True)
-class RenditionGroup:
+class RenditionGroupDetails:
     resolution: Resolution
     codecs: Codecs
     stream_info: StreamInfo
@@ -160,7 +160,7 @@ class RenditionGroup:
     urls: MediaURLs
 
     @staticmethod
-    def new(playlist: Playlist) -> RenditionGroup:
+    def new(playlist: Playlist) -> RenditionGroupDetails:
         assert playlist.uri
         assert playlist.stream_info.codecs
 
@@ -187,7 +187,7 @@ class RenditionGroup:
             subtitle_url: AbsoluteHttpURL | None = get_url(subtitle)
 
         media_urls = MediaURLs(video_url, audio_url, subtitle_url)
-        return RenditionGroup(resolution, codecs, playlist.stream_info, media, media_urls)
+        return RenditionGroupDetails(resolution, codecs, playlist.stream_info, media, media_urls)
 
 
 class M3U8(_M3U8):
@@ -201,23 +201,20 @@ class M3U8(_M3U8):
         total_duration: float = sum(duration for segment in self.segments if (duration := segment.duration))
         return timedelta(seconds=total_duration)
 
-    def as_variant(self) -> VariantM3U8:
-        return VariantM3U8(self)
 
-
-class VariantM3U8:
-    """M3U8 that has links to other M3U8s inside"""
+class VariantM3U8Parser:
+    """Parses groups inside a variant M3U8"""
 
     def __init__(self, m3u8: M3U8) -> None:
         assert m3u8.is_variant
         self._m3u8 = m3u8
-        self.groups = sorted((RenditionGroup.new(playlist) for playlist in m3u8.playlists), reverse=True)
+        self.groups = sorted((RenditionGroupDetails.new(playlist) for playlist in m3u8.playlists), reverse=True)
 
     def get_rendition_groups(
         self, only: Iterable[str] = (), *, exclude: Iterable[str] = ()
-    ) -> Generator[RenditionGroup]:
+    ) -> Generator[RenditionGroupDetails]:
         """Yields M3U8 options, best to worst"""
-        assert not (only and exclude)
+        assert not (only and exclude), "only one of `only` or `exclude` can be supplied, not both"
         if isinstance(exclude, str):
             exclude = (exclude,)
         if isinstance(only, str):
@@ -228,8 +225,14 @@ class VariantM3U8:
             if group.codecs.video not in exclude:
                 yield group
 
-    def get_best_group(self, only: Iterable[str] = (), *, exclude: Iterable[str] = ()) -> RenditionGroup:
+    def get_best_group(self, only: Iterable[str] = (), *, exclude: Iterable[str] = ()) -> RenditionGroupDetails:
         return next(self.get_rendition_groups(only=only, exclude=exclude))
+
+
+def get_best_group_from_playlist(
+    m3u8_playlist: M3U8, only: Iterable[str] = (), *, exclude: Iterable[str] = ()
+) -> RenditionGroupDetails:
+    return VariantM3U8Parser(m3u8_playlist).get_best_group(only=only, exclude=exclude)
 
 
 def get_resolution_from_url(url: AbsoluteHttpURL | str) -> Resolution:

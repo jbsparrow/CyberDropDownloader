@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any, ParamSpec, Self, TypeVar
 
 import aiohttp
 from aiohttp_client_cache.response import AnyResponse
-from aiohttp_client_cache.session import CachedSession
 from bs4 import BeautifulSoup
 
 import cyberdrop_dl.constants as constants
@@ -27,55 +26,51 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
     from types import TracebackType
 
+    from aiohttp_client_cache.session import CachedSession
     from curl_cffi.requests.impersonate import BrowserTypeLiteral as BrowserTarget
     from curl_cffi.requests.models import Response as CurlResponse
     from multidict import CIMultiDictProxy
-    from yarl import URL
 
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
     from cyberdrop_dl.managers.client_manager import ClientManager
 
-curl_import_error = None
+_curl_import_error = None
 try:
-    from curl_cffi.requests import AsyncSession
+    from curl_cffi.requests import AsyncSession  # noqa: TC002
 except ImportError as e:
-    curl_import_error = e
+    _curl_import_error = e
 
-P = ParamSpec("P")
-R = TypeVar("R")
-T = TypeVar("T")
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+_T = TypeVar("_T")
 
 
-def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
+def limiter(func: Callable[_P, Coroutine[None, None, _R]]) -> Callable[_P, Coroutine[None, None, _R]]:
     """Wrapper to handle limits for scrape session."""
 
     @wraps(func)
-    async def wrapper(*args, **kwargs) -> R:
+    async def wrapper(*args, **kwargs) -> _R:
         self: ScraperClient = args[0]
         domain: str = args[1]
-        domain_limiter = await self.client_manager.get_rate_limiter(domain)
-        async with self.client_manager.session_limit, self._global_limiter, domain_limiter:
-            await self.client_manager.manager.states.RUNNING.wait()
+        with self.client_manager.request_context(domain):
+            domain_limiter = await self.client_manager.get_rate_limiter(domain)
+            async with self.client_manager.session_limit, self.client_manager.global_rate_limiter, domain_limiter:
+                await self.client_manager.manager.states.RUNNING.wait()
+                if "cffi" in func.__name__:
+                    _check_curl_cffi_is_available(domain)
 
-            if "cffi" in func.__name__:
-                if curl_import_error is not None:
-                    system = "Android" if env.RUNNING_IN_TERMUX else "the system"
-                    msg = f"curl_cffi is required to scrape URLs from {domain}, but a dependency it's not available on {system}.\n"
-                    msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{curl_import_error!r}"
-                    raise ScrapeError("Missing Dependency", msg)
                 return await func(*args, **kwargs)
-
-            return await func(*args, **kwargs)
 
     return wrapper
 
 
-def copy_signature(target: Callable[P, R]) -> Callable[[Callable[..., T]], Callable[P, T]]:
+def copy_signature(target: Callable[_P, _R]) -> Callable[[Callable[..., _T]], Callable[_P, _T]]:
     """Decorator to make a function mimic the signature of another function,
     but preserve the return type of the decorated function."""
 
-    def decorator(func: Callable[..., T]) -> Callable[P, T]:
+    def decorator(func: Callable[..., _T]) -> Callable[_P, _T]:
         @functools.wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T:
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(target).replace(  # type: ignore
@@ -88,9 +83,11 @@ def copy_signature(target: Callable[P, R]) -> Callable[[Callable[..., T]], Calla
 
 @asynccontextmanager
 async def cache_control_manager(client_session: CachedSession, disabled: bool = False):
-    client_session.cache.disabled = constants.DISABLE_CACHE or disabled
-    yield
-    client_session.cache.disabled = False
+    try:
+        client_session.cache.disabled = constants.DISABLE_CACHE or disabled
+        yield
+    finally:
+        client_session.cache.disabled = False
 
 
 class ScraperClient:
@@ -98,11 +95,6 @@ class ScraperClient:
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
-        self._headers = {"user-agent": client_manager.user_agent}
-        self._timeout_tuple = client_manager.connection_timeout + 60, client_manager.connection_timeout
-        self._timeouts = aiohttp.ClientTimeout(*self._timeout_tuple)
-        self._global_limiter = self.client_manager.global_rate_limiter
-        self._trace_configs = []
         self._save_pages_html = client_manager.manager.config_manager.settings_data.files.save_pages_html
         self._pages_folder = self.client_manager.manager.path_manager.pages_folder
         # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
@@ -111,32 +103,13 @@ class ScraperClient:
         self._session: CachedSession
         self._curl_session: AsyncSession
 
-    def new_session(self) -> CachedSession:
-        return CachedSession(
-            headers=self._headers,
-            raise_for_status=False,
-            cookie_jar=self.client_manager.cookies,
-            timeout=self._timeouts,
-            trace_configs=self._trace_configs,
-            cache=self.client_manager.manager.cache_manager.request_cache,
-        )
-
     def _startup(self) -> None:
-        add_request_log_hooks(self._trace_configs)
-        self._session = self.new_session()
-        self.reddit_session = self.new_session()
-        if curl_import_error is not None:
+        self._session = self.client_manager.new_scrape_session()
+        self.reddit_session = self.client_manager.new_scrape_session()
+        if _curl_import_error is not None:
             return
 
-        proxy = str(self.client_manager.proxy) if self.client_manager.proxy else None
-        self._curl_session = AsyncSession(
-            headers=self._headers,
-            impersonate="chrome",
-            verify=bool(self.client_manager.ssl_context),
-            proxy=proxy,
-            timeout=self._timeout_tuple,
-            cookies={c.key: c.value for c in self.client_manager.cookies},
-        )
+        self._curl_session = self.client_manager.new_curl_cffi_session()
 
     async def __aenter__(self) -> Self:
         self._startup()
@@ -150,7 +123,7 @@ class ScraperClient:
     ) -> None:
         await self._session.close()
         await self.reddit_session.close()
-        if curl_import_error is not None:
+        if _curl_import_error is not None:
             return
         try:
             await self._curl_session.close()
@@ -173,7 +146,7 @@ class ScraperClient:
     async def _get_response_and_soup_cffi(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         headers: dict[str, str] | None = None,
         impersonate: BrowserTarget | None = "chrome",
         request_params: dict[str, Any] | None = None,
@@ -187,7 +160,7 @@ class ScraperClient:
         :param request_params: Additional keyword arguments to pass to `curl_session.get` (e.g., `timeout`).
         """
         request_params = request_params or {}
-        headers = self._headers | (headers or {})
+        headers = self.client_manager._headers | (headers or {})
         response: CurlResponse = await self._curl_session.get(
             str(url), impersonate=impersonate, headers=headers, **request_params
         )
@@ -210,7 +183,7 @@ class ScraperClient:
     async def post_data_cffi(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         headers: dict[str, str] | None = None,
         impersonate: BrowserTarget | None = "chrome",
         data: Any = None,
@@ -228,7 +201,7 @@ class ScraperClient:
         :param request_params: Additional keyword arguments to pass to `curl_session.post` (e.g., `timeout`).
         """
         request_params = request_params or {}
-        headers = self._headers | (headers or {})
+        headers = self.client_manager._headers | (headers or {})
         response: CurlResponse = await self._curl_session.post(
             str(url), data=data, json=json, impersonate=impersonate, headers=headers, **request_params
         )
@@ -238,7 +211,7 @@ class ScraperClient:
     # ~~~~~~~~~~~~~ AIOHTTP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     async def _resilient_get(
-        self, url: URL, headers: dict[str, str], request_params: dict[str, Any] | None = None
+        self, url: AbsoluteHttpURL, headers: dict[str, str], request_params: dict[str, Any] | None = None
     ) -> tuple[AnyResponse, BeautifulSoup | None]:
         """Makes a GET request and automatically retries it with flaresolverr (if needed)
 
@@ -270,7 +243,7 @@ class ScraperClient:
     async def _get(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         /,
         headers: dict[str, str] | None = None,
         request_params: dict[str, Any] | None = None,
@@ -278,14 +251,16 @@ class ScraperClient:
         cache_disabled: bool = False,
     ) -> tuple[AnyResponse, BeautifulSoup | None]:
         """_resilient_get with cache_control."""
-        headers = self._headers | (headers or {})
+        headers = self.client_manager._headers | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response, soup_or_none = await self._resilient_get(url, headers, request_params)
 
         return response, soup_or_none
 
     @copy_signature(_get)
-    async def _get_response_and_soup(self, domain: str, url: URL, *args, **kwargs) -> tuple[AnyResponse, BeautifulSoup]:
+    async def _get_response_and_soup(
+        self, domain: str, url: AbsoluteHttpURL, *args, **kwargs
+    ) -> tuple[AnyResponse, BeautifulSoup]:
         """
         Makes a GET request using aiohttp and creates a soup.
 
@@ -330,7 +305,7 @@ class ScraperClient:
     async def _post_data(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         headers: dict[str, str] | None = None,
         data: Any = None,
         json: Any = None,
@@ -349,7 +324,7 @@ class ScraperClient:
         :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
         """
         request_params = request_params or {}
-        headers = self._headers | {"Accept-Encoding": "identity"} | (headers or {})
+        headers = self.client_manager._headers | {"Accept-Encoding": "identity"} | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response = await self._session.post(url, headers=headers, data=data, json=json, **request_params)
         await self.client_manager.check_http_status(response)
@@ -376,7 +351,7 @@ class ScraperClient:
     async def _get_head(
         self,
         domain: str,
-        url: URL,
+        url: AbsoluteHttpURL,
         headers: dict[str, str] | None = None,
         request_params: dict[str, Any] | None = None,
         *,
@@ -392,7 +367,7 @@ class ScraperClient:
         :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
         """
         request_params = request_params or {}
-        headers = self._headers | {"Accept-Encoding": "identity"} | (headers or {})
+        headers = self.client_manager._headers | {"Accept-Encoding": "identity"} | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response = await self._session.head(url, headers=headers, **request_params)
         await self.client_manager.check_http_status(response)
@@ -405,7 +380,7 @@ class ScraperClient:
 
     async def write_soup_to_disk(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         response: CurlResponse | AnyResponse,
         soup: BeautifulSoup,
         exc: Exception | None = None,
@@ -479,3 +454,11 @@ def add_request_log_hooks(trace_configs: list[aiohttp.TraceConfig]) -> None:
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
     trace_configs.append(trace_config)
+
+
+def _check_curl_cffi_is_available(domain: str) -> None:
+    if _curl_import_error is not None:
+        system = "Android" if env.RUNNING_IN_TERMUX else "the system"
+        msg = f"curl_cffi is required to scrape URLs from {domain}, but a dependency it's not available on {system}.\n"
+        msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{_curl_import_error!r}"
+        raise ScrapeError("Missing Dependency", msg)

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import calendar
-import copy
 import itertools
 import time
 from functools import partial, wraps
@@ -10,15 +9,13 @@ from http import HTTPStatus
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import aiofiles
-import aiohttp
-from aiohttp import ClientSession
 from dateutil import parser
 from videoprops import get_audio_properties, get_video_properties
-from yarl import URL
 
 from cyberdrop_dl.constants import FILE_FORMATS
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
-from cyberdrop_dl.utils.logger import log, log_debug
+from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
@@ -26,9 +23,11 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
 
+    import aiohttp
+    from aiohttp import ClientSession
     from multidict import CIMultiDictProxy
 
-    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
 
@@ -46,20 +45,17 @@ def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutin
     async def wrapper(*args, **kwargs) -> R:
         self: DownloadClient = args[0]
         domain: str = args[1]
-        domain_limiter = await self.client_manager.get_rate_limiter(domain)
-        await asyncio.sleep(await self.client_manager.get_downloader_spacer(domain))
-        await self._global_limiter.acquire()
-        await domain_limiter.acquire()
+        with self.client_manager.request_context(domain):
+            domain_limiter = await self.client_manager.get_rate_limiter(domain)
+            await asyncio.sleep(await self.client_manager.get_downloader_spacer(domain))
+            await self.client_manager.global_rate_limiter.acquire()
+            await domain_limiter.acquire()
 
-        async with aiohttp.ClientSession(
-            headers=self._headers,
-            raise_for_status=False,
-            cookie_jar=self.client_manager.cookies,
-            timeout=self._timeouts,
-            trace_configs=self.trace_configs,
-        ) as client:
-            kwargs["client_session"] = client
-            return await func(*args, **kwargs)
+            # TODO: Use a single global download session for the entire run
+            # TODO: Unify download limiter with scrape limiter # https://github.com/jbsparrow/CyberDropDownloader/issues/556
+            async with self.client_manager.new_download_session() as client:
+                kwargs["client_session"] = client
+                return await func(*args, **kwargs)
 
     return wrapper
 
@@ -114,51 +110,24 @@ class DownloadClient:
     def __init__(self, manager: Manager, client_manager: ClientManager) -> None:
         self.manager = manager
         self.client_manager = client_manager
-
-        self._headers = {"user-agent": client_manager.user_agent}
-        self._timeouts = aiohttp.ClientTimeout(
-            total=client_manager.read_timeout + client_manager.connection_timeout,
-            connect=client_manager.connection_timeout,
-        )
-        self._global_limiter = self.client_manager.global_rate_limiter
-        self.trace_configs = []
-        self._file_path = None
         self.slow_download_period = 10  # seconds
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
         self.chunk_size = client_manager.speed_limiter.chunk_size
-        self.add_request_log_hooks()
-
-    def add_request_log_hooks(self) -> None:
-        async def on_request_start(*args):
-            params: aiohttp.TraceRequestStartParams = args[2]
-            log_debug(f"Starting download {params.method} request to {params.url}", 10)
-
-        async def on_request_end(*args):
-            params: aiohttp.TraceRequestEndParams = args[2]
-            msg = f"Finishing download {params.method} request to {params.url}"
-            msg += f" -> response status: {params.response.status}"
-            log_debug(msg, 10)
-
-        trace_config = aiohttp.TraceConfig()
-        trace_config.on_request_start.append(on_request_start)
-        trace_config.on_request_end.append(on_request_end)
-        self.trace_configs.append(trace_config)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def add_api_key_headers(self, domain: str, referer: AbsoluteHttpURL) -> dict:
-        download_headers = copy.deepcopy(self._headers)
-        download_headers["Referer"] = str(referer)
+        download_headers = self.client_manager._headers | {"Referer": str(referer)}
         auth_data = self.manager.config_manager.authentication_data
         if domain == "pixeldrain" and auth_data.pixeldrain.api_key:
             download_headers["Authorization"] = self.manager.download_manager.basic_auth(
                 "Cyberdrop-DL", auth_data.pixeldrain.api_key
             )
         elif domain == "gofile":
-            gofile_cookies = self.client_manager.cookies.filter_cookies(URL("https://gofile.io"))
+            gofile_cookies = self.client_manager.cookies.filter_cookies(AbsoluteHttpURL("https://gofile.io"))
             api_key = gofile_cookies.get("accountToken", "")
             if api_key:
-                download_headers["Authorization"] = f"Bearer {api_key.value}"
+                download_headers["Authorization"] = f"Bearer {api_key.value}"  # type: ignore
         return download_headers
 
     @limiter
@@ -214,7 +183,7 @@ class DownloadClient:
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 await asyncio.to_thread(media_item.partial_file.unlink)
 
-            await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
+            await self.client_manager.check_http_status(resp, download=True)
 
             _ = get_content_type(media_item.ext, resp.headers)
 
@@ -260,12 +229,7 @@ class DownloadClient:
         while True:
             resp = None
             try:
-                async with client_session.get(
-                    download_url,
-                    headers=download_headers,
-                    ssl=self.client_manager.ssl_context,
-                    proxy=self.client_manager.proxy,
-                ) as resp:
+                async with client_session.get(download_url, headers=download_headers) as resp:
                     return await process_response(resp)
             except (DownloadError, DDOSGuardError):
                 if resp is None:
@@ -348,13 +312,14 @@ class DownloadClient:
             return False
 
         async def save_content(content: aiohttp.StreamReader) -> None:
+            assert media_item.task_id is not None
             await self._append_content(
                 media_item,
                 content,
                 partial(manager.progress_manager.file_progress.advance_file, media_item.task_id),
             )
 
-        downloaded = await self._download(domain, manager, media_item, save_content)
+        downloaded = await self._download(domain, manager, media_item, save_content)  # type: ignore
         if downloaded:
             await asyncio.to_thread(media_item.partial_file.rename, media_item.complete_file)
             if not media_item.is_segment:
@@ -459,6 +424,7 @@ class DownloadClient:
             if media_item.filename == downloaded_filename:
                 if media_item.partial_file.exists():
                     log(f"Found {downloaded_filename} locally, trying to resume")
+                    assert media_item.filesize
                     if media_item.partial_file.stat().st_size >= media_item.filesize != 0:
                         log(f"Deleting partial file {media_item.partial_file}")
                         media_item.partial_file.unlink()
@@ -503,9 +469,9 @@ class DownloadClient:
         await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
         return proceed, skip
 
-    async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path | None]:
+    async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path]:
         """Iterates the filename until it is unique."""
-        partial_file = None
+        partial_file = complete_file.with_suffix(complete_file.suffix + ".part")
         for iteration in itertools.count(1):
             filename = f"{complete_file.stem} ({iteration}){complete_file.suffix}"
             temp_complete_file = media_item.download_folder / filename
@@ -538,14 +504,6 @@ class DownloadClient:
             proceed = min_other_filesize < media.filesize < max_other_filesize
 
         return proceed
-
-    @property
-    def file_path(self) -> str | None:
-        return self._file_path
-
-    @file_path.setter
-    def file_path(self, media_item: MediaItem):
-        self._file_path = media_item.filename
 
 
 def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
