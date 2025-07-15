@@ -234,8 +234,7 @@ class BunkrrCrawler(Crawler):
         if not scrape_item.possible_datetime and (date_str := soup.select_one(_SELECTORS.ITEM_DATE)):
             scrape_item.possible_datetime = self.parse_date(date_str.text.strip())
 
-        title = open_graph.get_title(soup)  # See: https://github.com/jbsparrow/CyberDropDownloader/issues/929
-        assert title
+        title = open_graph.title(soup)  # See: https://github.com/jbsparrow/CyberDropDownloader/issues/929
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
 
     @error_handling_wrapper

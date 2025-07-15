@@ -38,9 +38,7 @@ class MissAVCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
 
-        title, date_str = open_graph.get_title(soup), open_graph.get("video_release_date", soup)
-        assert title
-        title = title.strip()
+        title, date_str = open_graph.title(soup), open_graph.get("video_release_date", soup)
         if dvd_code_tag := soup.select_one(DVD_CODE_SELECTOR):
             title = fix_title(title, dvd_code_tag)
 
