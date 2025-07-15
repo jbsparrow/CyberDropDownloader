@@ -45,7 +45,8 @@ Selector = css.CssAttributeSelector
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Selectors:
-    POST_CONTENT: Selector = Selector("#content, .entry-content [id*='post-']")
+    POST_TITLE: str = "#content .single-post-title"
+    POST_CONTENT: str = "#content .entry-content"
     POST_ID: Selector = Selector("[id*='post-']", "id")
     IMG: Selector = Selector("img[class*='wp-image']", "srcset")
     POST_LINK_FROM_PAGE: Selector = Selector(".post a[href]", "href")
@@ -118,7 +119,7 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
             case ["wp-json", *_]:
                 raise ValueError
 
-        if _ := _match_date_from_path(scrape_item.url):
+        if _ := _match_date_from_path(scrape_item.url.parts[1:]):
             # TODO: Handle this
             raise ValueError
         return await self.post(scrape_item)
@@ -266,6 +267,7 @@ class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
         async with self.request_limiter:
             return await self.client.get_soup(self.DOMAIN, api_url)
 
+    @error_handling_wrapper
     async def category_or_tag(
         self, scrape_item: ScrapeItem, colletion_type: ColletionType, date_range: QueryDatetimeRange | None = None
     ) -> None:
@@ -282,22 +284,26 @@ class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
         scrape_item.setup_as_profile(title)
         await self.post_url_pager(scrape_item, date_range)
 
+    @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         soup = await self.__make_request(scrape_item.url)
         post = self.parse_post(scrape_item, soup)
         return await self.handle_post(scrape_item, post, is_single_post=True)
 
     def parse_post(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> Post:
+        title = open_graph.get_title(soup) or css.select_one_get_text(soup, _SELECTORS.POST_TITLE)
+        date = open_graph.get("published_time", soup) or _match_date_from_path(scrape_item.url.parts[1:4])
         data = {
-            "post_id": get_post_id(soup),
+            "id": get_post_id(soup),
             "slug": scrape_item.url.name,
-            "title": open_graph.get_title(soup),
-            "date_gmt": open_graph.get("published_time", soup),
+            "title": title,
+            "date_gmt": date,
             "link": str(scrape_item.url),
-            "content": _SELECTORS.POST_CONTENT(soup),
+            "content": str(css.select_one(soup, _SELECTORS.POST_CONTENT)),
         }
-        return Post.model_validate(data)
+        return Post.model_validate(data, by_name=True)
 
+    @error_handling_wrapper
     async def all_posts(self, scrape_item: ScrapeItem, date_range: QueryDatetimeRange | None = None) -> None:
         scrape_item.setup_as_profile(self.create_title("Posts"))
         await self.post_url_pager(scrape_item, date_range)
@@ -307,7 +313,7 @@ class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.POST_LINK_FROM_PAGE.element):
                 if (
                     date_range
-                    and (date_from_path := _match_date_from_path(new_scrape_item.url))
+                    and (date_from_path := _match_date_from_path(new_scrape_item.url.parts[1:]))
                     and not date_range.is_in_range(date_from_path)
                 ):
                     self.log(
@@ -317,8 +323,8 @@ class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
 
-def _match_date_from_path(url: AbsoluteHttpURL) -> datetime.datetime | None:
-    match url.parts[1:]:
+def _match_date_from_path(url_parts: tuple[str, ...]) -> datetime.datetime | None:
+    match url_parts:
         case [year, month, day]:
             try:
                 return datetime.datetime(int(year), int(month), int(day))
