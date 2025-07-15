@@ -17,10 +17,9 @@ from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
-from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
-    get_og_properties,
     get_text_between,
     parse_url,
     with_suffix_encoded,
@@ -235,7 +234,8 @@ class BunkrrCrawler(Crawler):
         if not scrape_item.possible_datetime and (date_str := soup.select_one(_SELECTORS.ITEM_DATE)):
             scrape_item.possible_datetime = self.parse_date(date_str.text.strip())
 
-        title: str = get_og_properties(soup).title  # See: https://github.com/jbsparrow/CyberDropDownloader/issues/929
+        title = open_graph.get_title(soup)  # See: https://github.com/jbsparrow/CyberDropDownloader/issues/929
+        assert title
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
 
     @error_handling_wrapper

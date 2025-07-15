@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import bs4
 
+_required_attrs = ("title", "type", "image", "url", "description")
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class OpenGraph:
     """Open Graph properties.  Each attribute corresponds to an OG property."""
-
-    required_attrs = ("title", "type", "image", "url", "description")
 
     audio: str | None = None
     description: str | None = None
@@ -27,7 +27,7 @@ class OpenGraph:
     video: str | None = None
 
     def is_valid(self) -> bool:
-        return all(getattr(self, attr, False) for attr in self.required_attrs)
+        return all(getattr(self, attr, False) for attr in _required_attrs)
 
 
 _og_fields = dataclasses.fields(OpenGraph)
