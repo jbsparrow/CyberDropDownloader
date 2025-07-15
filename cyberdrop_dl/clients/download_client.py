@@ -259,21 +259,55 @@ class DownloadClient:
     ) -> None:
         """Appends content to a file."""
 
-        check_free_space = partial(self.manager.storage_manager.check_free_space, media_item)
+        check_free_space = self.make_free_space_checker(media_item)
+        check_download_speed = self.make_speed_checker(media_item)
         await check_free_space()
+        await self._pre_download_check(media_item)
 
-        def prepare():
+        async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
+            async for chunk in content.iter_chunked(self.chunk_size):
+                await self.manager.states.RUNNING.wait()
+                await check_free_space()
+                chunk_size = len(chunk)
+                await self.client_manager.speed_limiter.acquire(chunk_size)
+                await f.write(chunk)
+                update_progress(chunk_size)
+                check_download_speed()
+
+        self._post_download_check(media_item, content)
+
+    def _pre_download_check(self, media_item: MediaItem) -> Coroutine[Any, Any, None]:
+        def prepare() -> None:
             media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
             if not media_item.partial_file.is_file():
                 media_item.partial_file.touch()
 
-        await asyncio.to_thread(prepare)
+        return asyncio.to_thread(prepare)
 
+    def _post_download_check(self, media_item: MediaItem, content: aiohttp.StreamReader) -> None:
+        if not content.total_bytes and not media_item.partial_file.stat().st_size:
+            media_item.partial_file.unlink()
+            raise DownloadError(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
+
+    def make_free_space_checker(self, media_item: MediaItem) -> Callable[[], Coroutine[Any, Any, None]]:
+        current_chunk = 0
+
+        async def check_free_space() -> None:
+            nonlocal current_chunk
+            current_chunk += 1
+            if current_chunk % 5 == 0:
+                return await self.manager.storage_manager.check_free_space(media_item)
+
+        return check_free_space
+
+    def make_speed_checker(self, media_item: MediaItem) -> Callable[[], None]:
         last_slow_speed_read = None
 
         def check_download_speed() -> None:
             nonlocal last_slow_speed_read
-            assert media_item.task_id
+            if not self.download_speed_threshold:
+                return
+            assert media_item.task_id is not None
             speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
             if speed > self.download_speed_threshold:
                 last_slow_speed_read = None
@@ -282,22 +316,7 @@ class DownloadClient:
             elif time.perf_counter() - last_slow_speed_read > self.slow_download_period:
                 raise SlowDownloadError(origin=media_item)
 
-        async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
-            async for chunk in content.iter_chunked(self.chunk_size):
-                await self.manager.states.RUNNING.wait()
-                await check_free_space()
-                chunk_size = len(chunk)
-                await self.client_manager.speed_limiter.acquire(chunk_size)
-                await asyncio.sleep(0)
-                await f.write(chunk)
-                update_progress(chunk_size)
-
-                if self.download_speed_threshold:
-                    check_download_speed()
-
-        if not content.total_bytes and not media_item.partial_file.stat().st_size:
-            media_item.partial_file.unlink()
-            raise DownloadError(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
+        return check_download_speed
 
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file."""

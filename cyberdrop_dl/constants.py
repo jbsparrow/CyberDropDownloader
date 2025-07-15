@@ -10,8 +10,6 @@ from rich.text import Text
 
 from cyberdrop_dl.compat import Enum, IntEnum, StrEnum
 
-NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
-
 # TIME
 STARTUP_TIME = datetime.now()
 STARTUP_TIME_UTC = datetime.now(UTC)

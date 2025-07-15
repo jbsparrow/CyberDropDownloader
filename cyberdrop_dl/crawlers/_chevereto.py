@@ -4,8 +4,6 @@ from enum import StrEnum, auto
 from functools import partialmethod
 from typing import TYPE_CHECKING, ClassVar
 
-from bs4 import BeautifulSoup
-
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
@@ -13,6 +11,7 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
@@ -26,7 +25,6 @@ IMAGES_PARTS = "image", "img"
 ALBUM_PARTS = "a", "album"
 VIDEO_PARTS = "video", "videos"
 DIRECT_LINK_PARTS = ("images",)
-PASSWORD_PROTECTED = "This content is password protected"
 VIDEO_SELECTOR = "meta[property='og:video']", "content"
 IMAGE_SELECTOR = "div[id=image-viewer] img", "src"
 ENCRYPTED_IMAGE_SELECTOR = "div.image-viewer-main > img"
@@ -104,7 +102,8 @@ class CheveretoCrawler(Crawler, is_abc=True):
         title: str = ""
         async for soup in self.web_pager(sort_by_new(scrape_item.url), trim=False):
             if not title:
-                await self.check_password_protected(soup, scrape_item.url)
+                if is_password_protected(soup):
+                    soup = await self._get_soup_w_password(scrape_item)
                 title: str = css.select_one_get_text(soup, ALBUM_TITLE_SELECTOR)
                 title = self.create_title(title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
@@ -129,18 +128,16 @@ class CheveretoCrawler(Crawler, is_abc=True):
             for _, sub_album in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(sub_album))
 
-    async def check_password_protected(self, soup: BeautifulSoup, url: AbsoluteHttpURL) -> None:
-        password = url.query.get("password", "")
-        url = url.with_query(None)
-
-        if PASSWORD_PROTECTED in soup.text and password:
-            data = {"content-password": password}
-            async with self.request_limiter:
-                html = await self.client.post_data_raw(self.DOMAIN, url, data=data)
-            soup = BeautifulSoup(html, "html.parser")
-
-        if PASSWORD_PROTECTED in soup.text:
-            raise PasswordProtectedError(message="Wrong password" if password else None)
+    async def _get_soup_w_password(self, scrape_item: ScrapeItem) -> BeautifulSoup:
+        password = scrape_item.pop_query("password")
+        if not password:
+            raise PasswordProtectedError
+        data = {"content-password": password}
+        async with self.request_limiter:
+            soup = await self.client.post_data_get_soup(self.DOMAIN, sort_by_new(scrape_item.url), data=data)
+        if is_password_protected(soup):
+            raise PasswordProtectedError(message="Wrong password")
+        return soup
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
@@ -209,3 +206,7 @@ def get_date_from_soup(soup: BeautifulSoup) -> str:
         if any(text in row.get_text().casefold() for text in ("uploaded", "added to")):
             return css.select_one_get_attr(row, "span", "title")
     return ""
+
+
+def is_password_protected(soup: BeautifulSoup) -> bool:
+    return "This content is password protected" in soup.text

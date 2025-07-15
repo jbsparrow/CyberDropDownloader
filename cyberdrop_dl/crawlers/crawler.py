@@ -17,7 +17,6 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
@@ -166,6 +165,11 @@ class Crawler(ABC):
     def allow_no_extension(self) -> bool:
         return not self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
 
+    def _init_downloader(self) -> Downloader:
+        self.downloader = dl = Downloader(self.manager, self.DOMAIN)
+        dl.startup()
+        return dl
+
     @final
     async def startup(self) -> None:
         """Starts the crawler."""
@@ -173,8 +177,7 @@ class Crawler(ABC):
             if self.ready:
                 return
             self.client = self.manager.client_manager.scraper_session
-            self.downloader = Downloader(self.manager, self.DOMAIN)
-            self.downloader.startup()
+            self.downloader = self._init_downloader()
             await self.async_startup()
             self.ready = True
 
@@ -249,6 +252,14 @@ class Crawler(ABC):
         finally:
             self.manager.progress_manager.scraping_progress.remove_task(task_id)
 
+    @classmethod
+    def is_subdomain(cls, url: AbsoluteHttpURL, domain_to_compare: str | None = None) -> bool:
+        primary_domain = (domain_to_compare or cls.PRIMARY_URL.host).removeprefix("www.")
+        other_domain = url.host.removeprefix("www.")
+        if primary_domain == other_domain:
+            return False
+        return primary_domain in other_domain and other_domain.count(".") > primary_domain.count(".")
+
     async def handle_file(
         self,
         url: URL,
@@ -276,16 +287,11 @@ class Crawler(ABC):
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
         await self.handle_media_item(media_item, m3u8)
 
-    def log_bug_report(self, msg: str, level: int = 30) -> None:
-        msg += f". Please file a bug report at {NEW_ISSUE_URL}"
-        log(msg, level)
-
     async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
-            msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int. "
-            msg += f"Please file a bug report at {NEW_ISSUE_URL}"
-            log(msg, 30)
+            msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int."
+            log(msg, 30, bug=True)
 
         check_complete = await self.manager.db_manager.history_table.check_complete(
             self.DOMAIN, media_item.url, media_item.referer
@@ -553,9 +559,9 @@ class Crawler(ABC):
         self, date_or_datetime: str, format: str | None = None, /, *, iso: bool = False
     ) -> datetime.datetime | None:
         assert not (iso and format)
-        msg = f"Date parsing for {self.DOMAIN} seems to be broken. Please report this as a bug at {NEW_ISSUE_URL}"
+        msg = f"Date parsing for {self.DOMAIN} seems to be broken"
         if not date_or_datetime:
-            log(f"{msg}: Unable to extract date from soup", 30)
+            log(f"{msg}: Unable to extract date from soup", 30, bug=True)
             return None
         try:
             if iso:
@@ -570,7 +576,7 @@ class Crawler(ABC):
         if parsed_date:
             return parsed_date
 
-        log(msg, 30)
+        log(msg, 30, bug=True)
 
     @staticmethod
     def register_cache_filter(
@@ -650,9 +656,9 @@ class Crawler(ABC):
             msg = (
                 f"Custom filename creation for {self.FOLDER_DOMAIN} seems to be broken. "
                 f"Important information was removed while creating a filename. "
-                f"Please report this as a bug at {NEW_ISSUE_URL}:\n{calling_args}"
+                f"\n{calling_args}"
             )
-            log(msg, 30)
+            log(msg, 30, bug=True)
         return filename
 
 
