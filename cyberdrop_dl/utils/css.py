@@ -60,8 +60,8 @@ def select_one_get_text(tag: Tag, selector: str, strip: bool = True, *, decompos
 def get_attr_or_none(tag: Tag, attribute: str) -> str | None:
     """Same as `tag.get(attribute)` but asserts the result is a single str"""
     attribute_ = attribute
-    if attribute_ == "srcset" and (srcset := tag.get(attribute_)):
-        if isinstance(srcset, str):
+    if attribute_ == "srcset":
+        if (srcset := tag.get(attribute_)) and isinstance(srcset, str):
             return _parse_srcset(srcset)
         attribute_ = "src"
 

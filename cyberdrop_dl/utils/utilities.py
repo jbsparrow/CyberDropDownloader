@@ -22,6 +22,7 @@ import rich
 from aiohttp import ClientConnectorError, FormData
 from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
+from pydantic import ValidationError
 from yarl import URL
 
 from cyberdrop_dl import constants
@@ -33,6 +34,7 @@ from cyberdrop_dl.exceptions import (
     InvalidURLError,
     NoExtensionError,
     TooManyCrawlerErrors,
+    create_error_msg,
     get_origin,
 )
 from cyberdrop_dl.utils import css
@@ -102,16 +104,19 @@ def error_handling_wrapper(
         except CDLBaseError as e:
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
-            e_url: URL | str | None = getattr(e, "url", None)
-            link_to_show = e_url or link_to_show
+            link_to_show: URL | str = getattr(e, "url", None) or link_to_show
         except NotImplementedError:
             error_log_msg = ErrorLogMessage("NotImplemented")
         except TimeoutError:
             error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
             ui_failure = "Client Connector Error"
-            # link_to_show = link.with_host(e.host) # For bunkr and jpg5, to make sure the log message matches the actual URL we tried to connect
             log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            error_log_msg = ErrorLogMessage(ui_failure, log_msg)
+        except ValidationError as e:
+            exc_info = e
+            ui_failure = create_error_msg(422)
+            log_msg = str(e).partition("For further information")[0].strip()
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except Exception as e:
             exc_info = e
@@ -122,8 +127,8 @@ def error_handling_wrapper(
 
         link_to_show = link_to_show or link
         origin = origin or get_origin(item)
-        log_prefix = getattr(self, "log_prefix", None)
-        if log_prefix:  # This error came from a Downloader
+        is_downloader = getattr(self, "log_prefix", False)
+        if is_downloader:
             await self.write_download_error(item, error_log_msg, exc_info)  # type: ignore
             return
 

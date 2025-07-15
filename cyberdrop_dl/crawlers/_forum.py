@@ -10,6 +10,7 @@ If the message board needs to scrape the actual HTML of page, Inherit for HTMLMe
 from __future__ import annotations
 
 import asyncio
+import base64
 import dataclasses
 import datetime
 import re
@@ -577,6 +578,11 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
 
     @error_handling_wrapper
     async def resolve_confirmation_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
+        if url := link.query.get("url"):
+            url = base64.b64decode(url).decode("utf-8")
+            if url.startswith("https://"):
+                return self.parse_url(url)
+
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, link)
         selector = self.SELECTORS.confirmation_button
