@@ -9,12 +9,12 @@ If the message board needs to scrape the actual HTML of page, Inherit for HTMLMe
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import dataclasses
 import datetime
 import re
 from abc import abstractmethod
-from collections import defaultdict
 from typing import TYPE_CHECKING, ClassVar, Protocol, final
 
 from bs4 import BeautifulSoup, Tag
@@ -318,9 +318,10 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     async def handle_internal_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL | None = None) -> None:
         link = link or scrape_item.url
         filename, ext = self.get_filename_and_ext(link.name)
-        scrape_item.add_to_parent_title("Attachments")
-        scrape_item.part_of_album = True
-        await self.handle_file(link, scrape_item, filename, ext)
+        new_scrape_item = scrape_item.copy()
+        new_scrape_item.add_to_parent_title("Attachments")
+        new_scrape_item.part_of_album = True
+        await self.handle_file(link, new_scrape_item, filename, ext)
 
     @final
     async def write_last_forum_post(self, thread_url: AbsoluteHttpURL, last_post_url: AbsoluteHttpURL | None) -> None:
@@ -479,26 +480,35 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         scrape_item.setup_as_post("")
         post_title = self.create_separate_post_title(None, str(post.id), post.date)
         scrape_item.add_to_parent_title(post_title)
-
-        seen: set[str] = set()
-        duplicates: set[str] = set()
-        stats: dict[str, int] = defaultdict(int)
-        for scraper in (self._attachments, self._images, self._videos, self._external_links):
-            for link in scraper(post):
-                duplicates.add(link) if link in seen else seen.add(link)
-                stats[scraper.__name__.removeprefix("_")] += 1
-                await self.process_child(scrape_item, link)
-
-        for scraper in (self._embeds, self._lazy_load_embeds):
-            for link in scraper(post):
-                duplicates.add(link) if link in seen else seen.add(link)
-                stats[scraper.__name__.removeprefix("_")] += 1
-                await self.process_child(scrape_item, link, embeds=True)
+        seen, duplicates, tasks = set(), set(), []
+        stats: dict[str, int] = {}
+        max_children_error: MaxChildrenError | None = None
+        try:
+            for scraper in (
+                self._attachments,
+                self._images,
+                self._videos,
+                self._external_links,
+                self._embeds,
+                self._lazy_load_embeds,
+            ):
+                for link in scraper(post):
+                    duplicates.add(link) if link in seen else seen.add(link)
+                    scraper_name = scraper.__name__.removeprefix("_")
+                    stats[scraper_name] = stats.get(scraper_name, 0) + 1
+                    tasks.append(self.process_child(scrape_item, link, embeds="embeds" in scraper_name))
+                    scrape_item.add_children()
+        except MaxChildrenError as e:
+            max_children_error = e
 
         if seen:
-            self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} stats = {dict(stats)}")
+            self.log(f"post #{post.id} {stats = }")
         if duplicates:
-            self.log_bug_report(f"Found duplicate links. Selectors are too generic: {duplicates}")
+            msg = f"Found duplicate links in post {scrape_item.url}. Selectors are too generic: {duplicates}"
+            self.log(msg, bug=True)
+        await asyncio.gather(*tasks)
+        if max_children_error is not None:
+            raise max_children_error
 
     def _external_links(self, post: ForumPostProtocol) -> Iterable[str]:
         selector = self.SELECTORS.posts.links
