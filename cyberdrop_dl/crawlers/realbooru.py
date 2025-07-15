@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -13,9 +12,15 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-CONTENT_SELECTOR = "div[class=items] div a"
-VIDEO_SELECTOR = "video source"
-IMAGE_SELECTOR = "img[id=image]"
+
+class Selectors:
+    CONTENT = "div[class=items] div a"
+    VIDEO = "video source"
+    IMAGE = "img[id=image]"
+    IMAGE_OR_VIDEO = f"{IMAGE}, {VIDEO}"
+
+
+_SELECTORS = Selectors()
 
 PRIMARY_URL = AbsoluteHttpURL("https://realbooru.com")
 
@@ -45,16 +50,14 @@ class RealBooruCrawler(Crawler):
         scrape_item.setup_as_album(title)
 
         async for soup in self.web_pager(scrape_item.url, relative_to=scrape_item.url):
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, CONTENT_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.CONTENT):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        src_tag = soup.select_one(VIDEO_SELECTOR) or soup.select_one(IMAGE_SELECTOR)
-        if not src_tag:
-            raise ScrapeError(422)
-        link = self.parse_url(css.get_attr(src_tag, "src"))
+        link_str = css.select_one_get_attr(soup, _SELECTORS.IMAGE_OR_VIDEO, "src")
+        link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

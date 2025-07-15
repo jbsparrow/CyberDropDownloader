@@ -153,10 +153,7 @@ class EpornerCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         scrape_item.url = canonical_url
-        img = soup.select_one(_SELECTORS.PHOTO)
-        if not img:
-            raise ScrapeError(422)
-        link_str: str = css.get_attr(img, "href")
+        link_str = css.select_one_get_attr(soup, _SELECTORS.PHOTO, "href")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

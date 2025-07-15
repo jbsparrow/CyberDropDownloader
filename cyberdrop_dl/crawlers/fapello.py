@@ -6,7 +6,6 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -66,11 +65,8 @@ class FapelloCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        content = soup.select_one(POST_CONTENT_SELECTOR)
-        if not content:
-            raise ScrapeError(422)
-
-        for _, link in self.iter_tags(soup, "img, source"):
+        content = css.select_one(soup, POST_CONTENT_SELECTOR)
+        for _, link in self.iter_tags(content, "img, source"):
             filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()

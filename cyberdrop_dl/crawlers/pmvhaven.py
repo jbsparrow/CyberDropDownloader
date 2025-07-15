@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -245,10 +245,7 @@ def create_canonical_video_url(video_info: dict[str, str]) -> AbsoluteHttpURL:
 
 
 def get_video_info_from_js(soup: BeautifulSoup) -> dict:
-    info_js_script = soup.select_one(JS_VIDEO_INFO_SELECTOR)
-    js_text = info_js_script.text if info_js_script else None
-    if not js_text:
-        raise ScrapeError(422)
+    js_text = css.select_one_get_text(soup, JS_VIDEO_INFO_SELECTOR)
     json_data: list = javascript.parse_json_to_dict(js_text, use_regex=False)
     info_dict = {"data": json_data}
     javascript.clean_dict(info_dict)
