@@ -60,7 +60,7 @@ def safe_format(format_string: str, **fields: Any) -> tuple[str, set[str]]:
 
 # To use with pydantic
 def validate_format_string(format_string: str, valid_keys: set[str]) -> None:
-    msg = "Invalid format string. "
+    msg = "invalid format string. "
     for _, field_name, _, _ in _FORMATER.parse(format_string):
         if field_name is not None:
             if field_name.isdigit() or field_name == "":
@@ -71,7 +71,13 @@ def validate_format_string(format_string: str, valid_keys: set[str]) -> None:
                 raise ValueError(msg)
 
     if unknown_field_names := get_unknown_field_names(format_string, valid_keys):
-        msg += f"{sorted(unknown_field_names)} are not valid keys for this option. Valid keys: {sorted(valid_keys)}"
+        msg += " ".join(
+            (
+                f"{tuple(sorted(unknown_field_names))}",
+                f"{'is not a valid field' if len(unknown_field_names) == 1 else 'are not valid fields'}",
+                f"for this option. \n\n  Valid fields: {sorted(valid_keys)}",
+            )
+        )
         raise ValueError(msg)
 
 

@@ -14,6 +14,7 @@ from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl.constants import FILE_FORMATS
+from cyberdrop_dl.utils import strings
 from cyberdrop_dl.utils.logger import log_with_color
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
@@ -164,7 +165,12 @@ class Sorter:
             resolution = f"{width}x{height}"
 
         if await self._process_file_move(
-            file, base_name, self.image_format, resolution=resolution, width=width, height=height
+            file,
+            base_name,
+            self.image_format,
+            height=height,
+            resolution=resolution,
+            width=width,
         ):
             self.manager.progress_manager.sort_progress.increment_image()
 
@@ -182,15 +188,16 @@ class Sorter:
             if width and height:
                 resolution = f"{width}x{height}"
 
-            codec = props.get("codec_name")
+            codec: str = props.get("codec_name")
             duration = int(float(props.get("duration", 0))) or None
             fps = (
                 float(Fraction(props.get("avg_frame_rate", 0)))
                 if str(props.get("avg_frame_rate", 0)) not in {"0/0", "0"}
                 else None
             )
-            if fps:
-                fps = int(fps) if fps.is_integer() else f"{fps:.2f}"
+
+        if fps is not None:
+            fps = str(int(fps)) if fps.is_integer() else f"{fps:.2f}"
 
         if await self._process_file_move(
             file,
@@ -199,9 +206,9 @@ class Sorter:
             codec=codec,
             duration=duration,
             fps=fps,
+            height=height,
             resolution=resolution,
             width=width,
-            height=height,
         ):
             self.manager.progress_manager.sort_progress.increment_video()
 
@@ -217,20 +224,22 @@ class Sorter:
         file_date_us = file_date.strftime("%Y-%d-%m")
         file_date_iso = file_date.strftime("%Y-%m-%d")
 
-        for name, value in kwargs.items():
-            if value is None:
-                kwargs[name] = "Unknown"
+        duration = kwargs.get("duration") or kwargs.get("length")
+        if duration is not None:
+            kwargs["duration"] = kwargs["length"] = duration
 
-        new_file = Path(
-            format_str.format(
-                base_dir=base_name,
-                ext=file.suffix,
-                file_date_iso=file_date_iso,
-                file_date_us=file_date_us,
-                filename=file.stem,
-                parent_dir=file.parent.name,
-                sort_dir=self.sorted_folder,
-                **kwargs,
-            ),
+        file_path, _ = strings.safe_format(
+            format_str,
+            base_dir=base_name,
+            ext=file.suffix,
+            file_date=file_date,
+            file_date_iso=file_date_iso,
+            file_date_us=file_date_us,
+            filename=file.stem,
+            parent_dir=file.parent.name,
+            sort_dir=self.sorted_folder,
+            **kwargs,
         )
+
+        new_file = Path(file_path)
         return self._move_file(file, new_file)
