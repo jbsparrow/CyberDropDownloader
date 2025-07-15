@@ -112,13 +112,11 @@ class PixelDrainCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         og_props = open_graph.parse(soup)
-        title, type_ = og_props.title, og_props.type
-        assert title and type_
-        filename = title
-        link_str: str | None = ""
-        if "video" in type_:
+        filename = og_props.title
+        link_str: str | None = None
+        if "video" in og_props.type:
             link_str = og_props.video
-        elif "image" in type_:
+        elif "image" in og_props.type:
             link_str = og_props.image
 
         if not link_str or "filesystem" not in link_str:
