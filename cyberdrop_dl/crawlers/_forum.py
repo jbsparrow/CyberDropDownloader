@@ -482,7 +482,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         scrape_item.add_to_parent_title(post_title)
         seen, duplicates, tasks = set(), set(), []
         stats: dict[str, int] = {}
-        _max_children_error: MaxChildrenError | None = None
+        max_children_error: MaxChildrenError | None = None
         try:
             for scraper in (
                 self._attachments,
@@ -499,17 +499,16 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
                     tasks.append(self.process_child(scrape_item, link, embeds="embeds" in scraper_name))
                     scrape_item.add_children()
         except MaxChildrenError as e:
-            _max_children_error = e
+            max_children_error = e
 
         if seen:
-            self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} {stats = }")
+            self.log(f"post #{post.id} {stats = }")
         if duplicates:
-            self.log_bug_report(
-                f"Found duplicate links in post {scrape_item.url}. Selectors are too generic: {duplicates}"
-            )
+            msg = f"Found duplicate links in post {scrape_item.url}. Selectors are too generic: {duplicates}"
+            self.log(msg, bug=True)
         await asyncio.gather(*tasks)
-        if _max_children_error is not None:
-            raise _max_children_error
+        if max_children_error is not None:
+            raise max_children_error
 
     def _external_links(self, post: ForumPostProtocol) -> Iterable[str]:
         selector = self.SELECTORS.posts.links
