@@ -36,7 +36,7 @@ class RealDebridManager:
         if not self.enabled:
             return
         try:
-            self.api = RealDebridApi(self.__api_token, True)
+            self.api = RealDebridApi(self.__api_token)
             file_regex = [pattern[1:-1] for pattern in self.api.hosts.regex()]
             folder_regex = [pattern[1:-1] for pattern in self.api.hosts.regex_folder()]
             regex = "|".join(file_regex + folder_regex)
@@ -62,7 +62,7 @@ class RealDebridManager:
         return bool(match) or "real-debrid" in url.host.lower()
 
     def unrestrict_link(self, url: AbsoluteHttpURL, password: str | None = None) -> AbsoluteHttpURL:
-        return self.api.unrestrict.link(url, password)["download"]
+        return self.api.unrestrict.link(url, password)
 
     def unrestrict_folder(self, url: AbsoluteHttpURL) -> list[AbsoluteHttpURL]:
         return self.api.unrestrict.folder(url)
