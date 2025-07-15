@@ -27,7 +27,7 @@ Value of the `session` cookie from the website. This will allow CDL to download 
 
 - `session`
 
-Value of the `session` cookie from the website. This will allow CDL to download from your favoruites by using `https://coomer.su/favorites` as an input URL.
+Value of the `session` cookie from the website. This will allow CDL to download from your favoruites by using `https://kemono.su/favorites` as an input URL.
 
 </details>
 
@@ -127,12 +127,12 @@ You can get your API key here (you must be logged in): [https://real-debrid.com/
 
 In order to scrape files from Reddit, you'll need to create an app on reddit's website (it's free): [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
 
-Select `script` as the app type. Any name can be used. For the redirect URI you any website, even a fake one like `http://your_username.cyberdrop-dl`. Click `create app` to get your credentials.
+Select `script` as the app type. Any name can be used. For the redirect URI you can use any website, even a fake one like `http://your_username.cyberdrop-dl`. Click `create app` to get your credentials.
 
 ![reddit_personal_script_setup_1](../../assets/reddit_personal_script_setup_1.png)
 ![reddit_personal_script_setup_2](../../assets/reddit_personal_script_setup_2.png)
 
-After generating the app, you need to give Cyberdrop-DL these values:
+After generating the app, you need to provide Cyberdrop-DL these values:
 
 - `personal_use_script`
 
@@ -146,10 +146,8 @@ After generating the app, you need to give Cyberdrop-DL these values:
 
 To enable native downloads from mega.nz (without real-debrid or j-downloader), provide these values to Cyberdrop-DL:
 
-- `username`
+- `email`
 
 - `password`
-
-- `device`
 
 </details>
