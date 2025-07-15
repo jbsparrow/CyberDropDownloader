@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
@@ -8,8 +9,6 @@ from rich.panel import Panel
 from rich.progress import BarColumn, Progress
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -55,9 +54,9 @@ class HashProgress:
         """Returns the progress bar."""
         return Panel(self.removed_progress_group, border_style="green", padding=(1, 1))
 
-    def update_currently_hashing(self, file: Path) -> None:
+    def update_currently_hashing(self, file: Path | str) -> None:
         self.current_hashing_text.update(self.currently_hashing_task_id, description=f"[blue]{file}")
-        file_size = ByteSize(file.stat().st_size)
+        file_size = ByteSize(Path(file).stat().st_size)
         self.current_hashing_text.update(
             self.currently_hashing_size_task_id,
             description=f"[blue]{file_size.human_readable(decimal=True)}",

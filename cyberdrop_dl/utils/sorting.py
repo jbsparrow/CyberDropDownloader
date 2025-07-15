@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import itertools
 from datetime import datetime
 from fractions import Fraction
@@ -15,7 +14,7 @@ from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.utils import strings
-from cyberdrop_dl.utils.logger import log_with_color
+from cyberdrop_dl.utils.logger import log, log_with_color
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 if TYPE_CHECKING:
@@ -135,11 +134,13 @@ class Sorter:
         if not self.audio_format:
             return
         bitrate = duration = sample_rate = None
-        with contextlib.suppress(RuntimeError, CalledProcessError):
+        try:
             props: dict = get_audio_properties(str(file))
             duration = int(float(props.get("duration", 0))) or None
             bitrate = int(float(props.get("bit_rate", 0))) or None
             sample_rate = int(float(props.get("sample_rate", 0))) or None
+        except (RuntimeError, CalledProcessError):
+            log(f"Unable to get audio properties of {file}")
 
         if await self._process_file_move(
             file,
@@ -157,12 +158,12 @@ class Sorter:
         if not self.image_format:
             return
         height = resolution = width = None
-        with (
-            contextlib.suppress(PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError),  # type: ignore
-            Image.open(file) as image,
-        ):  # type: ignore
-            width, height = image.size
-            resolution = f"{width}x{height}"
+        try:
+            with Image.open(file) as image:
+                width, height = image.size
+                resolution = f"{width}x{height}"
+        except (PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError):  # type: ignore
+            log(f"Unable to get some image properties of {file}")
 
         if await self._process_file_move(
             file,
@@ -181,20 +182,22 @@ class Sorter:
 
         codec = duration = fps = height = resolution = width = None
 
-        with contextlib.suppress(RuntimeError, CalledProcessError):
+        try:
             props: dict = get_video_properties(str(file))
             width = int(float(props.get("width", 0))) or None
             height = int(float(props.get("height", 0))) or None
             if width and height:
                 resolution = f"{width}x{height}"
 
-            codec: str = props.get("codec_name")
+            codec: str | None = props.get("codec_name")
             duration = int(float(props.get("duration", 0))) or None
             fps = (
                 float(Fraction(props.get("avg_frame_rate", 0)))
                 if str(props.get("avg_frame_rate", 0)) not in {"0/0", "0"}
                 else None
             )
+        except (RuntimeError, CalledProcessError):
+            log(f"Unable to get some video properties of {file}")
 
         if fps is not None:
             fps = str(int(fps)) if fps.is_integer() else f"{fps:.2f}"

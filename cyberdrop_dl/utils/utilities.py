@@ -53,9 +53,6 @@ if TYPE_CHECKING:
 
     CrawerOrDownloader = TypeVar("CrawerOrDownloader", bound=Crawler | Downloader)
     Origin = TypeVar("Origin", bound=ScrapeItem | MediaItem | URL)
-else:
-    CrawerOrDownloader = Any
-    Origin = Any
 
 
 P = ParamSpec("P")

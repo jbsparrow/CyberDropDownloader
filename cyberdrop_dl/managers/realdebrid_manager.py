@@ -13,8 +13,7 @@ from cyberdrop_dl.utils.logger import log
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 if TYPE_CHECKING:
-    from yarl import URL
-
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
     from cyberdrop_dl.managers.manager import Manager
 
 FOLDER_AS_PART = {"folder", "folders", "dir"}
@@ -50,26 +49,26 @@ class RealDebridManager:
             log(f"Failed RealDebrid setup: {e}", 40)
             self.enabled = False
 
-    def is_supported_folder(self, url: URL) -> bool:
+    def is_supported_folder(self, url: AbsoluteHttpURL) -> bool:
         match = self.folder_regex.search(str(url))
         return bool(match)
 
-    def is_supported_file(self, url: URL) -> bool:
+    def is_supported_file(self, url: AbsoluteHttpURL) -> bool:
         match = self.file_regex.search(str(url))
         return bool(match)
 
-    def is_supported(self, url: URL) -> bool:
+    def is_supported(self, url: AbsoluteHttpURL) -> bool:
         match = self.supported_regex.search(str(url))
         return bool(match) or "real-debrid" in url.host.lower()
 
-    def unrestrict_link(self, url: URL, password: str | None = None) -> URL:
-        return self.api.unrestrict.link(url, password).get("download")
+    def unrestrict_link(self, url: AbsoluteHttpURL, password: str | None = None) -> AbsoluteHttpURL:
+        return self.api.unrestrict.link(url, password)["download"]
 
-    def unrestrict_folder(self, url: URL) -> list[URL]:
+    def unrestrict_folder(self, url: AbsoluteHttpURL) -> list[AbsoluteHttpURL]:
         return self.api.unrestrict.folder(url)
 
     @staticmethod
-    def _guess_folder_by_part(url: URL):
+    def _guess_folder_by_part(url: AbsoluteHttpURL) -> str | None:
         for word in FOLDER_AS_PART:
             if word in url.parts:
                 index = url.parts.index(word)
@@ -78,14 +77,14 @@ class RealDebridManager:
         return None
 
     @staticmethod
-    def _guess_folder_by_query(url: URL):
+    def _guess_folder_by_query(url: AbsoluteHttpURL) -> str | None:
         for word in FOLDER_AS_QUERY:
             folder = url.query.get(word)
             if folder:
                 return folder
         return None
 
-    def guess_folder(self, url: URL) -> str:
+    def guess_folder(self, url: AbsoluteHttpURL) -> str:
         for guess_function in self._folder_guess_functions:
             folder = guess_function(url)
             if folder:

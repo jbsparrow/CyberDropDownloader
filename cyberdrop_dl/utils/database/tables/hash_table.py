@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from rich.console import Console
 
@@ -22,7 +22,7 @@ class HashTable:
         """Startup process for the HistoryTable."""
         await self.create_hash_tables()
 
-    async def create_hash_tables(self):
+    async def create_hash_tables(self) -> None:
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
@@ -57,7 +57,9 @@ class HashTable:
             console.print(f"Error checking file: {e}")
         return None
 
-    async def get_files_with_hash_matches(self, hash_value: str, size: int, hash_type: str | None = None) -> list:
+    async def get_files_with_hash_matches(
+        self, hash_value: str, size: int, hash_type: str | None = None
+    ) -> list[aiosqlite.Row]:
         """Retrieves a list of (folder, filename) tuples based on a given hash.
 
         Args:
@@ -71,24 +73,19 @@ class HashTable:
         try:
             cursor = await self.db_conn.cursor()
             if hash_type:
-                await cursor.execute(
-                    "SELECT files.folder, files.download_filename,files.date FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
-                    (hash_value, size, hash_type),
-                )
-                return await cursor.fetchall()
+                query = "SELECT files.folder, files.download_filename,files.date FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;"
+
             else:
-                await cursor.execute(
-                    "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
-                    (hash_value, size, hash_type),
-                )
-                return await cursor.fetchall()
+                query = "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;"
+            await cursor.execute(query, (hash_value, size, hash_type))
+            return cast("list[aiosqlite.Row]", await cursor.fetchall())
 
         except Exception as e:
             console.print(f"Error retrieving folder and filename: {e}")
             return []
 
     async def insert_or_update_hash_db(
-        self, hash_value: str, hash_type: str, file: str, original_filename: str, referer: URL
+        self, hash_value: str, hash_type: str, file: Path | str, original_filename: str | None, referer: URL | None
     ) -> bool:
         """Inserts or updates a record in the specified SQLite database.
 
@@ -104,10 +101,10 @@ class HashTable:
         """
 
         hash = await self.insert_or_update_hashes(hash_value, hash_type, file)
-        file = await self.insert_or_update_file(original_filename, referer, file)
-        return file and hash
+        file_ = await self.insert_or_update_file(original_filename, referer, file)
+        return file_ and hash
 
-    async def insert_or_update_hashes(self, hash_value, hash_type, file):
+    async def insert_or_update_hashes(self, hash_value: str, hash_type: str, file: Path | str) -> bool:
         try:
             full_path = Path(file).absolute()
             download_filename = str(full_path.name)
@@ -123,9 +120,11 @@ class HashTable:
             return False
         return True
 
-    async def insert_or_update_file(self, original_filename, referer, file):
+    async def insert_or_update_file(
+        self, original_filename: str | None, referer: URL | str | None, file: Path | str
+    ) -> bool:
         try:
-            referer = str(referer)
+            referer = str(referer) if referer else None
             full_path = Path(file).absolute()
             file_size = int(full_path.stat().st_size)
             file_date = int(full_path.stat().st_mtime)
@@ -160,7 +159,7 @@ class HashTable:
             return False
         return True
 
-    async def get_all_unique_hashes(self, hash_type=None) -> list:
+    async def get_all_unique_hashes(self, hash_type: str | None = None) -> list[str]:
         """Retrieves a list of hashes
 
         Args:
