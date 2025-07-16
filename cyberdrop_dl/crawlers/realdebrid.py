@@ -48,37 +48,26 @@ class RealDebridCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        original_url = database_url = debrid_url = scrape_item.url
+        original_url = scrape_item.url
         password = original_url.query.get("password", "")
-
         if await self.check_complete_from_referer(original_url):
             return
 
-        self_hosted = self.is_self_hosted(original_url)
-        host = original_url.host.lower()
-
-        if not self_hosted:
+        if self.is_self_hosted(scrape_item.url):
+            database_url = debrid_url = scrape_item.url
+        else:
+            host = original_url.host.lower()
             title = self.create_title(f"files [{host}]")
             scrape_item.setup_as_album(title)
             async with self.request_limiter:
                 debrid_url = self.manager.real_debrid_manager.unrestrict_link(original_url, password)
 
+            database_url = _create_database_url(original_url, host)
+
         if await self.check_complete_from_referer(debrid_url):
             return
 
         self.log(f"Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}", 10)
-
-        if not self_hosted:
-            # Some hosts use query params or fragment as id or password (ex: mega.nz)
-            # This save the query and fragment as parts of the URL path since DB lookups only use url_path
-            database_url = PRIMARY_URL / host / original_url.path[1:]
-            if original_url.query:
-                query_params_list = [item for pair in original_url.query.items() for item in pair]
-                database_url = database_url / "query" / "/".join(query_params_list)
-
-            if original_url.fragment:
-                database_url = database_url / "frag" / original_url.fragment
-
         filename, ext = self.get_filename_and_ext(debrid_url.name)
         await self.handle_file(database_url, scrape_item, filename, ext, debrid_link=debrid_url)
 
@@ -106,7 +95,7 @@ class RealDebridCrawler(Crawler):
         for i in range(0, len(parts_dict["query"]), 2):
             query[parts_dict["query"][i]] = parts_dict["query"][i + 1]
 
-        frag = parts_dict["frag"][0] if parts_dict["frag"] else None
+        frag = next(iter(parts_dict["frag"]), None)
         parsed_url = (
             AbsoluteHttpURL(f"https://{original_domain}/{path}", encoded="%" in path)
             .with_query(query)
@@ -114,3 +103,17 @@ class RealDebridCrawler(Crawler):
         )
         self.log(f"Parsed URL: {parsed_url}")
         return parsed_url
+
+
+def _create_database_url(original_url: AbsoluteHttpURL, host: str) -> AbsoluteHttpURL:
+    # Some hosts use query params or fragment as id or password (ex: mega.nz)
+    # This save the query and fragment as parts of the URL path since DB lookups only use url_path
+    database_url = PRIMARY_URL / host / original_url.path[1:]
+    if original_url.query:
+        query_params_list = [item for pair in original_url.query.items() for item in pair]
+        database_url = database_url / "query" / "/".join(query_params_list)
+
+    if original_url.fragment:
+        database_url = database_url / "frag" / original_url.fragment
+
+    return database_url
