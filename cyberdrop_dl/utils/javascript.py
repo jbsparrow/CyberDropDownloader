@@ -55,14 +55,8 @@ def parse_obj(js_text: str, use_regex: bool = False) -> Any:
         json_str = re.sub(*_QUOTE_KEYS_REGEX, json_str)
         json_str = re.sub(*_QUOTE_VALUES_REGEX, json_str)
         json_str = _recover_urls(json_str)
-    result = json.loads(json_str)
-    is_dict = isinstance(result, dict)
-    if not is_dict:
-        result = {"data": result}
-    _coerce_dict_values(result)
-    if not is_dict:
-        return result["data"]
-    return result
+    js_obj = json.loads(json_str)
+    return _coerce_values(js_obj)
 
 
 def _replace_quotes(js_text: str) -> str:
@@ -74,26 +68,25 @@ def _replace_quotes(js_text: str) -> str:
     return clean_js_text
 
 
-def _coerce_dict_values(data: dict[str, Any]) -> None:
-    for k, v in data.items():
-        if isinstance(v, dict):
-            continue
-        data[k] = _literal_value(v)
+# TODO: create a custom decoder that does this by default
+def _coerce_values(data: Any) -> Any:
+    if isinstance(data, dict):
+        return {k: _coerce_values(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_coerce_values(v) for v in data]
+    return _literal_value(data)
 
 
-def _literal_value(value: list | str | int | None) -> list[Any] | str | int | bool | None:
+def _literal_value(value: str | int | bool | None) -> str | int | bool | None:
     if isinstance(value, str):
         value = value.removesuffix("'").removeprefix("'")
         if value.isdigit():
             return int(value)
         if value == "undefined":
             return None
-        if value == "true":
+        if value in ("true", "!0"):
             return True
-        if value == "false":
+        if value in ("false", "!1"):
             return False
-        return value
 
-    if isinstance(value, list):
-        return [_literal_value(v) for v in value]
     return value
