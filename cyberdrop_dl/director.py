@@ -347,14 +347,8 @@ class Director:
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.manager = _setup_manager(args)
-        # For future use with textual
-        # fullscreen = f = m.parsed_args.cli_only_args.fullscreen_ui
-        # self.use_textual = m.parsed_args.cli_only_args.textual_ui and fullscreen
-        self.use_textual = False
 
     def run(self) -> int:
-        if self.use_textual:
-            return self._run_w_textual()
         return self._run()
 
     def _run(self) -> int:
@@ -369,6 +363,3 @@ class Director:
                 asyncio.run(self.manager.close())
         self.loop.close()
         return exit_code
-
-    def _run_w_textual(self):
-        raise NotImplementedError
