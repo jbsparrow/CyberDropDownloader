@@ -100,22 +100,9 @@ class StorageManager:
 
         await self.manager.states.RUNNING.wait()
         if not await self._has_sufficient_space(media_item.download_folder):
-            """ Needs textual UI
-            if self.manager.config_manager.global_settings_data.general.pause_on_insufficient_space:
-                if not self._paused_datetime:
-                    self.manager.progress_manager.pause("Insufficient Free Space")
-                    self.manager.notify(
-                        title="Insufficient Free Space",
-                        msg="Clean up storage space and click resume to continue",
-                        severity="warning",
-                    )
-                    self._paused_datetime = datetime.now()
-                if (datetime.now() - self._paused_datetime) < self._timedelta_period:
-                    return await self.check_free_space(media_item)
-            """
             raise InsufficientFreeSpaceError(origin=media_item)
 
-    async def reset(self):
+    async def reset(self) -> None:
         # This is causing lockups
         # await self._updated.wait()  # Make sure a query is not running right now
         self.total_data_written = 0
