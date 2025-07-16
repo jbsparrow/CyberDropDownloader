@@ -27,7 +27,6 @@ from cyberdrop_dl.utils.utilities import (
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -193,7 +192,7 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        link: URL | None = None
+        link: AbsoluteHttpURL | None = None
         soup: BeautifulSoup | None = None
         if is_stream_redirect(scrape_item.url):
             response, soup = await self.client._get_response_and_soup(self.DOMAIN, scrape_item.url)
@@ -243,7 +242,7 @@ class BunkrrCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         title: str = css.select_one_get_text(soup, "h1")
-        link: URL | None = await self.get_download_url_from_api(scrape_item.url)
+        link: AbsoluteHttpURL | None = await self.get_download_url_from_api(scrape_item.url)
         if not link:
             raise ScrapeError(422)
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
@@ -314,13 +313,13 @@ class BunkrrCrawler(Crawler):
 
     async def handle_file(
         self,
-        url: URL,
+        url: AbsoluteHttpURL,
         scrape_item: ScrapeItem,
         filename: str,
         ext: str,
         *,
         custom_filename: str | None = None,
-        debrid_link: URL | None = None,
+        debrid_link: AbsoluteHttpURL | None = None,
     ) -> None:
         """Overrides primary host before before calling base crawler's `handle_file`"""
         if is_root_domain(scrape_item.url):
@@ -374,7 +373,7 @@ class BunkrrCrawler(Crawler):
         return await get_soup(url)
 
 
-def get_part_next_to(url: URL, part: str) -> str:
+def get_part_next_to(url: AbsoluteHttpURL, part: str) -> str:
     part_index = url.parts.index(part) + 1
     return url.parts[part_index]
 

@@ -5,8 +5,6 @@ from dataclasses import asdict, dataclass, fields
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -136,7 +134,7 @@ class YandexItem:
     id: str
     path: str
     sk: str
-    short_url: URL  # https://yadi.sk/d/<id>
+    short_url: AbsoluteHttpURL  # https://yadi.sk/d/<id>
 
     @classmethod
     def get_valid_dict(cls, info: dict) -> dict[str, Any]:
@@ -180,7 +178,7 @@ class YandexFolder(YandexItem):
         raise NotImplementedError
 
     @cached_property
-    def url(self) -> URL:
+    def url(self) -> AbsoluteHttpURL:
         return PRIMARY_URL / "d" / self.id
 
     @classmethod
@@ -190,7 +188,7 @@ class YandexFolder(YandexItem):
         sk: str = json_resp["environment"]["sk"]
 
         folder_details = resources[folder_id]
-        short_url = URL(folder_details["meta"]["short_url"])
+        short_url = AbsoluteHttpURL(folder_details["meta"]["short_url"])
         children_ids: list[str] = folder_details["children"]
         valid_dict: dict[str, Any] = cls.get_valid_dict(folder_details)
         return cls(**valid_dict, resources=resources, sk=sk, short_url=short_url, children_ids=children_ids)
@@ -199,10 +197,10 @@ class YandexFolder(YandexItem):
 @dataclass(frozen=True, kw_only=True)
 class YandexFile(YandexItem):
     parent_folder_public_id: str = ""
-    file_url: URL | None = None
+    file_url: AbsoluteHttpURL | None = None
 
     @cached_property
-    def url(self) -> URL:
+    def url(self) -> AbsoluteHttpURL:
         if self.parent_folder_public_id:
             return PRIMARY_URL / "d" / self.parent_folder_public_id / self.name
         if self.file_url:
@@ -216,7 +214,7 @@ class YandexFile(YandexItem):
         file_details = next(iter(resources.items()))[1]
         sk: str = json_resp["environment"]["sk"]
 
-        short_url = URL(file_details["meta"]["short_url"])
+        short_url = AbsoluteHttpURL(file_details["meta"]["short_url"])
         valid_dict: dict[str, Any] = cls.get_valid_dict(file_details)
         return cls(**valid_dict, sk=sk, short_url=short_url)
 

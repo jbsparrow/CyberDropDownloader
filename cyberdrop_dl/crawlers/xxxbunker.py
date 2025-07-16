@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
@@ -20,8 +19,6 @@ if TYPE_CHECKING:
 
 PRIMARY_URL = AbsoluteHttpURL("https://xxxbunker.com")
 DOWNLOAD_URL = AbsoluteHttpURL("https://xxxbunker.com/ajax/downloadpopup")
-
-DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 MIN_RATE_LIMIT = 4  # per minute
 MAX_WAIT = 120  # seconds
 MAX_RETRIES = 3
@@ -70,9 +67,8 @@ class XXXBunkerCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         title = css.select_one_get_text(soup, "title").rsplit(" : XXXBunker.com", 1)[0].strip()
-        if date_tag := soup.select_one(DATE_SELECTOR):
-            scrape_item.possible_datetime = self.parse_date(date_tag.get_text(strip=True))
-
+        date_str = css.select_one_get_text(soup, DATE_SELECTOR)
+        scrape_item.possible_datetime = self.parse_date(date_str)
         video_soup = None
         try:
             iframe = css.select_one_get_attr(soup, VIDEO_IFRAME_SELECTOR, "data-src")
