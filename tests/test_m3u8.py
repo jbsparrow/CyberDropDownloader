@@ -207,5 +207,7 @@ def test_m3u8_master_w_no_codecs_should_not_raise_an_error() -> None:
     #EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
     high/stream.m3u8
     """
-    for group in _variant_parser(content).groups:
+    groups = _variant_parser(content).groups
+    assert len(groups) == 2
+    for group in groups:
         assert group.codecs == (None, None)
