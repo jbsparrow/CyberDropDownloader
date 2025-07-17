@@ -35,11 +35,13 @@ AUDIO_CODECS = "ac-3", "ec-3", "mp3", "mp4a", "opus", "vorbis"
 
 
 class Codecs(NamedTuple):
-    video: str
+    video: str | None
     audio: str | None
 
     @staticmethod
-    def parse(codecs: str) -> Codecs:
+    def parse(codecs: str | None) -> Codecs:
+        if not codecs:
+            return Codecs(None, None)
         video_codec = audio_codec = None
 
         def codec_or_none(codec: str, lookup_array: Iterable[str]) -> str | None:
@@ -162,7 +164,6 @@ class RenditionGroupDetails:
     @staticmethod
     def new(playlist: Playlist) -> RenditionGroupDetails:
         assert playlist.uri
-        assert playlist.stream_info.codecs
 
         def get_url(m3u8_obj: Playlist | Media) -> AbsoluteHttpURL:
             return parse_url(m3u8_obj.absolute_uri, trim=False)
@@ -219,11 +220,14 @@ class VariantM3U8Parser:
             exclude = (exclude,)
         if isinstance(only, str):
             only = (only,)
+
         for group in self.groups:
-            if only and group.codecs.video not in only:
-                continue
-            if group.codecs.video not in exclude:
-                yield group
+            if codec := group.codecs.video:
+                if only and codec not in only:
+                    continue
+                if codec in exclude:
+                    continue
+            yield group
 
     def get_best_group(self, only: Iterable[str] = (), *, exclude: Iterable[str] = ()) -> RenditionGroupDetails:
         return next(self.get_rendition_groups(only=only, exclude=exclude))

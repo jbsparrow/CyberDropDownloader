@@ -29,7 +29,7 @@ class HashManager:
     async def startup(self) -> None:
         await self.hash_client.startup()
 
-    async def hash_file(self, filename: str, hash_type: str) -> str:
+    async def hash_file(self, filename: Path | str, hash_type: str) -> str:
         file_path = Path.cwd() / filename
         async with aiofiles.open(file_path, "rb") as fp:
             CHUNK_SIZE = 1024 * 1024  # 1MB
@@ -40,10 +40,11 @@ class HashManager:
                 filedata = await fp.read(CHUNK_SIZE)
             return current_hasher.hexdigest()
 
-    def _get_hasher(self, hash_type):
+    def _get_hasher(self, hash_type: str):
         if hash_type == "xx128" and not self.xx_hasher:
             raise ImportError("xxhash module is not installed")
-        elif hash_type == "xxh128":
+        assert self.xx_hasher
+        if hash_type == "xxh128":
             return self.xx_hasher()
         elif hash_type == "md5":
             return self.md5_hasher()
