@@ -5,8 +5,6 @@ import re
 from re import Pattern
 from typing import TYPE_CHECKING, ClassVar
 
-from multidict import MultiDict
-
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.managers.real_debrid.api import RealDebridAPI
@@ -19,7 +17,7 @@ if TYPE_CHECKING:
 PRIMARY_URL = AbsoluteHttpURL("https://real-debrid.com")
 _FOLDER_AS_PART = {"folder", "folders", "dir"}
 _FOLDER_AS_QUERY = {"sharekey"}
-_DB_ENCODE_PARTS = "parts", "query", "frag"
+_DB_FLATTEN_URL_KEYS = "parts", "query", "frag"
 
 
 class RealDebridCrawler(Crawler):
@@ -41,7 +39,7 @@ class RealDebridCrawler(Crawler):
         await self._get_supported_urls_regexes()
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        scrape_item.url = _decode_original_url(scrape_item.url)
+        scrape_item.url = _reconstruct_original_url(scrape_item.url)
         if self._is_supported_folder(scrape_item.url):
             return await self.folder(scrape_item)
         await self.file(scrape_item)
@@ -95,7 +93,7 @@ class RealDebridCrawler(Crawler):
             title = self.create_title(f"files [{host}]")
             scrape_item.setup_as_album(title)
             debrid_url = await self._api.unrestrict.link(original_url, password)
-            database_url = _encode_url_for_db(original_url, host)
+            database_url = _flatten_url_for_db(original_url, host)
 
         if await self.check_complete_from_referer(debrid_url):
             return
@@ -131,43 +129,39 @@ def _is_self_hosted_download(url: AbsoluteHttpURL) -> bool:
     return any(subdomain in url.host for subdomain in ("download.", "my.")) and "real-debrid" in url.host
 
 
-def _decode_original_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-    """Reconstructs an URL that might have been encoded for database."""
-    log(f"Input URL: {url}")
+def _reconstruct_original_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+    """Reconstructs an URL that might have been flatten for the database."""
     if len(url.parts) < 3 or url.host != PRIMARY_URL.host or url.parts[1].count(".") == 0:
-        log(f"Parsed URL: {url}")
-        return url
+        parsed_url = url
 
-    parts_dict: dict[str, tuple[str, ...]] = dict.fromkeys(_DB_ENCODE_PARTS, ())
-    key = "parts"
+    else:
+        parts_dict: dict[str, tuple[str, ...]] = dict.fromkeys(_DB_FLATTEN_URL_KEYS, ())
+        key = "parts"
+        original_host = url.parts[1]
+        for part in url.parts[2:]:
+            if part in ("query", "frag"):
+                key = part
+                continue
+            parts_dict[key] += (part,)
 
-    original_domain = url.parts[1]
-    for part in url.parts[2:]:
-        if part in ("query", "frag"):
-            key = part
-            continue
-        parts_dict[key] += (part,)
-
-    path = "/".join(parts_dict["parts"])
-    query = MultiDict()
-    for i in range(0, len(parts_dict["query"]), 2):
-        query[parts_dict["query"][i]] = parts_dict["query"][i + 1]
-    query = query or None
-    frag = next(iter(parts_dict["frag"]), "")
-    parsed_url = (
-        AbsoluteHttpURL(f"https://{original_domain}/{path}", encoded="%" in path).with_query(query).with_fragment(frag)
-    )
-    log(f"Parsed URL: {parsed_url}")
+        path = "/".join(parts_dict["parts"])
+        parsed_url = AbsoluteHttpURL(f"https://{original_host}/{path}", encoded="%" in path)
+        query_iter = iter(parts_dict["query"])
+        if query := tuple(zip(query_iter, query_iter, strict=True)):
+            parsed_url = parsed_url.with_query(query)
+        if frag := next(iter(parts_dict["frag"]), None):
+            parsed_url = parsed_url.with_fragment(frag)
+    log(f"Input URL: {url}. Parsed URL: {parsed_url}")
     return parsed_url
 
 
-def _encode_url_for_db(original_url: AbsoluteHttpURL, host: str) -> AbsoluteHttpURL:
-    # Some hosts use query params or fragment as id or password (ex: mega.nz)
-    # This save the query and fragment as parts of the URL path because database lookups only use the url path
+def _flatten_url_for_db(original_url: AbsoluteHttpURL, host: str) -> AbsoluteHttpURL:
+    """Some hosts use query params or fragment as id or password (ex: mega.nz)
+    This function flattens the query and fragment as parts of the URL path because database lookups only use the url path"""
     flatten_url = PRIMARY_URL / host / original_url.path[1:]
     if original_url.query:
-        query_params_list = [item for pair in original_url.query.items() for item in pair]
-        flatten_url = flatten_url / "query" / "/".join(query_params_list)
+        query_params = (item for pair in original_url.query.items() for item in pair)
+        flatten_url = flatten_url / "query" / "/".join(query_params)
 
     if original_url.fragment:
         flatten_url = flatten_url / "frag" / original_url.fragment
