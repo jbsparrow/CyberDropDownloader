@@ -56,10 +56,10 @@ class RealDebridApi:
         self.torrents = Torrents(self)
         self.hosts = Hosts(self)
         self.settings = Settings(self)
-        self.update_token(api_token)
+        self.update_token(api_token or "")
 
     def get(self, path: str, *, entrypoint: URL = API_ENTRYPOINT, **query_params) -> dict:
-        response = self._session.get(url=entrypoint / path, params=query_params)
+        response = self._session.get(url=str(entrypoint / path), params=query_params)
         return self.handle_response(response)
 
     def post(self, path: str, *, entrypoint: URL = API_ENTRYPOINT, **data) -> dict:
