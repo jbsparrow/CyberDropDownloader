@@ -23,6 +23,7 @@ from cyberdrop_dl.exceptions import (
     InvalidContentTypeError,
     RestrictedFiletypeError,
 )
+from cyberdrop_dl.utils import ffmpeg
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none, parse_url
 
@@ -150,8 +151,11 @@ class Downloader:
     @error_handling_wrapper
     async def download_hls(self, media_item: MediaItem, m3u8_group: RenditionGroup) -> None:
         await self.client.mark_incomplete(media_item, self.domain)
-        if not self.manager.ffmpeg.is_available:
-            raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
+        try:
+            ffmpeg.check_is_available()
+        except RuntimeError as e:
+            msg = f"{e} - ffmpeg and ffprobe are required for HLS downloads"
+            raise DownloadError("FFmpeg Error", msg, media_item) from None
 
         media_item.complete_file = media_item.download_folder / media_item.filename
         self.update_queued_files()
@@ -162,7 +166,7 @@ class Downloader:
             await asyncio.to_thread(video.rename, media_item.complete_file)
         else:
             parts = [part for part in (video, audio, subtitles) if part]
-            ffmpeg_result = await self.manager.ffmpeg.merge(*parts, output_file=media_item.complete_file)
+            ffmpeg_result = await ffmpeg.merge(parts, media_item.complete_file)
 
             if not ffmpeg_result.success:
                 raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
@@ -192,7 +196,7 @@ class Downloader:
 
             seg_paths = [item.complete_file for item in items if item.complete_file]
             output = media_item.complete_file.with_suffix(f".{media_type}.ts")
-            ffmpeg_result = await self.manager.ffmpeg.concat(*seg_paths, output_file=output)
+            ffmpeg_result = await ffmpeg.concat(seg_paths, output)
             if not ffmpeg_result.success:
                 raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
             results.append(output)

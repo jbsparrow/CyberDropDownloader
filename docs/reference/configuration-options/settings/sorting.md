@@ -7,15 +7,21 @@ However, `filename` and `ext` must always be used.
 
 Common fields for sorting format options (supported for `audio`, `videos`, `images` and `other`):
 
-> `sort_dir`: This represent the same path as `sort_folder` from the download options
+> `base_dir`: the name of highest level folder inside `scan_folder`. This normally is the model name or the thread name
 >
-> `base_dir`: the name of highest level folder inside `scan_folder` ex: (model name / thread name)
+> `ext`: the file extension (suffix)
 >
-> `parent_dir`: the name of the folder where the file is located at. Ex: (album name)
+> `file_date`: the file date. This is a datetime object, which means it accepts a custom format spec ex: `{file_date:%Y-%m}`
+>
+> `file_date_iso`: the file date as an iso 8601 string (`%Y-%m-%d`)
+>
+> `file_date_us`: the file date in the US format (`%Y-%d-%m`)
 >
 > `filename`: the file's name (stem)
 >
-> `ext`: the file extension (suffix)
+> `parent_dir`: the name of the folder where the file is located at (its parent folder).  This is normally the album name for photos or the post name for forums/reddit if `separate_post` is enabled
+>
+> `sort_dir`: the same path as `sort_folder` from the download options
 
 ## `scan_folder`
 
@@ -71,13 +77,13 @@ This is the format for the directory structure and naming scheme for audio files
 
 In addition to the common sorting format fields, this option supports:
 
-> `bitrate`: file bit rate
+> `bitrate`: file bit rate. This is an `int`
 >
-> `duration`: audio total runtime
+> `duration`: audio total runtime in seconds. This is an `int`
 >
 > `length`: same as `duration`
 >
-> `sample_rate`: audio sample rate
+> `sample_rate`: audio sample rate. This is an `int`
 
 ## `sorted_image`
 
@@ -89,11 +95,11 @@ This is the format for the directory structure and naming scheme for image files
 
 In addition to the common sorting format fields, this option supports:
 
-> `height`: vertical pixel count
+> `height`: vertical pixel count. This is an `int`
 >
-> `width`: horizontal pixel count
+> `width`: horizontal pixel count. This is an `int`
 >
-> `resolution`: `width`x`height` ex. 1080x1920
+> `resolution`: `width`x`height` ex. 1080x1920. This is a `str`
 
 ## `sorted_video`
 
@@ -105,19 +111,19 @@ This is the format for the directory structure and naming scheme for video files
 
 In addition to the common sorting format fields, this option supports:
 
-> `codec`: ex. h264
+> `codec`: ex. h264.  This is a `str`. It could potencially be `None` for some files
 >
-> `duration`: video total runtime
+> `duration`: video total runtime in seconds. This is an `int`
 >
-> `fps`: ex. 24
+> `fps`: ex. `24`. This represents a number but is a `str`. It could potencially be `None` for some files
 >
 > `length`: same as `duration`
 >
-> `height`: vertical pixel count
+> `height`: vertical pixel count. This is an `int`
 >
-> `width`: horizontal pixel count
+> `width`: horizontal pixel count.This is an `int`
 >
-> `resolution`: `width`x`height` ex. 1080x1920
+> `resolution`: `width`x`height` ex. 1080x1920. This is a `str`
 
 ## `sorted_other`
 

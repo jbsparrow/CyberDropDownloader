@@ -23,6 +23,7 @@ console = Console()
 
 ERROR_PREFIX = "\n[bold red]ERROR: [/bold red]"
 USER_NAME = Path.home().resolve().parts[-1]
+NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
 
 
 if TYPE_CHECKING:
@@ -227,11 +228,16 @@ def create_rich_log_msg(msg: str, level: int = 10) -> Text:
     return rich_level + indent_string(msg)
 
 
-def log(message: dict[str, Any] | Exception | str, level: int = 10, prefix: str = "", **kwargs) -> None:
+def log(
+    message: dict[str, Any] | Exception | str, level: int = 10, prefix: str = "", bug: bool = False, **kwargs
+) -> None:
     """Simple logging function."""
     msg = prefix + process_log_msg(message)
     logger.log(level, msg, **kwargs)
     log_debug(msg, level, **kwargs)
+    if bug:
+        msg = msg.rstrip() + f". Please file a bug report at {NEW_ISSUE_URL}"
+    logger.log(level, msg, **kwargs)
 
 
 def log_debug(message: dict[str, Any] | Exception | str, level: int = 10, **kwargs) -> None:

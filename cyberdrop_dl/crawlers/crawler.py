@@ -1,24 +1,25 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import datetime
+import inspect
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, NoReturn, ParamSpec, TypeAlias, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
 
 import yarl
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError
+from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import css, m3u8
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
@@ -42,6 +43,7 @@ from cyberdrop_dl.utils.utilities import (
 P = ParamSpec("P")
 R = TypeVar("R")
 T = TypeVar("T")
+_T_co = TypeVar("_T_co", covariant=True)
 
 
 if TYPE_CHECKING:
@@ -49,6 +51,7 @@ if TYPE_CHECKING:
 
     from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup, Tag
+    from rich.progress import TaskID
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
@@ -58,7 +61,7 @@ OneOrTuple: TypeAlias = T | tuple[T, ...]
 SupportedPaths: TypeAlias = Mapping[str, OneOrTuple[str]]
 SupportedDomains: TypeAlias = OneOrTuple[str]
 
-UNKNOWN_URL_PATH_MSG = "Unknown URL path"
+
 HASH_PREFIXES = "md5:", "sha1:", "sha256:", "xxh128:"
 VALID_RESOLUTION_NAMES = "4K", "8K", "HQ", "Unknown"
 
@@ -82,36 +85,6 @@ class CrawlerInfo(NamedTuple):
     supported_paths: SupportedPaths
 
 
-def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R | None]]:
-    """Wrapper that handles `task_id` creation and removal for scrape items"""
-
-    @wraps(func)
-    async def wrapper(*args, **kwargs) -> R | None:
-        self: Crawler = args[0]
-        scrape_item: ScrapeItem = args[1]
-        await self.manager.states.RUNNING.wait()
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-        try:
-            if not self.SKIP_PRE_CHECK:
-                _pre_check_scrape_item(scrape_item)
-            return await func(scrape_item, **kwargs)  # type: ignore
-        except ValueError:
-            log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
-            self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
-            await self.manager.log_manager.write_scrape_error_log(scrape_item.url, UNKNOWN_URL_PATH_MSG)
-        except MaxChildrenError:
-
-            @error_handling_wrapper
-            async def raise_e(self, scrape_item: ScrapeItem) -> NoReturn:
-                raise
-
-            await raise_e(self, scrape_item)
-        finally:
-            self.scraping_progress.remove_task(task_id)
-
-    return wrapper
-
-
 class Crawler(ABC):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ()
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {}
@@ -129,7 +102,6 @@ class Crawler(ABC):
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.downloader: Downloader = field(init=False)
-        self.scraping_progress = manager.progress_manager.scraping_progress
         self.client: ScraperClient = field(init=False)
         self.startup_lock = asyncio.Lock()
         self.request_limiter = AsyncLimiter(10, 1)
@@ -142,6 +114,10 @@ class Crawler(ABC):
         self.log_debug = log_debug
         self._semaphore = asyncio.Semaphore(20)
         self.__post_init__()
+
+    @final
+    def create_task(self, coro: Coroutine[Any, Any, _T_co]) -> asyncio.Task[_T_co]:
+        return self.manager.task_group.create_task(coro)
 
     def __post_init__(self) -> None: ...  # noqa: B027
 
@@ -189,6 +165,11 @@ class Crawler(ABC):
     def allow_no_extension(self) -> bool:
         return not self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
 
+    def _init_downloader(self) -> Downloader:
+        self.downloader = dl = Downloader(self.manager, self.DOMAIN)
+        dl.startup()
+        return dl
+
     @final
     async def startup(self) -> None:
         """Starts the crawler."""
@@ -196,37 +177,88 @@ class Crawler(ABC):
             if self.ready:
                 return
             self.client = self.manager.client_manager.scraper_session
-            self.downloader = Downloader(self.manager, self.DOMAIN)
-            self.downloader.startup()
+            self.downloader = self._init_downloader()
             await self.async_startup()
             self.ready = True
 
     async def async_startup(self) -> None: ...  # noqa: B027
 
     @final
-    async def run(self, item: ScrapeItem) -> None:
+    async def run(self, scrape_item: ScrapeItem) -> None:
         """Runs the crawler loop."""
-        if not item.url.host:
+        if not scrape_item.url.host:
             return
         if self.disabled:
             return
 
-        await self.manager.states.RUNNING.wait()
         self.waiting_items += 1
+        async with self._semaphore:
+            await self.manager.states.RUNNING.wait()
+            self.waiting_items -= 1
+            og_url = scrape_item.url
+            scrape_item.url = url = self.transform_url(scrape_item.url)
+            if og_url != url:
+                log(f"URL transformed: \n old: {og_url} \n new: {url}")
+
+            if url.path_qs in self.scraped_items:
+                return log(f"Skipping {url} as it has already been scraped", 10)
+
+            self.scraped_items.append(url.path_qs)
+            async with self._fetch_context(scrape_item):
+                await self.fetch(scrape_item)
+
+    def pre_check_scrape_item(self, scrape_item: ScrapeItem) -> None:
+        if not self.SKIP_PRE_CHECK and scrape_item.url.path == "/":
+            raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        """Transforms an URL before it reaches the fetch method
+
+        Override it to transform thumbnail URLs into full res URLs or URLs in an old unsupported format into a new one"""
+        return url
+
+    @final
+    @contextlib.asynccontextmanager
+    async def _fetch_context(self, scrape_item: ScrapeItem) -> AsyncGenerator[TaskID]:
+        with self.new_task_id(scrape_item.url) as task_id:
+            try:
+                self.pre_check_scrape_item(scrape_item)
+                yield task_id
+            except ValueError:
+                await self.raise_e(scrape_item, ScrapeError("Unknown URL path"))
+            except MaxChildrenError as e:
+                await self.raise_e(scrape_item, e)
+            finally:
+                pass
+
+    @error_handling_wrapper
+    def raise_e(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception) -> None:
+        raise exc
+
+    @final
+    @contextlib.contextmanager
+    def new_task_id(self, url: AbsoluteHttpURL) -> Generator[TaskID]:
+        """Creates a new task_id (shows the URL in the UI and logs)"""
         scrape_prefix = "Scraping"
         if self.IS_FALLBACK_GENERIC:
             scrape_prefix += " (unsupported domain)"
         else:
             scrape_prefix += f" [{self.FOLDER_DOMAIN}]"
+        log(f"{scrape_prefix}: {url}", 20)
+        task_id = self.manager.progress_manager.scraping_progress.add_task(url)
+        try:
+            yield task_id
+        finally:
+            self.manager.progress_manager.scraping_progress.remove_task(task_id)
 
-        async with self._semaphore:
-            self.waiting_items -= 1
-            if item.url.path_qs not in self.scraped_items:
-                log(f"{scrape_prefix}: {item.url}", 20)
-                self.scraped_items.append(item.url.path_qs)
-                await create_task_id(self.fetch)(self, item)  # type: ignore
-            else:
-                log(f"Skipping {item.url} as it has already been scraped", 10)
+    @classmethod
+    def is_subdomain(cls, url: AbsoluteHttpURL, domain_to_compare: str | None = None) -> bool:
+        primary_domain = (domain_to_compare or cls.PRIMARY_URL.host).removeprefix("www.")
+        other_domain = url.host.removeprefix("www.")
+        if primary_domain == other_domain:
+            return False
+        return primary_domain in other_domain and other_domain.count(".") > primary_domain.count(".")
 
     async def handle_file(
         self,
@@ -255,16 +287,11 @@ class Crawler(ABC):
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
         await self.handle_media_item(media_item, m3u8)
 
-    def log_bug_report(self, msg: str, level: int = 30) -> None:
-        msg += f". Please file a bug report at {NEW_ISSUE_URL}"
-        log(msg, level)
-
     async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
-            msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int. "
-            msg += f"Please file a bug report at {NEW_ISSUE_URL}"
-            log(msg, 30)
+            msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int."
+            log(msg, 30, bug=True)
 
         check_complete = await self.manager.db_manager.history_table.check_complete(
             self.DOMAIN, media_item.url, media_item.referer
@@ -532,9 +559,9 @@ class Crawler(ABC):
         self, date_or_datetime: str, format: str | None = None, /, *, iso: bool = False
     ) -> datetime.datetime | None:
         assert not (iso and format)
-        msg = f"Date parsing for {self.DOMAIN} seems to be broken. Please report this as a bug at {NEW_ISSUE_URL}"
+        msg = f"Date parsing for {self.DOMAIN} seems to be broken"
         if not date_or_datetime:
-            log(f"{msg}: Unable to extract date from soup", 30)
+            log(f"{msg}: Unable to extract date from soup", 30, bug=True)
             return None
         try:
             if iso:
@@ -549,7 +576,7 @@ class Crawler(ABC):
         if parsed_date:
             return parsed_date
 
-        log(msg, 30)
+        log(msg, 30, bug=True)
 
     @staticmethod
     def register_cache_filter(
@@ -629,9 +656,9 @@ class Crawler(ABC):
             msg = (
                 f"Custom filename creation for {self.FOLDER_DOMAIN} seems to be broken. "
                 f"Important information was removed while creating a filename. "
-                f"Please report this as a bug at {NEW_ISSUE_URL}:\n{calling_args}"
+                f"\n{calling_args}"
             )
-            log(msg, 30)
+            log(msg, 30, bug=True)
         return filename
 
 
@@ -643,11 +670,6 @@ def _make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
     if isinstance(hosts, str):
         hosts = (hosts,)
     return tuple(sorted(host.removeprefix("www.") for host in hosts))
-
-
-def _pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
-    if scrape_item.url.path == "/":
-        raise ValueError
 
 
 def _make_custom_filename(stem: str, ext: str, extra_info: list[str], only_truncate_stem: bool) -> tuple[str, bool]:
@@ -718,3 +740,20 @@ def _validate_supported_paths(cls: type[Crawler]) -> None:
             paths = (paths,)
         for path in paths:
             assert "`" not in path, f"{cls.__name__}, Invalid path {path_name}: {path}"
+
+
+def auto_task_id(
+    func: Callable[Concatenate[_CrawlerT, ScrapeItem, P], R | Coroutine[None, None, R]],
+) -> Callable[Concatenate[_CrawlerT, ScrapeItem, P], Coroutine[None, None, R]]:
+    """Autocreate a new `task_id` from the scrape_item of the method"""
+
+    @wraps(func)
+    async def wrapper(self: _CrawlerT, scrape_item: ScrapeItem, *args: P.args, **kwargs: P.kwargs) -> R:
+        await self.manager.states.RUNNING.wait()
+        with self.new_task_id(scrape_item.url):
+            result = func(self, scrape_item, *args, **kwargs)
+            if inspect.isawaitable(result):
+                return await result
+            return result
+
+    return wrapper

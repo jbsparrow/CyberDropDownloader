@@ -1,6 +1,7 @@
 import os
 from hashlib import sha256
 
+os.environ["PYDANTIC_ERRORS_INCLUDE_URL"] = "0"
 RUNNING_IN_IDE = bool(os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode")
 RUNNING_IN_TERMUX = bool(
     os.getenv("TERMUX_VERSION") or os.getenv("TERMUX_MAIN_PACKAGE_FORMAT") or "com.termux" in os.getenv("$PREFIX", "")

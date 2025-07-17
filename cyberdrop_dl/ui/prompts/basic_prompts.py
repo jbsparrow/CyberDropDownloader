@@ -1,3 +1,4 @@
+# type: ignore[reportPrivateImportUsage]
 from pathlib import Path
 
 from InquirerPy import inquirer

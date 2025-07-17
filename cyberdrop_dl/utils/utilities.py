@@ -15,13 +15,14 @@ from dataclasses import Field, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
-from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, Protocol, TypeGuard, TypeVar
 
 import aiofiles
 import rich
 from aiohttp import ClientConnectorError, FormData
 from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
+from pydantic import ValidationError
 from yarl import URL
 
 from cyberdrop_dl import constants
@@ -33,6 +34,7 @@ from cyberdrop_dl.exceptions import (
     InvalidURLError,
     NoExtensionError,
     TooManyCrawlerErrors,
+    create_error_msg,
     get_origin,
 )
 from cyberdrop_dl.utils import css
@@ -48,6 +50,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, AnyURL, MediaItem, ScrapeItem
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
+
+    CrawerOrDownloader = TypeVar("CrawerOrDownloader", bound=Crawler | Downloader)
+    Origin = TypeVar("Origin", bound=ScrapeItem | MediaItem | URL)
 
 
 P = ParamSpec("P")
@@ -84,34 +89,38 @@ class OGProperties(dict[str, str]):
 
 
 def error_handling_wrapper(
-    func: Callable[P, Coroutine[None, None, R]],
-) -> Callable[P, Coroutine[None, None, R | None]]:
+    func: Callable[Concatenate[CrawerOrDownloader, Origin, P], R | Coroutine[None, None, R]],
+) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
-    async def wrapper(*args, **kwargs) -> R | None:
-        self: Crawler | Downloader = args[0]
-        item: ScrapeItem | MediaItem | URL = args[1]
+    async def wrapper(self: CrawerOrDownloader, item: Origin, *args: P.args, **kwargs: P.kwargs) -> R | None:
         link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         link_to_show: URL | str = ""
         try:
-            return await func(*args, **kwargs)
+            result = func(self, item, *args, **kwargs)
+            if inspect.isawaitable(result):
+                return await result
+            return result
         except TooManyCrawlerErrors:
             return
         except CDLBaseError as e:
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
-            e_url: URL | str | None = getattr(e, "url", None)
-            link_to_show = e_url or link_to_show
+            link_to_show: URL | str = getattr(e, "url", None) or link_to_show
         except NotImplementedError:
             error_log_msg = ErrorLogMessage("NotImplemented")
         except TimeoutError:
             error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
             ui_failure = "Client Connector Error"
-            # link_to_show = link.with_host(e.host) # For bunkr and jpg5, to make sure the log message matches the actual URL we tried to connect
             log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            error_log_msg = ErrorLogMessage(ui_failure, log_msg)
+        except ValidationError as e:
+            exc_info = e
+            ui_failure = create_error_msg(422)
+            log_msg = str(e).partition("For further information")[0].strip()
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except Exception as e:
             exc_info = e
@@ -122,13 +131,15 @@ def error_handling_wrapper(
 
         link_to_show = link_to_show or link
         origin = origin or get_origin(item)
-        log_prefix = getattr(self, "log_prefix", None)
-        if log_prefix:  # This error came from a Downloader
-            await self.write_download_error(item, error_log_msg, exc_info)  # type: ignore
+        is_downloader = getattr(self, "log_prefix", False)
+        if is_downloader:
+            self.manager.task_group.create_task(self.write_download_error(item, error_log_msg, exc_info))  # type: ignore
             return
 
         log(f"Scrape Failed: {link_to_show} ({error_log_msg.main_log_msg})", 40, exc_info=exc_info)
-        await self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
+        self.manager.task_group.create_task(
+            self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
+        )
         self.manager.progress_manager.scrape_stats_progress.add_failure(error_log_msg.ui_failure)
 
     return wrapper
