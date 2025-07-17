@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import dataclasses
+import json
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import css, javascript
-from cyberdrop_dl.utils.logger import log_debug
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -37,14 +38,17 @@ PLAYLIST_TITLE_SELECTORS["categories"] = PLAYLIST_TITLE_SELECTORS["models"]
 TITLE_TRASH = "Tagged with", "Videos for:"
 
 
-class Format(NamedTuple):
+@dataclasses.dataclass(frozen=True, slots=True)
+class Video:
+    title: str
+    date: str
+    best_src: VideoSource
+
+
+class VideoSource(NamedTuple):
     ext: str
     resolution: str
-    link_str: str
-
-
-## TODO: convert to global dataclass with constructor from dict to use in multiple crawlers
-class VideoInfo(dict): ...
+    url: str
 
 
 class Rule34VideoCrawler(Crawler):
@@ -61,7 +65,7 @@ class Rule34VideoCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "Rule34Video"
 
     async def async_startup(self) -> None:
-        self.set_cookies()
+        self.update_cookies({"kt_rt_popAccess": 1, "kt_tcookie": 1})
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("video", "videos")):
@@ -94,52 +98,41 @@ class Rule34VideoCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         scrape_item.url = canonical_url
-        info = get_video_info(soup)
-        v_format = get_best_quality(soup)
-        if not v_format:
-            raise ScrapeError(422)
-        ext, resolution, link_str = v_format
+        video = _parse_video(soup)
+        ext, resolution, link_str = video.best_src
         link = self.parse_url(link_str)
-        scrape_item.possible_datetime = self.parse_date(info["uploadDate"], "%Y-%m-%d")
+        scrape_item.possible_datetime = self.parse_iso_date(video.date)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename = link.query.get("download_filename") or info["title"]
+        custom_filename = link.query.get("download_filename") or video.title
         custom_filename = self.create_custom_filename(custom_filename, ext, file_id=video_id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    def set_cookies(self) -> None:
-        cookies = {"kt_rt_popAccess": 1, "kt_tcookie": 1}
-        self.update_cookies(cookies)
 
-
-def get_video_info(soup: BeautifulSoup) -> VideoInfo:
+def _parse_video(soup: BeautifulSoup) -> Video:
     title = css.select_one_get_text(soup, VIDEO_TITLE_SELECTOR)
-    info_js_script = css.select_one_get_text(soup, JS_SELECTOR)
-    info: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script)
-    info["title"] = title
-    javascript.clean_dict(info)
-    log_debug(info)
-    return VideoInfo(**info)
+    ld_json = css.select_one_get_text(soup, JS_SELECTOR)
+    video_data = json.loads(ld_json)
+    return Video(title=title, date=video_data["uploadDate"], best_src=_get_best_source(soup))
 
 
-def get_available_formats(soup: BeautifulSoup) -> Generator[Format]:
-    for download in soup.select(DOWNLOADS_SELECTOR):
-        link_str: str = css.get_attr(download, "href")
-        if "/tags/" in link_str or not all(p in link_str for p in REQUIRED_FORMAT_STRINGS):
+def _get_available_sources(soup: BeautifulSoup) -> Generator[VideoSource]:
+    for download in css.iselect(soup, DOWNLOADS_SELECTOR):
+        url = css.get_attr(download, "href")
+        if "/tags/" in url or not all(p in url for p in REQUIRED_FORMAT_STRINGS):
             continue
-        ext, res = download.text.rsplit(" ", 1)
+        ext, res = css.get_text(download).rsplit(" ", 1)
         ext = ext.lower()
         if ext not in ("mov", "mp4"):
             continue
-        yield Format(ext, res, link_str)
+        yield VideoSource(ext, res, url)
 
 
-def get_best_quality(soup: BeautifulSoup) -> Format | None:
-    formats_dict = {v_format.resolution: v_format for v_format in get_available_formats(soup)}
-    log_debug(formats_dict)
+def _get_best_source(soup: BeautifulSoup) -> VideoSource:
+    formats_dict = {v_format.resolution: v_format for v_format in _get_available_sources(soup)}
     for res in RESOLUTIONS:
-        v_format = formats_dict.get(res)
-        if v_format:
+        if v_format := formats_dict.get(res):
             return v_format
+    raise ScrapeError(422, message="Unable to parse video sources")
 
 
 def get_playlist_title(soup: BeautifulSoup, playlist_type: str) -> str:

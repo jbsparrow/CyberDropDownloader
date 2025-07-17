@@ -10,8 +10,6 @@ from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from yarl import URL
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://wetransfer.com/")
@@ -57,7 +55,7 @@ class WeTransferCrawler(Crawler):
         await self.direct_link(scrape_item, link)
 
     @error_handling_wrapper
-    async def direct_link(self, scrape_item: ScrapeItem, link: URL) -> None:
+    async def direct_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL) -> None:
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 

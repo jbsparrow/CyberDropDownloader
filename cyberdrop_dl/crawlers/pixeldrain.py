@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DownloadError, NoExtensionError, ScrapeError
-from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.logger import log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -111,21 +111,18 @@ class PixelDrainCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        meta = get_og_properties(soup)
-        filename: str = meta.title
-        link_str: str = ""
-        if "video" in meta.type:
-            link_str = meta.video
-        elif "image" in meta.type:
-            link_str = meta.image
+        og_props = open_graph.parse(soup)
+        filename = og_props.title
+        link_str: str | None = None
+        if "video" in og_props.type:
+            link_str = og_props.video
+        elif "image" in og_props.type:
+            link_str = og_props.image
 
         if not link_str or "filesystem" not in link_str:
             raise ScrapeError(422)
 
-        js_text: str = css.select_one(soup, JS_SELECTOR).text
-        if not js_text:
-            raise ScrapeError(422)
-
+        js_text = css.select_one_get_text(soup, JS_SELECTOR)
         json_str = get_text_between(js_text, "window.initial_node =", "window.user = ").removesuffix(";")
         json_data = json.loads(json_str)
         log_debug(json_data)

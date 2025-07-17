@@ -1,17 +1,7 @@
 import sys
 
-from cyberdrop_dl import env
 
-
-def main(*, profiling: bool = False, ask: bool = True) -> None:
-    if not (profiling or env.PROFILING):
-        return actual_main()
-    from cyberdrop_dl.profiling import profile
-
-    profile(actual_main, ask)
-
-
-def actual_main() -> None:
+def main() -> None:
     sys.exit(run())
 
 

@@ -9,8 +9,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from yarl import URL
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -52,5 +50,5 @@ class ViprImCrawler(Crawler):
         return PRIMARY_URL / get_image_id(url)
 
 
-def get_image_id(url: URL) -> str:
+def get_image_id(url: AbsoluteHttpURL) -> str:
     return Path(url.name).stem

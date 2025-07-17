@@ -11,7 +11,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -33,7 +32,7 @@ _SELECTORS = Selectors()
 
 class Format(NamedTuple):
     resolution: int | None
-    url: URL
+    url: AbsoluteHttpURL
 
 
 PRIMARY_URL = AbsoluteHttpURL("https://dirtyship.com")

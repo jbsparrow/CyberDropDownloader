@@ -5,7 +5,6 @@ import re
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
 class Video(NamedTuple):
     id: str
     title: str
-    url: URL
+    url: str
     res: str
 
 
@@ -111,11 +110,12 @@ class PorntrexCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         video = get_video_info(soup)
-        filename, ext = self.get_filename_and_ext(video.url.name)
+        link = self.parse_url(video.url)
+        filename, ext = self.get_filename_and_ext(link.name)
         scrape_item.url = canonical_url
         custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.res)
         await self.handle_file(
-            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
+            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
         )
 
     @error_handling_wrapper
@@ -237,5 +237,5 @@ def get_video_info(soup: BeautifulSoup) -> Video:
             resolutions.append((video_info["video_url"], ""))
 
         best = max(resolutions, key=lambda x: extract_resolution(x[0]))
-        return Video(video_info["video_id"], video_info["video_title"], URL(best[1].strip("/")), best[0].split()[0])
+        return Video(video_info["video_id"], video_info["video_title"], best[1].strip("/"), best[0].split()[0])
     raise ScrapeError(404)

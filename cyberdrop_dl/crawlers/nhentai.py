@@ -7,7 +7,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import LoginError, ScrapeError
+from cyberdrop_dl.exceptions import LoginError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -52,13 +52,9 @@ class NHentaiCrawler(Crawler):
         title = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title_tag = soup.select_one(COLLECTION_TITLE_SELECTOR)
-                if not title_tag:
-                    raise ScrapeError(422)
-
-                collection_type = next((part for part in COLLECTION_PARTS if part in scrape_item.url.parts), None)
-                assert collection_type
+                collection_type = next(part for part in COLLECTION_PARTS if part in scrape_item.url.parts)
                 if collection_type == "favorites":
+                    title_tag = css.select_one(soup, COLLECTION_TITLE_SELECTOR)
                     if soup.select_one(LOGIN_PAGE_SELECTOR):
                         raise LoginError("No cookies provided to download favorites")
 

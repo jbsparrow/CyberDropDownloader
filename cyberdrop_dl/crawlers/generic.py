@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
@@ -108,7 +107,7 @@ class GenericCrawler(Crawler):
         self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
 
-def guess_filename_and_ext(url: URL, content_type: str) -> tuple[str, str | None]:
+def guess_filename_and_ext(url: AbsoluteHttpURL, content_type: str) -> tuple[str, str | None]:
     filename, ext = get_name_and_ext_from_url(url)
     if filename and ext:
         return filename, ext
@@ -119,7 +118,7 @@ def get_ext_from_content_type(content_type: str) -> str | None:
     return mimetypes.guess_extension(content_type) or CONTENT_TYPE_TO_EXTENSION.get(content_type)
 
 
-def get_name_and_ext_from_url(url: URL) -> tuple[str, str | None]:
+def get_name_and_ext_from_url(url: AbsoluteHttpURL) -> tuple[str, str | None]:
     if not has_valid_extension(url):
         return url.name, None
     try:

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers._kvs import KernelVideoSharingCrawler, Video
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
-from cyberdrop_dl.utils.utilities import get_og_properties
+from cyberdrop_dl.utils import open_graph
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -35,7 +35,7 @@ class CamwhoresTVCrawler(KernelVideoSharingCrawler):
 
     def get_video_info(self, soup: BeautifulSoup) -> Video:
         video = super().get_video_info(soup)
-        return video._replace(title=get_og_properties(soup).title)
+        return video._replace(title=open_graph.title(soup))
 
     def parse_url(self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *_) -> AbsoluteHttpURL:
         return super().parse_url(link_str, relative_to, trim=False)

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import contextmanager
-from dataclasses import field
 from functools import partialmethod
 from typing import TYPE_CHECKING
 
@@ -26,10 +25,8 @@ class LiveManager:
         self.ui_setting = self.manager.parsed_args.cli_only_args.ui
         self.fullscreen = f = self.manager.parsed_args.cli_only_args.fullscreen_ui
         self.refresh_rate = rate = self.manager.config_manager.global_settings_data.ui_options.refresh_rate
-        self.use_textual = False  # manager.parsed_args.cli_only_args.textual_ui and self.fullscreen
-        self.auto_refresh = a = not self.use_textual
-        self.live = Live(refresh_per_second=rate, console=console, transient=True, screen=f, auto_refresh=a)
-        self.current_layout: str = field(init=False)
+        self.live = Live(refresh_per_second=rate, console=console, transient=True, screen=f, auto_refresh=True)
+        self.current_layout: str
 
     @contextmanager
     def get_live(self, name: str, stop: bool = False) -> Generator[Live | None]:
@@ -57,7 +54,7 @@ class LiveManager:
             if new_layout != self.current_layout:
                 self.current_layout = new_layout
                 layout = self.get_layout(new_layout)
-                self.live.update(layout, refresh=not self.use_textual)  # type: ignore
+                self.live.update(layout, refresh=True)  # type: ignore[reportArgumentType]
             await asyncio.sleep(0.5)
 
     @contextmanager
@@ -67,7 +64,7 @@ class LiveManager:
         try:
             self.live.start()
             if not (10 <= constants.CONSOLE_LEVEL <= 50) and layout:
-                self.live.update(layout, refresh=not self.use_textual)
+                self.live.update(layout, refresh=True)
                 orientation_task = asyncio.create_task(self.watch_orientation(stop_event))
             yield self.live
         finally:

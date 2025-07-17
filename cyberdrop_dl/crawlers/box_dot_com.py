@@ -82,8 +82,7 @@ class BoxDotComCrawler(Crawler):
             raise ScrapeError(410)
 
         js_text: str = css.select_one_get_text(soup, JS_SELECTOR)
-        _, _, data = js_text.removesuffix(";").partition("=")
-
+        data = js_text.removesuffix(";").partition("=")[-1]
         if not data:
             raise ScrapeError(422)
 

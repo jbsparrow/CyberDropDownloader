@@ -6,19 +6,15 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
 API_ENTRYPOINT = AbsoluteHttpURL("https://pmvhaven.com/api/v2/")
 PRIMARY_URL = AbsoluteHttpURL("https://pmvhaven.com")
 CATEGORIES = "Hmv", "Pmv", "Hypno", "Tiktok", "KoreanBJ"
@@ -162,17 +158,6 @@ class PMVHavenCrawler(Crawler):
         video_info: dict = videos[0] if videos else {}
         await self.process_video_info(scrape_item, video_info)
 
-    @error_handling_wrapper
-    async def video_from_soup(self, scrape_item: ScrapeItem) -> None:
-        if await self.check_complete_from_referer(scrape_item):
-            return
-
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
-        video_info = get_video_info_from_js(soup)
-        await self.process_video_info(scrape_item, video_info)
-
     async def _generic_search_pager(self, scrape_item: ScrapeItem, add_data: dict, name: str, type: str = "") -> None:
         title: str = ""
         api_url = API_ENTRYPOINT / "search"
@@ -207,7 +192,7 @@ class PMVHavenCrawler(Crawler):
 
     async def iter_video_info(self, scrape_item: ScrapeItem, videos: list[dict], new_title_part: str = "") -> None:
         for video in videos:
-            link = create_canonical_video_url(video)
+            link = _canonical_url(video)
             new_scrape_item = scrape_item.create_child(link, new_title_part=new_title_part)
             await self.process_video_info(new_scrape_item, video)
             scrape_item.add_children()
@@ -237,27 +222,8 @@ class PMVHavenCrawler(Crawler):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def create_canonical_video_url(video_info: dict[str, str]) -> AbsoluteHttpURL:
+def _canonical_url(video_info: dict[str, str]) -> AbsoluteHttpURL:
     title = video_info.get("title") or video_info["uploadTitle"]
     video_id = video_info["_id"]
     path = f"{title}_{video_id}"
     return PRIMARY_URL / "video" / path
-
-
-def get_video_info_from_js(soup: BeautifulSoup) -> dict:
-    info_js_script = soup.select_one(JS_VIDEO_INFO_SELECTOR)
-    js_text = info_js_script.text if info_js_script else None
-    if not js_text:
-        raise ScrapeError(422)
-    json_data: list = javascript.parse_json_to_dict(js_text, use_regex=False)
-    info_dict = {"data": json_data}
-    javascript.clean_dict(info_dict)
-    indices: dict[str, int] = {}
-    video_properties = {}
-    for elem in info_dict["data"]:
-        if isinstance(elem, dict) and all(p in elem for p in ("uploadTitle", "isoDate")):
-            indices = elem
-            break
-    for name, index in indices.items():
-        video_properties[name] = info_dict["data"][index]
-    return video_properties

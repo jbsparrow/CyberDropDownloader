@@ -4,7 +4,7 @@ import asyncio
 import json
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 
 from pydantic import BaseModel
 
@@ -21,7 +21,6 @@ from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
-from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils import ffmpeg
 from cyberdrop_dl.utils.args import ParsedArgs, parse_args
 from cyberdrop_dl.utils.logger import QueuedLogger, log
@@ -29,7 +28,6 @@ from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 from cyberdrop_dl.utils.utilities import close_if_defined, get_system_information
 
 if TYPE_CHECKING:
-    import queue
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
@@ -57,8 +55,6 @@ class Manager:
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
-        self.textual_log_queue: queue.Queue = field(init=False)
-        self._textual_ui: TextualUI = field(init=False)
 
         self._loaded_args_config: bool = False
         self._made_portable: bool = False
@@ -117,19 +113,6 @@ class Manager:
         if self.config_manager.loaded_config.casefold() == "all" or self.parsed_args.cli_only_args.multiconfig:
             self.multiconfig = True
         self.set_constants()
-
-    def notify(
-        self,
-        msg: str,
-        title: str = "",
-        severity: Literal["information", "warning", "error"] = "information",
-        timeout: float | None = None,
-    ):
-        """Wrapper around textual.app.notify
-
-        Does nothing if CDL is not using textual (`--no-textual-ui`)"""
-        if isinstance(self._textual_ui, TextualUI):
-            self._textual_ui.notify(msg, title=title, severity=severity, timeout=timeout)
 
     def adjust_for_simpcity(self) -> None:
         """Adjusts settings for SimpCity update."""
