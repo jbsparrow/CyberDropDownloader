@@ -8,6 +8,12 @@ from cyberdrop_dl.exceptions import InvalidURLError
 from cyberdrop_dl.utils import m3u8
 
 
+def _variant_parser(content: str, url: AbsoluteHttpURL | str | None = None) -> m3u8.VariantM3U8Parser:
+    url = url or "https://example.com/4b4ef277/playlist.m3u8"
+    m3u8_obj = m3u8.M3U8(content, AbsoluteHttpURL(url))
+    return m3u8.VariantM3U8Parser(m3u8_obj)
+
+
 @pytest.fixture
 def m3u8_content() -> LiteralString:
     return """
@@ -131,9 +137,7 @@ def test_m3u8(m3u8_content: str) -> None:
 
 
 def test_m3u8_master(m3u8_master_content: str) -> None:
-    m3u8_obj = m3u8.M3U8(m3u8_master_content, AbsoluteHttpURL("https://example.com/4b4ef277/playlist.m3u8"))
-    assert m3u8_obj.is_variant
-    variant = m3u8.VariantM3U8Parser(m3u8_obj)
+    variant = _variant_parser(m3u8_master_content)
     assert len(variant.groups) == 3
     best = variant.get_best_group()
     assert best.urls.video == AbsoluteHttpURL("https://example.com/4b4ef277/high/stream.m3u8")
@@ -144,8 +148,7 @@ def test_m3u8_master(m3u8_master_content: str) -> None:
 
 
 def test_m3u8_master_exclude_codec(m3u8_master_content: str) -> None:
-    m3u8_obj = m3u8.M3U8(m3u8_master_content, AbsoluteHttpURL("https://example.com/4b4ef277/playlist.m3u8"))
-    variant = m3u8.VariantM3U8Parser(m3u8_obj)
+    variant = _variant_parser(m3u8_master_content)
     assert variant.get_best_group(exclude="hevc")
     with pytest.raises(StopIteration):
         variant.get_best_group(exclude="avc1")
@@ -156,9 +159,7 @@ def test_m3u8_master_exclude_codec(m3u8_master_content: str) -> None:
 
 
 def test_m3u8_master2(m3u8_master_content2: str) -> None:
-    m3u8_obj = m3u8.M3U8(m3u8_master_content2, AbsoluteHttpURL("https://example.com/4b4ef277/playlist.m3u8"))
-    assert m3u8_obj.is_variant
-    variant = m3u8.VariantM3U8Parser(m3u8_obj)
+    variant = _variant_parser(m3u8_master_content2)
     assert len(variant.groups) == 10
     best = variant.get_best_group()
     assert best.urls.video == AbsoluteHttpURL("https://example.com/4b4ef277/vp9_1080p/video.m3u8")
@@ -169,8 +170,7 @@ def test_m3u8_master2(m3u8_master_content2: str) -> None:
 
 
 def test_m3u8_master2_exclude_codec(m3u8_master_content2: str) -> None:
-    m3u8_obj = m3u8.M3U8(m3u8_master_content2, AbsoluteHttpURL("https://example.com/4b4ef277/playlist.m3u8"))
-    variant = m3u8.VariantM3U8Parser(m3u8_obj)
+    variant = _variant_parser(m3u8_master_content2)
     best = variant.get_best_group(exclude="vp9")
     assert best.codecs.video == "avc1"
     assert best.urls.video == AbsoluteHttpURL("https://example.com/4b4ef277/1080p/video.m3u8")
@@ -185,8 +185,7 @@ def test_m3u8_master2_exclude_codec(m3u8_master_content2: str) -> None:
 
 
 def test_m3u8_master2_audio(m3u8_master_content2: str) -> None:
-    m3u8_obj = m3u8.M3U8(m3u8_master_content2, AbsoluteHttpURL("https://example.com/4b4ef277/playlist.m3u8"))
-    variant = m3u8.VariantM3U8Parser(m3u8_obj)
+    variant = _variant_parser(m3u8_master_content2)
     best = variant.get_best_group()
     assert best.media.filter(group_id="audio")
     assert not best.media.filter(group_id="AUDIO")
@@ -195,3 +194,20 @@ def test_m3u8_master2_audio(m3u8_master_content2: str) -> None:
     assert audios.get_default()
     assert best.media.filter(language="en")
     assert not best.media.filter(language="jpn")
+
+
+def test_m3u8_master_w_no_codecs_should_not_raise_an_error() -> None:
+    content = """
+    #EXTM3U
+    #EXT-X-VERSION:3
+
+    #EXT-X-STREAM-INF:BANDWIDTH=1500000,RESOLUTION=640x360
+    low/stream.m3u8
+
+    #EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
+    high/stream.m3u8
+    """
+    groups = _variant_parser(content).groups
+    assert len(groups) == 2
+    for group in groups:
+        assert group.codecs == (None, None)

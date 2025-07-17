@@ -12,7 +12,7 @@ dependencies = [
     "asyncpraw >=7.8.1",
     "beautifulsoup4 >=4.13.4",
     "browser-cookie3 >=0.20.1",
-    "certifi >=2025.6.15",
+    "certifi >=2025.7.14",
     "curl-cffi >=0.10,<0.11; implementation_name=='cpython'",
     "dateparser >=1.2.2",
     "get-video-properties >=0.1.1",
@@ -21,7 +21,7 @@ dependencies = [
     "mediafire >=0.6.1",
     "myjdapi >=1.1.10",
     "packaging >=25.0",
-    "pillow >=10.0.0",
+    "pillow >=11.3.0",
     "platformdirs >=4.3.6",
     "psutil >=7.0.0",
     "pydantic >=2.11.7",
@@ -36,7 +36,7 @@ description = "Bulk downloader for multiple file hosts"
 license = {text = "GPL-3.0-only"}
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "7.1.0"
+version = "7.2.0"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"

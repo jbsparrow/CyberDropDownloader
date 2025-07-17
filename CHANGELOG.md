@@ -22,7 +22,31 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [7.1.0] - 2025-07-12
+## [7.2.0] - 2025-07-17
+
+### Added
+
+- Everia.club support
+- Mega.nz support
+- Handle direct links URLs (redgifs)
+- New `file_date` field for sorting options
+
+### Changed
+
+- Use canonical URL to skip duplicates faster (redgifs)
+- Try to resolve confirmation links without a request (xenforo)
+- Download m3u8 playlist without codec information
+
+### Fixed
+
+- Laggy playback and frozen start on hls downloads
+- Downloads from password protected albums (jpg5, imagepond)
+- Multiple nested attachments folders being created (forums)
+- `file_date_iso` and `file_date_us` not being parsed as valid format fields for sorting
+- Mangled fields names in errors messages from formating options
+- Missav HLS downloads
+
+## [7.1.0] - 2025-07-14
 
 ### Added
 
