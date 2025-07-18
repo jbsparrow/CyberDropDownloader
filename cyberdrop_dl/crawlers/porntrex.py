@@ -29,7 +29,9 @@ class Selectors:
     VIDEO_JS = "div.video-holder script:contains('var flashvars')"
     NEXT_PAGE = "div#list_videos_videos_pagination li.next"
     USER_NAME = "div.user-name"
-    VIDEOS = "div.video-list a.thumb"
+    VIDEOS_2 = "div#list_videos_common_videos_list_items a"
+    VIDEOS_1 = "div.video-list a.thumb"
+    VIDEOS = f"{VIDEOS_1}, {VIDEOS_2}"
     LAST_PAGE = "div.pagination-holder li.page"
     TITLE = "div.headline > h1"
     MODEL_NAME = "div.name > h1"
@@ -187,7 +189,7 @@ class PorntrexCrawler(Crawler):
             mode="async", function="get_block", block_id=block_id, is_private=0, q=search_query, sort_by=sort_by
         )
         if kwargs:
-            page_url.update_query(kwargs)
+            page_url = page_url.update_query(kwargs)
 
         if "members" in scrape_item.url.parts:
             from_param_name = "from_uploaded_videos"
