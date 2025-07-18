@@ -229,6 +229,8 @@ class MessageBoardCrawler(Crawler, is_abc=True):
 
     async def fetch_thread(self, scrape_item: ScrapeItem) -> None:
         thread_part_index = len(self.PRIMARY_URL.parts)
+        if not self.PRIMARY_URL.name:
+            thread_part_index -= 1
         match scrape_item.url.parts[thread_part_index:]:
             case [thread_part, thread_name_and_id, *_] if thread_part in self.THREAD_PART_NAMES:
                 self.check_thread_recursion(scrape_item)
