@@ -88,15 +88,18 @@ class RealDebridCrawler(Crawler):
         return bool(match) or "real-debrid" in url.host
 
     async def async_startup(self) -> None:
-        await self._get_regexes()
+        await self._get_regexes(_API_ENTRYPOINT)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
+        if "real-debrid" in scrape_item.url.host and not _is_unrestricted_download(scrape_item.url):
+            raise ValueError
         scrape_item.url = _reconstruct_original_url(scrape_item.url)
         if self._is_supported_folder(scrape_item.url):
             return await self.folder(scrape_item)
         await self.file(scrape_item)
 
-    async def _get_regexes(self) -> None:
+    @error_handling_wrapper
+    async def _get_regexes(self, *_) -> None:
         if self.disabled:
             return
         try:
@@ -108,8 +111,9 @@ class RealDebridCrawler(Crawler):
             self._supported_url_regex = re.compile("|".join(file_regex + folder_regex))
             self._supported_folder_url_regex = re.compile("|".join(folder_regex))
         except Exception as e:
-            log(f"Failed RealDebrid setup: {e!r}", 40)
+            log(f"Failed RealDebrid setup: {e}", 40)
             self.disabled = True
+            raise
 
     def _is_supported_folder(self, url: AbsoluteHttpURL) -> bool:
         match = self._supported_folder_url_regex.search(str(url))
@@ -133,7 +137,7 @@ class RealDebridCrawler(Crawler):
         if await self.check_complete_from_referer(original_url):
             return
 
-        if _is_self_hosted_download(original_url):
+        if _is_unrestricted_download(original_url):
             database_url = debrid_url = original_url
         else:
             host = original_url.host
@@ -184,8 +188,8 @@ def _guess_folder_by_query(url: AbsoluteHttpURL) -> str | None:
             return folder
 
 
-def _is_self_hosted_download(url: AbsoluteHttpURL) -> bool:
-    return url.host in ("download.real-debrid.com", "my.real-debrid.com")
+def _is_unrestricted_download(url: AbsoluteHttpURL) -> bool:
+    return any(p in url.host for p in ("download.", "my.")) and "real-debrid" in url.host
 
 
 def _reconstruct_original_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
@@ -194,7 +198,7 @@ def _reconstruct_original_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         len(url.parts) < 3
         or url.host != PRIMARY_URL.host
         or url.parts[1].count(".") == 0
-        or _is_self_hosted_download(url)
+        or _is_unrestricted_download(url)
     ):
         parsed_url = url
 
@@ -203,7 +207,7 @@ def _reconstruct_original_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         key = "parts"
         original_host = url.parts[1]
         for part in url.parts[2:]:
-            if part in ("query", "frag"):
+            if part in _DB_FLATTEN_URL_KEYS[1:]:
                 key = part
                 continue
             parts_dict[key] += (part,)
@@ -215,7 +219,7 @@ def _reconstruct_original_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
             parsed_url = parsed_url.with_query(query)
         if frag := next(iter(parts_dict["frag"]), None):
             parsed_url = parsed_url.with_fragment(frag)
-    log(f"Input URL: {url}. Parsed URL: {parsed_url}")
+    log(f"Real Debrid:\n Input URL: {url}\n Parsed URL: {parsed_url}")
     return parsed_url
 
 
