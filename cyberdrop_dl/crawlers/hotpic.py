@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, with_suffix_encoded
 
@@ -65,10 +64,7 @@ class HotPicCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        file = soup.select_one(_SELECTORS.IMAGE_OR_VIDEO)
-        if not file:
-            raise ScrapeError(422)
-        link_str: str = css.get_attr(file, "src")
+        link_str = css.select_one_get_attr(soup, _SELECTORS.IMAGE_OR_VIDEO, "src")
         link = self.parse_url(link_str)
         await self.handle_direct_link(scrape_item, link)
 

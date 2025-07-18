@@ -79,7 +79,6 @@ class CommandLineOnlyArgs(BaseModel):
     download_dropbox_folders_as_zip: bool = Field(False, description="download Dropbox folder without api key as zip")
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     max_items_retry: int = Field(0, description="max number of links to retry")
-    no_textual_ui: bool = Field(False, description="Disable textual UI (TUI with mouse support)")
     portrait: bool = Field(is_terminal_in_portrait(), description="show UI in a portrait layout")
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
     retry_all: bool = Field(False, description="retry all downloads")

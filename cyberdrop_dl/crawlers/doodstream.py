@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -92,17 +91,11 @@ class DoodStreamCrawler(Crawler):
 
 
 def get_md5_path(soup: BeautifulSoup) -> str:
-    js_text: str = js_info.text if (js_info := soup.select_one(_SELECTORS.MD5_JS)) else ""
-    if not js_info:
-        raise ScrapeError(422)
-
+    js_text = css.select_one_get_text(soup, _SELECTORS.MD5_JS)
     return get_text_between(js_text, "/pass_md5/", "'")
 
 
 def get_file_id(soup: BeautifulSoup) -> str:
-    js_text: str = js_info.text if (js_info := soup.select_one(_SELECTORS.FILE_ID_JS)) else ""
-    if not js_info:
-        raise ScrapeError(422)
-
+    js_text = css.select_one_get_text(soup, _SELECTORS.FILE_ID_JS)
     _, file_id, _ = js_text.split("'file_id'")[-1].split("'", 2)
     return file_id

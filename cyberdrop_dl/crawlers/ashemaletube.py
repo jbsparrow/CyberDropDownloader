@@ -178,11 +178,8 @@ class AShemaleTubeCrawler(Crawler):
 
         if soup.select_one(_SELECTORS.LOGIN_REQUIRED):
             raise ScrapeError(401)
-        player = soup.select_one(_SELECTORS.JS_PLAYER)
-        if not player:
-            raise ScrapeError(422)
-
-        best_format = parse_player_info(player.text)
+        js_text = css.select_one_get_text(soup, _SELECTORS.JS_PLAYER)
+        best_format = parse_player_info(js_text)
         m3u8 = debrid_link = None
         if best_format.hls:
             m3u8 = await self.get_m3u8_from_index_url(best_format.url)

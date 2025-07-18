@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -151,7 +150,7 @@ def get_window_initials_json(soup: BeautifulSoup) -> dict[str, dict]:
 class Format(NamedTuple):
     height: int
     resolution: str
-    url: URL
+    url: AbsoluteHttpURL
 
 
 class XHamsterItem(AliasModel):

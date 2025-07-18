@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Generator
 
     from asyncpraw.models import Redditor, Submission, Subreddit
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -131,8 +130,7 @@ class RedditCrawler(Crawler):
         await self.process_item(scrape_item, submission, link)
 
     @error_handling_wrapper
-    async def process_item(self, scrape_item: ScrapeItem, submission: Submission, link: URL) -> None:
-        assert link.host
+    async def process_item(self, scrape_item: ScrapeItem, submission: Submission, link: AbsoluteHttpURL) -> None:
         if "redd.it" in link.host:
             return await self.media(scrape_item, link)
 
@@ -165,7 +163,7 @@ class RedditCrawler(Crawler):
             scrape_item.add_children()
 
     @error_handling_wrapper
-    async def media(self, scrape_item: ScrapeItem, link: URL | None = None) -> None:
+    async def media(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL | None = None) -> None:
         """Handles media links."""
         url = link or scrape_item.url
         try:

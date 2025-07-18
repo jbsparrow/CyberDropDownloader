@@ -119,16 +119,6 @@ Download TikTok audios from posts and save them as separate files
 
 Max number of links to retry. Using `0` means no limit
 
-<!-- This needs textual
-### `no-textual-ui`
-
-| Type       | Default | Action       |
-| ---------- | ------- | ------------ |
-| `BoolFlag` | `False` | `store_true` |
-
-Disable CDL's textual UI (TUI with buttons and mouse support)
--->
-
 ### `portrait`
 
 | Type       | Default | Action       |
@@ -209,7 +199,6 @@ CLI-only options:
   --download-dropbox-folders-as-zip                                             download Dropbox folder without api key as zip
   --download-tiktok-audios                                                      download TikTok audios
   --max-items-retry MAX_ITEMS_RETRY                                             max number of links to retry
-  --no-textual-ui                                                               Disable textual UI (TUI with mouse support)
   --portrait                                                                    show UI in a portrait layout
   --print-stats                                                                 Show stats report at the end of a run
   --retry-all                                                                   retry all downloads
@@ -324,7 +313,6 @@ general:
   --proxy PROXY
   --required-free-space REQUIRED_FREE_SPACE
   --user-agent USER_AGENT
-  --pause-on-insufficient-space, --no-pause-on-insufficient-space
 
 rate_limiting_options:
   --connection-timeout CONNECTION_TIMEOUT

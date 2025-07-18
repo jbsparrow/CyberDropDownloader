@@ -75,11 +75,6 @@ class ScrapeMapper:
             register_crawler(self.existing_crawlers, crawler(self.manager), from_user=True)
         disable_crawlers_by_config(self.existing_crawlers, self.global_settings.general.disable_crawlers)
 
-    def start_jdownloader(self) -> None:
-        """Starts JDownloader."""
-        if self.jdownloader.enabled and isinstance(self.jdownloader.jdownloader_agent, Field):
-            self.jdownloader.jdownloader_setup()
-
     async def start_real_debrid(self) -> None:
         """Starts RealDebrid."""
         if isinstance(self.manager.real_debrid_manager.api, Field):
@@ -112,7 +107,7 @@ class ScrapeMapper:
         """Starts the orchestra."""
         self.start_scrapers()
         await self.manager.db_manager.history_table.update_previously_unsupported(self.existing_crawlers)
-        self.start_jdownloader()
+        self.jdownloader.connect()
         await self.start_real_debrid()
         self.no_crawler_downloader.startup()
         async for item in self.get_input_items():

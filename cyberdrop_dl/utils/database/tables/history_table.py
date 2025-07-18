@@ -51,7 +51,6 @@ class HistoryTable:
         await self.db_conn.commit()
         await self.fix_primary_keys()
         await self.add_columns_media()
-        await self.fix_bunkr_v4_entries()
         await self.run_updates()
 
     async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None:
@@ -310,24 +309,6 @@ class HistoryTable:
             log(f"Error getting bunkr failed via hash: {e}", 40, exc_info=e)
             return []
 
-    async def fix_bunkr_v4_entries(self) -> None:
-        """Fixes bunkr v4 entries in the database."""
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT * from media WHERE domain = 'bunkr' and completed = 1""")
-        bunkr_entries = await result.fetchall()
-
-        for entry in bunkr_entries:
-            entry_list = list(entry)
-            entry_list[0] = "bunkrr"
-            await self.db_conn.execute(
-                """INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)""",
-                entry_list,
-            )
-        await self.db_conn.commit()
-
-        await self.db_conn.execute("""DELETE FROM media WHERE domain = 'bunkr'""")
-        await self.db_conn.commit()
-
     async def fix_primary_keys(self) -> None:
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""pragma table_info(media)""")
@@ -353,22 +334,13 @@ class HistoryTable:
         result = await result.fetchall()
         current_cols = [col[1] for col in result]
 
-        if "album_id" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN album_id TEXT""")
-            await self.db_conn.commit()
+        async def add_column(name: str, type_: str) -> None:
+            if name not in current_cols:
+                await self.db_conn.execute(f"ALTER TABLE media ADD COLUMN {name} {type_}")
+                await self.db_conn.commit()
 
-        if "created_at" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN created_at TIMESTAMP""")
-            await self.db_conn.commit()
-
-        if "completed_at" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN completed_at TIMESTAMP""")
-            await self.db_conn.commit()
-
-        if "file_size" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN file_size INT""")
-            await self.db_conn.commit()
-
-        if "duration" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN duration FLOAT""")
-            await self.db_conn.commit()
+        await add_column("album_id", "TEXT")
+        await add_column("created_at", "TIMESTAMP")
+        await add_column("completed_at", "TIMESTAMP")
+        await add_column("file_size", "INT")
+        await add_column("duration", "FLOAT")

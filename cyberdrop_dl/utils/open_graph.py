@@ -1,56 +1,61 @@
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING
+
+from cyberdrop_dl.exceptions import ScrapeError
 
 if TYPE_CHECKING:
     import bs4
 
+_required_attrs = ("title", "type", "image", "url", "description")
 
-@dataclasses.dataclass(frozen=True, slots=True)
-class OpenGraph:
-    """Open Graph properties.  Each attribute corresponds to an OG property."""
 
-    required_attrs = ("title", "type", "image", "url", "description")
+class OpenGraph(dict[str, str | None]):
+    """Open Graph properties. Each attribute corresponds to an OG property."""
 
-    audio: str | None = None
-    description: str | None = None
-    determiner: str | None = None
-    image: str | None = None
-    image: str | None = None
-    locale: str | None = None
-    published_time: str | None = None
-    site_name: str | None = None
-    title: str | None = None
-    type: str | None = None
-    url: str | None = None
-    video: str | None = None
+    title: str
+    type: str
+    image: str
+    url: str
+    description: str
+
+    def __getattr__(self, name) -> str | None:
+        return self.get(name, None)
 
     def is_valid(self) -> bool:
-        return all(getattr(self, attr, False) for attr in self.required_attrs)
-
-
-_og_fields = dataclasses.fields(OpenGraph)
+        return all(self.get(attr) for attr in _required_attrs)
 
 
 def parse(soup: bs4.BeautifulSoup) -> OpenGraph:
     """Extracts Open Graph properties (og properties) from soup."""
-    props: dict[str, str | None] = {}
+    og_props = OpenGraph()
     for meta in soup.select('meta[property^="og:"][content]'):
-        property_name = meta["property"].replace("og:", "")  # type: ignore
-        if property_name in _og_fields:
-            props[property_name] = meta["content"] or None  # type: ignore
+        name = _value(meta, "property").replace("og:", "").replace(":", "_")
+        if value := _value(meta):
+            og_props[name] = value
 
-    if not props.get("title") and (title := soup.select_one("title, h1")):
-        props["title"] = title.get_text(strip=True) or None
+    if not og_props.get("title") and (title := soup.select_one("title, h1")):
+        og_props["title"] = title.get_text(strip=True)
 
-    return OpenGraph(**props)
+    return og_props
 
 
 def get(name: str, /, soup: bs4.BeautifulSoup) -> str | None:
     if meta := soup.select_one(f'meta[property^="og:{name}"][content]'):
-        return meta["content"] or None  # type: ignore
+        return _value(meta)
 
 
 def get_title(soup: bs4.BeautifulSoup) -> str | None:
     return get("title", soup)
+
+
+def title(soup: bs4.BeautifulSoup) -> str:
+    if title := get_title(soup):
+        return title
+    raise ScrapeError(422, "Page have no title [og properties]")
+
+
+def _value(meta: bs4.Tag, name: str = "content") -> str:
+    value = meta[name]
+    assert isinstance(value, str)
+    return value.strip()

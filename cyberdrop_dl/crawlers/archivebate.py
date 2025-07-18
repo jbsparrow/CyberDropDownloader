@@ -7,8 +7,8 @@ from aiolimiter import AsyncLimiter
 from cyberdrop_dl.crawlers.mixdrop import MixDropCrawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between
+from cyberdrop_dl.utils import css, open_graph
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -54,10 +54,6 @@ class ArchiveBateCrawler(MixDropCrawler):
         # Not supported, video entries are dynamically generated with javascript
         # They have an API to request them but it also returns javascript
         raise ValueError
-        scrape_item.setup_as_profile("")
-        async for soup in self.web_pager(scrape_item.url):
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.PROFILE_VIDEOS):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -78,16 +74,15 @@ class ArchiveBateCrawler(MixDropCrawler):
         if "This video has been deleted" in soup.text:
             raise ScrapeError(410)
 
-        og_props = get_og_properties(soup)
-        date_str: str = get_text_between(og_props.description, "show on", " - ").strip()
-        user_name: str = css.select_one_get_text(soup, _SELECTORS.USER_NAME)
-        site_name: str = css.select_one_get_text(soup, _SELECTORS.SITE_NAME)
-        video_src: str = css.select_one_get_attr(soup, _SELECTORS.VIDEO, "src")
+        description = open_graph.get("description", soup)
+        assert description
+        date_str = get_text_between(description, "show on", " - ").strip()
+        user_name = css.select_one_get_text(soup, _SELECTORS.USER_NAME)
+        site_name = css.select_one_get_text(soup, _SELECTORS.SITE_NAME)
+        video_src = css.select_one_get_attr(soup, _SELECTORS.VIDEO, "src")
         title = self.create_title(f"{user_name} [{site_name}]")
         scrape_item.setup_as_profile(title)
         scrape_item.possible_datetime = self.parse_date(date_str)
-        show_title = f"Show on {date_str}"
-
         mixdrop_url = self.get_embed_url(self.parse_url(video_src))  # Override domain
 
         if await self.check_complete_from_referer(mixdrop_url):
@@ -98,6 +93,6 @@ class ArchiveBateCrawler(MixDropCrawler):
 
         link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename = self.create_custom_filename(show_title, ext)
+        custom_filename = self.create_custom_filename(f"Show on {date_str}", ext)
         scrape_item.url = mixdrop_url
         await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)

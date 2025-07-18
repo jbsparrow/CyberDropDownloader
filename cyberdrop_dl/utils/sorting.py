@@ -83,7 +83,7 @@ class Sorter:
 
     async def run(self) -> None:
         """Sorts the files in the download directory into their respective folders."""
-        if not asyncio.to_thread(self.download_folder.is_dir):
+        if not await asyncio.to_thread(self.download_folder.is_dir):
             log_with_color(f"Download directory ({self.download_folder}) does not exist", "red", 40)
             return
 

@@ -205,6 +205,7 @@ class Crawler(ABC):
 
             self.scraped_items.append(url.path_qs)
             async with self._fetch_context(scrape_item):
+                self.pre_check_scrape_item(scrape_item)
                 await self.fetch(scrape_item)
 
     def pre_check_scrape_item(self, scrape_item: ScrapeItem) -> None:
@@ -223,7 +224,6 @@ class Crawler(ABC):
     async def _fetch_context(self, scrape_item: ScrapeItem) -> AsyncGenerator[TaskID]:
         with self.new_task_id(scrape_item.url) as task_id:
             try:
-                self.pre_check_scrape_item(scrape_item)
                 yield task_id
             except ValueError:
                 await self.raise_e(scrape_item, ScrapeError("Unknown URL path"))
@@ -641,9 +641,14 @@ class Crawler(ABC):
 
         if _placeholder_config.include_resolution and resolution:
             if isinstance(resolution, str):
-                if not resolution.removesuffix("p").isdigit():
-                    assert resolution in VALID_RESOLUTION_NAMES, f"Invalid: {resolution = }"
-                extra_info.append(resolution)
+                if digits := resolution.casefold().removesuffix("p").isdigit():
+                    extra_info.append(f"{digits}p")
+                else:
+                    resolution_ = next(
+                        (p for p in VALID_RESOLUTION_NAMES if resolution.casefold() == p.casefold()), None
+                    )
+                    assert resolution_, f"Invalid: {resolution = }"
+                    extra_info.append(resolution_)
             else:
                 extra_info.append(f"{resolution}p")
 

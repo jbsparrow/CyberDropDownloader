@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties
+from cyberdrop_dl.utils import css, open_graph
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
@@ -38,13 +38,12 @@ class MissAVCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
 
-        og_props = get_og_properties(soup)
-        title = og_props.title.strip()
+        title, date_str = open_graph.title(soup), open_graph.get("video_release_date", soup)
         if dvd_code_tag := soup.select_one(DVD_CODE_SELECTOR):
             title = fix_title(title, dvd_code_tag)
 
-        if date_str := og_props.get("video_release_date"):
-            scrape_item.possible_datetime = self.parse_date(date_str, "%Y-%m-%d")
+        if date_str:
+            scrape_item.possible_datetime = self.parse_iso_date(date_str)
         elif date_tag := soup.select_one(DATE_SELECTOR):
             scrape_item.possible_datetime = self.parse_date(css.get_attr(date_tag, "datetime"))
         else:

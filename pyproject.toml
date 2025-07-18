@@ -29,7 +29,6 @@ dependencies = [
     "pyyaml >=6.0.2",
     "rich >=14.0.0",
     "send2trash >=1.8.3",
-    "textual >=3.5.0",
     "truststore >=0.10.1",
     "xxhash >=3.5.0"
 ]
@@ -37,7 +36,7 @@ description = "Bulk downloader for multiple file hosts"
 license = {text = "GPL-3.0-only"}
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "7.2.0"
+version = "7.2.1"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"

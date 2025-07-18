@@ -37,7 +37,6 @@ from cyberdrop_dl.exceptions import (
     create_error_msg,
     get_origin,
 )
-from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
@@ -70,24 +69,6 @@ class Dataclass(Protocol):
     __dataclass_fields__: ClassVar[dict]
 
 
-class OGProperties(dict[str, str]):
-    """Open Graph properties.  Each attribute corresponds to an OG property."""
-
-    title: str
-    description: str
-    image: str
-    url: str
-    type: str
-    site_name: str
-    locale: str
-    determiner: str
-    audio: str
-    video: str
-
-    def __getattr__(self, name) -> str | None:
-        return self.get(name, None)
-
-
 def error_handling_wrapper(
     func: Callable[Concatenate[CrawerOrDownloader, Origin, P], R | Coroutine[None, None, R]],
 ) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], Coroutine[None, None, R | None]]:
@@ -109,8 +90,9 @@ def error_handling_wrapper(
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
             link_to_show: URL | str = getattr(e, "url", None) or link_to_show
-        except NotImplementedError:
+        except NotImplementedError as e:
             error_log_msg = ErrorLogMessage("NotImplemented")
+            exc_info = e
         except TimeoutError:
             error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
@@ -531,17 +513,6 @@ async def get_soup_no_error(response: CurlResponse | AnyResponse) -> BeautifulSo
         else:
             content = response.content  # curl response
         return BeautifulSoup(content, "html.parser")
-
-
-def get_og_properties(soup: BeautifulSoup) -> OGProperties:
-    """Extracts Open Graph properties (og properties) from soup."""
-    og_properties = OGProperties()
-
-    for meta in soup.select('meta[property^="og:"]'):
-        property_name = css.get_attr(meta, "property").replace("og:", "").replace(":", "_")
-        og_properties[property_name] = css.get_attr(meta, "content")
-
-    return og_properties
 
 
 def get_size_or_none(path: Path) -> int | None:
