@@ -34,8 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tag pagination (camwhores)
 - `Generator didn't yield` error when CDL finds an invalid URL
 
-### Security
-
 ## [7.2.0] - 2025-07-17
 
 ### Added
