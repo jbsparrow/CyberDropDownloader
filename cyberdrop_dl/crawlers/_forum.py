@@ -504,7 +504,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
             max_children_error = e
 
         if seen:
-            self.log(f"post #{post.id} {stats = }")
+            self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} {stats = }")
         if duplicates:
             msg = f"Found duplicate links in post {scrape_item.url}. Selectors are too generic: {duplicates}"
             self.log(msg, bug=True)
