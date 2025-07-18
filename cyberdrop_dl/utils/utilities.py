@@ -90,8 +90,9 @@ def error_handling_wrapper(
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
             link_to_show: URL | str = getattr(e, "url", None) or link_to_show
-        except NotImplementedError:
+        except NotImplementedError as e:
             error_log_msg = ErrorLogMessage("NotImplemented")
+            exc_info = e
         except TimeoutError:
             error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
