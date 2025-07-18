@@ -59,20 +59,6 @@ This is the maximum number of characters filename should have. CDL will truncate
 
 This is the maximum number of characters a folder should have. CDL will truncate folders longer that this.
 
-<!-- This needs Textual
-## `pause_on_insufficient_space`
-
-| Type   | Default |
-| ------ | ------- |
-| `bool` | `false` |
-
-Setting this to `true` will make CDL pause if there not enough free space available.
-
-{% hint style="info" %}
-CDL will only pause once. After the user resumes, every `InsufficientFreeSpaceError` will be propagated
-{% endhint %}
--->
-
 ## `proxy`
 
 | Type                | Default |

@@ -222,10 +222,9 @@ def log(
 ) -> None:
     """Simple logging function."""
     msg = prefix + process_log_msg(message)
-    logger.log(level, msg, **kwargs)
     log_debug(msg, level, **kwargs)
     if bug:
-        msg = msg.rstrip() + f". Please file a bug report at {NEW_ISSUE_URL}"
+        msg = msg.rstrip() + f". Please open a bug report at {NEW_ISSUE_URL}"
     logger.log(level, msg, **kwargs)
 
 
