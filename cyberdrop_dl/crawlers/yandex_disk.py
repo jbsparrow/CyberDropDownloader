@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 from dataclasses import asdict, dataclass, fields
 from functools import cached_property
@@ -7,12 +8,12 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator, Generator
 
     from bs4 import BeautifulSoup
 
@@ -24,13 +25,29 @@ JS_SELECTOR = "script#store-prefetch"
 DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://disk.yandex.com.tr/public/api/download-url")
 PRIMARY_URL = AbsoluteHttpURL("https://disk.yandex.com.tr/")
 KEYS_TO_KEEP = "currentResourceId", "resources", "environment"
+_DEFAULT_HEADERS = {
+    "Accept": "*/*",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "DNT": "1",
+    "Sec-GPC": "1",
+    "Connection": "keep-alive",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site: same-originPriority": "u=0",
+    "Pragma": "no-cache",
+    "Cache-Control": "no-cache",
+}
 
 
 class YandexDiskCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "disk.yandex", "yadi.sk"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Folder": "/d/<folder_id>",
-        "Files": "/d/<folder_id>/<file_name>",
+        "File": (
+            "/d/<folder_id>/<file_name>",
+            "/i/<file_id>",
+        ),
         "**NOTE**": "Does NOT support nested folders",
     }
 
@@ -39,20 +56,43 @@ class YandexDiskCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if "d" in scrape_item.url.parts:
-            return await self.folder(scrape_item)
+        match scrape_item.url.parts[1:]:
+            case ["d", folder_id, file_name]:
+                return await self.folder(scrape_item, folder_id, file_name)
+            case ["d", folder_id]:
+                return await self.folder(scrape_item, folder_id)
+            case ["i", _]:
+                return await self.file(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
-    async def folder(self, scrape_item: ScrapeItem) -> None:
-        single_file_name = scrape_item.url.parts[3] if len(scrape_item.url.parts) > 3 else None
-        canonical_url = get_canonical_url(scrape_item.url)
+    async def file(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
+        async with self.request_context():
+            soup: BeautifulSoup = await self.client.get_soup(
+                self.DOMAIN, scrape_item.url, _DEFAULT_HEADERS, cache_disabled=True
+            )
+
+        item_info = get_item_info(soup)
+        assert is_single_item(item_info)
+        item_info["sk"] = item_info["environment"]["sk"]
+        item_info["file_url"] = scrape_item.url
+        file = YandexFile.from_json(item_info)
+        return await self._process_file(scrape_item, file)
+
+    @error_handling_wrapper
+    async def folder(self, scrape_item: ScrapeItem, folder_id: str, single_file_name: str | None = None) -> None:
+        canonical_url = PRIMARY_URL / "d" / folder_id
         if single_file_name and await self.check_complete_from_referer(scrape_item.url):
             return
 
         scrape_item.url = canonical_url
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        async with self.request_context():
+            soup: BeautifulSoup = await self.client.get_soup(
+                self.DOMAIN, scrape_item.url, _DEFAULT_HEADERS, cache_disabled=True
+            )
 
         item_info = get_item_info(soup)
         del soup
@@ -60,7 +100,7 @@ class YandexDiskCrawler(Crawler):
             item_info["sk"] = item_info["environment"]["sk"]
             item_info["file_url"] = scrape_item.url
             file = YandexFile.from_json(item_info)
-            return await self.file(scrape_item, file)
+            return await self._process_file(scrape_item, file)
 
         folder = YandexFolder.from_json(item_info)
         title = self.create_title(folder.name, folder.id)
@@ -70,7 +110,7 @@ class YandexDiskCrawler(Crawler):
             if single_file_name and file.name != single_file_name:
                 continue
             new_scrape_item = scrape_item.create_child(file.url)
-            await self.file(new_scrape_item, file)
+            await self._process_file(new_scrape_item, file)
             scrape_item.add_children()
             if single_file_name:
                 return
@@ -80,26 +120,38 @@ class YandexDiskCrawler(Crawler):
         #    new_scrape_item = scrape_item.create_child(subfolder.url)
         #    pass
 
+    @contextlib.asynccontextmanager
+    async def request_context(self) -> AsyncGenerator[None]:
+        try:
+            async with self.request_limiter:
+                yield
+        except DownloadError as e:
+            if e.status in (400, 403):
+                raise DDOSGuardError from None
+            raise
+
     @error_handling_wrapper
-    async def file(self, scrape_item: ScrapeItem, file: YandexFile) -> None:
+    async def _process_file(self, scrape_item: ScrapeItem, file: YandexFile) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
         referer = str(file.url)
-        headers = {
+        headers = _DEFAULT_HEADERS | {
             "Content-Type": "text/plain",
+            "X-Requested-With": "XMLHttpRequest",
+            "Origin": str(scrape_item.url.host),
             "Referer": referer,
             "X-Retpath-Y": referer,
         }
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.post_data(
-                self.DOMAIN, DOWNLOAD_API_ENTRYPOINT, data=file.post_data, headers=headers
-            )
+
+        api_url = DOWNLOAD_API_ENTRYPOINT.with_host(scrape_item.url.host)
+        async with self.request_context():
+            json_resp: dict[str, Any] = await self.client.post_data(self.DOMAIN, api_url, headers, data=file.post_data)
 
         new_sk = json_resp.get("new_sk")
         if new_sk:
             new_file = file.with_sk(new_sk)
-            return await self.file(scrape_item, new_file)
+            return await self._process_file(scrape_item, new_file)
 
         error = json_resp.get("error")
         if error:
@@ -217,12 +269,6 @@ class YandexFile(YandexItem):
         short_url = AbsoluteHttpURL(file_details["meta"]["short_url"])
         valid_dict: dict[str, Any] = cls.get_valid_dict(file_details)
         return cls(**valid_dict, sk=sk, short_url=short_url)
-
-
-def get_canonical_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-    folder_id_index = url.parts.index("d") + 1
-    folder_id = url.parts[folder_id_index]
-    return PRIMARY_URL / "d" / folder_id
 
 
 def is_single_item(json_resp: dict) -> bool:
