@@ -141,7 +141,6 @@ class ThreadProtocol(Protocol):
     def url(self) -> AbsoluteHttpURL: ...
 
 
-# quotes_2 : embed fauxBlockLink
 class MessageBoardCrawler(Crawler, is_abc=True):
     """Base crawler for every MessageBoard.
 
@@ -229,7 +228,8 @@ class MessageBoardCrawler(Crawler, is_abc=True):
 
     async def fetch_thread(self, scrape_item: ScrapeItem) -> None:
         thread_part_index = len(self.PRIMARY_URL.parts)
-        if not self.PRIMARY_URL.name:
+        # https://github.com/jbsparrow/CyberDropDownloader/issues/1165#issuecomment-3086739753
+        if self.PRIMARY_URL.parts[-1] == "":
             thread_part_index -= 1
         match scrape_item.url.parts[thread_part_index:]:
             case [thread_part, thread_name_and_id, *_] if thread_part in self.THREAD_PART_NAMES:
