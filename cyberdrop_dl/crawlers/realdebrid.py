@@ -1,13 +1,25 @@
+"""Real-Debrid API Implementation. All methods return their JSON response (if any).
+
+For details, visit: https://api.real-debrid.com
+
+All API methods require authentication except the regexes
+
+The API is limited to 250 requests per minute.
+"""
+
 from __future__ import annotations
 
 import asyncio
 import re
 from re import Pattern
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
+
+import aiohttp
+from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.managers.real_debrid.api import RealDebridAPI
+from cyberdrop_dl.exceptions import RealDebridError
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -15,9 +27,47 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://real-debrid.com")
-_FOLDER_AS_PART = {"folder", "folders", "dir"}
-_FOLDER_AS_QUERY = {"sharekey"}
 _DB_FLATTEN_URL_KEYS = "parts", "query", "frag"
+_API_ENTRYPOINT = AbsoluteHttpURL("https://api.real-debrid.com/rest/1.0")
+_ERROR_CODES = {
+    -1: "Internal error",
+    1: "Missing parameter",
+    2: "Bad parameter value",
+    3: "Unknown method",
+    4: "Method not allowed",
+    5: "Slow down",
+    6: "Ressource unreachable",
+    7: "Resource not found",
+    8: "Bad token",
+    9: "Permission denied",
+    10: "Two-Factor authentication needed",
+    11: "Two-Factor authentication pending",
+    12: "Invalid login",
+    13: "Invalid password",
+    14: "Account locked",
+    15: "Account not activated",
+    16: "Unsupported hoster",
+    17: "Hoster in maintenance",
+    18: "Hoster limit reached",
+    19: "Hoster temporarily unavailable",
+    20: "Hoster not available for free users",
+    21: "Too many active downloads",
+    22: "IP Address not allowed",
+    23: "Traffic exhausted",
+    24: "File unavailable",
+    25: "Service unavailable",
+    26: "Upload too big",
+    27: "Upload error",
+    28: "File not allowed",
+    29: "Torrent too big",
+    30: "Torrent file invalid",
+    31: "Action already done",
+    32: "Image resolution error",
+    33: "Torrent already active",
+    34: "Too many requests",
+    35: "Infringing file",
+    36: "Fair Usage Limit",
+}
 
 
 class RealDebridCrawler(Crawler):
@@ -26,17 +76,19 @@ class RealDebridCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "RealDebrid"
 
     def __post_init__(self) -> None:
-        self._headers = {}
-        self._api_token = self.manager.auth_config.realdebrid.api_key
-        self._file_regex: Pattern
+        self._api_token = token = self.manager.auth_config.realdebrid.api_key
         self._supported_folder_url_regex: Pattern
         self._supported_url_regex: Pattern
-        self._api: RealDebridAPI
-        self.disabled = not bool(self._api_token)
+        self.request_limiter = AsyncLimiter(250, 60)
+        self.disabled = not bool(token)
+        self._headers = {"Authorization": f"Bearer {token}", "User-Agent": "CyberDrop-DL"}
+
+    def is_supported(self, url: AbsoluteHttpURL) -> bool:
+        match = self._supported_url_regex.search(str(url))
+        return bool(match) or "real-debrid" in url.host
 
     async def async_startup(self) -> None:
-        self._api = RealDebridAPI(self._api_token, self.client._session)
-        await self._get_supported_urls_regexes()
+        await self._get_regexes()
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = _reconstruct_original_url(scrape_item.url)
@@ -44,63 +96,71 @@ class RealDebridCrawler(Crawler):
             return await self.folder(scrape_item)
         await self.file(scrape_item)
 
-    async def _get_supported_urls_regexes(self) -> None:
+    async def _get_regexes(self) -> None:
         if self.disabled:
             return
         try:
-            files_r, folders_r = await asyncio.gather(self._api.hosts.regex(), self._api.hosts.regex_folder())
-            file_regex = [pattern[1:-1] for pattern in files_r]
-            folder_regex = [pattern[1:-1] for pattern in folders_r]
-            file_or_folder_regex = "|".join(file_regex + folder_regex)
-            folder_regex = "|".join(folder_regex)
-            self._supported_url_regex = re.compile(file_or_folder_regex)
-            self._supported_folder_url_regex = re.compile(folder_regex)
+            files_r, folders_r = await asyncio.gather(
+                self._api_request("hosts/regex"), self._api_request("hosts/regexFolder")
+            )
+            file_regex: list[str] = [pattern[1:-1] for pattern in files_r]
+            folder_regex: list[str] = [pattern[1:-1] for pattern in folders_r]
+            self._supported_url_regex = re.compile("|".join(file_regex + folder_regex))
+            self._supported_folder_url_regex = re.compile("|".join(folder_regex))
         except Exception as e:
-            log(f"Failed RealDebrid setup: {e}", 40)
+            log(f"Failed RealDebrid setup: {e!r}", 40)
             self.disabled = True
 
     def _is_supported_folder(self, url: AbsoluteHttpURL) -> bool:
         match = self._supported_folder_url_regex.search(str(url))
         return bool(match)
 
-    def is_supported(self, url: AbsoluteHttpURL) -> bool:
-        match = self._supported_url_regex.search(str(url))
-        return bool(match) or "real-debrid" in url.host.lower()
-
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
-        self.log(f"Scraping folder with RealDebrid: {scrape_item.url}", 20)
+        log(f"Scraping folder with RealDebrid: {scrape_item.url}", 20)
         folder_id = _guess_folder(scrape_item.url)
-        title = self.create_title(f"{folder_id} [{scrape_item.url.host.lower()}]", folder_id)
+        title = self.create_title(f"{folder_id} [{scrape_item.url.host}]", folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)
-        links = await self._api.unrestrict.folder(scrape_item.url)
+        links: list[str] = await self._api_request("unrestrict/folder", link=str(scrape_item.url))
         for link in links:
-            new_scrape_item = scrape_item.create_child(link)
+            new_scrape_item = scrape_item.create_child(self.parse_url(link))
             self.create_task(self.file(new_scrape_item))
             scrape_item.add_children()
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         original_url = scrape_item.url
-        password = original_url.query.get("password", "")
         if await self.check_complete_from_referer(original_url):
             return
 
-        if _is_self_hosted_download(scrape_item.url):
-            database_url = debrid_url = scrape_item.url
+        if _is_self_hosted_download(original_url):
+            database_url = debrid_url = original_url
         else:
-            host = original_url.host.lower()
+            host = original_url.host
             title = self.create_title(f"files [{host}]")
             scrape_item.setup_as_album(title)
-            debrid_url = await self._api.unrestrict.link(original_url, password)
-            database_url = _flatten_url_for_db(original_url, host)
+            password = original_url.query.get("password", "")
+            json_resp: dict[str, Any] = await self._api_request(
+                "unrestrict/link", link=str(original_url), password=password, remote=False
+            )
+            debrid_url = self.parse_url(json_resp["download"])
+            database_url = _flatten_url(original_url, host)
 
         if await self.check_complete_from_referer(debrid_url):
             return
 
-        self.log(f"Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}", 10)
+        log(f"Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}", 10)
         filename, ext = self.get_filename_and_ext(debrid_url.name)
         await self.handle_file(database_url, scrape_item, filename, ext, debrid_link=debrid_url)
+
+    async def _api_request(self, path: str, /, **data: Any) -> Any:
+        method = "POST" if data else "GET"
+        data_ = data or None
+        async with self.request_limiter, self.client._session.disabled():
+            response = await self.client._session.request(
+                method, _API_ENTRYPOINT / path, headers=self._headers, data=data_
+            )
+        return _handle_api_response(response)
 
 
 def _guess_folder(url: AbsoluteHttpURL) -> str:
@@ -111,27 +171,31 @@ def _guess_folder(url: AbsoluteHttpURL) -> str:
 
 
 def _guess_folder_by_part(url: AbsoluteHttpURL) -> str | None:
-    for word in _FOLDER_AS_PART:
-        if word in url.parts:
-            index = url.parts.index(word)
-            if index + 1 < len(url.parts):
-                return url.parts[index + 1]
+    for word in ("folder", "folders", "dir"):
+        try:
+            return url.parts[url.parts.index(word) + 1]
+        except (IndexError, ValueError):
+            continue
 
 
 def _guess_folder_by_query(url: AbsoluteHttpURL) -> str | None:
-    for word in _FOLDER_AS_QUERY:
-        folder = url.query.get(word)
-        if folder:
+    for word in ("sharekey",):
+        if folder := url.query.get(word):
             return folder
 
 
 def _is_self_hosted_download(url: AbsoluteHttpURL) -> bool:
-    return any(subdomain in url.host for subdomain in ("download.", "my.")) and "real-debrid" in url.host
+    return url.host in ("download.real-debrid.com", "my.real-debrid.com")
 
 
 def _reconstruct_original_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     """Reconstructs an URL that might have been flatten for the database."""
-    if len(url.parts) < 3 or url.host != PRIMARY_URL.host or url.parts[1].count(".") == 0:
+    if (
+        len(url.parts) < 3
+        or url.host != PRIMARY_URL.host
+        or url.parts[1].count(".") == 0
+        or _is_self_hosted_download(url)
+    ):
         parsed_url = url
 
     else:
@@ -155,7 +219,7 @@ def _reconstruct_original_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     return parsed_url
 
 
-def _flatten_url_for_db(original_url: AbsoluteHttpURL, host: str) -> AbsoluteHttpURL:
+def _flatten_url(original_url: AbsoluteHttpURL, host: str) -> AbsoluteHttpURL:
     """Some hosts use query params or fragment as id or password (ex: mega.nz)
     This function flattens the query and fragment as parts of the URL path because database lookups only use the url path"""
     flatten_url = PRIMARY_URL / host / original_url.path[1:]
@@ -167,3 +231,22 @@ def _flatten_url_for_db(original_url: AbsoluteHttpURL, host: str) -> AbsoluteHtt
         flatten_url = flatten_url / "frag" / original_url.fragment
 
     return flatten_url
+
+
+async def _handle_api_response(response: aiohttp.ClientResponse) -> Any:
+    try:
+        json_resp: dict[str, Any] = await response.json()
+        try:
+            response.raise_for_status()
+        except aiohttp.ClientResponseError:
+            code = json_resp.get("error_code")
+            if not code:
+                raise
+            code = 7 if code == 16 else code
+            msg = _ERROR_CODES.get(code, "Unknown error")
+            raise RealDebridError(response.url, code, msg) from None
+        else:
+            return json_resp
+    except AttributeError:
+        response.raise_for_status()
+        return await response.text()
