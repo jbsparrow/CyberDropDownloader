@@ -14,8 +14,24 @@ if TYPE_CHECKING:
     from cyberdrop_dl.crawlers.crawler import SupportedDomains, SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-JPG5_REPLACE_HOST_REGEX = re.compile(r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)")
-DECRYPTION_KEY = b"seltilovessimpcity@simpcityhatesscrapers"
+
+_DECRYPTION_KEY = b"seltilovessimpcity@simpcityhatesscrapers"
+_OLD_DOMAINS = (
+    "jpg.homes",
+    "jpg.church",
+    "jpg.fish",
+    "jpg.fishing",
+    "jpg.pet",
+    "jpeg.pet",
+    "jpg1.su",
+    "jpg2.su",
+    "jpg3.su",
+    "jpg4.su",
+    "jpg5.su",
+    "host.church",
+)
+
+_REPLACE_OLD_HOST_REGEX = re.compile("|".join(_OLD_DOMAINS))
 
 
 class JPG5Crawler(CheveretoCrawler):
@@ -26,21 +42,7 @@ class JPG5Crawler(CheveretoCrawler):
         "Direct links": "",
     }
 
-    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (
-        "jpg.homes",
-        "jpg.church",
-        "jpg.fish",
-        "jpg.fishing",
-        "jpg.pet",
-        "jpeg.pet",
-        "jpg1.su",
-        "jpg2.su",
-        "jpg3.su",
-        "jpg4.su",
-        "jpg5.su",
-        "jpg6.su",
-        "host.church",
-    )
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (*_OLD_DOMAINS, "jpg6.su")
     DOMAIN: ClassVar[str] = "jpg5.su"
     FOLDER_DOMAIN: ClassVar[str] = "JPG5"
 
@@ -60,7 +62,7 @@ class JPG5Crawler(CheveretoCrawler):
         self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool = True
     ) -> AbsoluteHttpURL:
         if not link_str.startswith("https") and not link_str.startswith("/"):
-            link_str = decrypt_xor(link_str, DECRYPTION_KEY)
+            link_str = decrypt_xor(link_str, _DECRYPTION_KEY)
         return super().parse_url(link_str, relative_to, trim=trim)
 
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
@@ -74,11 +76,11 @@ class JPG5Crawler(CheveretoCrawler):
 
 
 def fix_host(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-    if url.host.removeprefix("www.") == "jpg5.su":
+    new_host = re.sub(_REPLACE_OLD_HOST_REGEX, r"jpg5.su", f"{url.host}/").removesuffix("/")
+    if new_host.removeprefix("www.") == "jpg5.su":
         # replace only if it is matches the second level domain exactly
         # old jpg5 subdomains are still valid. ex: simp4.jpg5.su
         return url.with_host("jpg6.su")
-    new_host = re.sub(JPG5_REPLACE_HOST_REGEX, r"jpg5.su", f"{url.host}/").removesuffix("/")
     return url.with_host(new_host)
 
 
