@@ -105,6 +105,7 @@ class GenericCrawlerInstances(BaseModel):
     wordpress_media: ListPydanticURL = []
     wordpress_html: ListPydanticURL = []
     discourse: ListPydanticURL = []
+    chevereto: ListPydanticURL = []
 
 
 class GlobalSettings(ConfigModel):
