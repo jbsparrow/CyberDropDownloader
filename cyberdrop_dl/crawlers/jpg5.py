@@ -76,7 +76,7 @@ class JPG5Crawler(CheveretoCrawler):
 
 
 def fix_host(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-    new_host = re.sub(_REPLACE_OLD_HOST_REGEX, r"jpg5.su", f"{url.host}/").removesuffix("/")
+    new_host = re.sub(_REPLACE_OLD_HOST_REGEX, r"jpg5.su", url.host)
     if new_host.removeprefix("www.") == "jpg5.su":
         # replace only if it is matches the second level domain exactly
         # old jpg5 subdomains are still valid. ex: simp4.jpg5.su
