@@ -21,6 +21,7 @@ class Selectors:
     PHOTO = "img.thumb__img"
     TITLE = "h1.user-page"
     HASHTAGS = "h1.tag-page"
+    BLOCK_TITLE = "h1.block__title"
     THUMBS = "div.block-thumbs a.thumb__link"
 
 
@@ -74,7 +75,11 @@ class TwPornstarsCrawler(TwimgCrawler):
         title_created: bool = False
         async for soup in self.web_pager(scrape_item.url):
             if not title_created:
-                title_tag = soup.select_one(_SELECTORS.TITLE) or soup.select_one(_SELECTORS.HASHTAGS)
+                title_tag = (
+                    soup.select_one(_SELECTORS.TITLE)
+                    or soup.select_one(_SELECTORS.HASHTAGS)
+                    or soup.select_one(_SELECTORS.BLOCK_TITLE)
+                )
                 assert title_tag
                 title = self.create_title(title_tag.get_text(strip=True).replace(TITLE_TRASH, ""))
                 scrape_item.setup_as_album(title)
