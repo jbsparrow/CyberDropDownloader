@@ -86,3 +86,8 @@ def decrypt_xor(encrypted_str: str, key: bytes) -> str:
     div = len(key)
     encrypted = bytes.fromhex(binascii.a2b_base64(encrypted_str).decode())
     return bytes([encrypted[i] ^ key[i % div] for i in range(len(encrypted))]).decode()
+
+
+def fix_db_referer(referer: str) -> str:
+    url = AbsoluteHttpURL(referer)
+    return str(fix_host(url))
