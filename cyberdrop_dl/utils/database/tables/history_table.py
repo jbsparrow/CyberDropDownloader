@@ -21,6 +21,7 @@ DB_UPDATES = (
     "UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'",
     "UPDATE OR REPLACE media SET domain = 'nudostar.tv' WHERE domain = 'nudostartv'",
     "UPDATE OR REPLACE media SET referer = FIX_REDGIFS_REFERER(referer) WHERE domain = 'redgifs';",
+    "UPDATE OR REPLACE media SET referer = FIX_JPG5_REFERER(referer) WHERE domain = 'jpg5.su';",
 )
 
 
@@ -44,9 +45,10 @@ class HistoryTable:
 
     async def startup(self) -> None:
         """Startup process for the HistoryTable."""
-        from cyberdrop_dl.crawlers import redgifs
+        from cyberdrop_dl.crawlers import jpg5, redgifs
 
         await self.db_conn.create_function("FIX_REDGIFS_REFERER", 1, redgifs.fix_db_referer, deterministic=True)
+        await self.db_conn.create_function("FIX_JPG5_REFERER", 1, jpg5.fix_db_referer, deterministic=True)
         await self.db_conn.execute(create_history)
         await self.db_conn.commit()
         await self.fix_primary_keys()
