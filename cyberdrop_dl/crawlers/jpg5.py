@@ -27,7 +27,6 @@ class JPG5Crawler(CheveretoCrawler):
     }
 
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (
-        "jpg5.su",
         "jpg.homes",
         "jpg.church",
         "jpg.fish",
@@ -38,12 +37,14 @@ class JPG5Crawler(CheveretoCrawler):
         "jpg2.su",
         "jpg3.su",
         "jpg4.su",
+        "jpg5.su",
+        "jpg6.su",
         "host.church",
     )
     DOMAIN: ClassVar[str] = "jpg5.su"
     FOLDER_DOMAIN: ClassVar[str] = "JPG5"
 
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://jpg5.su")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://jpg6.su")
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 1)
@@ -73,6 +74,10 @@ class JPG5Crawler(CheveretoCrawler):
 
 
 def fix_host(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+    if url.host.removeprefix("www.") == "jpg5.su":
+        # replace only if it is matches the second level domain exactly
+        # old jpg5 subdomains are still valid. ex: simp4.jpg5.su
+        return url.with_host("jpg6.su")
     new_host = re.sub(JPG5_REPLACE_HOST_REGEX, r"jpg5.su", f"{url.host}/").removesuffix("/")
     return url.with_host(new_host)
 
