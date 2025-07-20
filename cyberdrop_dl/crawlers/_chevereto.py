@@ -61,7 +61,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
         if scrape_item.url.host.removeprefix("www.").count(".") > 1:
             return await self.handle_direct_link(scrape_item)
 
-        # Do not override scrape_item. Trailing slash is required in some cases to not get 404
+        # Do not override scrape_item. Trailing slash is required in some cases to not get 404 for album/profile pages
         clean_url = remove_trailing_slash(scrape_item.url)
         match clean_url.parts[1:]:
             case ["a" | "album", album_slug]:
@@ -69,7 +69,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
             case ["img" | "image" | "video" | "videos" as part, slug]:
                 item_id = _id(slug)
                 canonical_url = self.PRIMARY_URL / part / item_id
-                return await self.media(scrape_item, canonical_url)
+                scrape_item.url = canonical_url
+                return await self.media(scrape_item)
             case ["images", _, *_]:
                 return await self.handle_direct_link(scrape_item)
             case [_]:
@@ -138,8 +139,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
-    async def media(self, scrape_item: ScrapeItem, canonical_url: AbsoluteHttpURL) -> None:
-        if await self.check_complete_from_referer(canonical_url):
+    async def media(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item):
             return
 
         async with self.request_limiter:
@@ -156,7 +157,6 @@ class CheveretoCrawler(Crawler, is_generic=True):
 
         date_str = css.select_one_get_attr(soup, *_SELECTORS.DATE)
         scrape_item.possible_datetime = self.parse_iso_date(date_str)
-        scrape_item.url = canonical_url
         await self.handle_direct_link(scrape_item, link)
 
     def parse_url(
