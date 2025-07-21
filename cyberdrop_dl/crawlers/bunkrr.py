@@ -218,7 +218,7 @@ class BunkrrCrawler(Crawler):
         if not link and "f" in scrape_item.url.parts:
             slug = get_slug_from_soup(soup) or scrape_item.url.name or scrape_item.url.parent.name
             base = self.known_good_url or scrape_item.url.origin()
-            slug_url = base / "f" / slug
+            slug_url = base / "f" / slug.encode().decode("unicode-escape")
             link = await self.get_download_url_from_api(slug_url)
 
         # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
