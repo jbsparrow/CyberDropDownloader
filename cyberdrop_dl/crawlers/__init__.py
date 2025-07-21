@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from cyberdrop_dl import env
 
+from ._chevereto import CheveretoCrawler
 from .acidimg import AcidImgCrawler
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
@@ -104,7 +105,7 @@ from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler
 
 FORUM_CRAWLERS = XF_CRAWLERS.union(INVISION_CRAWLERS, DISCOURSE_CRAWLERS, VBULLETIN_CRAWLERS)
-GENERIC_CRAWLERS: set[type[Crawler]] = {WordPressHTMLCrawler, WordPressMediaCrawler, DiscourseCrawler}
+GENERIC_CRAWLERS: set[type[Crawler]] = {WordPressHTMLCrawler, WordPressMediaCrawler, DiscourseCrawler, CheveretoCrawler}
 ALL_CRAWLERS: set[type[Crawler]] = {
     crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
 }

@@ -12,6 +12,7 @@ from yarl import URL
 
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.crawlers import CRAWLERS
+from cyberdrop_dl.crawlers._chevereto import CheveretoCrawler
 from cyberdrop_dl.crawlers.crawler import Crawler, create_crawlers
 from cyberdrop_dl.crawlers.discourse import DiscourseCrawler
 from cyberdrop_dl.crawlers.generic import GenericCrawler
@@ -451,6 +452,8 @@ def create_generic_crawlers_by_config(generic_crawlers: GenericCrawlerInstances)
         new_crawlers.update(create_crawlers(generic_crawlers.wordpress_media, WordPressMediaCrawler))
     if generic_crawlers.discourse:
         new_crawlers.update(create_crawlers(generic_crawlers.discourse, DiscourseCrawler))
+    if generic_crawlers.chevereto:
+        new_crawlers.update(create_crawlers(generic_crawlers.chevereto, CheveretoCrawler))
     return new_crawlers
 
 
