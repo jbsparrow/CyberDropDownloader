@@ -8,7 +8,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.utils import css, open_graph
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 
 class Selectors:
     ITEM_DESCRIPTION = "p[class*=description-meta]"
-    ALBUM_TITLE = "a[data-text=album-name]"
     ITEM = "a[class='image-container --media']"
     MAIN_IMAGE = "div#image-viewer img", "src"
     DATE_SINGLE_ITEM = f"{ITEM_DESCRIPTION}:contains('Uploaded') span"
@@ -58,12 +57,10 @@ class CheveretoCrawler(Crawler, is_generic=True):
         super().__init_subclass__(**kwargs)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if scrape_item.url.host.removeprefix("www.").count(".") > 1:
+        if self.is_subdomain(scrape_item.url):
             return await self.handle_direct_link(scrape_item)
 
-        # Do not override scrape_item. Trailing slash is required in some cases to not get 404 for album/profile pages
-        clean_url = remove_trailing_slash(scrape_item.url)
-        match clean_url.parts[1:]:
+        match scrape_item.url.parts[1:]:
             case ["a" | "album", album_slug]:
                 return await self.album(scrape_item, _id(album_slug))
             case ["img" | "image" | "video" | "videos" as part, slug]:
@@ -95,8 +92,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
             if not title:
                 if _is_password_protected(soup):
                     soup = await self._get_soup_w_password(scrape_item)
-                title = css.select_one_get_text(soup, _SELECTORS.ALBUM_TITLE)
-                title = self.create_title(title, album_id)
+                title = self.create_title(open_graph.title(soup), album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
             self._process_page(scrape_item, soup, results)
 
@@ -113,6 +109,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
             source = _thumbnail_to_src(thumb)
             if results and self.check_album_results(source, results):
                 continue
+            # For images, we can download the file from the thumbnail, skipping an aditional
+            # cons: we won't get the upload date
             if image_url := _match_img(new_scrape_item.url):
                 new_scrape_item.url = image_url
                 self.create_task(self.handle_direct_link(new_scrape_item, source))
