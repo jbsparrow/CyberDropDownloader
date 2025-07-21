@@ -343,7 +343,7 @@ class Director:
 
     def __init__(self, args: tuple[str, ...] | None = None) -> None:
         if os.name == "nt":
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.manager = _setup_manager(args)
