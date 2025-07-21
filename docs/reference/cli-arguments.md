@@ -337,5 +337,6 @@ generic_crawlers_instances:
   --wordpress-media [WORDPRESS_MEDIA ...]
   --wordpress-html [WORDPRESS_HTML ...]
   --discourse [DISCOURSE ...]
+  --chevereto [CHEVERETO ...]
 
 ```

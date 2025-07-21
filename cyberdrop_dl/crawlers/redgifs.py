@@ -62,7 +62,7 @@ class RedGifsCrawler(Crawler):
             case ["watch" | "ifr", gif_id]:
                 return await self.gif(scrape_item, _id(gif_id))
 
-        if self.is_subdomain(scrape_item.url) and len(scrape_item.url.parts) == 2:
+        if self.is_self_subdomain(scrape_item.url) and len(scrape_item.url.parts) == 2:
             scrape_item.url = _canonical_url(scrape_item.url.name)
             self.manager.task_group.create_task(self.run(scrape_item))
             return

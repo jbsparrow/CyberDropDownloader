@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import re
-from dataclasses import Field
 from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Self
@@ -13,9 +12,11 @@ from yarl import URL
 
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.crawlers import CRAWLERS
+from cyberdrop_dl.crawlers._chevereto import CheveretoCrawler
 from cyberdrop_dl.crawlers.crawler import Crawler, create_crawlers
 from cyberdrop_dl.crawlers.discourse import DiscourseCrawler
 from cyberdrop_dl.crawlers.generic import GenericCrawler
+from cyberdrop_dl.crawlers.realdebrid import RealDebridCrawler
 from cyberdrop_dl.crawlers.wordpress import WordPressHTMLCrawler, WordPressMediaCrawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
@@ -50,6 +51,7 @@ class ScrapeMapper:
         self.groups = set()
         self.count = 0
         self.fallback_generic: GenericCrawler
+        self.real_debrid: RealDebridCrawler
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -77,14 +79,8 @@ class ScrapeMapper:
 
     async def start_real_debrid(self) -> None:
         """Starts RealDebrid."""
-        if isinstance(self.manager.real_debrid_manager.api, Field):
-            self.manager.real_debrid_manager.startup()
-
-        if self.manager.real_debrid_manager.enabled:
-            from cyberdrop_dl.crawlers.realdebrid import RealDebridCrawler
-
-            self.existing_crawlers["real-debrid"] = real = RealDebridCrawler(self.manager)
-            await real.startup()
+        self.existing_crawlers["real-debrid"] = self.real_debrid = real = RealDebridCrawler(self.manager)
+        await real.startup()
 
     async def __aenter__(self) -> Self:
         self.manager.scrape_mapper = self
@@ -232,11 +228,9 @@ class ScrapeMapper:
             self.manager.task_group.create_task(crawler_match.run(scrape_item))
             return
 
-        if self.manager.real_debrid_manager.enabled and self.manager.real_debrid_manager.is_supported(
-            scrape_item.url,
-        ):
+        if not self.real_debrid.disabled and self.real_debrid.is_supported(scrape_item.url):
             log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
-            self.manager.task_group.create_task(self.existing_crawlers["real-debrid"].run(scrape_item))
+            self.manager.task_group.create_task(self.real_debrid.run(scrape_item))
             return
 
         if has_valid_extension(scrape_item.url):
@@ -458,6 +452,8 @@ def create_generic_crawlers_by_config(generic_crawlers: GenericCrawlerInstances)
         new_crawlers.update(create_crawlers(generic_crawlers.wordpress_media, WordPressMediaCrawler))
     if generic_crawlers.discourse:
         new_crawlers.update(create_crawlers(generic_crawlers.discourse, DiscourseCrawler))
+    if generic_crawlers.chevereto:
+        new_crawlers.update(create_crawlers(generic_crawlers.chevereto, CheveretoCrawler))
     return new_crawlers
 
 
