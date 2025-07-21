@@ -7,15 +7,23 @@ CDL has some "generic" crawlers disabled by default. Generic crawlers are design
 
 Currently, there are three generic crawlers:
 
-- `wordpress_media`: This crawler should work on any [WordPress](https://wordpress.com/) site where content primarily consists of images or galleries. The images need to be hosted on the site itself. It requires sites to have a public WordPress REST API.
-
-- `wordpress_html`: This works on any WordPress site. It scrapes the actual HTML of the site, which means it works even on sites that have embedded third-party media like videos or links to hosting sites. It is always slower than `wordpress_media`.
+- `chevereto`: This works on any site that uses [Chevereto](https://chevereto.com//).
 
 - `discourse`: This works on any forum that uses [Discourse](https://www.discourse.org/).
 
+- `wordpress_html`: This works on any WordPress site. It scrapes the actual HTML of the site, which means it works even on sites that have embedded third-party media like videos or links to hosting sites. It is always slower than `wordpress_media`.
+
+- `wordpress_media`: This crawler should work on any [WordPress](https://wordpress.com/) site where content primarily consists of images or galleries. The images need to be hosted on the site itself. It requires sites to have a public WordPress REST API.
+
 # generic_crawlers_instances
 
-## `wordpress_media`
+## `chevereto`
+
+| Type            | Default |
+| --------------- | ------- |
+| `list[HttpURL]` | `[]`    |
+
+## `discourse`
 
 | Type            | Default |
 | --------------- | ------- |
@@ -27,7 +35,7 @@ Currently, there are three generic crawlers:
 | --------------- | ------- |
 | `list[HttpURL]` | `[]`    |
 
-## `discourse`
+## `wordpress_media`
 
 | Type            | Default |
 | --------------- | ------- |
