@@ -181,7 +181,7 @@ class MediaItem:
         duration: float | None = None,
         ext: str = "",
         is_segment: bool = False,
-        fallbacks: Callable[..., AbsoluteHttpURL] | list[AbsoluteHttpURL] | None = None,
+        fallbacks: Callable[[aiohttp.ClientResponse, int], AbsoluteHttpURL] | list[AbsoluteHttpURL] | None = None,
     ) -> MediaItem:
         return MediaItem(
             url=url,
