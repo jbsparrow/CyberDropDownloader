@@ -160,7 +160,6 @@ class MediaItem:
     parents: list[AbsoluteHttpURL] = field(default_factory=list, compare=False)
     parent_threads: set[AbsoluteHttpURL] = field(default_factory=set, compare=False)
     parent_media_item: MediaItem | None = field(default=None, compare=False)
-    file_lock_reference_name: str | None = field(default=None, compare=False)
     download_filename: str | None = field(default=None)
     filesize: int | None = field(default=None, compare=False)
     current_attempt: int = field(default=0, compare=False)

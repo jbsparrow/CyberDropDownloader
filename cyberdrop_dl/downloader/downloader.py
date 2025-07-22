@@ -343,9 +343,7 @@ class Downloader:
     async def start_download(self, media_item: MediaItem) -> bool:
         if not media_item.is_segment:
             log(f"{self.log_prefix} starting: {media_item.url}", 20)
-        if not media_item.file_lock_reference_name:
-            media_item.file_lock_reference_name = media_item.filename
-        lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)
+        lock = self._file_lock_vault.get_lock(media_item.filename)
         async with lock:
             return bool(await self.download(media_item))
 
