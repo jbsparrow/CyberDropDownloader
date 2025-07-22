@@ -219,9 +219,9 @@ class Downloader:
                 yield HlsSegment(segment.title, name, parse_url(segment.absolute_uri))
 
         def make_download_task(segment: HlsSegment) -> Coroutine:
-            seg_media_item = MediaItem(
-                url=segment.url,
-                origin=media_item,
+            seg_media_item = MediaItem.from_item(
+                media_item,
+                segment.url,
                 download_folder=download_folder,
                 filename=segment.name,
                 ext=media_item.ext,

@@ -288,7 +288,9 @@ class Crawler(ABC):
         if isinstance(debrid_link, URL):
             assert is_absolute_http_url(debrid_link)
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
-        media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
+        media_item = MediaItem.from_item(
+            scrape_item, url, download_folder, filename, original_filename, debrid_link, ext=ext
+        )
         await self.handle_media_item(media_item, m3u8)
 
     async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
