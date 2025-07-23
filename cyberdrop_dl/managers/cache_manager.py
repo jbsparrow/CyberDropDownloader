@@ -43,7 +43,7 @@ class CacheManager:
     def load_request_cache(self) -> None:
         rate_limiting_options = self.manager.config_manager.global_settings_data.rate_limiting_options
         urls_expire_after = {
-            "*.simpcity.su": rate_limiting_options.file_host_cache_expire_after,
+            "*.simpcity.cr": rate_limiting_options.file_host_cache_expire_after,
         }
         for host in SUPPORTED_WEBSITES.values():
             match_host = f"*.{host}" if "." in host else f"*.{host}.*"
