@@ -56,9 +56,8 @@ class PixHostCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
 
-        for thumb, link in self.iter_tags(soup, _SELECTORS.GALLERY_IMAGES):
+        for thumb, web_url in self.iter_tags(soup, _SELECTORS.GALLERY_IMAGES):
             assert thumb
-            web_url = _thumbnail_to_web_url(link)
             src = _thumbnail_to_src(thumb)
             if not self.check_album_results(src, results):
                 new_scrape_item = scrape_item.create_child(web_url)
