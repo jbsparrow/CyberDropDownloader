@@ -82,6 +82,9 @@ pytest-mock = "*"
 addopts = ["-s"]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
+markers = [
+    "crawler_test_case: tests that do full run with a crawler (making actual network requests)"
+]
 minversion = "8.4.1"
 testpaths = ["tests"]
 
