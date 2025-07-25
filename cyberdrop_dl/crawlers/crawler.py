@@ -582,6 +582,9 @@ class Crawler(ABC):
             msg = f"{msg}. {format = }: {e!r}"
 
         if parsed_date:
+            if format and (format == "%Y-%m-%d" or format.startswith("%Y-%m-%d %H:%M:%S")):
+                msg = "This is an iso8601, but it was parsed with a custom format. Use parse_iso_date instead"
+                log(msg, 30, bug=True)
             return parsed_date
 
         log(msg, 30, bug=True)
