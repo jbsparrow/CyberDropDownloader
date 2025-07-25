@@ -170,7 +170,7 @@ class ClientManager:
             headers=self._headers,
             raise_for_status=False,
             cookie_jar=self.cookies,
-            timeout=self.manager.global_config.rate_limiting_options._aiohttp_timeout,
+            timeout=self.manager.global_config.rate_limiting_options._download_timeout,
             trace_configs=trace_configs,
             proxy=self.manager.global_config.general.proxy,
             connector=self._new_tcp_connector(),
