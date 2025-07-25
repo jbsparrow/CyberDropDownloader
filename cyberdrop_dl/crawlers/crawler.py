@@ -552,22 +552,29 @@ class Crawler(ABC):
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=assume_ext)
         await self.handle_file(link, scrape_item, filename, ext)
 
+    @final
     def parse_date(self, date_or_datetime: str, format: str | None = None, /) -> TimeStamp | None:
         if parsed_date := self._parse_date(date_or_datetime, format):
             return to_timestamp(parsed_date)
 
+    @final
     def parse_iso_date(self, date_or_datetime: str, /) -> TimeStamp | None:
         if parsed_date := self._parse_date(date_or_datetime, None, iso=True):
             return to_timestamp(parsed_date)
 
+    @final
     def _parse_date(
         self, date_or_datetime: str, format: str | None = None, /, *, iso: bool = False
     ) -> datetime.datetime | None:
-        assert not (iso and format)
+        assert not (iso and format), "Only `format` or `iso` can be used, not both"
         msg = f"Date parsing for {self.DOMAIN} seems to be broken"
         if not date_or_datetime:
             log(f"{msg}: Unable to extract date", 30, bug=True)
             return
+        if format:
+            assert not (format == "%Y-%m-%d" or format.startswith("%Y-%m-%d %H:%M:%S")), (
+                f"{msg} Do not use a custom format to parse iso8601 dates. Call parse_iso_date instead"
+            )
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
@@ -582,9 +589,6 @@ class Crawler(ABC):
             msg = f"{msg}. {format = }: {e!r}"
 
         if parsed_date:
-            if format and (format == "%Y-%m-%d" or format.startswith("%Y-%m-%d %H:%M:%S")):
-                msg = "This is an iso8601, but it was parsed with a custom format. Use parse_iso_date instead"
-                log(msg, 30, bug=True)
             return parsed_date
 
         log(msg, 30, bug=True)
