@@ -835,6 +835,13 @@ class MegaDownloadClient(DownloadClient):
 
         return asyncio.to_thread(prepare)
 
+    async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
+        try:
+            return await super().download_file(manager, domain, media_item)
+        except DownloadError as e:
+            e.retry = False  # can not retry
+            raise e
+
 
 class MegaDownloader(Downloader):
     def __init__(self, manager: Manager, domain: str) -> None:
