@@ -5,6 +5,7 @@ import contextlib
 import datetime
 import inspect
 import re
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
@@ -565,17 +566,20 @@ class Crawler(ABC):
         assert not (iso and format)
         msg = f"Date parsing for {self.DOMAIN} seems to be broken"
         if not date_or_datetime:
-            log(f"{msg}: Unable to extract date from soup", 30, bug=True)
-            return None
+            log(f"{msg}: Unable to extract date", 30, bug=True)
+            return
         try:
-            if iso:
-                parsed_date = datetime.datetime.fromisoformat(date_or_datetime)
-            elif format:
-                parsed_date = datetime.datetime.strptime(date_or_datetime, format)
-            else:
-                parsed_date = parse_human_date(date_or_datetime)
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                if iso:
+                    parsed_date = datetime.datetime.fromisoformat(date_or_datetime)
+                elif format:
+                    parsed_date = datetime.datetime.strptime(date_or_datetime, format)
+                else:
+                    parsed_date = parse_human_date(date_or_datetime)
+
         except Exception as e:
-            msg = f"{msg}: {e}"
+            msg = f"{msg}. {format = }: {e!r}"
 
         if parsed_date:
             return parsed_date
