@@ -225,6 +225,7 @@ def log(
     log_debug(msg, level, **kwargs)
     if bug:
         msg = msg.rstrip() + f". Please open a bug report at {NEW_ISSUE_URL}"
+        level = 30
     logger.log(level, msg, **kwargs)
 
 
