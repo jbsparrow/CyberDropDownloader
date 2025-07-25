@@ -159,7 +159,7 @@ class HitomiLaCrawler(Crawler):
         title = self.create_title(f"{gallery['title']} [{gallery['type']}]", gallery["id"])
         scrape_item.setup_as_album(title, album_id=gallery["id"])
         date_str = gallery.get("datepublished") or gallery["date"]
-        scrape_item.possible_datetime = self.parse_date(date_str + ":00", "%Y-%m-%d %H:%M:%S%z")
+        scrape_item.possible_datetime = self.parse_iso_date(date_str)
         await self.process_gallery(scrape_item, gallery)
 
     async def get_gallery(self, gallery_id: str) -> Gallery:
