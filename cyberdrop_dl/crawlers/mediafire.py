@@ -82,7 +82,7 @@ class MediaFireCrawler(Crawler):
                 raise ScrapeError(410)
             raise ScrapeError(422)
 
-        scrape_item.possible_datetime = self.parse_date(soup.select(DATE_SELECTOR)[-1].get_text(), "%Y-%m-%d %H:%M:%S")
+        scrape_item.possible_datetime = self.parse_iso_date(soup.select(DATE_SELECTOR)[-1].get_text())
         link_str: str = css.get_attr(link_tag, "href")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)

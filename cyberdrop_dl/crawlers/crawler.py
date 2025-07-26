@@ -5,6 +5,7 @@ import contextlib
 import datetime
 import inspect
 import re
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
@@ -297,7 +298,7 @@ class Crawler(ABC):
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int."
-            log(msg, 30, bug=True)
+            log(msg, bug=True)
 
         check_complete = await self.manager.db_manager.history_table.check_complete(
             self.DOMAIN, media_item.url, media_item.referer
@@ -553,36 +554,45 @@ class Crawler(ABC):
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=assume_ext)
         await self.handle_file(link, scrape_item, filename, ext)
 
+    @final
     def parse_date(self, date_or_datetime: str, format: str | None = None, /) -> TimeStamp | None:
         if parsed_date := self._parse_date(date_or_datetime, format):
             return to_timestamp(parsed_date)
 
+    @final
     def parse_iso_date(self, date_or_datetime: str, /) -> TimeStamp | None:
         if parsed_date := self._parse_date(date_or_datetime, None, iso=True):
             return to_timestamp(parsed_date)
 
+    @final
     def _parse_date(
         self, date_or_datetime: str, format: str | None = None, /, *, iso: bool = False
     ) -> datetime.datetime | None:
-        assert not (iso and format)
+        assert not (iso and format), "Only `format` or `iso` can be used, not both"
         msg = f"Date parsing for {self.DOMAIN} seems to be broken"
         if not date_or_datetime:
-            log(f"{msg}: Unable to extract date from soup", 30, bug=True)
-            return None
+            log(f"{msg}: Unable to extract date", bug=True)
+            return
+        if format:
+            assert not (format == "%Y-%m-%d" or format.startswith("%Y-%m-%d %H:%M:%S")), (
+                f"{msg} Do not use a custom format to parse iso8601 dates. Call parse_iso_date instead"
+            )
         try:
-            if iso:
-                parsed_date = datetime.datetime.fromisoformat(date_or_datetime)
-            elif format:
-                parsed_date = datetime.datetime.strptime(date_or_datetime, format)
-            else:
-                parsed_date = parse_human_date(date_or_datetime)
+            with warnings.catch_warnings(action="error"):
+                if iso:
+                    parsed_date = datetime.datetime.fromisoformat(date_or_datetime)
+                elif format:
+                    parsed_date = datetime.datetime.strptime(date_or_datetime, format)
+                else:
+                    parsed_date = parse_human_date(date_or_datetime)
+
         except Exception as e:
-            msg = f"{msg}: {e}"
+            msg = f"{msg}. {format = }: {e!r}"
 
         if parsed_date:
             return parsed_date
 
-        log(msg, 30, bug=True)
+        log(msg, bug=True)
 
     @staticmethod
     def register_cache_filter(
@@ -669,7 +679,7 @@ class Crawler(ABC):
                 f"Important information was removed while creating a filename. "
                 f"\n{calling_args}"
             )
-            log(msg, 30, bug=True)
+            log(msg, bug=True)
         return filename
 
 
