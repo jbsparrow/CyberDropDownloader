@@ -1,14 +1,14 @@
 DOMAIN = "jpg5.su"
 TEST_CASES = [
     (
-        "https://jpg6.su/img/00612-3170878818-raw-photo-nude-woman-naked-braless-no-cloth.Yvjr1u7",
+        "https://jpg6.su/img/960x1280-90c58bc6682426b5ff88266b8ec5a647.N3gCSXD",
         [
             {
-                "url": "https://simp4.jpg5.su/00612-3170878818-RAW-photo-of-a-nude-woman-naked_-braless-no-clothes-highly-detailed-skin-8k-uhd-medium-breast-size-detailed-nipples6b05c0ef6025d0a0.jpg",
-                "filename": "00612-3170878818-RAW-photo-of-a-nude-woman-naked_-braless-no-clothes-highly-detailed-skin-8k-uh.jpg",
-                "referer": "https://jpg6.su/img/Yvjr1u7",
+                "url": "https://simp6.selti-delivery.ru/images3/960x1280_90c58bc6682426b5ff88266b8ec5a647142c31c72206f9a3.jpg",
+                "filename": "960x1280_90c58bc6682426b5ff88266b8ec5a647142c31c72206f9a3.jpg",
+                "referer": "https://jpg6.su/img/N3gCSXD",
                 "album_id": None,
-                "datetime": 1693206885,
+                "datetime": 1753538118,
             }
         ],
     ),
