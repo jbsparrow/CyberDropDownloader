@@ -235,16 +235,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             await self.__get_usernames(self.API_ENTRYPOINT / "creators.txt")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if "discord" in scrape_item.url.parts:
-            return await self.discord(scrape_item)
-        return await self._fetch_kemono_defaults(scrape_item)
-
-    async def _fetch_kemono_defaults(self, scrape_item: ScrapeItem) -> None:
-        """Helper fetch method for subclasses.
-
-        Subclasses can override the normal `fetch` method to add their own custom filters and them call this method at the end
-
-        Super().fetch MUST NOT be used, otherwise a new task_id will be created"""
         if "thumbnails" in scrape_item.url.parts:
             return await self.handle_direct_link(scrape_item)
         if "post" in scrape_item.url.parts:

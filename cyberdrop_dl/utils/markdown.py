@@ -92,5 +92,5 @@ def _get_row_values(crawler_info: CrawlerInfo) -> tuple[str, ...]:
     if notes:
         supported_paths = f"{supported_paths}\n\n**NOTES**\n{notes}"
     supported_domains = "\n".join(crawler_info.supported_domains)
-    row_values = crawler_info.site, str(crawler_info.primary_url), supported_domains, supported_paths
+    row_values = crawler_info.site, str(crawler_info.primary_url).removesuffix("/"), supported_domains, supported_paths
     return row_values
