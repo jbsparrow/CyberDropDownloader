@@ -156,7 +156,8 @@ class Crawler(ABC):
         _validate_supported_paths(cls)
         cls.SCRAPE_MAPPER_KEYS = _make_scrape_mapper_keys(cls)
         cls.FOLDER_DOMAIN = cls.FOLDER_DOMAIN or cls.DOMAIN.capitalize()
-        cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, cls.SCRAPE_MAPPER_KEYS, cls.SUPPORTED_PATHS)
+        supported_domains = _make_supported_domains(cls.SCRAPE_MAPPER_KEYS)
+        cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, supported_domains, cls.SUPPORTED_PATHS)
 
     @abstractmethod
     async def fetch(self, scrape_item: ScrapeItem) -> None: ...
@@ -761,6 +762,15 @@ def _validate_supported_paths(cls: type[Crawler]) -> None:
             paths = (paths,)
         for path in paths:
             assert "`" not in path, f"{cls.__name__}, Invalid path {path_name}: {path}"
+
+
+def _make_supported_domains(scrape_mapper_keys: tuple[str, ...]) -> tuple[str, ...]:
+    def generalize(domain):
+        if "." not in domain:
+            return f"{domain}.*"
+        return domain
+
+    return tuple(sorted(generalize(domain) for domain in scrape_mapper_keys))
 
 
 def auto_task_id(

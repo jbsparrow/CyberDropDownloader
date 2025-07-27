@@ -58,10 +58,9 @@ def _get_crawlers_info_cols_and_rows() -> tuple[list[str], Generator[tuple[str, 
 
 
 def _gen_crawlers_info_rows(crawlers: Sequence[Crawler]) -> Generator[tuple[str, ...]]:
-    for crawler in crawlers:
-        if crawler.IS_FALLBACK_GENERIC:
-            continue
-        yield _get_row_values(crawler.INFO)
+    info_gen = (crawler.INFO for crawler in crawlers if not crawler.IS_FALLBACK_GENERIC)
+    for info in sorted(info_gen, key=lambda x: x.site.casefold()):
+        yield _get_row_values(info)
 
 
 def _join_supported_paths(paths: tuple[str, ...] | list[str], quote_char: str = "`") -> str:
