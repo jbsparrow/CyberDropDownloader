@@ -98,6 +98,7 @@ class Crawler(ABC):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
     DOMAIN: ClassVar[str]
     FOLDER_DOMAIN: ClassVar[str] = ""
+    OLD_DOMAINS: ClassVar[tuple[str, ...]] = ()
 
     @final
     def __init__(self, manager: Manager) -> None:
@@ -153,11 +154,20 @@ class Crawler(ABC):
             for field_name in REQUIRED_FIELDS:
                 assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
 
+        if cls.OLD_DOMAINS:
+            cls.REPLACE_OLD_DOMAINS_REGEX = re.compile("|".join(cls.OLD_DOMAINS))
+            if not cls.SUPPORTED_DOMAINS:
+                cls.SUPPORTED_DOMAINS = ()
+            elif isinstance(cls.SUPPORTED_DOMAINS, str):
+                cls.SUPPORTED_DOMAINS = (cls.SUPPORTED_DOMAINS,)
+            cls.SUPPORTED_DOMAINS = tuple(sorted({*cls.OLD_DOMAINS, *cls.SUPPORTED_DOMAINS, cls.PRIMARY_URL.host}))
+        else:
+            cls.REPLACE_OLD_DOMAINS_REGEX = None
         _validate_supported_paths(cls)
         cls.SCRAPE_MAPPER_KEYS = _make_scrape_mapper_keys(cls)
         cls.FOLDER_DOMAIN = cls.FOLDER_DOMAIN or cls.DOMAIN.capitalize()
-        supported_domains = _make_supported_domains(cls.SCRAPE_MAPPER_KEYS)
-        cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, supported_domains, cls.SUPPORTED_PATHS)
+        wiki_supported_domains = _make_supported_domains(cls.SCRAPE_MAPPER_KEYS)
+        cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, wiki_supported_domains, cls.SUPPORTED_PATHS)
 
     @abstractmethod
     async def fetch(self, scrape_item: ScrapeItem) -> None: ...
@@ -219,6 +229,9 @@ class Crawler(ABC):
         """Transforms an URL before it reaches the fetch method
 
         Override it to transform thumbnail URLs into full res URLs or URLs in an old unsupported format into a new one"""
+        if cls.REPLACE_OLD_DOMAINS_REGEX is not None:
+            new_host = re.sub(cls.REPLACE_OLD_DOMAINS_REGEX, cls.PRIMARY_URL.host, url.host)
+            return url.with_host(new_host)
         return url
 
     @final
