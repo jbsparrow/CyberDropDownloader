@@ -29,7 +29,8 @@ from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Mapping
+    from collections.abc import Generator, Iterable, Mapping
+    from http.cookies import BaseCookie
 
     from aiohttp_client_cache.response import CachedResponse
     from curl_cffi.requests import AsyncSession
@@ -125,6 +126,15 @@ class ClientManager:
         self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
         self._headers = {"user-agent": self.manager.global_config.general.user_agent}
+
+    def filter_cookies_by_word_in_domain(self, word: str) -> Iterable[tuple[str, BaseCookie[str]]]:
+        """Yields pairs of `[domain, BaseCookie]` for every cookie with a domain that has `word` in it"""
+        if not self.cookies:
+            return
+        self.cookies._do_expiration()
+        for domain, _ in self.cookies._cookies:
+            if word in domain:
+                yield domain, self.cookies.filter_cookies(AbsoluteHttpURL(f"https://{domain}"))
 
     async def startup(self) -> None:
         await _set_dns_resolver()
