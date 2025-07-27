@@ -699,7 +699,7 @@ class Crawler(ABC):
                     if name == cookie_name:
                         yield morsel
 
-        if newest := max(get_morsels_by_name(), key=lambda x: x["expires"], default=None):
+        if newest := max(get_morsels_by_name(), key=lambda x: int(x["expires"] or 0), default=None):
             return newest.value
 
 

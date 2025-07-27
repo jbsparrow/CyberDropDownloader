@@ -7,7 +7,8 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from http import HTTPStatus
-from http.cookiejar import MozillaCookieJar
+from http.cookiejar import Cookie, MozillaCookieJar
+from http.cookies import SimpleCookie
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 import aiohttp
@@ -30,7 +31,7 @@ from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable, Mapping
-    from http.cookies import BaseCookie
+    from http.cookies import BaseCookie, Morsel
 
     from aiohttp_client_cache.response import CachedResponse
     from curl_cffi.requests import AsyncSession
@@ -247,6 +248,8 @@ class ClientManager:
             current_cookie_file_domains: set[str] = set()
             expired_cookies_domains: set[str] = set()
             for cookie in cookie_jar:
+                if not cookie.value:
+                    continue
                 simplified_domain = cookie.domain.removeprefix(".")
                 if simplified_domain not in current_cookie_file_domains:
                     log(f"Found cookies for {simplified_domain} in file '{file.name}'", 20)
@@ -258,10 +261,8 @@ class ClientManager:
                     expired_cookies_domains.add(simplified_domain)
 
                 domains_seen.add(simplified_domain)
-                self.cookies.update_cookies(
-                    {cookie.name: cookie.value},  # type: ignore
-                    response_url=AbsoluteHttpURL(f"https://{cookie.domain}"),
-                )
+                morsel = _morsel_from_cookie(cookie, now)
+                self.cookies.update_cookies(morsel, response_url=AbsoluteHttpURL(f"https://{cookie.domain}"))
 
             for simplified_domain in expired_cookies_domains:
                 log(f"Cookies for {simplified_domain} are expired", 30)
@@ -530,3 +531,19 @@ def _create_request_log_hooks(client_type: Literal["scrape", "download"]) -> lis
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
     return [trace_config]
+
+
+def _morsel_from_cookie(cookie: Cookie, now: float) -> Morsel[str]:
+    simple_cookie = SimpleCookie()
+    assert cookie.value is not None
+    simple_cookie[cookie.name] = cookie.value
+    morsel = simple_cookie[cookie.name]
+    morsel["domain"] = cookie.domain
+    morsel["path"] = cookie.path
+    morsel["secure"] = "TRUE" if cookie.secure else ""
+    if cookie.expires:
+        morsel["max_age"] = str(max(0, cookie.expires - int(now)))
+    else:
+        morsel["max_age"] = ""
+    morsel["expires"] = str(cookie.expires or "")
+    return morsel
