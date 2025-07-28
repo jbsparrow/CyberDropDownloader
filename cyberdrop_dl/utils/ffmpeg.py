@@ -54,7 +54,7 @@ def which_ffmpeg() -> str | None:
 def which_ffprobe() -> str | None:
     global _FFPROBE_AVAILABLE
     try:
-        bin_path = shutil.which("ffprobe") or (_builtin_ffprobe() + "[CDL builtin]")
+        bin_path = shutil.which("ffprobe") or _builtin_ffprobe()
         _FFPROBE_AVAILABLE = True
         return bin_path
     except RuntimeError:
