@@ -109,7 +109,7 @@ class Crawler(ABC):
         self.ready: bool = False
         self.disabled: bool = False
         self.logged_in: bool = False
-        self.scraped_items: list[str] = []
+        self.scraped_items: set[str] = set()
         self.waiting_items = 0
         self.log = log
         self.log_debug = log_debug
@@ -214,7 +214,7 @@ class Crawler(ABC):
             if url.path_qs in self.scraped_items:
                 return log(f"Skipping {url} as it has already been scraped", 10)
 
-            self.scraped_items.append(url.path_qs)
+            self.scraped_items.add(url.path_qs)
             async with self._fetch_context(scrape_item):
                 self.pre_check_scrape_item(scrape_item)
                 await self.fetch(scrape_item)
