@@ -586,11 +586,11 @@ class Crawler(ABC):
                 else:
                     parsed_date = parse_human_date(date_or_datetime)
 
+            if parsed_date:
+                return parsed_date
+
         except Exception as e:
             msg = f"{msg}. {format = }: {e!r}"
-
-        if parsed_date:
-            return parsed_date
 
         log(msg, bug=True)
 
