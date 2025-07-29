@@ -187,10 +187,9 @@ def _make_simple_cookie(cookie: Cookie, now: float) -> SimpleCookie:
     morsel = simple_cookie[cookie.name]
     morsel["domain"] = cookie.domain
     morsel["path"] = cookie.path
-    morsel["secure"] = "TRUE" if cookie.secure else ""
+    morsel["secure"] = cookie.secure
     if cookie.expires:
-        morsel["max_age"] = str(max(0, cookie.expires - int(now)))
+        morsel["max-age"] = str(max(0, cookie.expires - int(now)))
     else:
-        morsel["max_age"] = ""
-    morsel["expires"] = str(cookie.expires or "")
+        morsel["max-age"] = ""
     return simple_cookie
