@@ -219,7 +219,7 @@ class MediaItem:
         else:
             self._task_id = task_id
 
-    def jsonable_dict(self) -> dict[str, Any]:
+    def as_jsonable_dict(self) -> dict[str, Any]:
         item = asdict(self)
         if self.datetime:
             assert isinstance(self.datetime, int), f"Invalid {self.datetime =!r} from {self.referer}"
