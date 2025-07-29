@@ -303,12 +303,12 @@ class Crawler(ABC):
 
     @error_handling_wrapper
     async def handle_media_item_and_log(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None):
-        jsonl_file = self.manager.path_manager.main_log.with_suffix(".results.jsonl")
+        jsonl_file = self.manager.config.logs.jsonl_file
         try:
             return await self.handle_media_item(media_item, m3u8)
         finally:
             async with self.manager.download_manager.file_locks.get_lock(str(jsonl_file)):
-                await asyncio.to_thread(json.dump_jsonl, [media_item.as_jsonable_dict()], jsonl_file, append=True)
+                await json.dump_jsonl([media_item.as_jsonable_dict()], jsonl_file, append=True)
 
     async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()

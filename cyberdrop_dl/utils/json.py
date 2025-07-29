@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import datetime
 import enum
@@ -140,11 +141,14 @@ def dumps(obj: object, /, *, sort_keys: bool = False, indent: int | None = None)
     return encoder.encode(obj)
 
 
-def dump_jsonl(data: Iterable[dict[str, Any]], /, file: Path, *, append: bool = False) -> None:
-    with file.open(mode="a" if append else "w", encoding="utf8") as f:
-        for item in data:
-            f.writelines(_DEFAULT_ENCODER.iterencode(item))
-            f.write("\n")
+async def dump_jsonl(data: Iterable[dict[str, Any]], /, file: Path, *, append: bool = False) -> None:
+    async def dump():
+        with file.open(mode="a" if append else "w", encoding="utf8") as f:
+            for item in data:
+                f.writelines(_DEFAULT_ENCODER.iterencode(item))
+                f.write("\n")
+
+    await asyncio.to_thread(dump)
 
 
 loads = _verbose_decode_error_msg(json.loads)
