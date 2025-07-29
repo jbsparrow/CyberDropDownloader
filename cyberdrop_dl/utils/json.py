@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import datetime
 import enum
 import json
 import json.decoder
 import json.scanner
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, Protocol, TypeGuard
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
+
+    from cyberdrop_dl.managers.manager import Manager
 
     def _scanstring(*args, **kwargs) -> tuple[str, int]: ...
 
@@ -134,6 +138,18 @@ def dump_jsonl(data: Iterable[dict[str, Any]], /, file: Path, *, append: bool = 
         for item in data:
             f.writelines(_get_encoder().iterencode(item))
             f.write("\n")
+
+
+async def dump_items(manager: Manager) -> None:
+    jsonl_file = manager.path_manager.main_log.with_suffix(".results.jsonl")
+
+    def media_items_as_dict() -> Iterable[dict[str, Any]]:
+        for item in manager.path_manager.prev_downloads:
+            yield item.jsonable_dict()
+        for item in manager.path_manager.completed_downloads:
+            yield item.jsonable_dict()
+
+    return await asyncio.to_thread(dump_jsonl, media_items_as_dict(), jsonl_file)
 
 
 loads = json.loads
