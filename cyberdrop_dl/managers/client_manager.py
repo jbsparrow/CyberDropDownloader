@@ -233,8 +233,8 @@ class ClientManager:
         cookie_files = sorted(self.manager.path_manager.cookies_dir.glob("*.txt"))
         if not cookie_files:
             return
-        async for domain, morsel in read_netscape_files(cookie_files):
-            self.cookies.update_cookies(morsel, response_url=AbsoluteHttpURL(f"https://{domain}"))
+        async for domain, cookie in read_netscape_files(cookie_files):
+            self.cookies.update_cookies(cookie, response_url=AbsoluteHttpURL(f"https://{domain}"))
 
         log_spacer(20, log_to_console=False)
 

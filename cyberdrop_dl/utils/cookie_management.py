@@ -15,7 +15,6 @@ from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterable, Callable
-    from http.cookies import Morsel
     from pathlib import Path
 
     from cyberdrop_dl.constants import BROWSERS
@@ -141,7 +140,7 @@ def extract_cookies(extractor_name: str) -> CookieJar:
         raise
 
 
-async def read_netscape_files(cookie_files: list[Path]) -> AsyncIterable[tuple[str, Morsel[str]]]:
+async def read_netscape_files(cookie_files: list[Path]) -> AsyncIterable[tuple[str, SimpleCookie]]:
     now = time.time()
     domains_seen = set()
     cookie_jars = await asyncio.gather(*(_read_netscape_file(file) for file in cookie_files))
@@ -165,8 +164,8 @@ async def read_netscape_files(cookie_files: list[Path]) -> AsyncIterable[tuple[s
                 log(f"Cookies for {simplified_domain} are expired", 30)
 
             domains_seen.add(simplified_domain)
-            morsel = _morsel_from_cookie(cookie, now)
-            yield cookie.domain, morsel
+            simple_cookie = _make_simple_cookie(cookie, now)
+            yield cookie.domain, simple_cookie
 
 
 async def _read_netscape_file(file: Path) -> MozillaCookieJar | None:
@@ -181,7 +180,7 @@ async def _read_netscape_file(file: Path) -> MozillaCookieJar | None:
     return await asyncio.to_thread(read)
 
 
-def _morsel_from_cookie(cookie: Cookie, now: float) -> Morsel[str]:
+def _make_simple_cookie(cookie: Cookie, now: float) -> SimpleCookie:
     simple_cookie = SimpleCookie()
     assert cookie.value is not None
     simple_cookie[cookie.name] = cookie.value
@@ -194,4 +193,4 @@ def _morsel_from_cookie(cookie: Cookie, now: float) -> Morsel[str]:
     else:
         morsel["max_age"] = ""
     morsel["expires"] = str(cookie.expires or "")
-    return morsel
+    return simple_cookie

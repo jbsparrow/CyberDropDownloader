@@ -695,9 +695,8 @@ class Crawler(ABC):
     def get_cookie_value(self, cookie_name: str) -> str | None:
         def get_morsels_by_name():
             for _, cookie in self.get_cookies():
-                for name, morsel in cookie.items():
-                    if name == cookie_name:
-                        yield morsel
+                if morsel := cookie.get(cookie_name):
+                    yield morsel
 
         if newest := max(get_morsels_by_name(), key=lambda x: int(x["expires"] or 0), default=None):
             return newest.value
