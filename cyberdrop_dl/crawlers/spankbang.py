@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import itertools
-import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import css, javascript
+from cyberdrop_dl.utils import css, json
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -142,8 +141,9 @@ def _parse_video(soup: BeautifulSoup) -> Video:
     title_tag = css.select_one(soup, "div#video h1")
     stream_js_text = css.select_one_get_text(soup, JS_STREAM_DATA_SELECTOR)
     js_text = css.select_one_get_text(soup, JS_VIDEO_INFO_SELECTOR)
+    del soup
     video_data = json.loads(js_text)
-    stream_data = javascript.parse_obj(get_text_between(stream_js_text, "stream_data = ", ";"))
+    stream_data = json.load_js_obj(get_text_between(stream_js_text, "stream_data = ", ";"))
     embed_url = AbsoluteHttpURL(video_data["embedUrl"])
     return Video(
         id=embed_url.parts[1],

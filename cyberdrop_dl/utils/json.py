@@ -4,14 +4,16 @@ import asyncio
 import dataclasses
 import datetime
 import enum
+import functools
 import json
 import json.decoder
 import json.scanner
+import re
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, Protocol, TypeGuard
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, Protocol, TypeGuard, TypeVar
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from pathlib import Path
 
     from cyberdrop_dl.managers.manager import Manager
@@ -19,6 +21,9 @@ if TYPE_CHECKING:
     def _scanstring(*args, **kwargs) -> tuple[str, int]: ...
 
     def _py_make_scanner(*args, **kwargs) -> tuple[Any, int]: ...
+
+    _P = ParamSpec("_P")
+    _R = TypeVar("_R")
 
 else:
     _scanstring = json.decoder.scanstring
@@ -75,24 +80,27 @@ class LenientJSONEncoder(json.JSONEncoder):
         return str(o)
 
 
-class _JSDecoder(json.JSONDecoder):
+class JSDecoder(json.JSONDecoder):
     def __init__(self):
         """Custom decoder that tries to transforms javascript objects into valid json
 
-        It can only handle simple cases but that's enough most of the time"""
+        It can only handle simple js objects but that's enough most of the time"""
         super().__init__()
         self.parse_string = _parse_js_string
         self.scan_once = _py_make_scanner(self)
 
-    def parse_js_obj(self, js_text: str, /) -> Any:
-        """Get a python object from a string representation of a javascript object"""
 
-        # Make it valid json by replacing single quotes with double quotes
-        # we can't just replace every single ' with " because it will brake with english words like: it's
-        string = js_text.replace("\t", "").replace("\n", "").strip()
-        for old, new in _REPLACE_QUOTES_PAIRS:
-            string = string.replace(old, new)
-        return self.decode(string)
+def _verbose_decode_error_msg(func: Callable[_P, _R]) -> Callable[_P, _R]:
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> _R:
+        try:
+            return func(*args, **kwargs)
+        except json.JSONDecodeError as e:
+            sub_string = e.doc[e.pos - 10 : e.pos + 10]
+            msg = f"{e.msg} at around '{sub_string}', char: '{e.doc[e.pos]}'"
+            raise json.JSONDecodeError(msg, e.doc, e.pos) from None
+
+    return wrapper
 
 
 def _get_encoder(*, sort_keys: bool = False, indent: int | None = None):
@@ -104,11 +112,13 @@ def _get_encoder(*, sort_keys: bool = False, indent: int | None = None):
 
 def _parse_js_string(*args, **kwargs) -> tuple[Any, int]:
     string, end = _scanstring(*args, **kwargs)
+    for quote in ("'", '"'):
+        if len(string) > 2 and string.startswith(quote) and string.endswith(quote):
+            string = string[1:-1]
     return _literal_value(string), end
 
 
 def _literal_value(string: str) -> Any:
-    string = string.removesuffix("'").removeprefix("'")
     if string.isdigit():
         return int(string)
     if string == "undefined":
@@ -136,21 +146,39 @@ def dumps(obj: object, /, *, sort_keys: bool = False, indent: int | None = None)
 def dump_jsonl(data: Iterable[dict[str, Any]], /, file: Path, *, append: bool = False) -> None:
     with file.open(mode="a" if append else "w", encoding="utf8") as f:
         for item in data:
-            f.writelines(_get_encoder().iterencode(item))
+            f.writelines(_DEFAULT_ENCODER.iterencode(item))
             f.write("\n")
 
 
 async def dump_items(manager: Manager) -> None:
     jsonl_file = manager.path_manager.main_log.with_suffix(".results.jsonl")
 
-    def media_items_as_dict() -> Iterable[dict[str, Any]]:
+    def iter_dicts() -> Iterable[dict[str, Any]]:
         for item in manager.path_manager.prev_downloads:
             yield item.jsonable_dict()
         for item in manager.path_manager.completed_downloads:
             yield item.jsonable_dict()
 
-    return await asyncio.to_thread(dump_jsonl, media_items_as_dict(), jsonl_file)
+    return await asyncio.to_thread(dump_jsonl, iter_dicts(), jsonl_file)
 
 
-loads = json.loads
-parse_js_obj = _JSDecoder().parse_js_obj
+loads = _verbose_decode_error_msg(json.loads)
+_JS_DECODER = JSDecoder()
+_DEFAULT_ENCODER = _get_encoder()
+
+
+@_verbose_decode_error_msg
+def load_js_obj(string: str, /) -> Any:
+    """Parses a string representation of a JavaScript object into a Python object.
+
+    It can handle JavaScript object strings that may not be valid JSON"""
+
+    string = string.replace("\t", "").replace("\n", "").strip()
+    # Remove tailing comma
+    string = string[:-1].strip().removesuffix(",") + string[-1]
+    # Make it valid json by replacing single quotes with double quotes
+    # we can't just replace every single ' with " because it will brake with english words like: it's
+    for old, new in _REPLACE_QUOTES_PAIRS:
+        string = string.replace(old, new)
+    string = re.sub(r"\s\b(?!http)(\w+)\s?:", r' "\1" : ', string)  # wrap keys without quotes with double quotes
+    return _JS_DECODER.decode(string)
