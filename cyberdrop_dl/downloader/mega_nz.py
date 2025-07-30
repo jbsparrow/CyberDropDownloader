@@ -183,7 +183,6 @@ class Node(TypedDict):
     a: str  # attributes (within this: 'n' Name)
     k: str  # key
     u: str  # user id
-    s: int  # size
     ts: int  # creation date (timestamp)
     g: NotRequired[str]  # Access URL
 
@@ -446,7 +445,7 @@ async def generate_hashcash_token(challenge: str) -> str:
 def get_decrypt_data(node_type: NodeType, full_key: U32IntTupleArray) -> DecryptData:
     if node_type == NodeType.FILE:
         k = (full_key[0] ^ full_key[4], full_key[1] ^ full_key[5], full_key[2] ^ full_key[6], full_key[3] ^ full_key[7])
-    elif node_type == NodeType.FOLDER:
+    else:
         k = full_key
 
     iv: U32IntTupleArray = (*full_key[4:6], 0, 0)
@@ -844,14 +843,15 @@ class MegaDownloadClient(DownloadClient):
 
 
 class MegaDownloader(Downloader):
+    client: MegaDownloadClient
+
     def __init__(self, manager: Manager, domain: str) -> None:
         super().__init__(manager, domain)
         self.api = MegaApi(manager)
-        self.client: MegaDownloadClient
 
     def startup(self) -> None:
         """Starts the downloader."""
-        self.client = MegaDownloadClient(self.manager)
+        self.client = MegaDownloadClient(self.manager)  # type: ignore[reportIncompatibleVariableOverride]
         self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
 
     def register(self, url: URL, crypto: DecryptData) -> None:

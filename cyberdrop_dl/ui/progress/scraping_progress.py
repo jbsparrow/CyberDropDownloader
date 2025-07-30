@@ -41,6 +41,6 @@ class ScrapingProgress(DequeProgress):
         if not passed:
             self.manager.progress_manager.file_progress.redraw()
 
-    def add_task(self, url: URL) -> TaskID:
+    def add_task(self, url: URL) -> TaskID:  # type: ignore[reportIncompatibleMethodOverride]
         """Adds a new task to the progress bar."""
         return super().add_task(str(url))

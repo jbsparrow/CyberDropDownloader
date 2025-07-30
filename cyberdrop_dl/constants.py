@@ -91,9 +91,9 @@ class Hashing(StrEnum):
     POST_DOWNLOAD = auto()
 
     @classmethod
-    def _missing_(cls, value: str) -> "Hashing":
+    def _missing_(cls, value: object) -> "Hashing":
         try:
-            return cls[str(value.upper())]
+            return cls[str(value).upper()]
         except KeyError as e:
             raise e
 

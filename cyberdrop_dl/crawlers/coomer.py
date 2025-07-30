@@ -6,7 +6,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
-from ._kemono_base import KemonoBaseCrawler, UserPost
+from ._kemono_base import KemonoBaseCrawler, Post
 
 if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
@@ -40,7 +40,7 @@ class CoomerCrawler(KemonoBaseCrawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self._fetch_kemono_defaults(scrape_item)
 
-    def _handle_post_content(self, scrape_item: ScrapeItem, post: UserPost) -> None:
+    def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
         """Handles the content of a post."""
         if "#ad" in post.content and self.manager.config_manager.settings_data.ignore_options.ignore_coomer_ads:
             return

@@ -314,8 +314,8 @@ def _setup_manager(args: tuple[str, ...] | None = None) -> Manager:
     After this function returns, the manager will be ready to use and scraping / downloading can begin.
     """
     with _startup_logging(first_time_setup=True):
+        manager = Manager(args)
         try:
-            manager = Manager(args)
             manager.startup()
             if manager.parsed_args.cli_only_args.multiconfig:
                 startup_logger.info("validating all configs, please wait...")
