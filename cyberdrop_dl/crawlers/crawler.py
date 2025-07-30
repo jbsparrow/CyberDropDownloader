@@ -45,6 +45,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 T = TypeVar("T")
 _T_co = TypeVar("_T_co", covariant=True)
+_CRAWLER_DOMAIN: Any = object()
 
 
 if TYPE_CHECKING:
@@ -348,10 +349,19 @@ class Crawler(ABC):
 
         return False
 
-    async def check_complete_from_referer(self, scrape_item: ScrapeItem | URL) -> bool:
-        """Checks if the scrape item has already been scraped."""
+    async def check_complete_from_referer(
+        self, scrape_item: ScrapeItem | URL, domain: str | None = _CRAWLER_DOMAIN
+    ) -> bool:
+        """Checks if the scrape item has already been scraped.
+
+        by default, it only checks database entries from this crawler. Pass a custom value in domain to check referers from other crawlers
+
+        if domain is `None`, checks database entries for all crawlers and returns `True` if at least 1 of them has marked it as completed
+        """
         url = scrape_item if isinstance(scrape_item, URL) else scrape_item.url
-        downloaded = await self.manager.db_manager.history_table.check_complete_by_referer(self.DOMAIN, url)
+        if domain is _CRAWLER_DOMAIN:
+            domain = self.DOMAIN
+        downloaded = await self.manager.db_manager.history_table.check_complete_by_referer(domain, url)
         if downloaded:
             log(f"Skipping {url} as it has already been downloaded", 10)
             self.manager.progress_manager.download_progress.add_previously_completed()
