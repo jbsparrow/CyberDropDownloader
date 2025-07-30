@@ -32,7 +32,7 @@ class Selectors:
     VIDEOS_2 = "div#list_videos_common_videos_list_items a"
     VIDEOS_1 = "div.video-list a.thumb"
     VIDEOS = f"{VIDEOS_1}, {VIDEOS_2}"
-    LAST_PAGE = "div.pagination-holder li.page"
+    LAST_PAGE = "div.pagination-holder li.page:last-of-type"
     TITLE = "div.headline > h1"
     MODEL_NAME = "div.name > h1"
     ALBUM_TITLE = "div.album-info p.title-video"
@@ -43,7 +43,7 @@ class Selectors:
 
 VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
 COLLECTION_PARTS = "tags", "categories", "models", "playlists", "search", "members"
-TITLE_TRASH = "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
+TITLE_TRASH = "Showing", "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _SELECTORS = Selectors()
 
 PRIMARY_URL = AbsoluteHttpURL("https://www.porntrex.com")
