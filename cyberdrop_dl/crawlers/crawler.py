@@ -22,7 +22,7 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem,
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.utils import css, m3u8
+from cyberdrop_dl.utils import css, json, m3u8
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -265,6 +265,7 @@ class Crawler(ABC):
             return False
         return primary_domain in other_domain and other_domain.count(".") > primary_domain.count(".")
 
+    # TODO: make this sync
     async def handle_file(
         self,
         url: URL,
@@ -292,9 +293,20 @@ class Crawler(ABC):
         media_item = MediaItem.from_item(
             scrape_item, url, download_folder, filename, original_filename, debrid_link, ext=ext
         )
-        await self.handle_media_item(media_item, m3u8)
+
+        self.create_task(self.handle_media_item(media_item, m3u8))
 
     async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
+        try:
+            return await self._handle_media_item(media_item, m3u8)
+        finally:
+            if self.manager.config_manager.settings_data.files.dump_json:
+                jsonl_file = self.manager.config.logs.jsonl_file
+                data = [media_item.as_jsonable_dict()]
+                async with self.manager.download_manager.file_locks.get_lock(str(jsonl_file)):
+                    await json.dump_jsonl(data, jsonl_file)
+
+    async def _handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int."

@@ -142,6 +142,7 @@ class PathManager:
                 t_delta = now - datetime.fromtimestamp(file_date)
                 if t_delta > self.manager.config_manager.settings_data.logs.logs_expire_after:
                     file.unlink(missing_ok=True)
+        self.manager.config_manager.settings_data.logs.jsonl_file.unlink(missing_ok=True)
         purge_dir_tree(self.log_folder)
 
     def _create_output_folders(self):
