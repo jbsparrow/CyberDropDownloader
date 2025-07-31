@@ -41,17 +41,17 @@ class TaskInfo(NamedTuple):
 
 class UiFailureTotal(NamedTuple):
     full_msg: str
-    count: int
+    total: int
     error_code: int | None
     msg: str
 
     @classmethod
-    def from_pair(cls, full_msg: str, count: int) -> UiFailureTotal:
+    def from_pair(cls, full_msg: str, total: int) -> UiFailureTotal:
         parts = full_msg.split(" ", 1)
         if len(parts) > 1 and parts[0].isdigit():
             error_code, msg = parts
-            return cls(full_msg, count, int(error_code), msg)
-        return cls(full_msg, count, None, full_msg)
+            return cls(full_msg, total, int(error_code), msg)
+        return cls(full_msg, total, None, full_msg)
 
 
 def get_tasks_info_sorted(progress: Progress) -> tuple[list[TaskInfo], bool]:

@@ -134,7 +134,7 @@ class SpankBangCrawler(Crawler):
         scrape_item.possible_datetime = self.parse_iso_date(video.date)
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename = self.create_custom_filename(video.title, ext, file_id=video_id, resolution=resolution)
+        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 

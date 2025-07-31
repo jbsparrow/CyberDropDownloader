@@ -76,6 +76,8 @@ class SexDotComCrawler(Crawler):
         elif fileType.startswith("video"):
             media_url = AbsoluteHttpURL(real_item["sources"][0]["fullPath"])
             filename, ext = self.get_filename_and_ext(media_url.name)
+        else:
+            return
 
         scrape_item.possible_datetime = self.parse_date(real_item["createdAt"])
         scrape_item.url = canonical_url

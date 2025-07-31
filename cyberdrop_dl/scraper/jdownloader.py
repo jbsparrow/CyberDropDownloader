@@ -60,7 +60,7 @@ class JDownloader:
         if not self.enabled or self._agent is not None:
             return
         try:
-            self._connect()
+            return self._connect()
         except JDownloaderError as e:
             msg = e.message
         except myjdapi.MYJDDeviceNotFoundException:
