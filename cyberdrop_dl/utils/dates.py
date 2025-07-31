@@ -57,7 +57,7 @@ class DateParser(dateparser.date.DateDataParser):
         date_order = date_order or DEFAULT_DATE_ORDER
         parsers = coerce_to_list(parsers) or DEFAULT_PARSERS
         super().__init__(
-            lenguages=["en"],
+            languages=["en"],
             try_previous_locales=True,
             settings={
                 "DATE_ORDER": date_order,
