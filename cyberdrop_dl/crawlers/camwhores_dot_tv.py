@@ -52,9 +52,9 @@ class CamwhoresTVCrawler(KernelVideoSharingCrawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         raise NotImplementedError
 
-    async def iter_pages(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
+    async def _iter_pages(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
         url = scrape_item.url / video_category if video_category else scrape_item.url
-        await super().iter_pages(scrape_item, video_category)
+        await super()._iter_pages(scrape_item, video_category)
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
 

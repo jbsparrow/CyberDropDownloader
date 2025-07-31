@@ -1,6 +1,6 @@
 """Kernel Video Sharing, a CMS for tube sites (https://www.kernel-video-sharing.com)
 
-Basically, any site that look like this: https://www.kvs-demo.com
+KVS sites look like this: https://www.kvs-demo.com
 
 # TODO: reseach about competitor CMS listed in KVS site:
 
@@ -24,7 +24,8 @@ import dataclasses
 import itertools
 import json
 import re
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, overload
+import time
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, final, overload
 
 from aiolimiter import AsyncLimiter
 
@@ -56,7 +57,7 @@ class Video:
     title: str
 
 
-# KVS supports custom themes that can basically to anything to the style of the page.
+# KVS supports custom themes that can do basically anything to the style of the page.
 # therefore these selectors may not work on some sites
 class Selectors:
     ALBUM_ID = "script:contains('album_id')"
@@ -80,7 +81,6 @@ class Selectors:
 
 
 _SELECTORS = Selectors()
-_TITLE_TRASH = "Showing ", "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _PARSE_FLASHVARS_REGEX = re.compile(r"(\w+):\s*'([^']*)'")
 
 
@@ -110,13 +110,10 @@ pornrex = "list_videos_common_videos_list_norm"
 class KernelVideoSharingCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[dict[str, str | tuple[str, ...]]] = {
         "Album": (
-            "/album/<album_name>/",
-            "/albums/<album_name>/",
+            "/(albums|album|gallery)/<album_name>/",
+            "/(albums|album|gallery)/<album_name>/",
         ),
-        "Image": (
-            "/album/<album_name>/<image_name>/",
-            "/albums/<album_name>/<image_name>/",
-        ),
+        "Image": "/(albums|album|gallery)/<album_name>/<image_name>/",
         "Search": (
             "/search/?q=<search_query>",
             "/search/<search_query>/",
@@ -124,10 +121,8 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         "Category": "/categories/<category>/",
         "Tag": "/tags/<tag>/",
         "Video": (
-            "/video/<video_name>/",
-            "/video/video_id/<video_name>/",
-            "/videos/<video_name>/",
-            "/videos/video_id/<video_name>/",
+            "/(videos|video)/<video_name>/",
+            "/(videos|video)/<video_id>/<video_name>/",
         ),
         "Member": "/members/<member>/",
         "Model": "/models/<model>/",
@@ -149,10 +144,10 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
     def __init_subclass__(cls, **kwargs):
         assert cls.KVS_PACKAGE_LICENSE in ("BASIC", "ADVANCED", "ULTIMATE"), "invalid kvs license"
         if cls.KVS_PACKAGE_LICENSE != "ULTIMATE":
-            paths = KernelVideoSharingCrawler.SUPPORTED_PATHS.copy()
-            _ = paths.pop("Album"), paths.pop("Image")
+            paths = cls.SUPPORTED_PATHS.copy()
+            _ = paths.pop("Album", None), paths.pop("Image", None)
             if cls.KVS_PACKAGE_LICENSE != "ADVANCED":
-                _ = paths.pop("Model"), paths.pop("Member")
+                _ = paths.pop("Model", None), paths.pop("Member", None)
             cls.SUPPORTED_PATHS = paths  # type: ignore[reportIncompatibleVariableOverride]
         cls.KVS_ITEM_SELECTOR = ", ".join(
             (
@@ -174,17 +169,15 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         # TODO: make sure the scrape mapper does not trim URLs
         clean_url = remove_trailing_slash(scrape_item.url)
         match clean_url.parts[1:]:
-            case ["categories" | "tags" as type_, _] if type_ in ColletionType:
-                return await self.collection(scrape_item, ColletionType(type_))
+            case ["categories" | "tags" as type_, slug] if type_ in ColletionType:
+                return await self.collection(scrape_item, slug, ColletionType(type_))
             case ["members", _]:
                 return await self.profile(scrape_item)
-            case ["videos" | "video", _]:
+            case ["videos" | "video", _, *_]:
                 return await self.video(scrape_item)
-            case ["videos" | "video", _, _]:
-                return await self.video(scrape_item)
-            case ["albums" | "album", _]:
+            case ["albums" | "album" | "gallery", _]:
                 return await self.album(scrape_item)
-            case ["albums" | "album", _, _]:
+            case ["albums" | "album" | "gallery", _, _]:
                 return await self.picture(scrape_item)
             case ["search", query]:
                 return await self.search(scrape_item, query)
@@ -196,40 +189,32 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
             case _:
                 raise ValueError
 
+    @final
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem, search_query: str) -> None:
         title = self.create_title(f"{search_query} [search]")
         scrape_item.setup_as_album(title)
-        await self.iter_pages(
+        await self._iter_pages(
             scrape_item, self.KVS_BLOCK_IDS.search, self.KVS_VAR_FROMS.search, search_query=search_query
         )
 
+    @final
     @error_handling_wrapper
-    async def collection(self, scrape_item: ScrapeItem, list_type: ColletionType) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
-        if list_type is ColletionType.tags:
+    async def collection(self, scrape_item: ScrapeItem, slug: str, collection_type: ColletionType) -> None:
+        if collection_type is ColletionType.tags:
             block_id = self.KVS_BLOCK_IDS.tag
             var_from = self.KVS_VAR_FROMS.tag
         else:
             block_id = self.KVS_BLOCK_IDS.category
             var_from = self.KVS_VAR_FROMS.category
 
-        title = css.select_one_get_text(soup, f"div:{block_id} h1")
-        title = f"{title} [{list_type}]"
-        for trash in _TITLE_TRASH:
-            title = title.replace(trash, "").strip()
-
-        title = self.create_title(title.rpartition(",Page")[0])
+        title = self.create_title(f"{slug} [{collection_type}]")
         scrape_item.setup_as_album(title)
-        await self.iter_pages(scrape_item, block_id, var_from)
+        await self._iter_pages(scrape_item, block_id, var_from)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self._get_soup(scrape_item.url)
         user_name = css.select_one_get_text(soup, _SELECTORS.USER_NAME).split("'s Profile")[0].strip()
         title = self.create_title(f"{user_name} [user]")
         scrape_item.setup_as_profile(title)
@@ -238,17 +223,15 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
             url = (remove_trailing_slash(scrape_item.url) / new_part / "").with_query(scrape_item.url.query)
             return scrape_item.create_child(url, new_title_part=new_part)
 
-        await self.iter_pages(new_item("videos"), self.KVS_BLOCK_IDS.user_videos, self.KVS_VAR_FROMS.user_videos)
-        await self.iter_pages(new_item("albums"), self.KVS_BLOCK_IDS.user_albums, self.KVS_VAR_FROMS.user_albums)
+        await self._iter_pages(new_item("videos"), self.KVS_BLOCK_IDS.user_videos, self.KVS_VAR_FROMS.user_videos)
+        await self._iter_pages(new_item("albums"), self.KVS_BLOCK_IDS.user_albums, self.KVS_VAR_FROMS.user_albums)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self._get_soup(scrape_item.url)
         video = self.get_embeded_video(soup)
         filename, ext = self.get_filename_and_ext(video.url.name or video.url.parent.name)
         custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.resolution)
@@ -259,9 +242,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self._get_soup(scrape_item.url)
         if soup.select_one(_SELECTORS.PRIVATE_ALBUM):
             raise ScrapeError(401, "Private album")
 
@@ -270,17 +251,14 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         title = css.select_one_get_text(soup, _SELECTORS.ALBUM_NAME)
         title = self.create_title(f"{title} [album]", album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
-        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM_PICTURES, results=results):
-            self.create_task(self.run(new_scrape_item))
+        await self._iter_album_pages(scrape_item, soup, results)
 
     @error_handling_wrapper
     async def picture(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self._get_soup(scrape_item.url)
         url = self.parse_url(css.select_one_get_attr(soup, _SELECTORS.PICTURE, "src"))
         if iso_date := get_json_ld_value(soup, "uploadDate", strict=False):
             scrape_item.possible_datetime = self.parse_iso_date(iso_date)
@@ -304,26 +282,42 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
             video.title = title
         return video
 
-    async def iter_pages(
+    async def _get_soup(self, url: AbsoluteHttpURL):
+        async with self.request_limiter:
+            return await self.client.get_soup(self.DOMAIN, url)
+
+    async def _iter_album_pages(self, scrape_item: ScrapeItem, soup: BeautifulSoup, results: dict[str, int]) -> None:
+        # This does not work on every site. Most subclasses will need to override this
+        # 1. some themes have all image src available on the main album page
+        # 2. some themes only have thumbnails available, so we need to make a new request
+        # 3. some themes have pagination enabled
+
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM_PICTURES, results=results):
+            self.create_task(self.run(new_scrape_item))
+
+    async def _iter_pages(
         self,
         scrape_item: ScrapeItem,
         block_id: str,
-        /,
         var_from: str,
         *,
         search_query: str | None = None,
     ) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        last_page = int(css.get_text(soup.select(_SELECTORS.LAST_PAGE)[-1]))
+        soup = await self._get_soup(scrape_item.url)
+        try:
+            last_page = int(css.get_text(soup.select(_SELECTORS.LAST_PAGE)[-1]))
+        except css.SelectorError:
+            last_page = 1
         for _, new_scrape_item in self.iter_children(scrape_item, soup, self.KVS_ITEM_SELECTOR):
             self.create_task(self.run(new_scrape_item))
 
-        # The default KVS theme does not support pages in the URL path, that means no pagination support
-        # We need to load additional pages using the AJAX API to make sure we can handle all sites
-        await self.__iter_additional_pages(scrape_item, block_id, var_from, search_query, last_page)
+        if last_page > 1:
+            # The default KVS theme does not support pages in the URL path, that means no pagination support
+            # We need to load additional pages simulating an AJAX request to make sure we can handle all sites
+            await self._iter_additional_pages(scrape_item, block_id, var_from, search_query, last_page)
 
-    async def __iter_additional_pages(
+    @final
+    async def _iter_additional_pages(
         self,
         scrape_item: ScrapeItem,
         block_id: str,
@@ -332,7 +326,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         last_page: int,
     ) -> None:
         # https://forum.kernel-video-sharing.com/topic/346-how-to-enable-pagination-in-related-videos/
-        assert last_page > 0
+        # TODO: This canonical URL may not be needed anymore
         canonical_url = scrape_item.url.with_path("/".join(scrape_item.url.parts[1:3])) / ""
         ajax_url = canonical_url.with_query(
             mode="async",
@@ -346,14 +340,12 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         for page in itertools.count(2):
             if page > last_page:
                 break
-            async with self.request_limiter:
-                soup = await self.client.get_soup(self.DOMAIN, ajax_url.update_query({var_from: page}))
-
+            soup = await self._get_soup(ajax_url.update_query({var_from: page, "_": int(time.time() * 1000)}))
             for _, new_scrape_item in self.iter_children(scrape_item, soup, self.KVS_ITEM_SELECTOR):
                 self.create_task(self.run(new_scrape_item))
 
-    def _get_video_date(self, soup: BeautifulSoup):
-        # Which one is available depends on the sites theme. Older themes do no have json_ld or og props
+    def _get_video_date(self, soup: BeautifulSoup) -> int | None:
+        # older themes do no have json_ld or open_graph props
         if iso_date := (
             get_json_ld_value(soup, "uploadDate", strict=False) or open_graph.get("video:release_date", soup)
         ):
@@ -361,7 +353,6 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         if date_row := soup.select_one(_SELECTORS.DATE):
             human_date = css.get_text(date_row).split(":", 1)[-1].strip()
             return self.parse_date(human_date)
-        return self.parse_iso_date("")  # log warning
 
 
 # TODO: Move title funtions to css utils
