@@ -119,9 +119,7 @@ def error_handling_wrapper(
             return
 
         log(f"Scrape Failed: {link_to_show} ({error_log_msg.main_log_msg})", 40, exc_info=exc_info)
-        self.manager.task_group.create_task(
-            self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
-        )
+        self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
         self.manager.progress_manager.scrape_stats_progress.add_failure(error_log_msg.ui_failure)
 
     return wrapper
