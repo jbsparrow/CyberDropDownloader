@@ -202,7 +202,7 @@ def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_
         error_padding = max(len(str(max(error_codes))), error_padding)
     for f in failures:
         error = f.error_code if f.error_code is not None else ""
-        log_red(f"  {error:>{error_padding}}{' ' if error_padding else ''}{f.msg}: {f.count:,}")
+        log_red(f"  {error:>{error_padding}}{' ' if error_padding else ''}{f.msg}: {f.total:,}")
     return error_padding
 
 

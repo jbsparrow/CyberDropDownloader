@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import itertools
-import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import css, javascript
+from cyberdrop_dl.utils import css, json
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -134,7 +133,7 @@ class SpankBangCrawler(Crawler):
         scrape_item.possible_datetime = self.parse_iso_date(video.date)
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename = self.create_custom_filename(video.title, ext, file_id=video_id, resolution=resolution)
+        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=resolution)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
@@ -142,8 +141,9 @@ def _parse_video(soup: BeautifulSoup) -> Video:
     title_tag = css.select_one(soup, "div#video h1")
     stream_js_text = css.select_one_get_text(soup, JS_STREAM_DATA_SELECTOR)
     js_text = css.select_one_get_text(soup, JS_VIDEO_INFO_SELECTOR)
+    del soup
     video_data = json.loads(js_text)
-    stream_data = javascript.parse_obj(get_text_between(stream_js_text, "stream_data = ", ";"))
+    stream_data = json.load_js_obj(get_text_between(stream_js_text, "stream_data = ", ";"))
     embed_url = AbsoluteHttpURL(video_data["embedUrl"])
     return Video(
         id=embed_url.parts[1],

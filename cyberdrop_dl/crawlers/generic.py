@@ -103,7 +103,7 @@ class GenericCrawler(Crawler):
 
     async def log_unsupported(self, scrape_item: ScrapeItem, msg: str = "") -> None:
         log(f"Unsupported URL: {scrape_item.url} {msg}", 30)
-        await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.origin)
+        self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.origin)
         self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
 

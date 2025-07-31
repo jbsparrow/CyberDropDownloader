@@ -108,7 +108,7 @@ class QueuedLogger:
 class NoPaddingLogRender(LogRender):
     cdl_padding = 0
 
-    def __call__(
+    def __call__(  # type: ignore[reportIncompatibleMethodOverride]
         self,
         console: Console,
         renderables: Iterable[ConsoleRenderable],
