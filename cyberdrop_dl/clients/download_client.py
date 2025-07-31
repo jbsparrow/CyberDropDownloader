@@ -162,7 +162,7 @@ class DownloadClient:
             if isinstance(gen, list):
                 fallback_urls: list[AbsoluteHttpURL] | None = gen
             else:
-                fallback_call: Callable[..., AbsoluteHttpURL] | None = gen
+                fallback_call: Callable[[aiohttp.ClientResponse, int], AbsoluteHttpURL] | None = gen
 
         def gen_fallback() -> Generator[AbsoluteHttpURL | None, aiohttp.ClientResponse, None]:
             response = yield

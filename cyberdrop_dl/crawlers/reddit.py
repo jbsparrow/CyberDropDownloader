@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 class MediaFile(TypedDict):
     y: int  # Height
     x: int  # Width
-    u: str  # URL
 
 
 class MediaSource(MediaFile):

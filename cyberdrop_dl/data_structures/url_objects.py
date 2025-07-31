@@ -1,7 +1,9 @@
+# type: ignore[reportIncompatibleVariableOverride]
 from __future__ import annotations
 
 import copy
-from dataclasses import InitVar, dataclass, field
+import datetime
+from dataclasses import asdict, dataclass, field
 from enum import IntEnum
 from functools import partialmethod
 from pathlib import Path
@@ -16,11 +18,11 @@ R = TypeVar("R")
 T = TypeVar("T")
 
 if TYPE_CHECKING:
-    import datetime
     import functools
     import inspect
     from collections.abc import Callable
 
+    import aiohttp
     from propcache.api import under_cached_property as cached_property
     from rich.progress import TaskID
 
@@ -140,49 +142,65 @@ class HlsSegment(NamedTuple):
     url: AbsoluteHttpURL
 
 
-@dataclass(unsafe_hash=True, slots=True)
+@dataclass(unsafe_hash=True, slots=True, kw_only=True)
 class MediaItem:
     url: AbsoluteHttpURL
-    origin: InitVar[ScrapeItem | MediaItem]
+    referer: AbsoluteHttpURL
     download_folder: Path
     filename: str
-    original_filename: str | None = None
-    debrid_link: AbsoluteHttpURL | None = field(default=None, hash=False, compare=False)
-    duration: float | None = field(default=None, hash=False, compare=False)
-    ext: str = ""
+    original_filename: str
+    ext: str
+    debrid_link: AbsoluteHttpURL | None = field(default=None, compare=False)
+    duration: float | None = field(default=None, compare=False)
     is_segment: bool = False
-    fallbacks: Callable[..., AbsoluteHttpURL] | list[AbsoluteHttpURL] | None = field(
-        default=None, hash=False, compare=False
+    fallbacks: Callable[[aiohttp.ClientResponse, int], AbsoluteHttpURL] | list[AbsoluteHttpURL] | None = field(
+        default=None, compare=False
     )
+    album_id: str | None = None
+    datetime: int | None = field(default=None, compare=False)
+    parents: list[AbsoluteHttpURL] = field(default_factory=list, compare=False)
+    parent_threads: set[AbsoluteHttpURL] = field(default_factory=set, compare=False)
+    parent_media_item: MediaItem | None = field(default=None, compare=False)
+    download_filename: str | None = field(default=None)
+    filesize: int | None = field(default=None, compare=False)
+    current_attempt: int = field(default=0, compare=False)
+    partial_file: Path = None  # type: ignore
+    complete_file: Path = None  # type: ignore
+    hash: str | None = field(default=None, compare=False)
+    downloaded: bool = field(default=False, compare=False)
+    _task_id: TaskID | None = field(default=None, compare=False)
 
-    # exclude from __init__
-    parent_media_item: MediaItem | None = field(init=False, default=None, hash=False, compare=False)
-    file_lock_reference_name: str | None = field(default=None, init=False)
-    download_filename: str | None = field(default=None, init=False)
-    filesize: int | None = field(default=None, init=False)
-    current_attempt: int = field(default=0, init=False, hash=False, compare=False)
-    partial_file: Path = field(default=None, init=False)  # type: ignore
-    complete_file: Path = field(default=None, init=False)  # type: ignore
-    hash: str | None = field(default=None, init=False, hash=False, compare=False)
-    downloaded: bool = field(default=False, init=False, hash=False, compare=False)
-    _task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
-
-    # slots for __post_init__
-    referer: AbsoluteHttpURL = field(init=False)
-    album_id: str | None = field(init=False)
-    datetime: int | None = field(init=False, hash=False, compare=False)
-    parents: list[AbsoluteHttpURL] = field(init=False, hash=False, compare=False)
-    parent_threads: set[AbsoluteHttpURL] = field(init=False, hash=False, compare=False)
-
-    def __post_init__(self, origin: ScrapeItem | MediaItem) -> None:
-        self.referer = origin.url
-        self.album_id = origin.album_id
-        self.ext = self.ext or Path(self.filename).suffix
-        self.original_filename = self.original_filename or self.filename
-        self.parents = origin.parents.copy()
-        self.datetime = origin.possible_datetime if isinstance(origin, ScrapeItem) else origin.datetime
-        self.parent_media_item = None if isinstance(origin, ScrapeItem) else origin
-        self.parent_threads = origin.parent_threads.copy()
+    @staticmethod
+    def from_item(
+        origin: ScrapeItem | MediaItem,
+        url: AbsoluteHttpURL,
+        /,
+        download_folder: Path,
+        filename: str,
+        original_filename: str | None = None,
+        debrid_link: AbsoluteHttpURL | None = None,
+        duration: float | None = None,
+        ext: str = "",
+        is_segment: bool = False,
+        fallbacks: Callable[[aiohttp.ClientResponse, int], AbsoluteHttpURL] | list[AbsoluteHttpURL] | None = None,
+    ) -> MediaItem:
+        return MediaItem(
+            url=url,
+            download_folder=download_folder,
+            filename=filename,
+            debrid_link=debrid_link,
+            duration=duration,
+            referer=origin.url,
+            album_id=origin.album_id,
+            ext=ext or Path(filename).suffix,
+            original_filename=original_filename or filename,
+            is_segment=is_segment,
+            fallbacks=fallbacks,
+            parents=origin.parents.copy(),
+            datetime=origin.possible_datetime if isinstance(origin, ScrapeItem) else origin.datetime,
+            parent_media_item=None if isinstance(origin, ScrapeItem) else origin,
+            parent_threads=origin.parent_threads.copy(),
+        )
 
     @property
     def task_id(self) -> TaskID | None:
@@ -200,6 +218,16 @@ class MediaItem:
             self.parent_media_item.set_task_id(task_id)
         else:
             self._task_id = task_id
+
+    def as_jsonable_dict(self) -> dict[str, Any]:
+        item = asdict(self)
+        if self.datetime:
+            assert isinstance(self.datetime, int), f"Invalid {self.datetime =!r} from {self.referer}"
+            item["datetime"] = datetime.datetime.fromtimestamp(self.datetime)
+        item["attempts"] = item.pop("current_attempt")
+        for name in ("fallbacks", "_task_id"):
+            _ = item.pop(name)
+        return item
 
 
 @dataclass(kw_only=True, slots=True)

@@ -57,6 +57,8 @@ class DateParser(dateparser.date.DateDataParser):
         date_order = date_order or DEFAULT_DATE_ORDER
         parsers = coerce_to_list(parsers) or DEFAULT_PARSERS
         super().__init__(
+            languages=["en"],
+            try_previous_locales=True,
             settings={
                 "DATE_ORDER": date_order,
                 "PREFER_DAY_OF_MONTH": "first",
@@ -64,7 +66,7 @@ class DateParser(dateparser.date.DateDataParser):
                 "REQUIRE_PARTS": ["year", "month"],
                 "RETURN_TIME_AS_PERIOD": True,
                 "PARSERS": parsers,
-            }
+            },
         )
 
     def parse_with_locales(

@@ -550,20 +550,6 @@ def with_suffix_encoded(url: AnyURL, suffix: str) -> AnyURL:
     return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
 
 
-def sort_dict(map: Mapping[str, T]) -> dict[str, T]:
-    def try_to_sort(value: Any) -> Any:
-        try:
-            if isinstance(value, dict):
-                return sort_dict(value)
-            elif isinstance(value, list | tuple):
-                return type(value)(sorted(value))
-        except Exception:
-            pass
-        return value
-
-    return {key: try_to_sort(map[key]) for key in sorted(map, key=str.casefold)}
-
-
 @lru_cache
 def get_system_information() -> str:
     system_info = platform.uname()._asdict() | {
