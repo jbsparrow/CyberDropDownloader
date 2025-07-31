@@ -32,6 +32,7 @@ class LogManager:
         self.scrape_error_log: Path = manager.path_manager.scrape_error_urls_log
         self.jsonl_file = self.main_log.with_suffix(".results.jsonl")
         self._file_locks: dict[Path, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self._has_headers: set[Path] = set()
 
     def startup(self) -> None:
         """Startup process for the file manager."""
@@ -46,14 +47,19 @@ class LogManager:
     async def write_to_csv(self, file: Path, **kwargs) -> None:
         """Write to the specified csv file. kwargs are columns for the CSV."""
         async with self._file_locks[file]:
-            write_headers = not await asyncio.to_thread(file.is_file)
-            async with aiofiles.open(file, "a", encoding="utf8", newline="") as csv_file:
-                writer = csv.DictWriter(
-                    csv_file, fieldnames=kwargs.keys(), delimiter=CSV_DELIMITER, quoting=csv.QUOTE_ALL
-                )
-                if write_headers:
-                    await writer.writeheader()
-                await writer.writerow(kwargs)
+            write_headers = file not in self._has_headers
+            self._has_headers.add(file)
+
+            def write():
+                with file.open("a", encoding="utf8", newline="") as csv_file:
+                    writer = csv.DictWriter(
+                        csv_file, fieldnames=kwargs.keys(), delimiter=CSV_DELIMITER, quoting=csv.QUOTE_ALL
+                    )
+                    if write_headers:
+                        writer.writeheader()
+                    writer.writerow(kwargs)
+
+            await asyncio.to_thread(write)
 
     async def write_last_post_log(self, url: URL) -> None:
         """Writes to the last post log."""
