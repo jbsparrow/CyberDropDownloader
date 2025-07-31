@@ -142,7 +142,7 @@ def dumps(obj: object, /, *, sort_keys: bool = False, indent: int | None = None)
 
 
 async def dump_jsonl(data: Iterable[dict[str, Any]], /, file: Path, *, append: bool = True) -> None:
-    async def dump():
+    def dump():
         with file.open(mode="a" if append else "w", encoding="utf8") as f:
             for item in data:
                 f.writelines(_DEFAULT_ENCODER.iterencode(item))

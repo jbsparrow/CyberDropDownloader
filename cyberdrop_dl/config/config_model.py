@@ -84,10 +84,6 @@ class Logs(PathAliasModel):
     webhook: HttpAppriseURL | None = Field(None, "webhook_url")
 
     @property
-    def jsonl_file(self) -> Path:
-        return self.main_log.with_suffix(".results.jsonl")
-
-    @property
     def cdl_responses_dir(self) -> Path:
         return self.main_log.parent / "cdl_responses"
 
