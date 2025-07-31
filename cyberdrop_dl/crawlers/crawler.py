@@ -22,7 +22,7 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem,
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.utils import css, json, m3u8
+from cyberdrop_dl.utils import css, m3u8
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -314,10 +314,8 @@ class Crawler(ABC):
             return await self._handle_media_item(media_item, m3u8)
         finally:
             if self.manager.config_manager.settings_data.files.dump_json:
-                jsonl_file = self.manager.config.logs.jsonl_file
                 data = [media_item.as_jsonable_dict()]
-                async with self.manager.download_manager.file_locks.get_lock(str(jsonl_file)):
-                    await json.dump_jsonl(data, jsonl_file)
+                await self.manager.log_manager.write_jsonl(data)
 
     async def _handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()

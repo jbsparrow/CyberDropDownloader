@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import csv
-from asyncio import Lock
+from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import aiofiles
 
 from cyberdrop_dl.constants import CSV_DELIMITER
 from cyberdrop_dl.exceptions import get_origin
+from cyberdrop_dl.utils import json
 from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import MediaItem
@@ -27,7 +30,8 @@ class LogManager:
         self.unsupported_urls_log: Path = manager.path_manager.unsupported_urls_log
         self.download_error_log: Path = manager.path_manager.download_error_urls_log
         self.scrape_error_log: Path = manager.path_manager.scrape_error_urls_log
-        self._csv_locks = {}
+        self.jsonl_file = self.main_log.with_suffix(".results.jsonl")
+        self._file_locks: dict[Path, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     def startup(self) -> None:
         """Startup process for the file manager."""
@@ -35,10 +39,13 @@ class LogManager:
             if isinstance(var, Path):
                 var.unlink(missing_ok=True)
 
+    async def write_jsonl(self, data: Iterable[dict[str, Any]]):
+        async with self._file_locks[self.jsonl_file]:
+            await json.dump_jsonl(data, self.jsonl_file)
+
     async def write_to_csv(self, file: Path, **kwargs) -> None:
         """Write to the specified csv file. kwargs are columns for the CSV."""
-        self._csv_locks[file] = self._csv_locks.get(file, Lock())
-        async with self._csv_locks[file]:
+        async with self._file_locks[file]:
             write_headers = not await asyncio.to_thread(file.is_file)
             async with aiofiles.open(file, "a", encoding="utf8", newline="") as csv_file:
                 writer = csv.DictWriter(
