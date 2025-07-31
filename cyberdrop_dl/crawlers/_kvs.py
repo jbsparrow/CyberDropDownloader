@@ -25,7 +25,7 @@ import itertools
 import json
 import re
 import time
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, final, overload
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, final
 
 from aiolimiter import AsyncLimiter
 
@@ -260,7 +260,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
 
         soup = await self._get_soup(scrape_item.url)
         url = self.parse_url(css.select_one_get_attr(soup, _SELECTORS.PICTURE, "src"))
-        if iso_date := get_json_ld_value(soup, "uploadDate", strict=False):
+        if iso_date := get_page_iso_date(soup):
             scrape_item.possible_datetime = self.parse_iso_date(iso_date)
         if not scrape_item.album_id:
             scrape_item.album_id = _get_album_id(soup)
@@ -344,11 +344,16 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, self.KVS_ITEM_SELECTOR):
                 self.create_task(self.run(new_scrape_item))
 
+    # TODO: move to base crawler
+    @final
+    def get_page_iso_date(self, soup: BeautifulSoup) -> int | None:
+        # Try to get the date from the json_ld or open_graph props of the page (if any)
+        iso_date = get_page_iso_date(soup) or ""
+        return self.parse_iso_date(iso_date)
+
     def _get_video_date(self, soup: BeautifulSoup) -> int | None:
         # older themes do no have json_ld or open_graph props
-        if iso_date := (
-            get_json_ld_value(soup, "uploadDate", strict=False) or open_graph.get("video:release_date", soup)
-        ):
+        if iso_date := get_page_iso_date(soup):
             return self.parse_iso_date(iso_date)
         if date_row := soup.select_one(_SELECTORS.DATE):
             human_date = css.get_text(date_row).split(":", 1)[-1].strip()
@@ -375,31 +380,41 @@ def page_title(soup: BeautifulSoup, domain: str | None = None) -> str:
     return title
 
 
-# TODO: Move json_ld funtions to css utils
-@overload
-def get_json_ld(soup: BeautifulSoup, /, contains: str | None, *, strict: Literal[True] = True) -> dict[str, Any]: ...
+# TODO: Move to css utils
+def get_json_ld_date(soup: BeautifulSoup) -> str:
+    return get_json_ld_value(soup, "uploadDate")
 
 
-@overload
-def get_json_ld(soup: BeautifulSoup, /, contains: str | None, *, strict: Literal[False]) -> dict[str, Any] | None: ...
+# TODO: Move to css utils
+def get_page_iso_date(soup: BeautifulSoup) -> str | None:
+    iso_date = None
+    try:
+        iso_date = get_json_ld_date(soup)
+    except css.SelectorError:
+        pass
+    return iso_date or open_graph.get("video:release_date", soup)
 
 
-def get_json_ld(soup: BeautifulSoup, /, contains: str | None, *, strict: bool = True) -> dict[str, Any] | None:
+# TODO: Move to css utils
+def page_iso_date(soup: BeautifulSoup) -> str:
+    iso_date = get_page_iso_date(soup)
+    if not iso_date:
+        raise css.SelectorError
+    return iso_date
+
+
+def get_json_ld(soup: BeautifulSoup, /, contains: str | None) -> dict[str, Any]:
     selector = "script[type='application/ld+json']"
     if contains:
         selector += f":contains('{contains}')"
-    try:
-        ld_json = json.loads(css.select_one_get_text(soup, selector))
-    except css.SelectorError:
-        if not strict:
-            return
-        raise
+
+    ld_json = json.loads(css.select_one_get_text(soup, selector))
     return ld_json
 
 
-def get_json_ld_value(soup: BeautifulSoup, key: str, *, strict: bool = True) -> Any:
-    if ld_json := get_json_ld(soup, key, strict=strict):
-        return ld_json[key]
+def get_json_ld_value(soup: BeautifulSoup, key: str) -> Any:
+    ld_json = get_json_ld(soup, key)
+    return ld_json[key]
 
 
 def _get_album_id(soup: BeautifulSoup) -> str:
