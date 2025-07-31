@@ -42,8 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CDL always timing out when downloading any file that takes longer than 5 minutes
 
 
-### Security
-
 ## [7.3.0] - 2025-07-21
 
 ### Added
