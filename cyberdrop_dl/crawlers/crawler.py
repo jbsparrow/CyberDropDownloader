@@ -37,7 +37,6 @@ from cyberdrop_dl.utils.utilities import (
     remove_file_id,
     remove_trailing_slash,
     sanitize_filename,
-    sort_dict,
     truncate_str,
 )
 
@@ -87,6 +86,7 @@ class CrawlerInfo(NamedTuple):
 
 
 class Crawler(ABC):
+    OLD_DOMAINS: ClassVar[tuple[str, ...]] = ()
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ()
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {}
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {id} - {title}"
@@ -95,9 +95,9 @@ class Crawler(ABC):
     SKIP_PRE_CHECK: ClassVar[bool] = False
     NEXT_PAGE_SELECTOR: ClassVar[str] = ""
 
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL]
-    DOMAIN: ClassVar[str]
     FOLDER_DOMAIN: ClassVar[str] = ""
+    DOMAIN: ClassVar[str]
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL]
 
     @final
     def __init__(self, manager: Manager) -> None:
@@ -109,7 +109,7 @@ class Crawler(ABC):
         self.ready: bool = False
         self.disabled: bool = False
         self.logged_in: bool = False
-        self.scraped_items: list[str] = []
+        self.scraped_items: set[str] = set()
         self.waiting_items = 0
         self.log = log
         self.log_debug = log_debug
@@ -128,16 +128,16 @@ class Crawler(ABC):
         super().__init_subclass__(**kwargs)
 
         msg = (
-            f"Subclass {cls.__name__} must not override __init__ method,",
-            "use __post_init__ for additional setup",
-            "use async_startup for setup that requires database access, making a request or setting cookies",
+            f"Subclass {cls.__name__} must not override __init__ method,"
+            "use __post_init__ for additional setup"
+            "use async_startup for setup that requires database access, making a request or setting cookies"
         )
         assert cls.__init__ is Crawler.__init__, msg
         cls.NAME = cls.__name__.removesuffix("Crawler")
         cls.IS_GENERIC = is_generic
         cls.IS_FALLBACK_GENERIC = cls.NAME == "Generic"
         cls.IS_REAL_DEBRID = cls.NAME == "RealDebrid"
-        cls.SUPPORTED_PATHS = sort_dict(cls.SUPPORTED_PATHS)
+        cls.SUPPORTED_PATHS = _sort_supported_paths(cls.SUPPORTED_PATHS)
 
         if cls.IS_GENERIC:
             cls.GENERIC_NAME = generic_name or cls.NAME
@@ -153,10 +153,20 @@ class Crawler(ABC):
             for field_name in REQUIRED_FIELDS:
                 assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
 
+        if cls.OLD_DOMAINS:
+            cls.REPLACE_OLD_DOMAINS_REGEX = re.compile("|".join(cls.OLD_DOMAINS))
+            if not cls.SUPPORTED_DOMAINS:
+                cls.SUPPORTED_DOMAINS = ()
+            elif isinstance(cls.SUPPORTED_DOMAINS, str):
+                cls.SUPPORTED_DOMAINS = (cls.SUPPORTED_DOMAINS,)
+            cls.SUPPORTED_DOMAINS = tuple(sorted({*cls.OLD_DOMAINS, *cls.SUPPORTED_DOMAINS, cls.PRIMARY_URL.host}))
+        else:
+            cls.REPLACE_OLD_DOMAINS_REGEX = None
         _validate_supported_paths(cls)
         cls.SCRAPE_MAPPER_KEYS = _make_scrape_mapper_keys(cls)
         cls.FOLDER_DOMAIN = cls.FOLDER_DOMAIN or cls.DOMAIN.capitalize()
-        cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, cls.SCRAPE_MAPPER_KEYS, cls.SUPPORTED_PATHS)
+        wiki_supported_domains = _make_wiki_supported_domains(cls.SCRAPE_MAPPER_KEYS)
+        cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, wiki_supported_domains, cls.SUPPORTED_PATHS)
 
     @abstractmethod
     async def fetch(self, scrape_item: ScrapeItem) -> None: ...
@@ -199,12 +209,12 @@ class Crawler(ABC):
             og_url = scrape_item.url
             scrape_item.url = url = self.transform_url(scrape_item.url)
             if og_url != url:
-                log(f"URL transformed: \n old: {og_url} \n new: {url}")
+                log(f"URL transformation applied [{self.FOLDER_DOMAIN}]: \n  old_url: {og_url}\n  new_url: {url}")
 
             if url.path_qs in self.scraped_items:
                 return log(f"Skipping {url} as it has already been scraped", 10)
 
-            self.scraped_items.append(url.path_qs)
+            self.scraped_items.add(url.path_qs)
             async with self._fetch_context(scrape_item):
                 self.pre_check_scrape_item(scrape_item)
                 await self.fetch(scrape_item)
@@ -218,6 +228,9 @@ class Crawler(ABC):
         """Transforms an URL before it reaches the fetch method
 
         Override it to transform thumbnail URLs into full res URLs or URLs in an old unsupported format into a new one"""
+        if cls.REPLACE_OLD_DOMAINS_REGEX is not None:
+            new_host = re.sub(cls.REPLACE_OLD_DOMAINS_REGEX, cls.PRIMARY_URL.host, url.host)
+            return url.with_host(new_host)
         return url
 
     @final
@@ -697,9 +710,9 @@ class Crawler(ABC):
 
 def _make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
     if cls.SUPPORTED_DOMAINS:
-        hosts: SupportedDomains = cls.SUPPORTED_DOMAINS
+        hosts = cls.SUPPORTED_DOMAINS
     else:
-        hosts = cls.DOMAIN or cls.PRIMARY_URL.host
+        hosts = cls.DOMAIN
     if isinstance(hosts, str):
         hosts = (hosts,)
     return tuple(sorted(host.removeprefix("www.") for host in hosts))
@@ -773,6 +786,25 @@ def _validate_supported_paths(cls: type[Crawler]) -> None:
             paths = (paths,)
         for path in paths:
             assert "`" not in path, f"{cls.__name__}, Invalid path {path_name}: {path}"
+
+
+def _make_wiki_supported_domains(scrape_mapper_keys: tuple[str, ...]) -> tuple[str, ...]:
+    def generalize(domain):
+        if "." not in domain:
+            return f"{domain}.*"
+        return domain
+
+    return tuple(sorted(generalize(domain) for domain in scrape_mapper_keys))
+
+
+def _sort_supported_paths(supported_paths: SupportedPaths) -> dict[str, OneOrTuple[str]]:
+    def try_sort(value: OneOrTuple[str]) -> OneOrTuple[str]:
+        if isinstance(value, tuple):
+            return tuple(sorted(value))
+        return value
+
+    path_pairs = ((key, try_sort(value)) for key, value in supported_paths.items())
+    return dict(sorted(path_pairs, key=lambda x: x[0].casefold()))
 
 
 def auto_task_id(
