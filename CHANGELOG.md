@@ -38,7 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DDoS-Guard errors even when using cookies becuase CDL was using an old domain (Coomer, Kemono)
 - `ffprobe` version is always being logged as `None` if not available on path, even though it comes built-in with CDL
 - Catch and log any warnings while parsing dates
-- albums downloads (pixhost)
+- Albums downloads (pixhost)
+- Download of videos that are not part of a playlist (spankbang)
+- Jdownloader connection
 - CDL always timing out when downloading any file that takes longer than 5 minutes
 
 
