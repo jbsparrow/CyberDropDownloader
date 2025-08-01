@@ -38,7 +38,6 @@ class SupportedPaths(TypedDict):
 class SimplePHPImageHostCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths]  # type: ignore[reportIncompatibleVariableOverride]
     IMG_SELECTOR: ClassVar[str] = "div#container a img"
-    PATHS: Paths
     THUMB_TO_SRC_REPLACE: ClassVar[tuple[str, ...]]
     GALLERY_SELECTORS: GallerySelectors
     MATCH_IMG_PATH_BY_LEN = 0
