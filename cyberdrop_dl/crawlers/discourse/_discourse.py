@@ -47,10 +47,11 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
     def is_attachment(link: AbsoluteHttpURL) -> bool:
         return "uploads" in link.parts
 
-    async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
-        if len(scrape_item.url.parts) < 5 and not scrape_item.url.suffix:
+    async def handle_internal_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL | None = None) -> None:
+        link = link or scrape_item.url
+        if len(link.parts) < 5 and not link.suffix:
             return
-        await super().handle_internal_link(scrape_item)
+        await super().handle_internal_link(scrape_item, link)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -89,11 +90,11 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
     async def forum(self, scrape_item: ScrapeItem) -> None:
         raise NotImplementedError
 
-    def parse_thread(self, *args) -> None:
+    def parse_thread(self, *args, **kwargs) -> None:
         raise NotImplementedError
 
-    async def thread(self, scrape_item: ScrapeItem, topic: Topic) -> None:
-        await self.topic(scrape_item, topic)
+    async def thread(self, scrape_item: ScrapeItem, thread: Topic) -> None:
+        await self.topic(scrape_item, thread)
 
     @error_handling_wrapper
     async def process_posts(self, scrape_item: ScrapeItem, topic: Topic) -> None:
@@ -147,8 +148,10 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
 
         return unique(iter_links())
 
-    def parse_url(self, link: str) -> AbsoluteHttpURL:
-        return _clean_url(super().parse_url(link))
+    def parse_url(
+        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool = True
+    ) -> AbsoluteHttpURL:
+        return _clean_url(super().parse_url(link_str, relative_to, trim=trim))
 
 
 def _clean_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:

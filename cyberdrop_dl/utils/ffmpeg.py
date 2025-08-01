@@ -54,7 +54,7 @@ def which_ffmpeg() -> str | None:
 def which_ffprobe() -> str | None:
     global _FFPROBE_AVAILABLE
     try:
-        bin_path = shutil.which("ffprobe") or (_builtin_ffprobe() + "[CDL builtin]")
+        bin_path = shutil.which("ffprobe") or _builtin_ffprobe()
         _FFPROBE_AVAILABLE = True
         return bin_path
     except RuntimeError:
@@ -242,7 +242,7 @@ class Stream:
         return self.codec_name
 
     @classmethod
-    def validate(cls, stream_info: Mapping[str, Any]) -> dict[str, Any]:
+    def validate(cls, stream_info: StreamDict) -> dict[str, Any]:
         info = get_valid_dict(cls, stream_info)
         tags = Tags(CIMultiDict(stream_info.get("tags", {})))
         duration: float | str | None = stream_info.get("duration") or tags.get("duration")
@@ -251,7 +251,7 @@ class Stream:
         return info | {"tags": tags, "duration": duration, "bitrate": bitrate}
 
     @classmethod
-    def from_dict(cls, stream_info: Mapping[str, Any]) -> Self:
+    def from_dict(cls, stream_info: StreamDict) -> Self:
         return cls(**cls.validate(stream_info))
 
     def as_dict(self) -> dict[str, Any]:

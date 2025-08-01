@@ -219,9 +219,9 @@ class Downloader:
                 yield HlsSegment(segment.title, name, parse_url(segment.absolute_uri))
 
         def make_download_task(segment: HlsSegment) -> Coroutine:
-            seg_media_item = MediaItem(
-                url=segment.url,
-                origin=media_item,
+            seg_media_item = MediaItem.from_item(
+                media_item,
+                segment.url,
                 download_folder=download_folder,
                 filename=segment.name,
                 ext=media_item.ext,
@@ -343,9 +343,7 @@ class Downloader:
     async def start_download(self, media_item: MediaItem) -> bool:
         if not media_item.is_segment:
             log(f"{self.log_prefix} starting: {media_item.url}", 20)
-        if not media_item.file_lock_reference_name:
-            media_item.file_lock_reference_name = media_item.filename
-        lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)
+        lock = self._file_lock_vault.get_lock(media_item.filename)
         async with lock:
             return bool(await self.download(media_item))
 
@@ -406,7 +404,7 @@ class Downloader:
         self.attempt_task_removal(media_item)
         full_message = f"{self.log_prefix} Failed: {media_item.url} ({error_log_msg.main_log_msg}) \n -> Referer: {media_item.referer}"
         log(full_message, 40, exc_info=exc_info)
-        await self.manager.log_manager.write_download_error_log(media_item, error_log_msg.csv_log_msg)
+        self.manager.log_manager.write_download_error_log(media_item, error_log_msg.csv_log_msg)
         self.manager.progress_manager.download_stats_progress.add_failure(error_log_msg.ui_failure)
         self.manager.progress_manager.download_progress.add_failed()
 

@@ -126,18 +126,23 @@ class HistoryTable:
         )
         await self.db_conn.commit()
 
-    async def check_complete_by_referer(self, domain: str, referer: URL) -> bool:
+    async def check_complete_by_referer(self, domain: str | None, referer: URL) -> bool:
         """Checks whether an individual file has completed given its domain and url path."""
         if self.ignore_history:
             return False
+        if domain is None:
+            query, *params = "SELECT completed FROM media WHERE referer = ?", str(referer)
+        else:
+            query, *params = "SELECT completed FROM media WHERE referer = ? and domain = ?", str(referer), domain
 
         cursor = await self.db_conn.cursor()
-        result = await cursor.execute(
-            """SELECT completed FROM media WHERE domain = ? and referer = ?""",
-            (domain, str(referer)),
-        )
-        sql_file_check = await result.fetchone()
-        return bool(sql_file_check and sql_file_check[0] != 0)
+        result = await cursor.execute(query, params)
+        if domain is None:
+            results = await result.fetchall()
+        else:
+            row = await result.fetchone()
+            results = [row] if row is not None else []
+        return bool(results and any(row[0] != 0 for row in results))
 
     async def insert_incompleted(self, domain: str, media_item: MediaItem) -> None:
         """Inserts an uncompleted file into the database."""

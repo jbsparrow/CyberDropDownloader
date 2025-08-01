@@ -164,13 +164,19 @@ class ClientManager:
     def _new_session(
         self, cached: bool = False, trace_configs: list[aiohttp.TraceConfig] | None = None
     ) -> CachedSession | ClientSession:
-        session_cls = CachedSession if cached else ClientSession
-        kwargs: dict[str, Any] = {"cache": self.manager.cache_manager.request_cache} if cached else {}
+        if cached:
+            timeout = self.manager.global_config.rate_limiting_options._scrape_timeout
+            session_cls = CachedSession
+            kwargs: dict[str, Any] = {"cache": self.manager.cache_manager.request_cache}
+        else:
+            timeout = self.manager.global_config.rate_limiting_options._download_timeout
+            session_cls = ClientSession
+            kwargs = {}
         return session_cls(
             headers=self._headers,
             raise_for_status=False,
             cookie_jar=self.cookies,
-            timeout=self.manager.global_config.rate_limiting_options._aiohttp_timeout,
+            timeout=timeout,
             trace_configs=trace_configs,
             proxy=self.manager.global_config.general.proxy,
             connector=self._new_tcp_connector(),
@@ -392,7 +398,7 @@ class Flaresolverr:
         return await self._make_request(command, client_session, **kwargs)
 
     async def _make_request(self, command: str, client_session: ClientSession, **kwargs) -> dict[str, Any]:
-        timeout = self.client_manager.manager.global_config.rate_limiting_options._aiohttp_timeout
+        timeout = self.client_manager.manager.global_config.rate_limiting_options._scrape_timeout
         if command == "sessions.create":
             timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
 

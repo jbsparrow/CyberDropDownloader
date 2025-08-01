@@ -244,7 +244,7 @@ class ScrapeMapper:
                 filename, _ = get_filename_and_ext(scrape_item.url.name)
             except NoExtensionError:
                 filename, _ = get_filename_and_ext(scrape_item.url.name, forum=True)
-            media_item = MediaItem(scrape_item.url, scrape_item, download_folder, filename)
+            media_item = MediaItem.from_item(scrape_item, scrape_item.url, download_folder, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
             return
 
@@ -262,7 +262,7 @@ class ScrapeMapper:
                 success = True
             except JDownloaderError as e:
                 log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
-                await self.manager.log_manager.write_unsupported_urls_log(
+                self.manager.log_manager.write_unsupported_urls_log(
                     scrape_item.url,
                     scrape_item.parents[0] if scrape_item.parents else None,
                 )
@@ -276,7 +276,7 @@ class ScrapeMapper:
             return
 
         log(f"Unsupported URL: {scrape_item.url}", 30)
-        await self.manager.log_manager.write_unsupported_urls_log(
+        self.manager.log_manager.write_unsupported_urls_log(
             scrape_item.url,
             scrape_item.parents[0] if scrape_item.parents else None,
         )

@@ -137,9 +137,10 @@ class XXXBunkerCrawler(Crawler):
         while True:
             attempt = 1
             rate_limited = True
+            soup = None
             while rate_limited and attempt <= MAX_RETRIES:
                 async with self.request_limiter:
-                    soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, page_url)
+                    soup = await self.client.get_soup(self.DOMAIN, page_url)
                 await asyncio.sleep(self.wait_time)
 
                 if "TRAFFIC VERIFICATION" not in soup.text:
@@ -153,7 +154,7 @@ class XXXBunkerCrawler(Crawler):
 
             if rate_limited:
                 raise ScrapeError(429)
-
+            assert soup
             yield soup
             page_url_str = css.select_one_get_attr_or_none(soup, NEXT_PAGE_SELECTOR, "href")
             if not page_url_str:

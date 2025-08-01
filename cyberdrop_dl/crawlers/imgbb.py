@@ -46,6 +46,7 @@ class ImgBBCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         title: str = ""
+        first_page = None
 
         async for soup in self.web_pager(scrape_item.url / "sub"):
             if not title:
@@ -59,6 +60,7 @@ class ImgBBCrawler(Crawler):
             for _, sub_album in self.iter_children(scrape_item, soup, ALBUM_PAGE_SELECTOR):
                 self.manager.task_group.create_task(self.run(sub_album))
 
+        assert first_page
         async for soup in self.web_pager(first_page):
             for _, image in self.iter_children(scrape_item, soup, IMAGE_PAGE_SELECTOR):
                 self.manager.task_group.create_task(self.run(image))
@@ -74,7 +76,7 @@ class ImgBBCrawler(Crawler):
         link_str: str = css.select_one_get_attr(soup, IMAGE_SELECTOR, "src")
         link = self.parse_url(link_str)
         date_str: str = css.select_one_get_attr(soup, DATE_SELECTOR, "title")
-        scrape_item.possible_datetime = self.parse_date(date_str, "%Y-%m-%d %H:%M:%S")
+        scrape_item.possible_datetime = self.parse_iso_date(date_str)
 
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

@@ -77,6 +77,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
         album_id = scrape_item.url.parts[2]
         title: str = ""
         default_data = {"pageType": "folder", "perPage": 0, "filterOrderBy": ""}
+        n_pages = 1
         for page in itertools.count(1):
             data = default_data | {"nodeId": node_id, "pageStart": page}
             ajax_soup, ajax_title = await self.get_soup_from_ajax(data, scrape_item)
@@ -101,6 +102,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
         album_id = scrape_item.url.parts[2]
         page = 1
         default_data = {"pageType": "nonaccountshared", "perPage": 0, "filterOrderBy": ""}
+        n_pages = 1
         while True:
             data = default_data | {"nodeId": node_id, "pageStart": page}
             ajax_soup, ajax_title = await self.get_soup_from_ajax(data, scrape_item)

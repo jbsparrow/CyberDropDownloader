@@ -56,7 +56,7 @@ class FileProgress(DequeProgress):
 
         return total
 
-    def add_task(self, *, domain: str, filename: str, expected_size: int | None = None) -> TaskID:
+    def add_task(self, *, domain: str, filename: str, expected_size: int | None = None) -> TaskID:  # type: ignore[reportIncompatibleMethodOverride]
         """Adds a new task to the progress bar."""
         filename = filename.split("/")[-1].encode("ascii", "ignore").decode().strip()
         description = escape(adjust_title(filename, length=40))

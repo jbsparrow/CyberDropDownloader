@@ -33,8 +33,8 @@ if TYPE_CHECKING:
 
 
 class AsyncioEvents(NamedTuple):
-    SHUTTING_DOWN: asyncio.Event = asyncio.Event()
-    RUNNING: asyncio.Event = asyncio.Event()
+    SHUTTING_DOWN: asyncio.Event
+    RUNNING: asyncio.Event
 
 
 class Manager:
@@ -67,8 +67,8 @@ class Manager:
         self.downloaded_data: int = 0
         self.multiconfig: bool = False
         self.loggers: dict[str, QueuedLogger] = {}
-        self.states = AsyncioEvents()
         self.args = args
+        self.states: AsyncioEvents
 
     @property
     def config(self):
@@ -134,6 +134,7 @@ class Manager:
 
     async def async_startup(self) -> None:
         """Async startup process for the manager."""
+        self.states = AsyncioEvents(asyncio.Event(), asyncio.Event())
         self.args_logging()
 
         if not isinstance(self.client_manager, ClientManager):
