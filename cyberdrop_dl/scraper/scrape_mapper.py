@@ -84,7 +84,7 @@ class ScrapeMapper:
 
     async def __aenter__(self) -> Self:
         self.manager.scrape_mapper = self
-        self.manager.client_manager.load_cookie_files()
+        await self.manager.client_manager.load_cookie_files()
         await self.manager.client_manager.scraper_session.__aenter__()
         self.manager.task_group = asyncio.TaskGroup()
         await self.manager.task_group.__aenter__()
