@@ -24,9 +24,9 @@ class GallerySelectors(NamedTuple):
 
 
 class Paths(NamedTuple):
-    Image: str
-    Thumbnail: str
-    Gallery: str | None = None
+    image: str
+    thumbnail: str
+    gallery: str | None = None
 
 
 class SupportedPaths(TypedDict):
@@ -47,8 +47,8 @@ class SimplePHPImageHostCrawler(Crawler, is_abc=True):
             if not getattr(cls, "DOMAIN", None):
                 cls.DOMAIN = cls.PRIMARY_URL.host
 
-            cls.PATHS = Paths(**cls.SUPPORTED_PATHS)
-            if cls.PATHS.Gallery:
+            cls.PATHS = Paths(**{k.lower(): v.removesuffix("...") for k, v in cls.SUPPORTED_PATHS.items() if v})
+            if cls.PATHS.gallery:
                 assert hasattr(cls, "GALLERY_SELECTORS")
 
             *thumb_paths, src_path = cls.THUMB_TO_SRC_REPLACE
@@ -74,7 +74,7 @@ class SimplePHPImageHostCrawler(Crawler, is_abc=True):
 
     @classmethod
     def _get_id(cls, url: AbsoluteHttpURL) -> str:
-        name = url.parts[2] if cls.PATHS.Image.startswith("/<image_id>") else url.name
+        name = url.parts[2] if cls.PATHS.image.startswith("/<image_id>") else url.name
         return name.removeprefix("img-").removesuffix(".html")
 
     async def thumbnail(self, scrape_item: ScrapeItem) -> None:
@@ -156,7 +156,7 @@ class ImgShotCrawler(SimplePHPImageHostCrawler, is_abc=True):
         await self._process_img_soup(scrape_item, soup)
 
     async def _process_img_soup(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        if soup.select_one("class[*='message warn']") or "Image Removed or Bad Link" in soup.text:
+        if soup.select_one("[class*='message warn']") or "Image Removed or Bad Link" in soup.text:
             raise ScrapeError(410)
 
         img = css.select_one(soup, self.IMG_SELECTOR)
@@ -173,6 +173,7 @@ class ImxToCrawler(ImgShotCrawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imx.to")
     THUMB_TO_SRC_REPLACE = "u/t", "u/i"
+    IMG_SELECTOR = "div#container div a img.centred"
     HAS_CAPTCHA = True
 
     @classmethod
