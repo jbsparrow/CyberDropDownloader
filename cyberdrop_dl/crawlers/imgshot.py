@@ -348,9 +348,14 @@ class ImageBamCrawler(ImgShotCrawler):
         await self.image(scrape_item)
 
     @classmethod
+    def _get_id(cls, url: AbsoluteHttpURL) -> str:
+        stem = url.name.rsplit(".", 1)[0]
+        return stem.removesuffix("_t").removesuffix("_o")
+
+    @classmethod
     def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         stem = url.name.rsplit(".", 1)[0]
-        image_id = stem.removesuffix("_t").removesuffix("_o")
+        image_id = cls._get_id(url)
         if image_id != stem:
             return cls.PRIMARY_URL / "view" / image_id
         return cls.PRIMARY_URL / "image" / image_id
@@ -371,10 +376,6 @@ class ImagetwistCrawler(ImgShotCrawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["th", _, _]:
-                return await self.direct_image(scrape_item)
-            case ["i", _, _, _]:
-                return await self.direct_image(scrape_item)
             case [_]:
                 return await self.image(scrape_item)
             case _:
@@ -382,13 +383,54 @@ class ImagetwistCrawler(ImgShotCrawler):
 
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        if len(url.parts) == 3:
-            return url.with_path(url.parts[1])
-        return url
+        match url.parts[1:]:
+            case ["th", _, _]:
+                return cls._thumb_to_web_url(url)
+            case ["i", _, _, _]:
+                return cls._thumb_to_web_url(url)
+            case [_, _]:
+                return url.with_path(url.parts[1])
+            case _:
+                return url
 
     @classmethod
     def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         image_id = url.parts[3].rsplit(".", 1)[0]
+        return cls.PRIMARY_URL / image_id
+
+
+class ImageVenueCrawler(ImgShotCrawler):
+    SUPPORTED_PATHS: ClassVar = {
+        "Image": "/<image_id>",
+        "Direct Link": (
+            "cdn-thumbs.imagevenue.com/<seq>/<seq>/<seq>/<filename>",
+            "cdn-images.imagevenue.com/<seq>/<seq>/<seq>/<filename>",
+        ),
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.imagevenue.com")
+    IMG_SELECTOR = "a img#main-image"
+
+    async def fetch(self, scrape_item: ScrapeItem) -> None:
+        match scrape_item.url.parts[1:]:
+            case [_]:
+                return await self.image(scrape_item)
+            case _:
+                raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        if len(url.parts) == 5 and ("thumbs" in url.host or "images" in url.host):
+            return cls._thumb_to_web_url(url)
+        return url
+
+    @classmethod
+    def _get_id(cls, url: AbsoluteHttpURL) -> str:
+        stem = url.name.rsplit(".", 1)[0]
+        return stem.removesuffix("_t").removesuffix("_o")
+
+    @classmethod
+    def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        image_id = cls._get_id(url)
         return cls.PRIMARY_URL / image_id
 
 
