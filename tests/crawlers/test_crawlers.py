@@ -38,6 +38,7 @@ class CrawlerTestCase(NamedTuple):
     domain: str
     input_url: str
     results: list[Result]
+    total: int | None = None
 
 
 _TEST_CASE_ADAPTER = TypeAdapter(CrawlerTestCase)
@@ -78,28 +79,30 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 @pytest.mark.crawler_test_case
 async def test_crawler(running_manager: Manager, crawler_test_case: CrawlerTestCase) -> None:
     # Check that this is a valid test case with pydantic
-    domain, input_url, expected_results = _TEST_CASE_ADAPTER.validate_python(crawler_test_case, strict=True)
+    test_case = _TEST_CASE_ADAPTER.validate_python(crawler_test_case, strict=True)
 
     with _crawler_mock() as func:
         async with ScrapeMapper(running_manager) as scrape_mapper:
             await scrape_mapper.run()
             crawler = next(
-                (crawler for crawler in scrape_mapper.existing_crawlers.values() if crawler.DOMAIN == domain), None
+                (crawler for crawler in scrape_mapper.existing_crawlers.values() if crawler.DOMAIN == test_case.domain),
+                None,
             )
-            assert crawler, f"{domain} is not a valid crawler domain. Test case is invalid"
+            assert crawler, f"{test_case.domain} is not a valid crawler domain. Test case is invalid"
             await crawler.startup()
-            item = ScrapeItem(url=crawler.parse_url(input_url))
+            item = ScrapeItem(url=crawler.parse_url(test_case.input_url))
             await crawler.run(item)
 
     func.assert_awaited()
     results: list[MediaItem] = sorted((call.args[0] for call in func.call_args_list), key=lambda x: str(x.url))
-    expected_results = sorted(expected_results, key=lambda x: x["url"])
-    _validate_results(crawler, expected_results, results)
+    _validate_results(crawler, test_case, results)
 
 
-def _validate_results(crawler: Crawler, expected_results: list[Result], results: list[MediaItem]) -> None:
-    assert len(expected_results) == len(results)
-    for index, (expected_result, media_item) in enumerate(zip(expected_results, results, strict=True), 1):
+def _validate_results(crawler: Crawler, test_case: CrawlerTestCase, results: list[MediaItem]) -> None:
+    expected_results = sorted(test_case.results, key=lambda x: x["url"])
+    total = test_case.total or len(expected_results)
+    assert total == len(results)
+    for index, (expected_result, media_item) in enumerate(zip(expected_results, results, strict=False), 1):
         for attr_name, expected_value in expected_result.items():
             result_value = getattr(media_item, attr_name)
             if isinstance(expected_value, str):

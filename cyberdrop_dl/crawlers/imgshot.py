@@ -16,18 +16,10 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-_domains = set()
-
 
 class GallerySelectors(NamedTuple):
     title: str
     images: str
-
-
-class Paths(NamedTuple):
-    image: str
-    thumbnail: str
-    gallery: str | None = None
 
 
 class SupportedPaths(TypedDict):
@@ -121,7 +113,7 @@ class ImgShotCrawler(SimplePHPImageHostCrawler, is_abc=True):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        if scrape_item.url.name == "noimage.php":
+        if scrape_item.url.name in "noimage.php":
             raise ScrapeError(404)
 
         if self.HAS_CAPTCHA:
@@ -287,27 +279,31 @@ class ImgClickCrawler(ImgShotCrawler):
 
 
 class PixHostCrawler(ImgShotCrawler):
-    SUPPORTED_PATHS: ClassVar = {
-        "Image": "/show/",
-        "Thumbnail": "/thumbs/",
-        "Gallery": "/gallery/",
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Gallery": "/gallery/<gallery_id>",
+        "Image": "/show/...",
+        "Thumbnail": "/thumbs/..",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pixhost.to/")
     GALLERY_SELECTORS = GallerySelectors(title="a.link h2", images="div.images a")
     IMG_SELECTOR = "img.image-img"
-    THUMB_TO_SRC_REPLACE: ClassVar[tuple[str, str]] = "/thumbs/", "/images/"
     DOMAIN: ClassVar[str] = "pixhost"
     FOLDER_DOMAIN: ClassVar[str] = "PixHost"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["gallery", _]:
+                return await self.gallery(scrape_item)
+            case ["thumbs" | "images", _, *_]:
                 return await self.direct_image(scrape_item)
-            case ["thumbs", _, *_]:
-                return await self.direct_image(scrape_item)
-            case ["show", _]:
+            case ["show", _, *_]:
                 return await self.image(scrape_item)
         await ImgShotCrawler.fetch(self, scrape_item)
+
+    @classmethod
+    def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        path = url.path.replace("/thumbs/", "/show/")
+        return url.with_host(cls.PRIMARY_URL.host).with_path(path)
 
 
 __all__ = [
