@@ -25,7 +25,7 @@ def _crawler_mock(func: str = "handle_media_item") -> mock._patch[mock.AsyncMock
 class Result(TypedDict):
     # Simplified version of media_item
     url: str
-    filename: str
+    filename: NotRequired[str]
     debrid_link: NotRequired[Literal["ANY"] | None]
     original_filename: NotRequired[str]
     referer: NotRequired[str]
