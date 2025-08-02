@@ -128,8 +128,12 @@ class ImgShotCrawler(SimplePHPImageHostCrawler, is_abc=True):
         await self._process_img_soup(scrape_item, soup)
 
     async def _process_img_soup(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        if soup.select_one("[class*='message warn']") or "Image Removed or Bad Link" in soup.text:
+        soup_text = soup.get_text()
+        if soup.select_one("[class*='message warn']") or "Image Removed or Bad Link" in soup_text:
             raise ScrapeError(410)
+
+        if "This is a private gallery" in soup_text:
+            raise ScrapeError(401, "Private gallery")
 
         img = css.select_one(soup, self.IMG_SELECTOR)
         link = self.parse_url(css.get_attr(img, "src"))

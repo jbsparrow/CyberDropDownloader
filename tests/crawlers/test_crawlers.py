@@ -102,8 +102,8 @@ def _validate_results(crawler: Crawler, test_case: CrawlerTestCase, results: lis
     expected_results = sorted(test_case.results, key=lambda x: x["url"])
     total = test_case.total or len(expected_results)
     assert total == len(results)
-    for index, (expected_result, media_item) in enumerate(zip(expected_results, results, strict=False), 1):
-        for attr_name, expected_value in expected_result.items():
+    for index, (expected, media_item) in enumerate(zip(expected_results, results, strict=False), 1):
+        for attr_name, expected_value in expected.items():
             result_value = getattr(media_item, attr_name)
             if isinstance(expected_value, str):
                 if expected_value.startswith("http"):
