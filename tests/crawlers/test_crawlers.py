@@ -93,15 +93,16 @@ async def test_crawler(running_manager: Manager, crawler_test_case: CrawlerTestC
             item = ScrapeItem(url=crawler.parse_url(test_case.input_url))
             await crawler.run(item)
 
-    func.assert_awaited()
     results: list[MediaItem] = sorted((call.args[0] for call in func.call_args_list), key=lambda x: str(x.url))
-    _validate_results(crawler, test_case, results)
+    total = test_case.total or len(test_case.results)
+    assert total == len(results)
+    if total:
+        func.assert_awaited()
+        _validate_results(crawler, test_case, results)
 
 
 def _validate_results(crawler: Crawler, test_case: CrawlerTestCase, results: list[MediaItem]) -> None:
     expected_results = sorted(test_case.results, key=lambda x: x["url"])
-    total = test_case.total or len(expected_results)
-    assert total == len(results)
     for index, (expected, media_item) in enumerate(zip(expected_results, results, strict=False), 1):
         for attr_name, expected_value in expected.items():
             result_value = getattr(media_item, attr_name)

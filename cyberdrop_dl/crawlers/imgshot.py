@@ -20,7 +20,7 @@ SupportedPaths = TypedDict(
     "SupportedPaths",
     {
         "Image": str | tuple[str, ...],
-        "Direct Link": str | tuple[str, ...],
+        "Direct Link": NotRequired[str | tuple[str, ...]],
         "Gallery": NotRequired[str | tuple[str, ...]],
     },
 )
@@ -201,12 +201,12 @@ class AcidImgCrawler(ImgShotCrawler):
         await ImgShotCrawler.fetch(self, scrape_item)
 
 
-class ImgAdultCrawler(AcidImgCrawler):
+class ImgAdultCrawler(ImgShotCrawler):
     SUPPORTED_PATHS: ClassVar = {
         "Image": "/img-<image_id>.html",
-        "Direct Link": "/upload/(small|small-medium|big)/<mm>/<dd>/<yyyy>/<image_id>",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imgadult.com")
+    HAS_CAPTCHA = True
 
     async def async_startup(self) -> None:
         self.update_cookies({"img_i_d": 1})
