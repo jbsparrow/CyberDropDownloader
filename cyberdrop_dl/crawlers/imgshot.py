@@ -100,16 +100,21 @@ class ImgShotCrawler(SimplePHPImageHostCrawler, is_abc=True):
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:  # type: ignore[reportIncompatibleMethodOverride]
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
         album_id = self._get_id(scrape_item.url)
-        title = self.create_title(css.select_one_get_text(soup, self.GALLERY_SELECTORS.title))
-        scrape_item.setup_as_album(title, album_id=album_id)
 
-        for _, new_scrape_item in self.iter_children(scrape_item, soup, self.GALLERY_SELECTORS.images):
-            self.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
+        if self.NEXT_PAGE_SELECTOR:
+            web_pager = self._web_pager(scrape_item.url)
+        else:
+            web_pager = self._web_pager(scrape_item.url, lambda x: None)
+
+        title: str = ""
+        async for soup in web_pager:
+            if not title:
+                title = self.create_title(css.select_one_get_text(soup, self.GALLERY_SELECTORS.title))
+                scrape_item.setup_as_album(title, album_id=album_id)
+
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, self.GALLERY_SELECTORS.images):
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:  # type: ignore[reportIncompatibleMethodOverride]
@@ -297,6 +302,58 @@ class ViprImCrawler(ImgShotCrawler):
     def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         image_id = url.parts[3].rsplit(".", 1)[0]
         return cls.PRIMARY_URL / image_id
+
+
+class ImageBamCrawler(ImgShotCrawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Image": (
+            "/image/<image_id>",
+            "/view/<id>",
+        ),
+        "Gallery": "/gallery/<image_id>",
+        "Direct Link": (
+            "thumbs<x>.imagebam.com/...",
+            "images<x>.imagebam.com/...",
+        ),
+    }
+    GALLERY_SELECTORS = GallerySelectors("a#gallery-name", "ul.images a.thumbnail")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.imagebam.com")
+    DOMAIN: ClassVar[str] = "imagebam"
+    FOLDER_DOMAIN: ClassVar[str] = "ImageBam"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "a.page-link[rel=next]"
+    IMG_SELECTOR = "a .main-image"
+
+    async def async_startup(self) -> None:
+        self.update_cookies({"nsfw_inter": "1"})
+
+    async def fetch(self, scrape_item: ScrapeItem) -> None:
+        match scrape_item.url.parts[1:]:
+            case ["gallery", _]:
+                return await self.gallery(scrape_item)
+            case ["image", _]:
+                return await self.image(scrape_item)
+            case ["view", _]:
+                return await self.view(scrape_item)
+        if "thumbs" in scrape_item.url.host or "images" in scrape_item.url.host:
+            return await self.direct_image(scrape_item)
+        raise ValueError
+
+    @error_handling_wrapper
+    async def view(self, scrape_item: ScrapeItem) -> None:
+        # view URLs can be either a gallery or a single image.
+        async with self.request_limiter:
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        if soup.select_one(".card-header:contains('Share this gallery')"):
+            return await self.gallery(scrape_item)
+        await self.image(scrape_item)
+
+    @classmethod
+    def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        stem = url.name.rsplit(".", 1)[0]
+        image_id = stem.removesuffix("_t").removesuffix("_o")
+        if image_id != stem:
+            return cls.PRIMARY_URL / "view" / image_id
+        return cls.PRIMARY_URL / "image" / image_id
 
 
 __all__ = [
