@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, NoReturn, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
-from cyberdrop_dl import __version__, env
+from cyberdrop_dl import __version__, constants, env
 from cyberdrop_dl.config import ConfigSettings, GlobalSettings
 from cyberdrop_dl.models import AliasModel
 from cyberdrop_dl.models.types import HttpURL
@@ -76,7 +76,6 @@ class CommandLineOnlyArgs(BaseModel):
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
     disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
     download: bool = Field(False, description="skips UI, start download immediatly")
-    download_dropbox_folders_as_zip: bool = Field(False, description="download Dropbox folder without api key as zip")
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     max_items_retry: int = Field(0, description="max number of links to retry")
     portrait: bool = Field(is_terminal_in_portrait(), description="show UI in a portrait layout")
@@ -121,7 +120,12 @@ class CommandLineOnlyArgs(BaseModel):
         return value.lower()
 
 
-class DeprecatedArgs(BaseModel): ...
+class DeprecatedArgs(BaseModel):
+    download_dropbox_folders_as_zip: bool = Field(
+        False,
+        description="download Dropbox folder without api key as zip",
+        deprecated="'--download-dropbox-folders-as-zip' is deprecated and will be removed in the future. Use '--album_download_preference'",
+    )
 
 
 class ParsedArgs(AliasModel):
@@ -159,8 +163,15 @@ class ParsedArgs(AliasModel):
         def add_warning_msg_from(field_name: str) -> None:
             if not field_name:
                 return
-            field_info: FieldInfo = self.deprecated_args.model_fields[field_name]
+            field_info: FieldInfo = DeprecatedArgs.model_fields[field_name]
             warnings_to_emit.add(field_info.deprecated)
+
+        if self.deprecated_args.download_dropbox_folders_as_zip:
+            add_warning_msg_from("download_dropbox_folders_as_zip")
+
+            self.config_settings.download_options.album_download_preference = (
+                constants.AlbumDownloadPreference.INDIVIDUAL_FILES
+            )
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
