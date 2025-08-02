@@ -33,7 +33,7 @@ class GallerySelectors(NamedTuple):
 
 class SimplePHPImageHostCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths]  # type: ignore[reportIncompatibleVariableOverride]
-    IMG_SELECTOR: ClassVar[str] = "div#container a img"
+    IMG_SELECTOR: ClassVar[str] = "div#container a img, div[class*=container] a img"
     GALLERY_SELECTORS: GallerySelectors
 
     def __init_subclass__(cls, is_abc: bool = False, **kwargs) -> None:
@@ -121,7 +121,7 @@ class ImgShotCrawler(SimplePHPImageHostCrawler, is_abc=True):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        if scrape_item.url.name in "noimage.php":
+        if scrape_item.url.name in ("noimage.php",):
             raise ScrapeError(404)
 
         if self.HAS_CAPTCHA:
@@ -354,6 +354,42 @@ class ImageBamCrawler(ImgShotCrawler):
         if image_id != stem:
             return cls.PRIMARY_URL / "view" / image_id
         return cls.PRIMARY_URL / "image" / image_id
+
+
+class ImagetwistCrawler(ImgShotCrawler):
+    SUPPORTED_PATHS: ClassVar = {
+        "Image": (
+            "/<image_id>.<ext>",
+            "/<image_id>.<ext>/<filename>",
+        ),
+        "Direct Link": (
+            "/th/<seq>/<image_id>.<ext>",
+            "/i/<seq>/<image_id>.<ext>/<filename>",
+        ),
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imagetwist.com")
+
+    async def fetch(self, scrape_item: ScrapeItem) -> None:
+        match scrape_item.url.parts[1:]:
+            case ["th", _, _]:
+                return await self.direct_image(scrape_item)
+            case ["i", _, _, _]:
+                return await self.direct_image(scrape_item)
+            case [_]:
+                return await self.image(scrape_item)
+            case _:
+                raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        if len(url.parts) == 3:
+            return url.with_path(url.parts[1])
+        return url
+
+    @classmethod
+    def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        image_id = url.parts[3].rsplit(".", 1)[0]
+        return cls.PRIMARY_URL / image_id
 
 
 __all__ = [
