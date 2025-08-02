@@ -181,9 +181,20 @@ class ImxToCrawler(ImgShotCrawler):
         return cls.PRIMARY_URL / "i" / image_id
 
 
+class ImgAdultCrawler(ImgShotCrawler):
+    SUPPORTED_PATHS: ClassVar = {
+        "Image": "/img-<image_id>.html",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imgadult.com")
+    HAS_CAPTCHA = True
+
+    async def async_startup(self) -> None:
+        self.update_cookies({"img_i_d": 1})
+
+
 class AcidImgCrawler(ImgShotCrawler):
     SUPPORTED_PATHS: ClassVar = {
-        "Image": "/i/...",
+        "Image": "/i/<image_id>",
         "Direct Link": "/upload/...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://acidimg.cc")
@@ -201,104 +212,41 @@ class AcidImgCrawler(ImgShotCrawler):
         await ImgShotCrawler.fetch(self, scrape_item)
 
 
-class ImgAdultCrawler(ImgShotCrawler):
-    SUPPORTED_PATHS: ClassVar = {
-        "Image": "/img-<image_id>.html",
-    }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imgadult.com")
-    HAS_CAPTCHA = True
-
-    async def async_startup(self) -> None:
-        self.update_cookies({"img_i_d": 1})
-
-
-class FappicCrawler(ImgShotCrawler):
-    SUPPORTED_PATHS: ClassVar = {
-        "Image": "/<image_id>/<filename>",
-        "Direct Link": "/upload/...",
-    }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://fappic.com")
-    THUMB_TO_SRC_REPLACE: ClassVar[tuple[str, str]] = "/thumbs/", "/images/"
-
-    async def fetch(self, scrape_item: ScrapeItem) -> None:
-        match scrape_item.url.parts[1:]:
-            case ["upload", "thumbs" | "images", _, *_]:
-                return await self.direct_image(scrape_item)
-            case [_, _]:
-                return await self.image(scrape_item)
-        await ImgShotCrawler.fetch(self, scrape_item)
-
-
 class PicstateCrawler(ImgShotCrawler):
     SUPPORTED_PATHS: ClassVar = {
-        "Image": "/view/full/...",
-        "Direct Link": "/files/...",
+        "Image": "/view/full/<image_id>",
+        "Direct Link": (
+            "/files/<image_id>/<filename>",
+            "/thumbs/small/files/<image_id>/<filename>",
+        ),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://picstate.com")
-    THUMB_TO_SRC_REPLACE: ClassVar[tuple[str, str]] = "/thumbs/", "/images/"
+    IMG_SELECTOR = "p#image_container a img"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["files", _, *_]:
+            case ["files", _, _]:
+                return await self.direct_image(scrape_item)
+            case ["thumbs", _, _, _]:
                 return await self.direct_image(scrape_item)
             case ["view", "full", _]:
                 return await self.image(scrape_item)
-
-        await ImgShotCrawler.fetch(self, scrape_item)
-
-
-class ViprImageCrawler(ImgShotCrawler):
-    SUPPORTED_PATHS: ClassVar = {
-        "Image": "/<image_id>.html",
-        "Direct Link": "/th/...",
-    }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://vipr2.im")
-    THUMB_TO_SRC_REPLACE: ClassVar[tuple[str, str]] = "/thumbs/", "/images/"
-
-    async def fetch(self, scrape_item: ScrapeItem) -> None:
-        match scrape_item.url.parts[1:]:
-            case ["th", _]:
-                return await self.direct_image(scrape_item)
-            case [_]:
-                return await self.image(scrape_item)
-
-        await ImgShotCrawler.fetch(self, scrape_item)
-
-
-class ImgClickCrawler(ImgShotCrawler):
-    SUPPORTED_PATHS: ClassVar = {
-        "Image": "/<image_id>/<filename>",
-        "Direct Link": "/thumbs/",
-    }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imgclick.net")
-    THUMB_TO_SRC_REPLACE: ClassVar[tuple[str, str]] = "/thumbs/", "/images/"
-
-    async def fetch(self, scrape_item: ScrapeItem) -> None:
-        match scrape_item.url.parts[1:]:
-            case ["upload", "thumbs" | "images", _, *_]:
-                return await self.direct_image(scrape_item)
-            case [_, _]:
-                return await self.image(scrape_item)
-        await ImgShotCrawler.fetch(self, scrape_item)
+            case _:
+                raise ValueError
 
     @classmethod
-    def _prepare_post_data(cls, url: AbsoluteHttpURL) -> dict[str, str]:
-        return {
-            "op": "view",
-            "id": cls._get_id(url),
-            "pre": "1",
-            "adb": "1",
-            "next": "Continue+to+image+...+",
-        }
+    def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        image_id = url.parts[-2]
+        return cls.PRIMARY_URL / "view/full" / image_id
 
 
 class PixHostCrawler(ImgShotCrawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Gallery": "/gallery/<gallery_id>",
-        "Image": "/show/...",
+        "Image": "/show/<seq>/<filename>",
         "Direct Link": (
-            "/thumbs/...",
-            "/images/...",
+            "/thumbs/<seq>/<filename>",
+            "/images/<seq>/<filename>",
         ),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pixhost.to/")
@@ -311,9 +259,9 @@ class PixHostCrawler(ImgShotCrawler):
         match scrape_item.url.parts[1:]:
             case ["gallery", _]:
                 return await self.gallery(scrape_item)
-            case ["thumbs" | "images", _, *_]:
+            case ["thumbs" | "images", _, _]:
                 return await self.direct_image(scrape_item)
-            case ["show", _, *_]:
+            case ["show", _, _]:
                 return await self.image(scrape_item)
         await ImgShotCrawler.fetch(self, scrape_item)
 
@@ -321,6 +269,34 @@ class PixHostCrawler(ImgShotCrawler):
     def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         path = url.path.replace("/thumbs/", "/show/")
         return cls.PRIMARY_URL.with_path(path)
+
+
+class ViprImCrawler(ImgShotCrawler):
+    SUPPORTED_PATHS: ClassVar = {
+        "Image": "/<image_id>",
+        "Direct Link": (
+            "/th/<seq>/<image_id>.<ext>",
+            "/i/<seq>/<image_id>.<ext>/<filename>",
+        ),
+    }
+    IMG_SELECTOR = "div#body a > img"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://vipr.im")
+
+    async def fetch(self, scrape_item: ScrapeItem) -> None:
+        match scrape_item.url.parts[1:]:
+            case ["th", _, _]:
+                return await self.direct_image(scrape_item)
+            case ["i", _, _, _]:
+                return await self.direct_image(scrape_item)
+            case [_]:
+                return await self.image(scrape_item)
+            case _:
+                raise ValueError
+
+    @classmethod
+    def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        image_id = url.parts[3].rsplit(".", 1)[0]
+        return cls.PRIMARY_URL / image_id
 
 
 __all__ = [
