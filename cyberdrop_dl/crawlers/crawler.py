@@ -7,7 +7,6 @@ import inspect
 import re
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
@@ -47,7 +46,7 @@ _T_co = TypeVar("_T_co", covariant=True)
 
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator, Iterable
 
     from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup, Tag
@@ -58,7 +57,7 @@ if TYPE_CHECKING:
 
 
 OneOrTuple: TypeAlias = T | tuple[T, ...]
-SupportedPaths: TypeAlias = Mapping[str, OneOrTuple[str]]
+SupportedPaths: TypeAlias = dict[str, OneOrTuple[str]]
 SupportedDomains: TypeAlias = OneOrTuple[str]
 
 
