@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple, NotRequired
 from unittest import mock
@@ -17,8 +18,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-def _amock(crawler: Crawler, func: str = "handle_media_item") -> mock._patch[mock.AsyncMock]:
-    return mock.patch.object(crawler, func, new_callable=mock.AsyncMock)
+def _crawler_mock(func: str = "handle_media_item") -> mock._patch[mock.AsyncMock]:
+    return mock.patch(f"cyberdrop_dl.crawlers.crawler.Crawler.{func}", new_callable=mock.AsyncMock)
 
 
 class Result(TypedDict):
@@ -30,6 +31,7 @@ class Result(TypedDict):
     referer: NotRequired[str]
     album_id: NotRequired[str | None]
     datetime: NotRequired[int | None]
+    download_folder: NotRequired[str]
 
 
 class CrawlerTestCase(NamedTuple):
@@ -78,25 +80,26 @@ async def test_crawler(running_manager: Manager, crawler_test_case: CrawlerTestC
     # Check that this is a valid test case with pydantic
     domain, input_url, expected_results = _TEST_CASE_ADAPTER.validate_python(crawler_test_case, strict=True)
 
-    async with ScrapeMapper(running_manager) as scrape_mapper:
-        await scrape_mapper.run()
-        crawler = next(
-            (crawler for crawler in scrape_mapper.existing_crawlers.values() if crawler.DOMAIN == domain), None
-        )
-        assert crawler, f"{domain} is not a valid crawler domain. Test case is invalid"
-        await crawler.startup()
-        item = ScrapeItem(url=crawler.parse_url(input_url))
-        with _amock(crawler) as func:
+    with _crawler_mock() as func:
+        async with ScrapeMapper(running_manager) as scrape_mapper:
+            await scrape_mapper.run()
+            crawler = next(
+                (crawler for crawler in scrape_mapper.existing_crawlers.values() if crawler.DOMAIN == domain), None
+            )
+            assert crawler, f"{domain} is not a valid crawler domain. Test case is invalid"
+            await crawler.startup()
+            item = ScrapeItem(url=crawler.parse_url(input_url))
             await crawler.run(item)
-            results: list[MediaItem] = sorted((call.args[0] for call in func.call_args_list), key=lambda x: x.url)
 
+    func.assert_awaited()
+    results: list[MediaItem] = sorted((call.args[0] for call in func.call_args_list), key=lambda x: str(x.url))
     expected_results = sorted(expected_results, key=lambda x: x["url"])
     _validate_results(crawler, expected_results, results)
 
 
 def _validate_results(crawler: Crawler, expected_results: list[Result], results: list[MediaItem]) -> None:
     assert len(expected_results) == len(results)
-    for expected_result, media_item in zip(expected_results, results, strict=True):
+    for index, (expected_result, media_item) in enumerate(zip(expected_results, results, strict=True), 1):
         for attr_name, expected_value in expected_result.items():
             result_value = getattr(media_item, attr_name)
             if isinstance(expected_value, str):
@@ -104,5 +107,11 @@ def _validate_results(crawler: Crawler, expected_results: list[Result], results:
                     expected_value = crawler.parse_url(expected_value)
                 elif expected_value == "ANY":
                     expected_value = mock.ANY
+                elif expected_value.startswith("re:"):
+                    expected_value = expected_value.removeprefix("re:")
+                    assert re.search(expected_value, str(result_value)), (
+                        f"{result_value = } does not match {expected_value}"
+                    )
+                    continue
 
-            assert expected_value == result_value, f"{attr_name} is different"
+            assert expected_value == result_value, f"{attr_name} for result#{index} is different"

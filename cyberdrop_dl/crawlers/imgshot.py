@@ -49,6 +49,9 @@ class SimplePHPImageHostCrawler(Crawler, is_abc=True):
             if not getattr(cls, "FOLDER_DOMAIN", None) or cls.FOLDER_DOMAIN.casefold() not in cls.PRIMARY_URL.host:
                 cls.FOLDER_DOMAIN = cls.DOMAIN.capitalize()
 
+            if "Gallery" in cls.SUPPORTED_PATHS:
+                assert getattr(cls, "GALLERY_SELECTORS", None)
+
         super().__init_subclass__(is_abc=is_abc, **kwargs)
 
     @property
@@ -147,7 +150,9 @@ class ImxToCrawler(ImgShotCrawler):
     SUPPORTED_PATHS: ClassVar = {
         "Image": "/i/...",
         "Thumbnail": "/u/t...",
+        "Gallery": "/g/galery_id",
     }
+    GALLERY_SELECTORS = GallerySelectors("div.title", "div#content a:has(img)")
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imx.to")
     IMG_SELECTOR = "div#container div a img.centred"
     HAS_CAPTCHA = True
