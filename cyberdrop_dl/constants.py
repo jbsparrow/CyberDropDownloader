@@ -8,7 +8,7 @@ from typing import Any
 from aiohttp.resolver import AsyncResolver, ThreadedResolver
 from rich.text import Text
 
-from cyberdrop_dl.compat import Enum, IntEnum, StrEnum
+from cyberdrop_dl.compat import Enum, IntEnum, MayBeUpperStrEnum, StrEnum
 
 # TIME
 STARTUP_TIME = datetime.now()
@@ -85,17 +85,22 @@ class HashType(StrEnum):
     xxh128 = "xxh128"
 
 
-class Hashing(StrEnum):
+class Hashing(MayBeUpperStrEnum):
     OFF = auto()
     IN_PLACE = auto()
     POST_DOWNLOAD = auto()
 
-    @classmethod
-    def _missing_(cls, value: object) -> "Hashing":
-        try:
-            return cls[str(value).upper()]
-        except KeyError as e:
-            raise e
+
+class AlbumDownloadPreference(MayBeUpperStrEnum):
+    INDIVIDUAL_FILES = auto()
+    INDIVIDUAL_FILES_ONLY = auto()
+    ZIPPED = auto()
+
+
+# - individual_files: Prefer downloads of individual files, but accept a ZIPPED file if individual files aren't available.
+# - individual_files_only: Never download zipped files, always download of individual files.
+# - zipped: Prefer downloads of zipped files, but accept individual files if a ZIPPED version isn't available.
+# NOTES: zipped means "any compressed file" in this context, no necesaryly a ".zip" file
 
 
 class BROWSERS(StrEnum):

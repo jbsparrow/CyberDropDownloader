@@ -44,5 +44,8 @@ else:
 
 class MayBeUpperStrEnum(StrEnum):
     @classmethod
-    def __missing__(cls: type[_EnumMemberT], value: str) -> _EnumMemberT:
-        return cls[value.upper()]
+    def _missing_(cls, value: object):
+        try:
+            return cls[str(value).upper()]
+        except KeyError as e:
+            raise e
