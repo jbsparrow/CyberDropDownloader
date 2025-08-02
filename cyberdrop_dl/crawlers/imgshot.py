@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, NamedTuple, NotRequired, TypedDict
 
@@ -40,7 +39,6 @@ class SupportedPaths(TypedDict):
 class SimplePHPImageHostCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths]  # type: ignore[reportIncompatibleVariableOverride]
     IMG_SELECTOR: ClassVar[str] = "div#container a img"
-    THUMB_TO_SRC_REPLACE: ClassVar[tuple[str, ...]]
     GALLERY_SELECTORS: GallerySelectors
 
     def __init_subclass__(cls, is_abc: bool = False, **kwargs) -> None:
@@ -51,8 +49,6 @@ class SimplePHPImageHostCrawler(Crawler, is_abc=True):
             if not getattr(cls, "FOLDER_DOMAIN", None) or cls.FOLDER_DOMAIN.casefold() not in cls.PRIMARY_URL.host:
                 cls.FOLDER_DOMAIN = cls.DOMAIN.capitalize()
 
-            *thumb_paths, src_path = cls.THUMB_TO_SRC_REPLACE
-            cls.THUMB_TO_SRC_REGEX = re.compile("|".join(thumb_paths))
         super().__init_subclass__(is_abc=is_abc, **kwargs)
 
     @property
@@ -63,22 +59,14 @@ class SimplePHPImageHostCrawler(Crawler, is_abc=True):
     def _get_id(cls, url: AbsoluteHttpURL) -> str:
         return url.name.removeprefix("img-").partition(".")[0]
 
-    async def thumbnail(self, scrape_item: ScrapeItem) -> None:
-        src = self._thumb_to_src(scrape_item.url)
-        scrape_item.url = self._src_to_web_url(src)
-        if scrape_item.url.host != self.PRIMARY_URL.host:
-            self.create_task(self.run(scrape_item))
-            return
-        await self.direct_file(scrape_item, src, assume_ext=".jpg")
+    async def direct_image(self, scrape_item: ScrapeItem) -> None:
+        # convert the direct file to a wb page URL
+        # we can convert it to an original src URL, but it will be missing the proper filename
+        scrape_item.url = self._thumb_to_web_url(scrape_item.url)
+        self.create_task(self.run(scrape_item))
 
     @classmethod
-    def _thumb_to_src(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        src_path_prefix = cls.THUMB_TO_SRC_REPLACE[-1]
-        src_path = cls.THUMB_TO_SRC_REGEX.sub(src_path_prefix, url.path)
-        return url.with_path(src_path)
-
-    @classmethod
-    def _src_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+    def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         image_id = cls._get_id(url)
         return cls.PRIMARY_URL / f"img-{image_id}.html"
 
@@ -120,14 +108,9 @@ class ImgShotCrawler(SimplePHPImageHostCrawler, is_abc=True):
         album_id = self._get_id(scrape_item.url)
         title = self.create_title(css.select_one_get_text(soup, self.GALLERY_SELECTORS.title))
         scrape_item.setup_as_album(title, album_id=album_id)
-        results = await self.get_album_results(album_id)
 
-        for thumb, web_url in self.iter_tags(soup, self.GALLERY_SELECTORS.images):
-            assert thumb
-            src = self._thumb_to_src(thumb)
-            if not self.check_album_results(src, results):
-                new_scrape_item = scrape_item.create_child(web_url)
-                self.create_task(self.direct_file(new_scrape_item, src, assume_ext=".jpg"))
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, self.GALLERY_SELECTORS.images):
+            self.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -166,7 +149,6 @@ class ImxToCrawler(ImgShotCrawler):
         "Thumbnail": "/u/t...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imx.to")
-    THUMB_TO_SRC_REPLACE = "/u/t/", "/u/i/"
     IMG_SELECTOR = "div#container div a img.centred"
     HAS_CAPTCHA = True
 
@@ -174,17 +156,19 @@ class ImxToCrawler(ImgShotCrawler):
         match scrape_item.url.parts[1:]:
             case ["g", _]:
                 return await self.gallery(scrape_item)
-            case ["u", "t" | "i", _]:
-                return await self.thumbnail(scrape_item)
+            case ["u", "t" | "i", _, *_]:
+                return await self.direct_image(scrape_item)
             case ["i", _]:
                 return await self.image(scrape_item)
+            case ["i", _, _, *_]:
+                return await self.direct_image(scrape_item)
             case [name] if name.startswith("img-"):
                 return await self.image(scrape_item)
             case _:
                 raise ValueError
 
     @classmethod
-    def _src_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+    def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         image_id = cls._get_id(url)
         return cls.PRIMARY_URL / "i" / image_id
 
@@ -196,7 +180,6 @@ class AcidImgCrawler(ImgShotCrawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://acidimg.cc")
     FOLDER_DOMAIN: ClassVar[str] = "AcidImg"
-    THUMB_TO_SRC_REPLACE = "/upload/small/", "/upload/small-medium/", "/upload/big/"
     HAS_CAPTCHA = True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -204,7 +187,7 @@ class AcidImgCrawler(ImgShotCrawler):
             case ["g", _]:
                 return await self.gallery(scrape_item)
             case ["upload", "small" | "small-medium" | "big", _, *_]:
-                return await self.thumbnail(scrape_item)
+                return await self.direct_image(scrape_item)
             case ["i", _]:
                 return await self.image(scrape_item)
         await ImgShotCrawler.fetch(self, scrape_item)
@@ -226,7 +209,7 @@ class FappicCrawler(ImgShotCrawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["upload", "thumbs" | "images", _, *_]:
-                return await self.thumbnail(scrape_item)
+                return await self.direct_image(scrape_item)
             case [_, _]:
                 return await self.image(scrape_item)
         await ImgShotCrawler.fetch(self, scrape_item)
@@ -244,7 +227,7 @@ class PicstateCrawler(ImgShotCrawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["files", _, *_]:
-                return await self.thumbnail(scrape_item)
+                return await self.direct_image(scrape_item)
             case ["view", "full", _]:
                 return await self.image(scrape_item)
 
@@ -263,7 +246,7 @@ class ViprImageCrawler(ImgShotCrawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["th", _]:
-                return await self.thumbnail(scrape_item)
+                return await self.direct_image(scrape_item)
             case [_]:
                 return await self.image(scrape_item)
 
@@ -282,7 +265,7 @@ class ImgClickCrawler(ImgShotCrawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["upload", "thumbs" | "images", _, *_]:
-                return await self.thumbnail(scrape_item)
+                return await self.direct_image(scrape_item)
             case [_, _]:
                 return await self.image(scrape_item)
         await ImgShotCrawler.fetch(self, scrape_item)
@@ -314,9 +297,9 @@ class PixHostCrawler(ImgShotCrawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["gallery", _]:
-                return await self.thumbnail(scrape_item)
+                return await self.direct_image(scrape_item)
             case ["thumbs", _, *_]:
-                return await self.thumbnail(scrape_item)
+                return await self.direct_image(scrape_item)
             case ["show", _]:
                 return await self.image(scrape_item)
         await ImgShotCrawler.fetch(self, scrape_item)
