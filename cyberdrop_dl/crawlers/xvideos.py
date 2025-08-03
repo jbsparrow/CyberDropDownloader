@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import itertools
 import json
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -15,46 +18,168 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
+_ACCOUNTS = ("amateurs", "profiles", "channels", "pornstars")
+_ACCOUNT_PARTS: list[str] = []
+
+for part in _ACCOUNTS:
+    single = part.removesuffix("s")
+    _ACCOUNT_PARTS.extend((single, part, f"{single}-channels"))
+
+_ACCOUNT_PATHS = (f"/{'|'.join(sorted(_ACCOUNT_PARTS))}/<name>", "/<channel_name>")
+
+
+class Selectors:
+    ACCOUNT_INFO_JS = "script:contains('\"id_user\":')"
+    HLS_VIDEO_JS = "script:contains('setVideoHLS(')"
+    DELETED_VIDEO = "h1.inlineError"
+
+
 class XVideosCrawler(Crawler):
+    SUPPORTED_DOMAINS = (
+        "xvideos.com",
+        "xvideos.es",
+        "xvideos-india.com",
+        "xv-ru.com",
+        "xvideos-ar.com",
+    )
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Video": (
-            "/video<video_id>/<title>",
-            "/video.<video_id>/<title>",
+            "/video<id>/<title>",
+            "/video.<encoded_id>/<title>",
+            "/<acount_name>#quickies/a/<video_id>",
         ),
+        "Account": _ACCOUNT_PATHS,
+        "Account Photos": tuple(f"{path}#_tabVideos" for path in _ACCOUNT_PATHS),
+        "Account Videos": tuple(f"{path}#_tabPhotos" for path in _ACCOUNT_PATHS),
+        "Account Quickies": tuple(f"{path}#quickies" for path in _ACCOUNT_PATHS),
     }
 
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.xvideos.com")
-    DOMAIN: ClassVar[str] = "xvideos"
-    FOLDER_DOMAIN: ClassVar[str] = "xVideos"
+    PRIMARY_URL = AbsoluteHttpURL("https://www.xvideos.com")
+    DOMAIN = "xvideos"
+    FOLDER_DOMAIN = "xVideos"
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        if url.host.count(".") == "1":
+            url = url.with_host(f"www.{url.host}")
+
+        match url.parts[1:]:
+            case [_ as part, "a", video_id] if part.endswith("#quickies"):
+                return url.origin() / f"video{'' if video_id.isdecimal() else '.'}{video_id}" / "_"
+            case _:
+                return url
+
+    def __post_init__(self) -> None:
+        self._headers = {"Accept-Language": "en-gb"}
+        self._domain_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self._seen_domains: set[str] = set()
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        match scrape_item.url.parts[1:]:
-            case [part, _] if part.startswith("video"):
-                video_id = part.removeprefix("video").removeprefix(".")
-                await self.video(scrape_item, video_id)
-            case _:
-                raise ValueError
+        if ".red" not in scrape_item.url.host:
+            match scrape_item.url.parts[1:]:
+                case [part, _] if part.startswith("video"):
+                    return await self.video(scrape_item)
+                case [_ as part, _] if part in _ACCOUNT_PARTS:
+                    return await self.account(scrape_item)
+                case [_ as part] if part not in _ACCOUNT_PARTS:  # channel
+                    return await self.account(scrape_item)
+        raise ValueError
+
+    async def _get_soup(self, url: AbsoluteHttpURL) -> BeautifulSoup:
+        async with self._domain_locks[url.host]:
+            if url.host not in self._seen_domains:
+                await self._disable_auto_translated_titles(url.origin())
+                self._seen_domains.add(url.host)
+
+        async with self.request_limiter:
+            return await self.client.get_soup(self.DOMAIN, url, self._headers)
+
+    async def _disable_auto_translated_titles(self, origin: AbsoluteHttpURL) -> None:
+        async with self.request_limiter:
+            await self.client._get(self.DOMAIN, origin / "change-language/en", self._headers)
+            await self.client._post_data(
+                self.DOMAIN,
+                origin / "account/feature-disabled",
+                self._headers,
+                json={"featureid": "at"},
+            )
 
     @error_handling_wrapper
-    async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
+    async def video(self, scrape_item: ScrapeItem) -> None:
+        video_id = scrape_item.url.parts[1].removeprefix("video").removeprefix(".")
+        if video_id.isdecimal() or scrape_item.url.name == "_":
+            scrape_item.url = await self._get_redirect_url(scrape_item.url)
+            encoded_id = scrape_item.url.parts[1].removeprefix("video.")
+        else:
+            encoded_id = video_id
+
         if await self.check_complete_from_referer(scrape_item.url):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
-        if error := soup.select_one("h1.inlineError"):
+        soup = await self._get_soup(scrape_item.url)
+        if error := soup.select_one(Selectors.DELETED_VIDEO):
             raise ScrapeError(404, css.get_text(error))
 
         title = page_title(soup, self.DOMAIN)
         scrape_item.possible_datetime = self.parse_iso_date(get_json_ld_date(soup))
-        script = css.select_one_get_text(soup, "script:contains('setVideoHLS(')")
+        script = css.select_one_get_text(soup, Selectors.HLS_VIDEO_JS)
         m3u8_url = self.parse_url(get_text_between(script, "setVideoHLS('", "')"))
         m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_url)
-        custom_filename = self.create_custom_filename(title, ".mp4", file_id=video_id, resolution=info.resolution.name)
+        custom_filename = self.create_custom_filename(title, ".mp4", file_id=encoded_id, resolution=info.resolution)
         await self.handle_file(
-            scrape_item.url, scrape_item, video_id + ".mp4", m3u8=m3u8, custom_filename=custom_filename
+            scrape_item.url, scrape_item, encoded_id + ".mp4", m3u8=m3u8, custom_filename=custom_filename
         )
+
+    @error_handling_wrapper
+    async def account(self, scrape_item: ScrapeItem) -> None:
+        name = scrape_item.url.name
+        if len(scrape_item.url.parts) > 2 and scrape_item.url.parts[1] not in _ACCOUNTS:
+            scrape_item.url = await self._get_redirect_url(scrape_item.url)
+
+        soup = await self._get_soup(scrape_item.url)
+        script = css.select_one_get_text(soup, Selectors.ACCOUNT_INFO_JS)
+        display_name = get_text_between(script, '"display":', ",").strip()
+        scrape_item.setup_as_profile(self.create_title(f"{display_name} [{name}]"))
+        frag = scrape_item.url.fragment
+        if not frag or "_tabVideos" in frag:
+            await self._iter_api_pages(scrape_item, scrape_item.url / "videos/new", "videos")
+
+        if not frag or "_tabPhotos" in frag:
+            pass
+
+        if not frag or "quickies" not in frag:
+            has_quickies = get_text_between(script, '"has_quickies":', ",").strip()
+            if has_quickies == "false":
+                return
+
+            user_id = get_text_between(script, '"id_user":', ",").strip()
+            quickies_api = scrape_item.url.origin() / "quickies-api/profilevideos/all/none/N" / user_id
+            await self._iter_api_pages(scrape_item, quickies_api, "quickies")
+
+    async def _get_redirect_url(self, url: AbsoluteHttpURL):
+        async with self.request_limiter:
+            head = await self.client.get_head(self.DOMAIN, url)
+        if location := head.get("location"):
+            return self.parse_url(location, url.origin())
+        return url
+
+    async def _iter_api_pages(self, scrape_item: ScrapeItem, api_url: AbsoluteHttpURL, new_part: str) -> None:
+        for page in itertools.count(0):
+            async with self.request_limiter:
+                json_resp: dict[str, Any] = await self.client.post_data(self.DOMAIN, api_url / str(page), self._headers)
+
+            videos: list[dict[str, str]] = json_resp["videos"]
+            for video in videos:
+                if new_part == "videos":
+                    slug = video["u"].rpartition("/")[-1]
+                    url = scrape_item.url.origin() / f"video.{video['eid']}" / slug
+                else:
+                    url = self.parse_url(video["url"], scrape_item.url.origin())
+                new_scrape_item = scrape_item.create_child(url, new_title_part=new_part)
+                self.create_task(self.run(new_scrape_item))
+
+            if not (json_resp.get("hasMoreVideos") or len(videos) < json_resp["nb_per_page"]):
+                break
 
 
 # TODO: Move title funtions to css utils
