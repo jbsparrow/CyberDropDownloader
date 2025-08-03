@@ -284,14 +284,15 @@ class Crawler(ABC):
         url: URL,
         scrape_item: ScrapeItem,
         filename: str,
-        ext: str,
+        ext: str | None = None,
         *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
         m3u8: m3u8.RenditionGroup | None = None,
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
-
+        if not ext:
+            _, ext = filename.rsplit(".", 1)
         if custom_filename:
             original_filename, filename = filename, custom_filename
         elif self.DOMAIN in ["cyberdrop"]:
@@ -687,7 +688,7 @@ class Crawler(ABC):
 
         if _placeholder_config.include_resolution and resolution:
             if isinstance(resolution, str):
-                if digits := resolution.casefold().removesuffix("p").isdigit():
+                if (digits := resolution.casefold().removesuffix("p")).isdigit():
                     extra_info.append(f"{digits}p")
                 else:
                     resolution_ = next(

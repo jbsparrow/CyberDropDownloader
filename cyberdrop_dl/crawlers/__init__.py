@@ -100,6 +100,7 @@ from .wordpress import WP_CRAWLERS, WordPressHTMLCrawler, WordPressMediaCrawler
 from .xbunkr import XBunkrCrawler
 from .xenforo import XF_CRAWLERS, SimpCityCrawler
 from .xhamster import XhamsterCrawler
+from .xvideos import XVideosCrawler
 from .xxxbunker import XXXBunkerCrawler
 from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler
