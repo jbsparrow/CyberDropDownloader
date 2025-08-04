@@ -19,19 +19,22 @@ if TYPE_CHECKING:
 
 
 _ACCOUNTS = ("amateurs", "profiles", "channels", "pornstars")
-_ACCOUNT_PARTS: list[str] = []
+_EXTENDED_ACCOUNTS = tuple(
+    itertools.chain.from_iterable(
+        (account, singular := account.removesuffix("s"), f"{singular}-channels") for account in _ACCOUNTS
+    )
+)
 
-for part in _ACCOUNTS:
-    single = part.removesuffix("s")
-    _ACCOUNT_PARTS.extend((single, part, f"{single}-channels"))
-
-_ACCOUNT_PATHS = (f"/{'|'.join(sorted(_ACCOUNT_PARTS))}/<name>", "/<channel_name>")
+_ACCOUNT_PATHS = (f"/{'|'.join(sorted(_EXTENDED_ACCOUNTS))}/<name>", "/<channel_name>")
 
 
 class Selectors:
-    ACCOUNT_INFO_JS = "script:contains('\"id_user\":')"
+    ACCOUNT_INFO_JS = "script:contains('\"id_user=\":')"
     HLS_VIDEO_JS = "script:contains('setVideoHLS(')"
     DELETED_VIDEO = "h1.inlineError"
+    GALLERY_IMG = "a.embed-responsive-item"
+    GALLERY_TITLE = "h4.bg-title"
+    NEXT_PAGE = "a[href]:contains('Next')"
 
 
 class XVideosCrawler(Crawler):
@@ -46,28 +49,33 @@ class XVideosCrawler(Crawler):
         "Video": (
             "/video<id>/<title>",
             "/video.<encoded_id>/<title>",
-            "/<acount_name>#quickies/a/<video_id>",
+            f"/{'|'.join(sorted(_EXTENDED_ACCOUNTS))}#quickies/a/<video_id>",
         ),
         "Account": _ACCOUNT_PATHS,
-        "Account Photos": tuple(f"{path}#_tabVideos" for path in _ACCOUNT_PATHS),
-        "Account Videos": tuple(f"{path}#_tabPhotos" for path in _ACCOUNT_PATHS),
+        "Account Videos": tuple(f"{path}#_tabVideos" for path in _ACCOUNT_PATHS),
+        "Account Photos": (
+            *(f"{path}#_tabPhotos" for path in _ACCOUNT_PATHS),
+            *(f"{path}/photos/..." for path in _ACCOUNT_PATHS),
+        ),
         "Account Quickies": tuple(f"{path}#quickies" for path in _ACCOUNT_PATHS),
     }
 
     PRIMARY_URL = AbsoluteHttpURL("https://www.xvideos.com")
     DOMAIN = "xvideos"
     FOLDER_DOMAIN = "xVideos"
+    NEXT_PAGE_SELECTOR = Selectors.NEXT_PAGE
 
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        if url.host.count(".") == "1":
+        if url.host.count(".") == 1:
             url = url.with_host(f"www.{url.host}")
 
-        match url.parts[1:]:
-            case [_ as part, "a", video_id] if part.endswith("#quickies"):
-                return url.origin() / f"video{'' if video_id.isdecimal() else '.'}{video_id}" / "_"
-            case _:
-                return url
+        if url.fragment.startswith("quickies"):
+            match url.fragment.removeprefix("quickies").split("/")[1:]:
+                case ["a", video_id]:
+                    return url.origin() / f"video{'' if video_id.isdecimal() else '.'}{video_id}" / "_"
+
+        return url
 
     def __post_init__(self) -> None:
         self._headers = {"Accept-Language": "en-gb"}
@@ -79,30 +87,13 @@ class XVideosCrawler(Crawler):
             match scrape_item.url.parts[1:]:
                 case [part, _] if part.startswith("video"):
                     return await self.video(scrape_item)
-                case [_ as part, _] if part in _ACCOUNT_PARTS:
+                case [_ as part, _] if part in _EXTENDED_ACCOUNTS:
                     return await self.account(scrape_item)
-                case [_ as part] if part not in _ACCOUNT_PARTS:  # channel
+                case [_ as part, _, "photos", gallery_id, *_] if part in _EXTENDED_ACCOUNTS:
+                    return await self.gallery(scrape_item, gallery_id)
+                case [_ as part] if part not in _EXTENDED_ACCOUNTS:  # channel
                     return await self.account(scrape_item)
         raise ValueError
-
-    async def _get_soup(self, url: AbsoluteHttpURL) -> BeautifulSoup:
-        async with self._domain_locks[url.host]:
-            if url.host not in self._seen_domains:
-                await self._disable_auto_translated_titles(url.origin())
-                self._seen_domains.add(url.host)
-
-        async with self.request_limiter:
-            return await self.client.get_soup(self.DOMAIN, url, self._headers)
-
-    async def _disable_auto_translated_titles(self, origin: AbsoluteHttpURL) -> None:
-        async with self.request_limiter:
-            await self.client._get(self.DOMAIN, origin / "change-language/en", self._headers)
-            await self.client._post_data(
-                self.DOMAIN,
-                origin / "account/feature-disabled",
-                self._headers,
-                json={"featureid": "at"},
-            )
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -140,14 +131,22 @@ class XVideosCrawler(Crawler):
         script = css.select_one_get_text(soup, Selectors.ACCOUNT_INFO_JS)
         display_name = get_text_between(script, '"display":', ",").strip()
         scrape_item.setup_as_profile(self.create_title(f"{display_name} [{name}]"))
+
         frag = scrape_item.url.fragment
+        if not frag or "_tabPhotos" in frag:
+            galleries: dict[str, Any] = json.loads(get_text_between(script, '"galleries":', ', "visitor":'))
+            _ = galleries.pop("0", None)
+
+            for gallery_id in galleries:
+                url = scrape_item.url / "photos" / gallery_id
+                new_scrape_item = scrape_item.create_child(url, new_title_part="photos")
+                self.create_task(self.run(new_scrape_item))
+                scrape_item.add_children()
+
         if not frag or "_tabVideos" in frag:
             await self._iter_api_pages(scrape_item, scrape_item.url / "videos/new", "videos")
 
-        if not frag or "_tabPhotos" in frag:
-            pass
-
-        if not frag or "quickies" not in frag:
+        if not frag or "quickies" in frag:
             has_quickies = get_text_between(script, '"has_quickies":', ",").strip()
             if has_quickies == "false":
                 return
@@ -155,6 +154,34 @@ class XVideosCrawler(Crawler):
             user_id = get_text_between(script, '"id_user":', ",").strip()
             quickies_api = scrape_item.url.origin() / "quickies-api/profilevideos/all/none/N" / user_id
             await self._iter_api_pages(scrape_item, quickies_api, "quickies")
+
+    async def gallery(self, scrape_item: ScrapeItem, album_id: str):
+        title: str = ""
+        results = await self.get_album_results(album_id)
+        async for soup in self.web_pager(scrape_item.url, relative_to=scrape_item.url.origin()):
+            if not title:
+                title = self.create_title(css.select_one_get_text(soup, Selectors.GALLERY_TITLE), album_id)
+                scrape_item.setup_as_album(title, album_id=album_id)
+
+            for _, src in self.iter_tags(soup, Selectors.GALLERY_IMG, results=results):
+                self.create_task(self.direct_file(scrape_item, src))
+
+    async def _get_soup(self, url: AbsoluteHttpURL) -> BeautifulSoup:
+        async with self._domain_locks[url.host]:
+            if url.host not in self._seen_domains:
+                await self._disable_auto_translated_titles(url.origin())
+                self._seen_domains.add(url.host)
+
+        async with self.request_limiter:
+            return await self.client.get_soup(self.DOMAIN, url, self._headers)
+
+    async def _disable_auto_translated_titles(self, origin: AbsoluteHttpURL) -> None:
+        async with self.request_limiter:
+            await self.client._get(self.DOMAIN, origin / "change-language/en", self._headers)
+            resp = await self.client.post_data(
+                self.DOMAIN, origin / "account/feature-disabled", self._headers, data={"featureid": "at"}
+            )
+        assert resp["result"] is True
 
     async def _get_redirect_url(self, url: AbsoluteHttpURL):
         async with self.request_limiter:
@@ -177,6 +204,7 @@ class XVideosCrawler(Crawler):
                     url = self.parse_url(video["url"], scrape_item.url.origin())
                 new_scrape_item = scrape_item.create_child(url, new_title_part=new_part)
                 self.create_task(self.run(new_scrape_item))
+                scrape_item.add_children()
 
             if not (json_resp.get("hasMoreVideos") or len(videos) < json_resp["nb_per_page"]):
                 break
