@@ -70,8 +70,8 @@ class XVideosCrawler(Crawler):
         if url.host.count(".") == 1:
             url = url.with_host(f"www.{url.host}")
 
-        if url.fragment.startswith("quickies"):
-            match url.fragment.removeprefix("quickies").split("/")[1:]:
+        if url.fragment.startswith("quickies/"):
+            match url.fragment.removeprefix("quickies/").split("/"):
                 case ["a", video_id]:
                     return url.origin() / f"video{'' if video_id.isdecimal() else '.'}{video_id}" / "_"
 
@@ -117,9 +117,9 @@ class XVideosCrawler(Crawler):
         m3u8_url = self.parse_url(get_text_between(script, "setVideoHLS('", "')"))
         m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_url)
         custom_filename = self.create_custom_filename(title, ".mp4", file_id=encoded_id, resolution=info.resolution)
-        await self.handle_file(
-            scrape_item.url, scrape_item, encoded_id + ".mp4", m3u8=m3u8, custom_filename=custom_filename
-        )
+        # Remove url slug to prevent duplicates in database. It's language specific and not required.
+        url = scrape_item.url.with_name("_")
+        await self.handle_file(url, scrape_item, encoded_id + ".mp4", m3u8=m3u8, custom_filename=custom_filename)
 
     @error_handling_wrapper
     async def account(self, scrape_item: ScrapeItem) -> None:
@@ -129,13 +129,13 @@ class XVideosCrawler(Crawler):
 
         soup = await self._get_soup(scrape_item.url)
         script = css.select_one_get_text(soup, Selectors.ACCOUNT_INFO_JS)
-        display_name = get_text_between(script, '"display":"', '",').strip()
+        display_name = get_text_between(script, '"display":"', '",')
         scrape_item.setup_as_profile(self.create_title(f"{display_name} [{name}]"))
 
         frag = scrape_item.url.fragment
         if not frag or "_tabPhotos" in frag:
             galleries: dict[str, Any] | list[str] = json.loads(
-                get_text_between(script, '"galleries":', '"visitor":').strip().removesuffix(",")
+                get_text_between(script, '"galleries":', '"visitor":').removesuffix(",")
             )
 
             if isinstance(galleries, dict):
@@ -188,13 +188,6 @@ class XVideosCrawler(Crawler):
         if json_resp["code"] != 0:
             self.disabled = True
             raise ScrapeError(json_resp["code"])
-
-    async def _get_redirect_url(self, url: AbsoluteHttpURL):
-        async with self.request_limiter:
-            head = await self.client.get_head(self.DOMAIN, url)
-        if location := head.get("location"):
-            return self.parse_url(location, url.origin())
-        return url
 
     async def _iter_api_pages(self, scrape_item: ScrapeItem, api_url: AbsoluteHttpURL, new_part: str) -> None:
         for page in itertools.count(0):

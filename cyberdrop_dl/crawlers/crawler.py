@@ -625,6 +625,13 @@ class Crawler(ABC):
 
         log(msg, bug=True)
 
+    async def _get_redirect_url(self, url: AbsoluteHttpURL):
+        async with self.request_limiter:
+            head = await self.client.get_head(self.DOMAIN, url)
+        if location := head.get("location"):
+            return self.parse_url(location, url.origin())
+        return url
+
     @staticmethod
     def register_cache_filter(
         url: URL, filter_fn: Callable[[AnyResponse], bool] | Callable[[AnyResponse], Awaitable[bool]]
