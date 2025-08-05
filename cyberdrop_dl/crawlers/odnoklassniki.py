@@ -30,9 +30,9 @@ class Selector:
 
 
 class OdnoklassnikiCrawler(Crawler):
-    SUPPORTED_DOMAINS = "ok.ru", "odnoklassniki"
+    SUPPORTED_DOMAINS = "ok.ru", "odnoklassniki.ru"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Video": "/video/<video_id>",
+        "Video": "/(video|videoembed)/<video_id>",
     }
     PRIMARY_URL = AbsoluteHttpURL("https://ok.ru")
     DOMAIN = "odnoklassniki"
@@ -48,7 +48,7 @@ class OdnoklassnikiCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["video", video_id]:
+            case ["video" | "videoembed", video_id]:
                 return await self.video(scrape_item, video_id)
             case _:
                 raise ValueError
@@ -72,13 +72,15 @@ class OdnoklassnikiCrawler(Crawler):
 
         resolution, src = _get_best_src(metadata)
         link = self.parse_url(src)
-        title: str = metadata["movie"]["title"]
         self._clear_cdn_cookies(link)
+        json_ld = css.get_json_ld(soup)
+        title: str = metadata.get("movie", {}).get("title") or json_ld["name"]
+        scrape_item.possible_datetime = self.parse_iso_date(json_ld["uploadDate"])
         filename = self.create_custom_filename(title, ".mp4", file_id=video_id, resolution=resolution)
-        await self.handle_file(mobile_url, scrape_item, title + ".mp4", custom_filename=filename, debrid_link=link)
+        await self.handle_file(mobile_url, scrape_item, video_id + ".mp4", custom_filename=filename, debrid_link=link)
 
 
-def _get_best_src(metadata: dict[str, Any]):
+def _get_best_src(metadata: dict[str, Any]) -> tuple[int, str]:
     def parse():
         for video in metadata["videos"]:
             resolution = {"full": 1080, "hd": 720, "sd": 480, "low": 360, "lowest": 240, "mobile": 144}.get(
@@ -89,7 +91,7 @@ def _get_best_src(metadata: dict[str, Any]):
     return max(parse())
 
 
-def _check_video_is_available(soup: BeautifulSoup):
+def _check_video_is_available(soup: BeautifulSoup) -> None:
     if error := soup.select_one(Selector.VIDEO_DELETED):
         raise ScrapeError(404, css.get_text(error))
 
