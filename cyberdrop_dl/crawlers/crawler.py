@@ -284,14 +284,15 @@ class Crawler(ABC):
         url: URL,
         scrape_item: ScrapeItem,
         filename: str,
-        ext: str,
+        ext: str | None = None,
         *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
         m3u8: m3u8.RenditionGroup | None = None,
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
-
+        if not ext:
+            _, ext = filename.rsplit(".", 1)
         if custom_filename:
             original_filename, filename = filename, custom_filename
         elif self.DOMAIN in ["cyberdrop"]:
@@ -624,6 +625,13 @@ class Crawler(ABC):
 
         log(msg, bug=True)
 
+    async def _get_redirect_url(self, url: AbsoluteHttpURL):
+        async with self.request_limiter:
+            head = await self.client.get_head(self.DOMAIN, url)
+        if location := head.get("location"):
+            return self.parse_url(location, url.origin())
+        return url
+
     @staticmethod
     def register_cache_filter(
         url: URL, filter_fn: Callable[[AnyResponse], bool] | Callable[[AnyResponse], Awaitable[bool]]
@@ -669,7 +677,7 @@ class Crawler(ABC):
         file_id: str | None = None,
         video_codec: str | None = None,
         audio_codec: str | None = None,
-        resolution: str | int | None = None,
+        resolution: m3u8.Resolution | str | int | None = None,
         hash_string: str | None = None,
         only_truncate_stem: bool = True,
     ) -> str:
@@ -686,8 +694,10 @@ class Crawler(ABC):
             extra_info.append(audio_codec)
 
         if _placeholder_config.include_resolution and resolution:
+            if isinstance(resolution, m3u8.Resolution):
+                resolution = resolution.name
             if isinstance(resolution, str):
-                if digits := resolution.casefold().removesuffix("p").isdigit():
+                if (digits := resolution.casefold().removesuffix("p")).isdigit():
                     extra_info.append(f"{digits}p")
                 else:
                     resolution_ = next(
@@ -720,7 +730,7 @@ def _make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
         hosts = cls.DOMAIN
     if isinstance(hosts, str):
         hosts = (hosts,)
-    return tuple(sorted(host.removeprefix("www.") for host in hosts))
+    return tuple(sorted({host.removeprefix("www.") for host in hosts}))
 
 
 def _make_custom_filename(stem: str, ext: str, extra_info: list[str], only_truncate_stem: bool) -> tuple[str, bool]:

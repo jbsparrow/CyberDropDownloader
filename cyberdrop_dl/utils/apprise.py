@@ -20,7 +20,7 @@ from cyberdrop_dl.models import AppriseURLModel
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 DEFAULT_APPRISE_MESSAGE = {

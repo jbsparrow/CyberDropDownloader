@@ -197,6 +197,9 @@ class M3U8(_M3U8):
             base_uri = base_uri.parent
         super().__init__(content, base_uri=str(base_uri) if base_uri else None)
 
+    def __repr__(self) -> str:
+        return f"M3U8(base_uri='{self.base_uri}',is_variant={self.is_variant})"
+
     @cached_property
     def total_duration(self) -> timedelta:
         total_duration: float = sum(duration for segment in self.segments if (duration := segment.duration))
