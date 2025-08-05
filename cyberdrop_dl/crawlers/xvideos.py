@@ -111,8 +111,8 @@ class XVideosCrawler(Crawler):
         if error := soup.select_one(Selectors.DELETED_VIDEO):
             raise ScrapeError(404, css.get_text(error))
 
-        title = page_title(soup, self.DOMAIN)
-        scrape_item.possible_datetime = self.parse_iso_date(get_json_ld_date(soup))
+        title = css.page_title(soup, self.DOMAIN)
+        scrape_item.possible_datetime = self.parse_iso_date(css.get_json_ld_date(soup))
         script = css.select_one_get_text(soup, Selectors.HLS_VIDEO_JS)
         m3u8_url = self.parse_url(get_text_between(script, "setVideoHLS('", "')"))
         m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_url)
@@ -208,43 +208,3 @@ class XVideosCrawler(Crawler):
 
             if not (json_resp.get("hasMoreVideos") or len(videos) < json_resp["nb_per_page"]):
                 break
-
-
-# TODO: Move title funtions to css utils
-def sanitize_page_title(title: str, domain: str) -> str:
-    sld = domain.rsplit(".", 1)[0]
-
-    def clean(string: str, char: str):
-        if char in string:
-            front, _, tail = string.rpartition(char)
-            if sld in tail.casefold():
-                string = front.strip()
-        return string
-
-    return clean(clean(title, "|"), " - ")
-
-
-def page_title(soup: BeautifulSoup, domain: str | None = None) -> str:
-    title = css.select_one_get_text(soup, "title")
-    if domain:
-        return sanitize_page_title(title, domain)
-    return title
-
-
-# TODO: Move to css utils
-def get_json_ld_date(soup: BeautifulSoup) -> str:
-    return get_json_ld_value(soup, "uploadDate")
-
-
-def get_json_ld(soup: BeautifulSoup, /, contains: str | None = None) -> dict[str, Any]:
-    selector = "script[type='application/ld+json']"
-    if contains:
-        selector += f":contains('{contains}')"
-
-    ld_json = json.loads(css.select_one_get_text(soup, selector))
-    return ld_json
-
-
-def get_json_ld_value(soup: BeautifulSoup, key: str) -> Any:
-    ld_json = get_json_ld(soup, key)
-    return ld_json[key]
