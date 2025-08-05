@@ -110,7 +110,7 @@ class ImgShotCrawler(SimplePHPImageHostCrawler, is_abc=True):
         title: str = ""
         async for soup in web_pager:
             if not title:
-                title = self.create_title(css.select_one_get_text(soup, self.GALLERY_SELECTORS.title))
+                title = self.create_title(css.select_one_get_text(soup, self.GALLERY_SELECTORS.title), album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, self.GALLERY_SELECTORS.images):
@@ -173,12 +173,16 @@ class ImxToCrawler(ImgShotCrawler):
                 return await self.gallery(scrape_item)
             case ["i", _]:
                 return await self.image(scrape_item)
+
+        await ImgShotCrawler.fetch(self, scrape_item)
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL):
+        match url.parts[1:]:
             case ["u" | "i" | "t", _, _, *_]:
-                return await self.direct_image(scrape_item)
-            case [name] if name.startswith("img-"):
-                return await self.image(scrape_item)
+                return cls._thumb_to_web_url(url)
             case _:
-                raise ValueError
+                return url
 
     @classmethod
     def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
@@ -210,11 +214,17 @@ class AcidImgCrawler(ImgShotCrawler):
         match scrape_item.url.parts[1:]:
             case ["g", _]:
                 return await self.gallery(scrape_item)
-            case ["upload", "small" | "small-medium" | "big", _, *_]:
-                return await self.direct_image(scrape_item)
             case ["i", _]:
                 return await self.image(scrape_item)
         await ImgShotCrawler.fetch(self, scrape_item)
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL):
+        match url.parts[1:]:
+            case ["upload", "small" | "small-medium" | "big", _, *_]:
+                return cls._thumb_to_web_url(url)
+            case _:
+                return url
 
 
 class PicstateCrawler(ImgShotCrawler):
@@ -230,14 +240,20 @@ class PicstateCrawler(ImgShotCrawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["files", _, _]:
-                return await self.direct_image(scrape_item)
-            case ["thumbs", _, _, _]:
-                return await self.direct_image(scrape_item)
             case ["view", "full", _]:
                 return await self.image(scrape_item)
             case _:
                 raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        match url.parts[1:]:
+            case ["files", _, _]:
+                return cls._thumb_to_web_url(url)
+            case ["thumbs", _, _, _]:
+                return cls._thumb_to_web_url(url)
+            case _:
+                return url
 
     @classmethod
     def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
@@ -264,15 +280,21 @@ class PixHostCrawler(ImgShotCrawler):
         match scrape_item.url.parts[1:]:
             case ["gallery", _]:
                 return await self.gallery(scrape_item)
-            case ["thumbs" | "images", _, _]:
-                return await self.direct_image(scrape_item)
             case ["show", _, _]:
                 return await self.image(scrape_item)
         await ImgShotCrawler.fetch(self, scrape_item)
 
     @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL):
+        match url.parts[1:]:
+            case ["thumbs" | "images", _, _]:
+                return cls._thumb_to_web_url(url)
+            case _:
+                return url
+
+    @classmethod
     def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        path = url.path.replace("/thumbs/", "/show/")
+        path = url.path.replace("/thumbs/", "/show/").replace("/images/", "/show/")
         return cls.PRIMARY_URL.with_path(path)
 
 
@@ -289,14 +311,20 @@ class ViprImCrawler(ImgShotCrawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["th", _, _]:
-                return await self.direct_image(scrape_item)
-            case ["i", _, _, _]:
-                return await self.direct_image(scrape_item)
             case [_]:
                 return await self.image(scrape_item)
             case _:
                 raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        match url.parts[1:]:
+            case ["th", _, _]:
+                return cls._thumb_to_web_url(url)
+            case ["i", _, _, _]:
+                return cls._thumb_to_web_url(url)
+            case _:
+                return url
 
     @classmethod
     def _thumb_to_web_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
@@ -334,9 +362,13 @@ class ImageBamCrawler(ImgShotCrawler):
                 return await self.image(scrape_item)
             case ["view", _]:
                 return await self.view(scrape_item)
-        if "thumbs" in scrape_item.url.host or "images" in scrape_item.url.host:
-            return await self.direct_image(scrape_item)
         raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        if "thumbs" in url.host or "images" in url.host:
+            return cls._thumb_to_web_url(url)
+        return url
 
     @error_handling_wrapper
     async def view(self, scrape_item: ScrapeItem) -> None:
