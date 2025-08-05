@@ -46,6 +46,7 @@ class ImgBBCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         title: str = ""
+        first_page = None
 
         async for soup in self.web_pager(scrape_item.url / "sub"):
             if not title:
@@ -59,6 +60,7 @@ class ImgBBCrawler(Crawler):
             for _, sub_album in self.iter_children(scrape_item, soup, ALBUM_PAGE_SELECTOR):
                 self.manager.task_group.create_task(self.run(sub_album))
 
+        assert first_page
         async for soup in self.web_pager(first_page):
             for _, image in self.iter_children(scrape_item, soup, IMAGE_PAGE_SELECTOR):
                 self.manager.task_group.create_task(self.run(image))
