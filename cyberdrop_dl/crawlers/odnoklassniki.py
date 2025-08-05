@@ -18,12 +18,14 @@ _find_video_ids = re.compile("/video/(\\d+)").finditer
 
 _HEADERS = {
     "Accept-Language": "en-gb, en;q=0.8",
-    "Referer": "https://m.ok.ru/",
-    "Origin": "https://m.ok.ru",
+    "Referer": "https://ok.ru/",
+    "Origin": "https://ok.ru",
 }
 
 _MOBILE_HEADERS = _HEADERS | {
     "User-Agent": "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.7204.180 Mobile Safari/537.36",
+    "Referer": "https://m.ok.ru/",
+    "Origin": "https://m.ok.ru",
 }
 
 
