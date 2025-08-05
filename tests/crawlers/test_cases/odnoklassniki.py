@@ -14,6 +14,19 @@ TEST_CASES = [
         ],
     ),
     (
+        "https://ok.ru/video/9469624191496",
+        [
+            {
+                "url": "https://m.ok.ru/video/9469624191496",
+                "filename": "Платформа 2 (2024) 1080p [9469624191496][1080p].mp4",
+                "original_filename": "9469624191496.mp4",
+                "referer": "https://ok.ru/video/9469624191496",
+                "album_id": None,
+                "datetime": 1753377221,
+            }
+        ],
+    ),
+    (
         "https://ok.ru/video/c637817",
         [
             {
