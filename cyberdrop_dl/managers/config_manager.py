@@ -197,8 +197,13 @@ class ConfigManager:
         if apprise_fixed:
             return
         if os.name == "nt":
-            with self.apprise_file.open("a", encoding="utf8") as f:
-                f.write("windows://\n")
+            try:
+                import win32con  # noqa: F401
+            except ImportError:
+                pass
+            else:
+                with self.apprise_file.open("a", encoding="utf8") as f:
+                    f.write("windows://\n")
         self.manager.cache_manager.save("apprise_fixed", True)
 
     def _set_pydantic_config(self):
