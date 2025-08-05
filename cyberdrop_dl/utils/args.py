@@ -124,7 +124,7 @@ class DeprecatedArgs(BaseModel):
     download_dropbox_folders_as_zip: bool = Field(
         False,
         description="download Dropbox folder without api key as zip",
-        deprecated="'--download-dropbox-folders-as-zip' is deprecated and will be removed in the future. Use '--album_download_preference'",
+        deprecated="'--download-dropbox-folders-as-zip' is deprecated and will be removed in the future. Use '--album-download-preference'",
     )
 
 
