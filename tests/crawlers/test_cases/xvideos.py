@@ -46,4 +46,25 @@ TEST_CASES = [
             }
         ],
     ),
+    (
+        "https://it.xvideos.com/valter_karotti#quickies/h/uceupff0647",
+        [
+            {
+                "url": "https://it.xvideos.com/video.uceupff0647/_",
+                "filename": "Beauty Gina Gerson Takes Monster Cock in Anal - Anal Orgasm [uceupff0647][1080p].mp4",
+                "referer": "https://it.xvideos.com/video.uceupff0647/beauty_gina_gerson_takes_monster_cock_in_anal_-_anal_orgasm",
+            }
+        ],
+    ),
+    (
+        "https://it.xvideos.com/channels/scout69_official/photos/10612349/german_scout_-_skinny_candee_licious",
+        [
+            {
+                "url": r"re:https:\/\/profile-pics-cdn\d+\.xvideos-cdn\.com",
+                "album_id": "10612349",
+                "referer": "https://it.xvideos.com/channels/scout69_official/photos/10612349/german_scout_-_skinny_candee_licious",
+            }
+        ],
+        24,
+    ),
 ]

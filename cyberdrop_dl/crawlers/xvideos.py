@@ -32,7 +32,7 @@ class Selectors:
     ACCOUNT_INFO_JS = "script:contains('\"id_user\":')"
     HLS_VIDEO_JS = "script:contains('setVideoHLS(')"
     DELETED_VIDEO = "h1.inlineError"
-    GALLERY_IMG = "a.embed-responsive-item"
+    GALLERY_IMG = "div[id*='galpic'] a.embed-responsive-item"
     GALLERY_TITLE = "h4.bg-title"
     NEXT_PAGE = "a[href]:contains('Next')"
 
@@ -49,7 +49,7 @@ class XVideosCrawler(Crawler):
         "Video": (
             "/video<id>/<title>",
             "/video.<encoded_id>/<title>",
-            f"/{'|'.join(sorted(_EXTENDED_ACCOUNTS))}#quickies/a/<video_id>",
+            f"/{'|'.join(sorted(_EXTENDED_ACCOUNTS))}#quickies/(a|h|v)/<video_id>",
         ),
         "Account": _ACCOUNT_PATHS,
         "Account Videos": tuple(f"{path}#_tabVideos" for path in _ACCOUNT_PATHS),
@@ -72,7 +72,7 @@ class XVideosCrawler(Crawler):
 
         if url.fragment.startswith("quickies/"):
             match url.fragment.removeprefix("quickies/").split("/"):
-                case ["a", video_id]:
+                case ["a" | "h" | "v", video_id]:
                     return url.origin() / f"video{'' if video_id.isdecimal() else '.'}{video_id}" / "_"
 
         return url
@@ -164,7 +164,10 @@ class XVideosCrawler(Crawler):
         results = await self.get_album_results(album_id)
         async for soup in self.web_pager(scrape_item.url, relative_to=scrape_item.url.origin()):
             if not title:
-                title = self.create_title(css.select_one_get_text(soup, Selectors.GALLERY_TITLE), album_id)
+                title_tag = css.select_one(soup, Selectors.GALLERY_TITLE)
+                for tag in title_tag.select("*"):
+                    tag.decompose()
+                title = self.create_title(css.get_text(title_tag).split(">", 1)[-1].strip(), album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
 
             for _, src in self.iter_tags(soup, Selectors.GALLERY_IMG, results=results):
