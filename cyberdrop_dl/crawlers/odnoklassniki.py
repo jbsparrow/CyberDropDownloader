@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 import re
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -80,7 +79,7 @@ class OdnoklassnikiCrawler(Crawler):
         gwt_hash = get_text_between(css.select_one_get_text(soup, Selector.CHANNEL_HASH), 'gwtHash:"', '",')
         last_element_id = css.select_one_get_attr_or_none(soup, *Selector.CHANNEL_LAST_ELEMENT)
         name = css.select_one_get_text(soup, Selector.CHANNEL_NAME)
-        scrape_item.setup_as_album(self.create_title(name, channel_str), album_id=channel_id)
+        scrape_item.setup_as_album(self.create_title(name, channel_id), album_id=channel_id)
 
         page_url = (self.PRIMARY_URL / "video" / channel_str).with_query(
             {
@@ -92,7 +91,23 @@ class OdnoklassnikiCrawler(Crawler):
             }
         )
         seen: set[str] = set()
-        for page in itertools.count(1):
+        content = str(soup)
+        page = 1
+        while True:
+            page_had_new_videos = False
+            for match in _find_video_ids(content):
+                if (video_path := match.group()) not in seen:
+                    seen.add(video_path)
+                    page_had_new_videos = True
+                    video_url = self.PRIMARY_URL.with_path(video_path)
+                    new_scrape_item = scrape_item.create_child(video_url)
+                    self.create_task(self.run(new_scrape_item))
+                    scrape_item.add_children()
+
+            if not page_had_new_videos or not last_element_id:
+                break
+
+            page += 1
             async with self.request_limiter:
                 resp = await self.client._post_data(
                     self.DOMAIN,
@@ -105,19 +120,8 @@ class OdnoklassnikiCrawler(Crawler):
                         "gwt.requested": gwt_hash,
                     },
                 )
-
-            content = await resp.text()
-            for match in _find_video_ids(content):
-                if (video_id := match.group()) not in seen:
-                    seen.add(video_id)
-                    video_url = self.PRIMARY_URL / "video" / video_id
-                    new_scrape_item = scrape_item.create_child(video_url)
-                    self.create_task(self.run(new_scrape_item))
-                    scrape_item.add_children()
-
             last_element_id = resp.headers.get("lastelem")
-            if not last_element_id or not seen:
-                break
+            content = await resp.text()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem, video_id: str):
