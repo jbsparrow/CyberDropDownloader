@@ -27,7 +27,7 @@ TEST_CASES = [
         [
             {
                 "url": "https://www.xvideos.es/video.uvfdtpm4c2a/video_de_verificacion",
-                "filename": "'Vídeo de verificación [uvfdtpm4c2a][1920p].mp4'",
+                "filename": "Vídeo de verificación [uvfdtpm4c2a][1920p].mp4",
                 "original_filename": "uvfdtpm4c2a.mp4",
                 "referer": "https://www.xvideos.es/video.uvfdtpm4c2a/video_de_verificacion",
                 "album_id": None,

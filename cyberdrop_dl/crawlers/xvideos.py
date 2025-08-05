@@ -29,7 +29,7 @@ _ACCOUNT_PATHS = (f"/{'|'.join(sorted(_EXTENDED_ACCOUNTS))}/<name>", "/<channel_
 
 
 class Selectors:
-    ACCOUNT_INFO_JS = "script:contains('\"id_user=\":')"
+    ACCOUNT_INFO_JS = "script:contains('\"id_user\":')"
     HLS_VIDEO_JS = "script:contains('setVideoHLS(')"
     DELETED_VIDEO = "h1.inlineError"
     GALLERY_IMG = "a.embed-responsive-item"
@@ -129,13 +129,17 @@ class XVideosCrawler(Crawler):
 
         soup = await self._get_soup(scrape_item.url)
         script = css.select_one_get_text(soup, Selectors.ACCOUNT_INFO_JS)
-        display_name = get_text_between(script, '"display":', ",").strip()
+        display_name = get_text_between(script, '"display":"', '",').strip()
         scrape_item.setup_as_profile(self.create_title(f"{display_name} [{name}]"))
 
         frag = scrape_item.url.fragment
         if not frag or "_tabPhotos" in frag:
-            galleries: dict[str, Any] = json.loads(get_text_between(script, '"galleries":', ', "visitor":'))
-            _ = galleries.pop("0", None)
+            galleries: dict[str, Any] | list[str] = json.loads(
+                get_text_between(script, '"galleries":', '"visitor":').strip().removesuffix(",")
+            )
+
+            if isinstance(galleries, dict):
+                _ = galleries.pop("0", None)
 
             for gallery_id in galleries:
                 url = scrape_item.url / "photos" / gallery_id
@@ -178,10 +182,12 @@ class XVideosCrawler(Crawler):
     async def _disable_auto_translated_titles(self, origin: AbsoluteHttpURL) -> None:
         async with self.request_limiter:
             await self.client._get(self.DOMAIN, origin / "change-language/en", self._headers)
-            resp = await self.client.post_data(
+            json_resp = await self.client.post_data(
                 self.DOMAIN, origin / "account/feature-disabled", self._headers, data={"featureid": "at"}
             )
-        assert resp["result"] is True
+        if json_resp["code"] != 0:
+            self.disabled = True
+            raise ScrapeError(json_resp["code"])
 
     async def _get_redirect_url(self, url: AbsoluteHttpURL):
         async with self.request_limiter:
@@ -195,6 +201,9 @@ class XVideosCrawler(Crawler):
             async with self.request_limiter:
                 json_resp: dict[str, Any] = await self.client.post_data(self.DOMAIN, api_url / str(page), self._headers)
 
+            if json_resp["code"] != 0:
+                raise ScrapeError(json_resp["code"])
+
             videos: list[dict[str, str]] = json_resp["videos"]
             for video in videos:
                 if new_part == "videos":
@@ -206,5 +215,5 @@ class XVideosCrawler(Crawler):
                 self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
 
-            if not (json_resp.get("hasMoreVideos") or len(videos) < json_resp["nb_per_page"]):
+            if json_resp.get("hasMoreVideos", None) is False or len(videos) < json_resp["nb_per_page"]:
                 break
