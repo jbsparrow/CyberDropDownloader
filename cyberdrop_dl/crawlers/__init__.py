@@ -62,6 +62,7 @@ from .nekohouse import NekohouseCrawler
 from .nhentai import NHentaiCrawler
 from .noodle_magazine import NoodleMagazineCrawler
 from .nudostartv import NudoStarTVCrawler
+from .odnoklassniki import OdnoklassnikiCrawler
 from .omegascans import OmegaScansCrawler
 from .onedrive import OneDriveCrawler
 from .pimpandhost import PimpAndHostCrawler
