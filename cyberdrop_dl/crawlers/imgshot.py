@@ -145,7 +145,8 @@ class ImgShotCrawler(SimplePHPImageHostCrawler, is_abc=True):
     async def _extract_img_from_page(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
         img = css.select_one(soup, self.IMG_SELECTOR)
         link = self.parse_url(css.get_attr(img, "src"))
-        custom_filename = css.get_attr_or_none(img, "title") or css.get_attr_or_none(img, "alt") or link.name
+        custom_filename = img.get("title") or img.get("alt") or link.name
+        assert isinstance(custom_filename, str)
         custom_filename, ext = self.get_filename_and_ext(
             custom_filename.partition(" image hosted at")[0], assume_ext=".jpg"
         )
@@ -216,6 +217,7 @@ class AcidImgCrawler(ImgShotCrawler):
                 return await self.gallery(scrape_item)
             case ["i", _]:
                 return await self.image(scrape_item)
+
         await ImgShotCrawler.fetch(self, scrape_item)
 
     @classmethod
@@ -248,9 +250,7 @@ class PicstateCrawler(ImgShotCrawler):
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         match url.parts[1:]:
-            case ["files", _, _]:
-                return cls._thumb_to_web_url(url)
-            case ["thumbs", _, _, _]:
+            case ["files" | "thumbs", _, _, *_]:
                 return cls._thumb_to_web_url(url)
             case _:
                 return url
@@ -320,9 +320,7 @@ class ViprImCrawler(ImgShotCrawler):
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         match url.parts[1:]:
-            case ["th", _, _]:
-                return cls._thumb_to_web_url(url)
-            case ["i", _, _, _]:
+            case ["th" | "i", _, _, *_]:
                 return cls._thumb_to_web_url(url)
             case _:
                 return url
@@ -417,9 +415,7 @@ class ImagetwistCrawler(ImgShotCrawler):
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         match url.parts[1:]:
-            case ["th", _, _]:
-                return cls._thumb_to_web_url(url)
-            case ["i", _, _, _]:
+            case ["th" | "i", _, _, *_]:
                 return cls._thumb_to_web_url(url)
             case [_, _]:
                 return url.with_path(url.parts[1])
