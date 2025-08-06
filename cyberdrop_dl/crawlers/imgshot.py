@@ -121,7 +121,7 @@ class ImgShotCrawler(SimplePHPImageHostCrawler, is_abc=True):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        if scrape_item.url.name in ("noimage.php",):
+        if scrape_item.url.name in ("noimage.php", "no_image.png"):
             raise ScrapeError(404)
 
         if self.HAS_CAPTCHA:
@@ -282,6 +282,7 @@ class PixHostCrawler(ImgShotCrawler):
                 return await self.gallery(scrape_item)
             case ["show", _, _]:
                 return await self.image(scrape_item)
+
         await ImgShotCrawler.fetch(self, scrape_item)
 
     @classmethod
