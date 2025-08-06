@@ -33,7 +33,7 @@ class GallerySelectors(NamedTuple):
 
 class SimplePHPImageHostCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths]  # type: ignore[reportIncompatibleVariableOverride]
-    IMG_SELECTOR: ClassVar[str] = "div#container a img, div[class*=container] a img"
+    IMG_SELECTOR = "div#container a img, div[class*=container] a img"
     GALLERY_SELECTORS: GallerySelectors
 
     def __init_subclass__(cls, is_abc: bool = False, **kwargs) -> None:
@@ -164,7 +164,7 @@ class ImxToCrawler(ImgShotCrawler):
         "Gallery": "/g/<galery_id>",
     }
     GALLERY_SELECTORS = GallerySelectors("div.title", "div#content a:has(img)")
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imx.to")
+    PRIMARY_URL = AbsoluteHttpURL("https://imx.to")
     HAS_CAPTCHA = True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -194,7 +194,7 @@ class ImgAdultCrawler(ImgShotCrawler):
     SUPPORTED_PATHS: ClassVar = {
         "Image": "/img-<image_id>.html",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imgadult.com")
+    PRIMARY_URL = AbsoluteHttpURL("https://imgadult.com")
     HAS_CAPTCHA = True
 
     async def async_startup(self) -> None:
@@ -206,8 +206,8 @@ class AcidImgCrawler(ImgShotCrawler):
         "Image": "/i/<image_id>",
         "Direct Link": "/upload/...",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://acidimg.cc")
-    FOLDER_DOMAIN: ClassVar[str] = "AcidImg"
+    PRIMARY_URL = AbsoluteHttpURL("https://acidimg.cc")
+    FOLDER_DOMAIN = "AcidImg"
     HAS_CAPTCHA = True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -235,7 +235,7 @@ class PicstateCrawler(ImgShotCrawler):
             "/thumbs/small/files/<image_id>/<filename>",
         ),
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://picstate.com")
+    PRIMARY_URL = AbsoluteHttpURL("https://picstate.com")
     IMG_SELECTOR = "p#image_container a img"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -270,11 +270,11 @@ class PixHostCrawler(ImgShotCrawler):
             "/images/<seq>/<filename>",
         ),
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pixhost.to/")
+    PRIMARY_URL = AbsoluteHttpURL("https://pixhost.to/")
     GALLERY_SELECTORS = GallerySelectors(title="a.link h2", images="div.images a")
     IMG_SELECTOR = "img.image-img"
-    DOMAIN: ClassVar[str] = "pixhost"
-    FOLDER_DOMAIN: ClassVar[str] = "PixHost"
+    DOMAIN = "pixhost"
+    FOLDER_DOMAIN = "PixHost"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -307,7 +307,7 @@ class ViprImCrawler(ImgShotCrawler):
         ),
     }
     IMG_SELECTOR = "div#body a > img"
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://vipr.im")
+    PRIMARY_URL = AbsoluteHttpURL("https://vipr.im")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -345,10 +345,10 @@ class ImageBamCrawler(ImgShotCrawler):
         ),
     }
     GALLERY_SELECTORS = GallerySelectors("a#gallery-name", "ul.images a.thumbnail")
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.imagebam.com")
-    DOMAIN: ClassVar[str] = "imagebam"
-    FOLDER_DOMAIN: ClassVar[str] = "ImageBam"
-    NEXT_PAGE_SELECTOR: ClassVar[str] = "a.page-link[rel=next]"
+    PRIMARY_URL = AbsoluteHttpURL("https://www.imagebam.com")
+    DOMAIN = "imagebam"
+    FOLDER_DOMAIN = "ImageBam"
+    NEXT_PAGE_SELECTOR = "a.page-link[rel=next]"
     IMG_SELECTOR = "a .main-image"
 
     async def async_startup(self) -> None:
@@ -404,7 +404,7 @@ class ImagetwistCrawler(ImgShotCrawler):
             "/i/<seq>/<image_id>.<ext>/<filename>",
         ),
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://imagetwist.com")
+    PRIMARY_URL = AbsoluteHttpURL("https://imagetwist.com")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -439,7 +439,7 @@ class ImageVenueCrawler(ImgShotCrawler):
             "cdn-images.imagevenue.com/<seq>/<seq>/<seq>/<filename>",
         ),
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.imagevenue.com")
+    PRIMARY_URL = AbsoluteHttpURL("https://www.imagevenue.com")
     IMG_SELECTOR = "a img#main-image"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
