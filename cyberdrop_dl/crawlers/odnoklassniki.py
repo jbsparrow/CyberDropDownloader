@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from aiolimiter import AsyncLimiter
+
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -60,6 +62,9 @@ class OdnoklassnikiCrawler(Crawler):
     PRIMARY_URL = AbsoluteHttpURL("https://ok.ru")
     DOMAIN = "odnoklassniki"
     FOLDER_DOMAIN = "ok.ru"
+
+    def __post_init__(self) -> None:
+        self.request_limiter = AsyncLimiter(3, 10)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
