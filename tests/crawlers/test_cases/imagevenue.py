@@ -23,7 +23,7 @@ TEST_CASES = [
         ],
     ),
     (
-        "https://www.imagevenue.com/ME1BEWWG",
+        "https://cdn-images.imagevenue.com/d2/90/5c/ME1BEWWG_o.jpg",
         [
             {
                 "url": "https://cdn-images.imagevenue.com/65/8b/4d/ME1BEWWG_o.jpg",
