@@ -15,34 +15,35 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-PRIMARY_URL = AbsoluteHttpURL("https://xxxbunker.com")
-VIDEOS_SELECTOR = "a[data-anim='4']"
-VIDEO_IFRAME_SELECTOR = "div.player-frame iframe"
-NEXT_PAGE_SELECTOR = "div.page-list a:contains('next')"
+
+class Selector:
+    VIDEOS = "a[data-anim='4']"
+    VIDEO_IFRAME = "div.player-frame iframe"
+    NEXT_PAGE = "div.page-list a:contains('next')"
 
 
 class XXXBunkerCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Video": "/<video_id>",
-        "Search": "/search/...",
+        "Search": "/search/<video_id>",
+        "Category": "/categories/<category>",
+        "User Favorites": "/favoritevideos/<name>",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://xxxbunker.com")
     DOMAIN: ClassVar[str] = "xxxbunker"
     FOLDER_DOMAIN: ClassVar[str] = "XXXBunker"
-    NEXT_PAGE_SELECTOR = NEXT_PAGE_SELECTOR
+    NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
 
     def __post_init__(self) -> None:
-        self.rate_limit = self.wait_time = 10
-        self.request_limiter = AsyncLimiter(self.rate_limit, 60)
-        self.session_cookie = None
+        self.request_limiter = AsyncLimiter(1, 6)
 
     async def async_startup(self) -> None:
         self.update_cookies({"ageconfirm": "True"})
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["search", "categories", "favoritevideos", _]:
-                return await self.playlist(scrape_item)
+            case ["search", "categories", "favoritevideos" as type_, name]:
+                return await self.playlist(scrape_item, name, type_)
             case [_]:
                 await self.video(scrape_item)
             case _:
@@ -58,7 +59,7 @@ class XXXBunkerCrawler(Crawler):
 
         _check_video_is_available(soup)
         title = open_graph.title(soup)
-        iframe_url = self.parse_url(css.select_one_get_attr(soup, VIDEO_IFRAME_SELECTOR, "data-src"))
+        iframe_url = self.parse_url(css.select_one_get_attr(soup, Selector.VIDEO_IFRAME, "data-src"))
 
         async with self.request_limiter:
             iframe_soup = await self.client.get_soup(self.DOMAIN, iframe_url)
@@ -71,25 +72,17 @@ class XXXBunkerCrawler(Crawler):
         )
 
     @error_handling_wrapper
-    async def playlist(self, scrape_item: ScrapeItem) -> None:
-        name = scrape_item.url.parts[2]
+    async def playlist(self, scrape_item: ScrapeItem, name: str, type_: str) -> None:
+        name = name.replace("+", " ")
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        if "favoritevideos" in scrape_item.url.parts:
-            title = self.create_title(f"user {name} [favorites]")
-        elif "search" in scrape_item.url.parts:
-            title = self.create_title(f"{name.replace('+', ' ')} [search]")
-        elif len(scrape_item.url.parts) >= 2:
-            title = self.create_title(f"{name} [category]")
-        else:
-            # Not a valid URL
-            raise ScrapeError(400, "Unsupported URL format")
-
+        category = {"search": "search", "categories": "category", "favoritevideos": "favorites"}[type_]
+        title = self.create_title(f"{name} [{category}]")
         scrape_item.setup_as_album(title)
 
         async for soup in self.web_pager(scrape_item.url):
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, Selector.VIDEOS):
                 self.create_task(self.run(new_scrape_item))
 
 
