@@ -23,6 +23,7 @@ class Selectors:
     DATE_SINGLE_ITEM = f"{ITEM_DESCRIPTION}:contains('Uploaded') span"
     DATE_ALBUM_ITEM = f"{ITEM_DESCRIPTION}:contains('Added to') span"
     DATE = f"{DATE_SINGLE_ITEM}, {DATE_ALBUM_ITEM}", "title"
+    NEXT_PAGE = "a[data-pagination=next]"
 
 
 _SELECTORS = Selectors()
@@ -32,28 +33,33 @@ _DECRYPTION_KEY = b"seltilovessimpcity@simpcityhatesscrapers"
 class CheveretoCrawler(Crawler, is_generic=True):
     SUPPORTED_PATHS: ClassVar[dict[str, str | tuple[str, ...]]] = {
         "Album": (
-            "/a/...",
-            "/album/...",
+            "/a/<id>",
+            "/a/<name>.<id>",
+            "/album/<id>",
+            "/album/<name>.<id>",
         ),
         "Image": (
-            "/img/...",
-            "/image/...",
+            "/img/<id>",
+            "/img/<name>.<id>",
+            "/image/<id>",
+            "/image/<name>.<id>",
         ),
         "Profiles": "/<user_name>",
         "Video": (
-            "/video/..",
-            "/videos/...",
+            "/video/<id>",
+            "/video/<name>.<id>",
+            "/videos/<id>",
+            "/videos/<name>.<id>",
         ),
         "Direct links": "",
     }
-    NEXT_PAGE_SELECTOR: ClassVar[str] = "a[data-pagination=next]"
-    CHEVERETO_SUPPORTS_VIDEO: ClassVar[bool] = True
+    NEXT_PAGE_SELECTOR = _SELECTORS.NEXT_PAGE
+    CHEVERETO_SUPPORTS_VIDEO = True
 
     def __init_subclass__(cls, **kwargs) -> None:
         if not cls.CHEVERETO_SUPPORTS_VIDEO:
-            paths = cls.SUPPORTED_PATHS.copy()
+            cls.SUPPORTED_PATHS = paths = cls.SUPPORTED_PATHS.copy()  # type: ignore[reportIncompatibleVariableOverride]
             _ = paths.pop("Video", None)
-            cls.SUPPORTED_PATHS = paths
         super().__init_subclass__(**kwargs)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -63,10 +69,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
         match scrape_item.url.parts[1:]:
             case ["a" | "album", album_slug]:
                 return await self.album(scrape_item, _id(album_slug))
-            case ["img" | "image" | "video" | "videos" as part, slug]:
-                item_id = _id(slug)
-                canonical_url = self.PRIMARY_URL / part / item_id
-                scrape_item.url = canonical_url
+            case ["img" | "image" | "video" | "videos", _]:
                 return await self.media(scrape_item)
             case ["images", _, *_]:
                 return await self.handle_direct_link(scrape_item)
@@ -74,6 +77,17 @@ class CheveretoCrawler(Crawler, is_generic=True):
                 return await self.profile(scrape_item)
             case _:
                 raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL):
+        url = super().transform_url(url)
+        match url.parts[1:]:
+            case ["a" | "album" as part, album_slug, "sub"]:
+                return url.with_path(f"{part}/{album_slug}", keep_query=True)
+            case ["img" | "image" | "video" | "videos" as part, slug]:
+                return url.with_path(f"{part}/{_id(slug)}", keep_query=True)
+            case _:
+                return url
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -88,6 +102,15 @@ class CheveretoCrawler(Crawler, is_generic=True):
     async def album(self, scrape_item: ScrapeItem, album_id: str) -> None:
         results = await self.get_album_results(album_id)
         title: str = ""
+
+        # We need the full URL (aka "/<name>.<id>") to fetch sub albums
+        if "." not in scrape_item.url.name:
+            scrape_item.url = await self._get_redirect_url(scrape_item.url)
+
+        # The first redirect may have only added a trailing slash, try again
+        if not scrape_item.url.name and "." not in scrape_item.url.parts[-2]:
+            scrape_item.url = await self._get_redirect_url(scrape_item.url)
+
         async for soup in self.web_pager(_sort_by_new(scrape_item.url), trim=False):
             if not title:
                 if _is_password_protected(soup):
@@ -109,7 +132,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
             source = _thumbnail_to_src(thumb)
             if results and self.check_album_results(source, results):
                 continue
-            # For images, we can download the file from the thumbnail, skipping an aditional
+
+            # for images, we can download the file from the thumbnail, skipping an additional request per img
             # cons: we won't get the upload date
             if image_url := _match_img(new_scrape_item.url):
                 new_scrape_item.url = image_url
