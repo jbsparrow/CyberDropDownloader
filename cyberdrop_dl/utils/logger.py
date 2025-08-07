@@ -222,7 +222,7 @@ def log(message: object, level: int = 10, bug: bool = False, **kwargs) -> None:
     msg = process_log_msg(message)
     log_debug(msg, level, **kwargs)
     if bug:
-        msg = msg, f"{msg}. Please open a bug report at {NEW_ISSUE_URL}"
+        msg = f"{msg}. Please open a bug report at {NEW_ISSUE_URL}"
         level = 30
     logger.log(level, msg, **kwargs)
 
