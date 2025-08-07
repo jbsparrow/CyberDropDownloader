@@ -43,6 +43,26 @@ TEST_CASES = [
         ],
     ),
     (
+        "https://simp6.jpg5.su/images3/Screenshot-46d10ff096ae50f993.th.png",
+        [
+            {
+                "url": "https://simp6.jpg5.su/images3/Screenshot-46d10ff096ae50f993.png",
+                "filename": "Screenshot-46d10ff096ae50f993.png",
+                "referer": "https://simp6.jpg5.su/images3/Screenshot-46d10ff096ae50f993.th.png",
+            },
+        ],
+    ),
+    (
+        "https://simp6.selti-delivery.ru/images3/rebeca-yellow-pic00910102ed45e07d539.md.jpg",
+        [
+            {
+                "url": "https://simp6.selti-delivery.ru/images3/rebeca-yellow-pic00910102ed45e07d539.jpg",
+                "filename": "rebeca-yellow-pic00910102ed45e07d539.jpg",
+                "referer": "https://simp6.selti-delivery.ru/images3/rebeca-yellow-pic00910102ed45e07d539.md.jpg",
+            },
+        ],
+    ),
+    (
         "https://jpg6.su/a/rebeca-linares-bikiniriot.aYKmSi/sub",
         [
             {
