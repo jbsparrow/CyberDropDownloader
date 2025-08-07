@@ -217,7 +217,7 @@ def _setup_main_logger(manager: Manager, config_name: str) -> None:
             log(f"Picking new config: '{config_name}' ...", 20)
             try:
                 manager.config_manager.change_config(config_name)
-                log(f"Changed config to {config_name}...", 20)
+                log(f"Changed config to '{config_name}'...", 20)
             finally:
                 logger.removeHandler(queued_logger.handler)
                 queued_logger.stop()
