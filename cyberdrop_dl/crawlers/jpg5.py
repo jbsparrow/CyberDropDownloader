@@ -36,6 +36,7 @@ class JPG5Crawler(CheveretoCrawler):
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         assert cls.REPLACE_OLD_DOMAINS_REGEX is not None
+        url = super().transform_url(url)
         new_host = re.sub(cls.REPLACE_OLD_DOMAINS_REGEX, "jpg5.su", url.host)
         if new_host.removeprefix("www.") == "jpg5.su":
             # replace only if it is matches the second level domain exactly

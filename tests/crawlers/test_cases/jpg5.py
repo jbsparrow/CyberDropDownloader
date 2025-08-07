@@ -42,4 +42,18 @@ TEST_CASES = [
             },
         ],
     ),
+    (
+        "https://jpg6.su/a/rebeca-linares-bikiniriot.aYKmSi/sub",
+        [
+            {
+                "url": "https://simp6.selti-delivery.ru/images3/rebeca-pink-pic001f1e0e301dd4d56fb.jpg",
+                "filename": "rebeca-pink-pic001f1e0e301dd4d56fb.jpg",
+                "referer": "https://jpg6.su/img/Nv7ZaLE",
+                "datetime": None,
+                "download_folder": r"re:Rebeca Linares BikiniRiot \(JPG5\)",
+                "album_id": "aYK0fu",
+            },
+        ],
+        285,
+    ),
 ]
