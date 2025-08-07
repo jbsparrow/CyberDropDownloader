@@ -94,7 +94,6 @@ class Crawler(ABC):
 
     UPDATE_UNSUPPORTED: ClassVar[bool] = False
     SKIP_PRE_CHECK: ClassVar[bool] = False
-    FILTER_COOKIES_BY_WORD: ClassVar[bool] = False
     NEXT_PAGE_SELECTOR: ClassVar[str] = ""
 
     FOLDER_DOMAIN: ClassVar[str] = ""
@@ -724,20 +723,20 @@ class Crawler(ABC):
         return filename
 
     @final
-    def get_cookies(self) -> Iterable[tuple[str, BaseCookie[str]]]:
-        if self.FILTER_COOKIES_BY_WORD:
+    def get_cookies(self, partial_match_domain: bool = False) -> Iterable[tuple[str, BaseCookie[str]]]:
+        if partial_match_domain:
             yield from self.client.client_manager.filter_cookies_by_word_in_domain(self.DOMAIN)
         else:
             yield str(self.PRIMARY_URL.host), self.client.client_manager.cookies.filter_cookies(self.PRIMARY_URL)
 
     @final
-    def get_cookie_value(self, cookie_name: str) -> str | None:
+    def get_cookie_value(self, cookie_name: str, partial_match_domain: bool = False) -> str | None:
         def get_morsels_by_name():
-            for _, cookie in self.get_cookies():
+            for _, cookie in self.get_cookies(partial_match_domain):
                 if morsel := cookie.get(cookie_name):
                     yield morsel
 
-        if newest := max(get_morsels_by_name(), key=lambda x: int(x["expires"] or 0), default=None):
+        if newest := max(get_morsels_by_name(), key=lambda x: int(x["max-age"] or 0), default=None):
             return newest.value
 
 
