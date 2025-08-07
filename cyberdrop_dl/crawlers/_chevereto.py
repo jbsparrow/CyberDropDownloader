@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
+from cyberdrop_dl.exceptions import PasswordProtectedError
 from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -16,17 +16,17 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
-class Selectors:
+class Selector:
     ITEM_DESCRIPTION = "p[class*=description-meta]"
     ITEM = "a[class='image-container --media']"
-    MAIN_IMAGE = "div#image-viewer img", "src"
-    DATE_SINGLE_ITEM = f"{ITEM_DESCRIPTION}:contains('Uploaded') span"
-    DATE_ALBUM_ITEM = f"{ITEM_DESCRIPTION}:contains('Added to') span"
-    DATE = f"{DATE_SINGLE_ITEM}, {DATE_ALBUM_ITEM}", "title"
     NEXT_PAGE = "a[data-pagination=next]"
 
+    DATE_SINGLE_ITEM = f"{ITEM_DESCRIPTION}:contains('Uploaded') span"
+    DATE_ALBUM_ITEM = f"{ITEM_DESCRIPTION}:contains('Added to') span"
+    DATE = css.CssAttributeSelector(f"{DATE_SINGLE_ITEM}, {DATE_ALBUM_ITEM}", "title")
+    MAIN_IMAGE = css.CssAttributeSelector("div#image-viewer img", "src")
 
-_SELECTORS = Selectors()
+
 _DECRYPTION_KEY = b"seltilovessimpcity@simpcityhatesscrapers"
 
 
@@ -53,7 +53,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
         ),
         "Direct links": "",
     }
-    NEXT_PAGE_SELECTOR = _SELECTORS.NEXT_PAGE
+    NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
     CHEVERETO_SUPPORTS_VIDEO = True
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -64,7 +64,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if self.is_subdomain(scrape_item.url):
-            return await self.handle_direct_link(scrape_item)
+            return await self.direct_file(scrape_item)
 
         match scrape_item.url.parts[1:]:
             case ["a" | "album", album_slug]:
@@ -72,7 +72,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
             case ["img" | "image" | "video" | "videos", _]:
                 return await self.media(scrape_item)
             case ["images", _, *_]:
-                return await self.handle_direct_link(scrape_item)
+                return await self.direct_file(scrape_item)
             case [_]:
                 return await self.profile(scrape_item)
             case _:
@@ -128,13 +128,13 @@ class CheveretoCrawler(Crawler, is_generic=True):
 
         sub_album_url = scrape_item.url / "sub"
         async for soup in self.web_pager(_sort_by_new(sub_album_url), trim=False):
-            for _, sub_album in self.iter_children(scrape_item, soup, _SELECTORS.ITEM):
+            for _, sub_album in self.iter_children(scrape_item, soup, Selector.ITEM):
                 self.create_task(self.run(sub_album))
 
     def _process_page(
         self, scrape_item: ScrapeItem, soup: BeautifulSoup, results: dict[str, int] | None = None
     ) -> None:
-        for thumb, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ITEM):
+        for thumb, new_scrape_item in self.iter_children(scrape_item, soup, Selector.ITEM):
             assert thumb
             source = _thumbnail_to_src(thumb)
             if results and self.check_album_results(source, results):
@@ -144,7 +144,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
             # cons: we won't get the upload date
             if image_url := _match_img(new_scrape_item.url):
                 new_scrape_item.url = image_url
-                self.create_task(self.handle_direct_link(new_scrape_item, source))
+                self.create_task(self.direct_file(new_scrape_item, source))
                 continue
 
             self.create_task(self.run(new_scrape_item))
@@ -162,10 +162,11 @@ class CheveretoCrawler(Crawler, is_generic=True):
         return soup
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
+    async def direct_file(
+        self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None, assume_ext: str | None = None
+    ) -> None:
         link = _thumbnail_to_src(url or scrape_item.url)
-        filename, ext = self.get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
+        await super().direct_file(scrape_item, link, assume_ext)
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:
@@ -175,21 +176,16 @@ class CheveretoCrawler(Crawler, is_generic=True):
         async with self.request_limiter:
             soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        try:
-            link_str = open_graph.get("video", soup) or open_graph.get("image", soup)
-            if not link_str or "loading.svg" in link_str:
-                link_str = css.select_one_get_attr(soup, *_SELECTORS.MAIN_IMAGE)
-            link = self.parse_url(link_str)
+        link_str = open_graph.get("video", soup) or open_graph.get("image", soup)
+        if not link_str or "loading.svg" in link_str:
+            link_str = Selector.MAIN_IMAGE(soup)
 
-        except css.SelectorError:
-            raise ScrapeError(422, "Couldn't find media source") from None
-
-        date_str = css.select_one_get_attr(soup, *_SELECTORS.DATE)
-        scrape_item.possible_datetime = self.parse_iso_date(date_str)
-        await self.handle_direct_link(scrape_item, link)
+        source = self.parse_url(link_str)
+        scrape_item.possible_datetime = self.parse_iso_date(Selector.DATE(soup))
+        await self.direct_file(scrape_item, source)
 
     def parse_url(
-        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool = True
+        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool | None = None
     ) -> AbsoluteHttpURL:
         if not link_str.startswith("https") and not link_str.startswith("/"):
             link_str = _xor_decrypt(link_str, _DECRYPTION_KEY)

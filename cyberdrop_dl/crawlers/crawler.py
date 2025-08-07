@@ -231,7 +231,7 @@ class Crawler(ABC):
 
         Override it to transform thumbnail URLs into full res URLs or URLs in an old unsupported format into a new one"""
         if cls.REPLACE_OLD_DOMAINS_REGEX is not None:
-            new_host = re.sub(cls.REPLACE_OLD_DOMAINS_REGEX, cls.PRIMARY_URL.host, url.host)
+            new_host = cls.REPLACE_OLD_DOMAINS_REGEX.sub(cls.PRIMARY_URL.host, url.host)
             return url.with_host(new_host)
         return url
 

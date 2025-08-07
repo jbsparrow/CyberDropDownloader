@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import ClassVar
-
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -11,11 +9,11 @@ from ._chevereto import CheveretoCrawler
 
 class JPG5Crawler(CheveretoCrawler):
     SUPPORTED_DOMAINS = "selti-delivery.ru", "jpg6.su"
-    DOMAIN: ClassVar[str] = "jpg5.su"
-    FOLDER_DOMAIN: ClassVar[str] = "JPG5"
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://jpg6.su")
-    CHEVERETO_SUPPORTS_VIDEO: ClassVar[bool] = False
-    OLD_DOMAINS: ClassVar[tuple[str, ...]] = (
+    DOMAIN = "jpg5.su"
+    FOLDER_DOMAIN = "JPG5"
+    PRIMARY_URL = AbsoluteHttpURL("https://jpg6.su")
+    CHEVERETO_SUPPORTS_VIDEO = False
+    OLD_DOMAINS = (
         "host.church",
         "jpg.homes",
         "jpg.church",
