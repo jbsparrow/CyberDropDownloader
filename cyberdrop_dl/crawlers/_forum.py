@@ -329,7 +329,7 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     async def write_last_forum_post(self, thread_url: AbsoluteHttpURL, last_post_url: AbsoluteHttpURL | None) -> None:
         if not last_post_url or last_post_url == thread_url:
             return
-        await self.manager.log_manager.write_last_post_log(last_post_url)
+        self.manager.log_manager.write_last_post_log(last_post_url)
 
     # TODO: Move this to the base crawler
     # TODO: Define an unified workflow for crawlers to perform and check login

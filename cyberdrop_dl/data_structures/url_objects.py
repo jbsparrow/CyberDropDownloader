@@ -1,7 +1,9 @@
+# type: ignore[reportIncompatibleVariableOverride]
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass, field
+import datetime
+from dataclasses import asdict, dataclass, field
 from enum import IntEnum
 from functools import partialmethod
 from pathlib import Path
@@ -16,7 +18,6 @@ R = TypeVar("R")
 T = TypeVar("T")
 
 if TYPE_CHECKING:
-    import datetime
     import functools
     import inspect
     from collections.abc import Callable
@@ -217,6 +218,16 @@ class MediaItem:
             self.parent_media_item.set_task_id(task_id)
         else:
             self._task_id = task_id
+
+    def as_jsonable_dict(self) -> dict[str, Any]:
+        item = asdict(self)
+        if self.datetime:
+            assert isinstance(self.datetime, int), f"Invalid {self.datetime =!r} from {self.referer}"
+            item["datetime"] = datetime.datetime.fromtimestamp(self.datetime)
+        item["attempts"] = item.pop("current_attempt")
+        for name in ("fallbacks", "_task_id"):
+            _ = item.pop(name)
+        return item
 
 
 @dataclass(kw_only=True, slots=True)

@@ -1,29 +1,20 @@
+from __future__ import annotations
+
 from dataclasses import Field
-from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import pytest
-from pydantic import BaseModel
 
 from cyberdrop_dl.managers.manager import Manager, merge_dicts
 
-M = TypeVar("M", bound=BaseModel)
+if TYPE_CHECKING:
+    from pydantic import BaseModel
+
+    M = TypeVar("M", bound=BaseModel)
 
 
 def update_model(model: M, **kwargs: Any) -> M:
     return model.model_validate(model.model_dump() | kwargs)
-
-
-@pytest.fixture(scope="function", name="manager")
-def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Manager:
-    appdata = str(tmp_path)
-    downloads = str(tmp_path / "Downloads")
-    monkeypatch.chdir(tmp_path)
-    bare_manager = Manager(("--appdata-folder", appdata, "-d", downloads))
-    bare_manager.startup()
-    bare_manager.path_manager.startup()
-    bare_manager.log_manager.startup()
-    return bare_manager
 
 
 class TestMergeDicts:
@@ -112,11 +103,11 @@ class TestMergeDicts:
     ],
 )
 def test_args_logging_should_censor_webhook(
-    manager: Manager, logs: pytest.LogCaptureFixture, webhook: str, output: str
+    running_manager: Manager, logs: pytest.LogCaptureFixture, webhook: str, output: str
 ) -> None:
-    logs_model = manager.config_manager.settings_data.logs
-    manager.config_manager.settings_data.logs = update_model(logs_model, webhook=webhook)
-    manager.args_logging()
+    logs_model = running_manager.config_manager.settings_data.logs
+    running_manager.config_manager.settings_data.logs = update_model(logs_model, webhook=webhook)
+    running_manager.args_logging()
     assert logs.messages
     assert "Starting Cyberdrop-DL Process" in logs.text
     assert webhook not in logs.text
@@ -126,12 +117,12 @@ def test_args_logging_should_censor_webhook(
     assert output == webhook_url
 
 
-async def test_async_db_close(manager: Manager) -> None:
-    await manager.async_startup()
-    assert not isinstance(manager.db_manager, Field)
-    assert not isinstance(manager.hash_manager, Field)
-    assert "overwrite" not in str(manager.log_manager.main_log)
-    await manager.async_db_close()
-    assert isinstance(manager.db_manager, Field)
-    assert isinstance(manager.hash_manager, Field)
-    await manager.close()
+async def test_async_db_close(running_manager: Manager) -> None:
+    await running_manager.async_startup()
+    assert not isinstance(running_manager.db_manager, Field)
+    assert not isinstance(running_manager.hash_manager, Field)
+    assert "overwrite" not in str(running_manager.log_manager.main_log)
+    await running_manager.async_db_close()
+    assert isinstance(running_manager.db_manager, Field)
+    assert isinstance(running_manager.hash_manager, Field)
+    await running_manager.close()

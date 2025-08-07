@@ -262,7 +262,7 @@ class ScrapeMapper:
                 success = True
             except JDownloaderError as e:
                 log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
-                await self.manager.log_manager.write_unsupported_urls_log(
+                self.manager.log_manager.write_unsupported_urls_log(
                     scrape_item.url,
                     scrape_item.parents[0] if scrape_item.parents else None,
                 )
@@ -276,7 +276,7 @@ class ScrapeMapper:
             return
 
         log(f"Unsupported URL: {scrape_item.url}", 30)
-        await self.manager.log_manager.write_unsupported_urls_log(
+        self.manager.log_manager.write_unsupported_urls_log(
             scrape_item.url,
             scrape_item.parents[0] if scrape_item.parents else None,
         )

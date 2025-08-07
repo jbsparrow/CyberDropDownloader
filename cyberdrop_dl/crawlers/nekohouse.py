@@ -7,12 +7,11 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from ._kemono_base import KemonoBaseCrawler
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.crawlers.crawler import SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
 class NekohouseCrawler(KemonoBaseCrawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+    SUPPORTED_PATHS: ClassVar[dict[str, str]] = {
         "Model": "/<service>/user/<user>",
         "Individual Post": "/<service>/<user>/post/...",
         "Direct links": "",

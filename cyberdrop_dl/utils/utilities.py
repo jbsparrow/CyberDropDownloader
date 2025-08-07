@@ -119,9 +119,7 @@ def error_handling_wrapper(
             return
 
         log(f"Scrape Failed: {link_to_show} ({error_log_msg.main_log_msg})", 40, exc_info=exc_info)
-        self.manager.task_group.create_task(
-            self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
-        )
+        self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
         self.manager.progress_manager.scrape_stats_progress.add_failure(error_log_msg.ui_failure)
 
     return wrapper
@@ -433,7 +431,7 @@ def get_text_between(original_text: str, start: str, end: str) -> str:
     """Extracts the text between two strings in a larger text."""
     start_index = original_text.index(start) + len(start)
     end_index = original_text.index(end, start_index)
-    return original_text[start_index:end_index]
+    return original_text[start_index:end_index].strip()
 
 
 def xdg_mime_query(*args) -> str:
@@ -548,20 +546,6 @@ async def close_if_defined(obj: C) -> C:
 def with_suffix_encoded(url: AnyURL, suffix: str) -> AnyURL:
     name = Path(url.raw_name).with_suffix(suffix)
     return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
-
-
-def sort_dict(map: Mapping[str, T]) -> dict[str, T]:
-    def try_to_sort(value: Any) -> Any:
-        try:
-            if isinstance(value, dict):
-                return sort_dict(value)
-            elif isinstance(value, list | tuple):
-                return type(value)(sorted(value))
-        except Exception:
-            pass
-        return value
-
-    return {key: try_to_sort(map[key]) for key in sorted(map, key=str.casefold)}
 
 
 @lru_cache

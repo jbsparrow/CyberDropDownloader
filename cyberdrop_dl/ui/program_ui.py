@@ -301,6 +301,7 @@ class ProgramUI:
 def vacuum_database(db_path: Path) -> None:
     if not db_path.is_file():
         return
+    conn = None
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()

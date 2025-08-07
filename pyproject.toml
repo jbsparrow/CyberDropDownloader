@@ -25,7 +25,7 @@ dependencies = [
     "platformdirs >=4.3.6",
     "psutil >=7.0.0",
     "pydantic >=2.11.7",
-    "pywin32>=308 ; sys_platform == 'win32'",
+    "pywin32>=308 ; sys_platform == 'win32' and implementation_name=='cpython'",
     "pyyaml >=6.0.2",
     "rich >=14.0.0",
     "send2trash >=1.8.3",
@@ -36,7 +36,7 @@ description = "Bulk downloader for multiple file hosts"
 license = {text = "GPL-3.0-only"}
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "7.2.1"
+version = "7.3.0"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
@@ -82,6 +82,9 @@ pytest-mock = "*"
 addopts = ["-s"]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
+markers = [
+    "crawler_test_case: tests that do full run with a crawler (making actual network requests)"
+]
 minversion = "8.4.1"
 testpaths = ["tests"]
 

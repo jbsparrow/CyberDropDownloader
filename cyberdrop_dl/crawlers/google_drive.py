@@ -146,7 +146,7 @@ class GoogleDriveCrawler(Crawler):
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
     async def get_file_url_and_name(self, url: AbsoluteHttpURL, file_id: str) -> tuple[AbsoluteHttpURL, str | None]:
-        soup = last_error = None
+        soup = last_error = response = None
         current_url: AbsoluteHttpURL | None = url
         try_file_open_url = True
 
@@ -173,7 +173,7 @@ class GoogleDriveCrawler(Crawler):
                 current_url = docs_url
                 continue
 
-            if response.content_disposition and response.content_disposition.filename:
+            if response and response.content_disposition and response.content_disposition.filename:
                 return current_url, response.content_disposition.filename
 
             current_url = self.get_url_from_download_button(soup)
