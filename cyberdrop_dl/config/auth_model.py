@@ -9,10 +9,6 @@ class CoomerAuth(BaseModel):
     session: str = ""
 
 
-class XXXBunkerAuth(BaseModel):
-    PHPSESSID: str = ""
-
-
 class ImgurAuth(AliasModel):
     client_id: str = Field("", "imgur_client_id")
 
@@ -59,4 +55,3 @@ class AuthSettings(ConfigModel):
     pixeldrain: PixeldrainAuth = Field(PixeldrainAuth(), "PixelDrain")
     realdebrid: RealDebridAuth = Field(RealDebridAuth(), "RealDebrid")
     reddit: RedditAuth = Field(RedditAuth(), "Reddit")
-    xxxbunker: XXXBunkerAuth = Field(XXXBunkerAuth(), "XXXBunker")
