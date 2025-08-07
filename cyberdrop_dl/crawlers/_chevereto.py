@@ -98,6 +98,13 @@ class CheveretoCrawler(Crawler, is_generic=True):
                 scrape_item.setup_as_profile(title)
             self._process_page(scrape_item, soup)
 
+    async def _get_redirect_url(self, url: AbsoluteHttpURL):
+        async with self.request_limiter:
+            head = await self.client.get_head(self.DOMAIN, url)
+        if location := head.get("location"):
+            return self.parse_url(location, url.origin(), trim=False)
+        return url
+
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem, album_id: str) -> None:
         results = await self.get_album_results(album_id)

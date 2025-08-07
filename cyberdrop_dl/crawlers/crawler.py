@@ -96,6 +96,7 @@ class Crawler(ABC):
     SKIP_PRE_CHECK: ClassVar[bool] = False
     NEXT_PAGE_SELECTOR: ClassVar[str] = ""
 
+    DEFAULT_TRIM_URLS: ClassVar[bool] = True
     FOLDER_DOMAIN: ClassVar[str] = ""
     DOMAIN: ClassVar[str]
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
@@ -470,10 +471,12 @@ class Crawler(ABC):
         post_title, _ = safe_format(title_format, id=id, number=id, date=date, title=title)
         return post_title
 
-    def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> AbsoluteHttpURL:
+    def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool | None = None) -> AbsoluteHttpURL:
         """Wrapper arround `utils.parse_url` to use `self.PRIMARY_URL` as base"""
         base = relative_to or self.PRIMARY_URL
         assert is_absolute_http_url(base)
+        if trim is None:
+            trim = self.DEFAULT_TRIM_URLS
         return parse_url(link_str, base, trim=trim)
 
     def update_cookies(self, cookies: dict, url: URL | None = None) -> None:
