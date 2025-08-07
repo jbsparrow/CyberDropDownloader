@@ -470,7 +470,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         except Exception:
             pass
         if not self._user_names:
-            self.log(f"Unable to get list of creators from '{self.NAME}'. Crawler has been disabled")
+            self.log(f"Unable to get list of creators from {self.NAME}. Crawler has been disabled")
             self.disabled = True
 
     async def __get_discord_server(self, server_id: str) -> DiscordServer:
