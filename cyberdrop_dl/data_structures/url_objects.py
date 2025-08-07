@@ -256,6 +256,11 @@ class ScrapeItem:
         if not title or self.retry:
             return
         title = sanitize_folder(title)
+        if title.endswith(")") and " (" in title:
+            og_title, _, domain_suffix = title.rpartition(" (")
+            last_parent = self.parent_title.rsplit("/", 1)[-1]
+            if last_parent.endswith(domain_suffix):
+                title = og_title
         self.parent_title = (self.parent_title + "/" + title) if self.parent_title else title
 
     def set_type(self, scrape_item_type: ScrapeItemType | None, _: Manager | None = None) -> None:
