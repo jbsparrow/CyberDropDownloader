@@ -1,6 +1,19 @@
 DOMAIN = "odnoklassniki"
 TEST_CASES = [
     (
+        "https://ok.ru/video/9336871520980",
+        [
+            {
+                "url": "https://m.ok.ru/video/9336871520980",
+                "filename": "4K Video ULTRA HD - Dolby Vision HDR 4K (60 FPS) [9336871520980][2160p].mp4",
+                "original_filename": "9336871520980.mp4",
+                "referer": "https://ok.ru/video/9336871520980",
+                "album_id": None,
+                "datetime": 1737401550,
+            }
+        ],
+    ),
+    (
         "https://ok.ru/video/1416667269705",
         [
             {
