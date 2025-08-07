@@ -48,6 +48,7 @@ _T_co = TypeVar("_T_co", covariant=True)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
+    from http.cookies import BaseCookie
 
     from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup, Tag
@@ -720,6 +721,23 @@ class Crawler(ABC):
             )
             log(msg, bug=True)
         return filename
+
+    @final
+    def get_cookies(self, partial_match_domain: bool = False) -> Iterable[tuple[str, BaseCookie[str]]]:
+        if partial_match_domain:
+            yield from self.client.client_manager.filter_cookies_by_word_in_domain(self.DOMAIN)
+        else:
+            yield str(self.PRIMARY_URL.host), self.client.client_manager.cookies.filter_cookies(self.PRIMARY_URL)
+
+    @final
+    def get_cookie_value(self, cookie_name: str, partial_match_domain: bool = False) -> str | None:
+        def get_morsels_by_name():
+            for _, cookie in self.get_cookies(partial_match_domain):
+                if morsel := cookie.get(cookie_name):
+                    yield morsel
+
+        if newest := max(get_morsels_by_name(), key=lambda x: int(x["max-age"] or 0), default=None):
+            return newest.value
 
 
 def _make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:

@@ -3,11 +3,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ssl
-import time
 from collections import defaultdict
 from dataclasses import dataclass
 from http import HTTPStatus
-from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 import aiohttp
@@ -25,11 +23,13 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError, TooManyCrawlerErrors
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
+from cyberdrop_dl.utils.cookie_management import read_netscape_files
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Mapping
+    from collections.abc import Generator, Iterable, Mapping
+    from http.cookies import BaseCookie
 
     from aiohttp_client_cache.response import CachedResponse
     from curl_cffi.requests import AsyncSession
@@ -126,6 +126,15 @@ class ClientManager:
         self.flaresolverr = Flaresolverr(self)
         self._headers = {"user-agent": self.manager.global_config.general.user_agent}
 
+    def filter_cookies_by_word_in_domain(self, word: str) -> Iterable[tuple[str, BaseCookie[str]]]:
+        """Yields pairs of `[domain, BaseCookie]` for every cookie with a domain that has `word` in it"""
+        if not self.cookies:
+            return
+        self.cookies._do_expiration()
+        for domain, _ in self.cookies._cookies:
+            if word in domain:
+                yield domain, self.cookies.filter_cookies(AbsoluteHttpURL(f"https://{domain}"))
+
     async def startup(self) -> None:
         await _set_dns_resolver()
 
@@ -215,7 +224,7 @@ class ClientManager:
         finally:
             pass
 
-    def load_cookie_files(self) -> None:
+    async def load_cookie_files(self) -> None:
         if self.manager.config_manager.settings_data.browser_cookies.auto_import:
             assert self.manager.config_manager.settings_data.browser_cookies.browser
             get_cookies_from_browsers(
@@ -224,37 +233,8 @@ class ClientManager:
         cookie_files = sorted(self.manager.path_manager.cookies_dir.glob("*.txt"))
         if not cookie_files:
             return
-
-        now = time.time()
-        domains_seen = set()
-        for file in cookie_files:
-            cookie_jar = MozillaCookieJar(file)
-            try:
-                cookie_jar.load(ignore_discard=True)
-            except OSError as e:
-                log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
-                continue
-            current_cookie_file_domains: set[str] = set()
-            expired_cookies_domains: set[str] = set()
-            for cookie in cookie_jar:
-                simplified_domain = cookie.domain.removeprefix(".")
-                if simplified_domain not in current_cookie_file_domains:
-                    log(f"Found cookies for {simplified_domain} in file '{file.name}'", 20)
-                    current_cookie_file_domains.add(simplified_domain)
-                    if simplified_domain in domains_seen:
-                        log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
-
-                if (simplified_domain not in expired_cookies_domains) and cookie.is_expired(now):  # type: ignore
-                    expired_cookies_domains.add(simplified_domain)
-
-                domains_seen.add(simplified_domain)
-                self.cookies.update_cookies(
-                    {cookie.name: cookie.value},  # type: ignore
-                    response_url=AbsoluteHttpURL(f"https://{cookie.domain}"),
-                )
-
-            for simplified_domain in expired_cookies_domains:
-                log(f"Cookies for {simplified_domain} are expired", 30)
+        async for domain, cookie in read_netscape_files(cookie_files):
+            self.cookies.update_cookies(cookie, response_url=AbsoluteHttpURL(f"https://{domain}"))
 
         log_spacer(20, log_to_console=False)
 
