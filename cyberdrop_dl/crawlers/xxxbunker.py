@@ -17,9 +17,9 @@ if TYPE_CHECKING:
 
 
 class Selector:
-    VIDEOS = "a[data-anim='4']"
+    VIDEOS = ".videolist a[data-anim]"
     VIDEO_IFRAME = "div.player-frame iframe"
-    NEXT_PAGE = "div.page-list a:contains('next')"
+    NEXT_PAGE = "div.page-list a:contains('Next')"
 
 
 class XXXBunkerCrawler(Crawler):
@@ -27,7 +27,7 @@ class XXXBunkerCrawler(Crawler):
         "Video": "/<video_id>",
         "Search": "/search/<video_id>",
         "Category": "/categories/<category>",
-        "User Favorites": "/favoritevideos/<name>",
+        "User Favorites": "/<username>/favoritevideos",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://xxxbunker.com")
     DOMAIN: ClassVar[str] = "xxxbunker"
@@ -42,8 +42,10 @@ class XXXBunkerCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["search", "categories", "favoritevideos" as type_, name]:
+            case ["search" | "categories" as type_, name]:
                 return await self.playlist(scrape_item, name, type_)
+            case [username, "favoritevideos" as type_]:
+                return await self.playlist(scrape_item, f"user {username}", type_)
             case [_]:
                 await self.video(scrape_item)
             case _:
@@ -73,15 +75,14 @@ class XXXBunkerCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem, name: str, type_: str) -> None:
-        name = name.replace("+", " ")
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
-        category = {"search": "search", "categories": "category", "favoritevideos": "favorites"}[type_]
-        title = self.create_title(f"{name} [{category}]")
-        scrape_item.setup_as_album(title)
-
+        title: str = ""
         async for soup in self.web_pager(scrape_item.url):
+            if not title:
+                name = name.replace("+", " ")
+                category = {"search": "search", "categories": "category", "favoritevideos": "favorites"}[type_]
+                title = self.create_title(f"{name} [{category}]")
+                scrape_item.setup_as_album(title)
+
             for _, new_scrape_item in self.iter_children(scrape_item, soup, Selector.VIDEOS):
                 self.create_task(self.run(new_scrape_item))
 
