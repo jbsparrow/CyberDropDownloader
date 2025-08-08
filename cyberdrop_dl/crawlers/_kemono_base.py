@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple, NotRequi
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
 
-from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.crawlers.crawler import Crawler, auto_task_id
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
 from cyberdrop_dl.models import AliasModel
 from cyberdrop_dl.models.validators import falsy_as_none
@@ -155,7 +155,7 @@ def fallback_if_no_api(func: Callable[_P, Coroutine[None, None, Any]]) -> Callab
     @functools.wraps(func)
     async def wrapper(self: KemonoBaseCrawler, *args, **kwargs) -> Any:
         if getattr(self, "API_ENTRYPOINT", None):
-            return await func(self, *args, **kwargs)  # pyright: ignore[reportCallIssue]
+            return await func(self, *args, **kwargs)  # type: ignore[reportCallIssue]
 
         if fallback_func := getattr(self, f"{func.__name__}_w_no_api", None):
             return await fallback_func(*args, **kwargs)
@@ -277,7 +277,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 post = DiscordPost.model_validate(post_data)
                 post_web_url = self.parse_url(post.web_path_qs)
                 new_scrape_item_for_post = scrape_item.create_child(post_web_url)
-                self.create_task(self._handle_discord_post(new_scrape_item_for_post, post))
+                self.create_task(self._handle_discord_post_task(new_scrape_item_for_post, post))
                 scrape_item.add_children()
 
             if num_posts_in_page < _DISCORD_CHANNEL_PAGE_SIZE:
@@ -306,14 +306,14 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
-        def clean_url(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-            url = remove_parts(og_url, "thumbnail", "thumbnail").with_query(None)
+        def thumbanil_to_src(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+            url = remove_parts(og_url, "thumbnails", "thumbnail").with_query(None)
             if f := og_url.query.get("f"):
                 return url.with_query(f=f)
             return url
 
-        scrape_item.url = clean_url(scrape_item.url)
-        link = clean_url(url or scrape_item.url)
+        scrape_item.url = thumbanil_to_src(scrape_item.url)
+        link = thumbanil_to_src(url or scrape_item.url)
         try:
             filename, ext = self.get_filename_and_ext(link.query.get("f") or link.name)
         except NoExtensionError:
@@ -373,6 +373,9 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         scrape_item.add_to_parent_title(post_title)
 
         await self.__handle_post(scrape_item, post)
+
+    _handle_user_post_task = auto_task_id(_handle_user_post)
+    _handle_discord_post_task = auto_task_id(_handle_discord_post)
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
         """Gets links out of content in post ans sends them to a new crawler."""
@@ -471,7 +474,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 n_posts += 1
                 link = self.parse_url(post.web_path_qs)
                 new_scrape_item = scrape_item.create_child(link)
-                self.create_task(self._handle_user_post(new_scrape_item, post))
+                self.create_task(self._handle_user_post_task(new_scrape_item, post))
                 scrape_item.add_children()
 
             if n_posts < _MAX_OFFSET_PER_CALL:
