@@ -7,7 +7,7 @@ import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
 from json import loads as json_loads
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple, NotRequired
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple, NotRequired, ParamSpec
 
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
@@ -18,7 +18,7 @@ from cyberdrop_dl.models import AliasModel
 from cyberdrop_dl.models.validators import falsy_as_none
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
@@ -27,6 +27,8 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
+
+    _P = ParamSpec("_P")
 
 
 _MAX_OFFSET_PER_CALL = 50
@@ -85,8 +87,10 @@ class Post(AliasModel):
     file: FileOrNone = None
     attachments: list[File] = []  # noqa: RUF012
     published_or_added: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
-    soup_attachments: list[Any] = []  # noqa: RUF012, `Any` to skip validation, but these are `yarl.URL`. We generate them internally so no validation is needed
     date: int | None = None
+
+    # `Any` to skip validation, but these are `yarl.URL`. We generate them internally so no validation is needed
+    soup_attachments: list[Any] = []  # noqa: RUF012
 
     def model_post_init(self, *_) -> None:
         if self.published_or_added:
@@ -146,28 +150,30 @@ class PartialUserPost(NamedTuple):
         return PartialUserPost(**info)
 
 
-def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Callable[..., Coroutine[None, None, Any]]:
+def fallback_if_no_api(func: Callable[_P, Coroutine[None, None, Any]]) -> Callable[_P, Coroutine[None, None, Any]]:
     """Calls a fallback method is the current instance does not define an API"""
 
     @functools.wraps(func)
-    async def wrapper(self: KemonoBaseCrawler, *args, **kwargs) -> Any:
+    async def wrapper(*args, **kwargs) -> Any:
+        self: KemonoBaseCrawler = args[0]
         if hasattr(self, "API_ENTRYPOINT"):
-            return await func(self, *args, **kwargs)
-        fallback_func = getattr(self, f"{func.__name__}_w_no_api", None)
-        if not fallback_func:
-            raise ValueError
-        return await fallback_func(self, *args, **kwargs)
+            return await func(*args, **kwargs)
+
+        if fallback_func := getattr(self, f"{func.__name__}_w_no_api", None):
+            return await fallback_func(self, *args, **kwargs)
+
+        raise ValueError
 
     return wrapper
 
 
 class KemonoBaseCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[dict[str, str]] = {  # type: ignore[reportIncompatibleVariableOverride]
-        "Model": "/<service>/user/<user>",
-        "Favorites": "/favorites/<user>",
-        "Search": "/search?...",
-        "Individual Post": "<service>/<user>/post/...",
-        "Direct links": "",
+        "Model": "/<service>/user/<user_id>",
+        "Favorites": "/favorites/<user_id>",
+        "Search": "/search?q=...",
+        "Individual Post": "/<service>/user/<user_id>/post/<post_id>",
+        "Direct links": "/(data|thumbnails)/...",
     }
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
     API_ENTRYPOINT: ClassVar[AbsoluteHttpURL]
@@ -175,9 +181,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
-        REQUIRED_FIELDS = ("SERVICES",)
-        for field_name in REQUIRED_FIELDS:
-            assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
+        Crawler._assert_fields_overrides(cls, "SERVICES")
 
     def __post_init__(self) -> None:
         self._user_names: dict[User, str] = {}
@@ -199,15 +203,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             await self.__get_usernames(self.API_ENTRYPOINT / "creators")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if "thumbnails" in scrape_item.url.parts:
-            return await self.handle_direct_link(scrape_item)
-
         match scrape_item.url.parts[1:]:
             case [service, "user", _, "post", _] if service in self.SERVICES:
                 return await self.post(scrape_item)
             case [service, "user", _] if service in self.SERVICES:
                 return await self.profile(scrape_item)
-            case ["favorites"]:
+            case ["favorites", _]:
                 return await self.favorites(scrape_item)
             case ["posts"] if search_query := scrape_item.url.query.get("q"):
                 return await self.search(scrape_item, search_query)
@@ -215,41 +216,46 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 return await self.discord_server(scrape_item, server_id)
             case ["discord", "server", _, channel_id]:
                 return await self.discord_channel(scrape_item, channel_id)
-
-        await self.handle_direct_link(scrape_item)
+            case ["thumbnails" | "data", _, *_]:
+                return await self.handle_direct_link(scrape_item)
+            case _:
+                raise ValueError
 
     @fallback_if_no_api
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem, query: str) -> None:
-        api_url = self.__make_api_url_w_offset("posts", scrape_item.url)
+        api_url = self.__make_api_url_w_offset(scrape_item.url, "posts")
         title = self.create_title(f"{query} [search]")
         scrape_item.setup_as_profile(title)
         await self.__iter_user_posts_from_url(scrape_item, api_url)
 
     @fallback_if_no_api
     @error_handling_wrapper
-    async def profile(self, scrape_item: ScrapeItem, service: str, user_id: str) -> None:
-        path = f"{service}/user/{user_id}"
-        api_url = self.__make_api_url_w_offset(path, scrape_item.url)
+    async def profile(self, scrape_item: ScrapeItem) -> None:
+        api_url = self.__make_api_url_w_offset(scrape_item.url)
         scrape_item.setup_as_profile("")
         await self.__iter_user_posts_from_url(scrape_item, api_url)
 
+    @fallback_if_no_api
+    @error_handling_wrapper
     async def discord_server(self, scrape_item: ScrapeItem, server_id: str) -> None:
         scrape_item.setup_as_forum("")
         server = await self.__get_discord_server(server_id)
         for channel in server.channels:
             url = self.PRIMARY_URL / "discord/server" / server_id / channel.id
             new_scrape_item = scrape_item.create_child(url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
+    @fallback_if_no_api
+    @error_handling_wrapper
     async def discord_channel(self, scrape_item: ScrapeItem, channel_id: str) -> None:
         scrape_item.setup_as_profile("")
-        api_url_template = self.__make_api_url_w_offset(f"discord/channel/{channel_id}", scrape_item.url)
-        async for json_response_list in self.__api_pager(api_url_template, step_size=_DISCORD_CHANNEL_PAGE_SIZE):
+        api_url = self.__make_api_url_w_offset(scrape_item.url)
+        async for json_response_list in self.__api_pager(api_url, step_size=_DISCORD_CHANNEL_PAGE_SIZE):
             if not isinstance(json_response_list, list):
                 error_msg = (
-                    f"[{self.NAME}] Invalid API response for Discord channel '{channel_id}' posts (URL template: {api_url_template}). "
+                    f"[{self.NAME}] Invalid API response for Discord channel '{channel_id}' posts (URL: {api_url}). "
                     f"Expected a list, but got type {type(json_response_list).__name__}. "
                     f"Response data (truncated): {str(json_response_list)[:200]}"
                 )
@@ -262,7 +268,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 num_posts_in_page += 1
                 if not isinstance(post_data, dict):
                     error_msg = (
-                        f"[{self.NAME}] Invalid post data type in list for Discord channel '{channel_id}' (URL template: {api_url_template}). "
+                        f"[{self.NAME}] Invalid post data type in list for Discord channel '{channel_id}' (URL template: {api_url}). "
                         f"Expected a dict for post data, but got type {type(post_data).__name__}. "
                         f"Post data (truncated): {str(post_data)[:200]}"
                     )
@@ -293,17 +299,15 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 if previous_server := self.__known_attachment_servers.get(path):
                     if previous_server != server:
                         msg = f"[{self.NAME}] {path} found with multiple diferent servers: {server = } {previous_server = } "
-                        self.log_debug(msg)
+                        self.log(msg)
                     continue
                 self.__known_attachment_servers[path] = server
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
-        """Handles a direct link."""
-
         def clean_url(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
             if "thumbnails" in og_url.parts:
-                return remove_parts(og_url, "thumbnails")
+                return og_url.with_path(og_url.path.replace("/thumbnails/", "/"), keep_query=True)
             return og_url
 
         scrape_item.url = clean_url(scrape_item.url)
@@ -311,10 +315,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         try:
             filename, ext = self.get_filename_and_ext(link.query.get("f") or link.name)
         except NoExtensionError:
-            # Some patreon URLs have another URL as the filename: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
+            # Some patreon URLs have another URL as the filename:
+            # ex: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
             filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
+    @fallback_if_no_api
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
         if not self.session_cookie:
@@ -339,7 +345,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 url = self.PRIMARY_URL / service / "user" / user_id
 
             new_scrape_item = scrape_item.create_child(url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
 
     # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -371,18 +377,17 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         if not post.content:
             return
 
-        def gen_yarl_urls() -> Generator[AbsoluteHttpURL]:
+        def parse_yarl_urls() -> Generator[AbsoluteHttpURL]:
             seen: set[str] = set()
             for match in _find_http_urls(post.content):
                 if (link := match.group().replace(".md.", ".")) not in seen:
                     seen.add(link)
                     try:
-                        url = self.parse_url(link)
-                        yield url
+                        yield self.parse_url(link)
                     except Exception:
                         pass
 
-        for link in gen_yarl_urls():
+        for link in parse_yarl_urls():
             if self.DOMAIN in link.host:
                 continue
             new_scrape_item = scrape_item.create_child(link)
@@ -410,10 +415,10 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         url = self.parse_url(server + f"/data{file['path']}")
         return url.with_query(f=file.get("name") or url.name)
 
-    def __make_api_url_w_offset(self, path: str, og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        api_url = self.API_ENTRYPOINT / path
-        offset = int(og_url.query.get("o", 0))
-        if query := og_url.query.get("q"):
+    def __make_api_url_w_offset(self, web_url: AbsoluteHttpURL, path: str | None = None) -> AbsoluteHttpURL:
+        api_url = self.API_ENTRYPOINT / (path or web_url.path)
+        offset = int(web_url.query.get("o", 0))
+        if query := web_url.query.get("q"):
             return api_url.update_query(o=offset, q=query)
         return api_url.update_query(o=offset)
 
@@ -423,6 +428,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             self._user_names = {User(u["service"], u["id"]): u["name"] for u in json_resp}
         except Exception:
             pass
+
         if not self._user_names:
             self.log(f"Unable to get list of creators from {self.NAME}. Crawler has been disabled")
             self.disabled = True
@@ -435,9 +441,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
             api_url_server_profile = self.API_ENTRYPOINT / "discord" / "user" / server_id / "profile"
             server_profile_json: dict[str, Any] = await self.__api_request(api_url_server_profile)
-            name = server_profile_json.get("name")
-            if not name:
-                name = f"Discord Server {server_id}"
+            name = server_profile_json.get("name") or f"Discord Server {server_id}"
             api_url_channels = self.API_ENTRYPOINT / "discord/channel/lookup" / server_id
             channels_json_resp: list[dict] = await self.__api_request(api_url_channels)
             channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in channels_json_resp)
@@ -451,6 +455,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             # From search results
             if isinstance(json_resp, dict):
                 posts = json_resp.get("posts", [])
+
             # From profile
             elif isinstance(json_resp, list):
                 posts: list[dict[str, Any]] = json_resp
@@ -470,43 +475,27 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if n_posts < _MAX_OFFSET_PER_CALL:
                 break
 
-    async def __api_pager(self, url: AbsoluteHttpURL, step_size: int | None = None) -> AsyncGenerator[Any, None]:
-        """Yields JSON responses from API calls, with configurable increments."""
-        current_step_size = step_size if step_size is not None else _MAX_OFFSET_PER_CALL
+    async def __api_pager(self, url: AbsoluteHttpURL, step_size: int | None = None) -> AsyncGenerator[Any]:
+        """Yields JSON responses from API calls, or soup for web page calls, with configurable increments."""
+        current_step_size = step_size or _MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
+        request = self.client.get_json if "api" in url.parts else self.client.get_soup
         for current_offset in itertools.count(init_offset, current_step_size):
             api_url = url.update_query(o=current_offset)
             yield await self.__api_request(api_url)
 
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    async def discord_w_no_api(self, scrape_item: ScrapeItem) -> Any:
-        raise NotImplementedError
-
-    async def search_w_no_api(self, scrape_item: ScrapeItem) -> Any:
-        raise NotImplementedError
-
     @error_handling_wrapper
-    async def profile_w_no_api(self, scrape_item: ScrapeItem, service: str, user_id: str) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
-        path = f"{service}/user/{user_id}"
-        api_url = self.PRIMARY_URL / path
+    async def profile_w_no_api(self, scrape_item: ScrapeItem) -> None:
         scrape_item.setup_as_profile("")
-        init_offset = int(scrape_item.url.query.get("o") or 0)
-        for offset in itertools.count(init_offset, _MAX_OFFSET_PER_CALL):
+        soup: BeautifulSoup
+        async for soup in self.__api_pager(scrape_item.url):
             n_posts = 0
-            api_url = api_url.with_query(o=offset)
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, api_url)
 
-            for post in soup.select(_POST_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _POST_SELECTOR):
                 n_posts += 1
-                link = self.parse_url(css.get_attr(post, "href"))
-                new_scrape_item = scrape_item.create_child(link)
                 await self.post_w_no_api(new_scrape_item)
-                scrape_item.add_children()
 
             if n_posts < _MAX_OFFSET_PER_CALL:
                 break
@@ -514,7 +503,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def post_w_no_api(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         service, _, user_id, _, post_id = scrape_item.url.parts[1:5]
         post = PartialUserPost.from_soup(soup)
