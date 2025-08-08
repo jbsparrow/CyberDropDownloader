@@ -253,7 +253,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def discord_channel(self, scrape_item: ScrapeItem, channel_id: str) -> None:
         scrape_item.setup_as_profile("")
-        api_url = self.__make_api_url_w_offset(scrape_item.url)
+        api_url = self.__make_api_url_w_offset(scrape_item.url, f"discord/channel/{channel_id}")
         async for json_response_list in self.__api_pager(api_url, step_size=_DISCORD_CHANNEL_PAGE_SIZE):
             if not isinstance(json_response_list, list):
                 error_msg = (
@@ -278,7 +278,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 post = DiscordPost.model_validate(post_data)
                 post_web_url = self.parse_url(post.web_path_qs)
                 new_scrape_item_for_post = scrape_item.create_child(post_web_url)
-                await self._handle_discord_post(new_scrape_item_for_post, post)
+                self.create_task(self._handle_discord_post(new_scrape_item_for_post, post))
                 scrape_item.add_children()
 
             if num_posts_in_page < _DISCORD_CHANNEL_PAGE_SIZE:
@@ -418,7 +418,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         return url.with_query(f=file.get("name") or url.name)
 
     def __make_api_url_w_offset(self, web_url: AbsoluteHttpURL, path: str | None = None) -> AbsoluteHttpURL:
-        api_url = self.API_ENTRYPOINT / (path or web_url.path)
+        api_url = self.API_ENTRYPOINT / (path or web_url.path).removeprefix("/")
         offset = int(web_url.query.get("o", 0))
         if query := web_url.query.get("q"):
             return api_url.update_query(o=offset, q=query)
@@ -471,7 +471,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 n_posts += 1
                 link = self.parse_url(post.web_path_qs)
                 new_scrape_item = scrape_item.create_child(link)
-                await self._handle_user_post(new_scrape_item, post)
+                self.create_task(self._handle_user_post(new_scrape_item, post))
                 scrape_item.add_children()
 
             if n_posts < _MAX_OFFSET_PER_CALL:
