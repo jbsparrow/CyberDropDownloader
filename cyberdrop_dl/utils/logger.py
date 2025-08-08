@@ -19,7 +19,7 @@ from cyberdrop_dl import constants, env
 
 logger = logging.getLogger("cyberdrop_dl")
 logger_debug = logging.getLogger("cyberdrop_dl_debug")
-console = Console()
+_DEFAULT_CONSOLE = Console()
 
 ERROR_PREFIX = "\n[bold red]ERROR: [/bold red]"
 USER_NAME = Path.home().resolve().parts[-1]
@@ -62,12 +62,12 @@ class LogHandler(RichHandler):
         redacted: bool = is_file and not debug
         console_cls = RedactedConsole if redacted else Console
         if file is None and width is None:
-            console_ = console
+            console = _DEFAULT_CONSOLE
         else:
-            console_ = console_cls(file=file, width=width)
+            console = console_cls(file=file, width=width)
         options = constants.RICH_HANDLER_DEBUG_CONFIG if debug else constants.RICH_HANDLER_CONFIG
         options = options | kwargs
-        super().__init__(level, console_, show_time=is_file, **options)
+        super().__init__(level, console, show_time=is_file, **options)
         if is_file:
             self._log_render = NoPaddingLogRender(show_level=True)
 
@@ -171,7 +171,7 @@ class NoPaddingLogRender(LogRender):
 
 
 def get_renderable_length(renderable) -> int:
-    measurement = Measurement.get(console, console.options, renderable)
+    measurement = Measurement.get(_DEFAULT_CONSOLE, _DEFAULT_CONSOLE.options, renderable)
     return measurement.maximum
 
 
@@ -244,7 +244,7 @@ def log_with_color(message: Text | str, style: str, level: int = 20, show_in_sta
     text = message if isinstance(message, Text) else Text(message, style=style)
     log(text.plain, level, **kwargs)
     if constants.CONSOLE_LEVEL >= 50:
-        console.print(text)
+        _DEFAULT_CONSOLE.print(text)
     if show_in_stats:
         constants.LOG_OUTPUT_TEXT.append_text(text.append("\n"))
 
@@ -254,7 +254,7 @@ def log_spacer(level: int, char: str = "-", *, log_to_console: bool = True, log_
     if log_to_file:
         log(spacer, level)
     if log_to_console and constants.CONSOLE_LEVEL >= 50:
-        console.print("")
+        _DEFAULT_CONSOLE.print("")
     constants.LOG_OUTPUT_TEXT.append("\n", style="black")
 
 
