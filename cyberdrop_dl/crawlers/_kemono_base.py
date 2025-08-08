@@ -18,7 +18,7 @@ from cyberdrop_dl.models import AliasModel
 from cyberdrop_dl.models.validators import falsy_as_none
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
@@ -153,13 +153,12 @@ def fallback_if_no_api(func: Callable[_P, Coroutine[None, None, Any]]) -> Callab
     """Calls a fallback method is the current instance does not define an API"""
 
     @functools.wraps(func)
-    async def wrapper(*args, **kwargs) -> Any:
-        self: KemonoBaseCrawler = args[0]
+    async def wrapper(self: KemonoBaseCrawler, *args, **kwargs) -> Any:
         if getattr(self, "API_ENTRYPOINT", None):
-            return await func(*args, **kwargs)
+            return await func(self, *args, **kwargs)  # pyright: ignore[reportCallIssue]
 
         if fallback_func := getattr(self, f"{func.__name__}_w_no_api", None):
-            return await fallback_func(self, *args, **kwargs)
+            return await fallback_func(*args, **kwargs)
 
         raise ValueError
 
@@ -172,7 +171,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         "Favorites": "/favorites/<user_id>",
         "Search": "/search?q=...",
         "Individual Post": "/<service>/user/<user_id>/post/<post_id>",
-        "Direct links": "/(data|thumbnails)/...",
+        "Direct links": "/(data|thumbnail)/...",
     }
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
     API_ENTRYPOINT: ClassVar[AbsoluteHttpURL]
@@ -218,7 +217,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 return await self.discord_server(scrape_item, server_id)
             case ["discord", "server", _, channel_id]:
                 return await self.discord_channel(scrape_item, channel_id)
-            case ["thumbnails" | "data", _, *_]:
+            case ["thumbnail" | "thumbnails" | "data", _, *_]:
                 return await self.handle_direct_link(scrape_item)
             case _:
                 raise ValueError
@@ -308,9 +307,10 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
         def clean_url(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-            if "thumbnails" in og_url.parts:
-                return og_url.with_path(og_url.path.replace("/thumbnails/", "/"), keep_query=True)
-            return og_url
+            url = remove_parts(og_url, "thumbnail", "thumbnail").with_query(None)
+            if f := og_url.query.get("f"):
+                return url.with_query(f=f)
+            return url
 
         scrape_item.url = clean_url(scrape_item.url)
         link = clean_url(url or scrape_item.url)
@@ -507,7 +507,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         async with self.request_limiter:
             soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        service, _, user_id, _, post_id = scrape_item.url.parts[1:5]
+        service, _, user_id, _, post_id = scrape_item.url.parts[1:6]
         post = PartialUserPost.from_soup(soup)
         if not post.title or not post.user_name:
             raise ScrapeError(422)
