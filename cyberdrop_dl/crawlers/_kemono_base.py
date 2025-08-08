@@ -140,14 +140,13 @@ class PartialUserPost(NamedTuple):
 
     @staticmethod
     def from_soup(soup: BeautifulSoup) -> PartialUserPost:
-        info = {}
-        names = "title", "content", "user_name", "date"
+        params = {}
         selectors = (_POST.TITLE, _POST.ALL_CONTENT, _POST.USERNAME, _POST.DATE)
-        for name, selector in zip(names, selectors, strict=True):
+        for name, selector in zip(PartialUserPost._fields, selectors, strict=True):
             if tag := soup.select_one(selector):
-                info[name] = tag.text.strip()
+                params[name] = tag.text.strip()
 
-        return PartialUserPost(**info)
+        return PartialUserPost(**params)
 
 
 def fallback_if_no_api(func: Callable[_P, Coroutine[None, None, Any]]) -> Callable[_P, Coroutine[None, None, Any]]:
@@ -156,7 +155,7 @@ def fallback_if_no_api(func: Callable[_P, Coroutine[None, None, Any]]) -> Callab
     @functools.wraps(func)
     async def wrapper(*args, **kwargs) -> Any:
         self: KemonoBaseCrawler = args[0]
-        if hasattr(self, "API_ENTRYPOINT"):
+        if getattr(self, "API_ENTRYPOINT", None):
             return await func(*args, **kwargs)
 
         if fallback_func := getattr(self, f"{func.__name__}_w_no_api", None):
@@ -188,7 +187,10 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self.__known_discord_servers: dict[str, DiscordServer] = {}
         self.__known_attachment_servers: dict[str, str] = {}
         self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-        self.session_cookie = self.manager.config_manager.authentication_data.kemono.session
+
+    @property
+    def session_cookie(self) -> str:
+        return ""
 
     async def async_startup(self) -> None:
         def check_kemono_page(response: AnyResponse) -> bool:

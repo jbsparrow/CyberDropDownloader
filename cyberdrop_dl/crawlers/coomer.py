@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 from ._kemono_base import KemonoBaseCrawler, Post
@@ -21,10 +19,9 @@ class CoomerCrawler(KemonoBaseCrawler):
     SERVICES = "onlyfans", "fansly"
     OLD_DOMAINS: ClassVar[tuple[str, ...]] = "coomer.party", "coomer.su"
 
-    def __post_init__(self) -> None:
-        super().__post_init__()
-        self.request_limiter = AsyncLimiter(4, 1)
-        self.session_cookie = self.manager.config_manager.authentication_data.coomer.session
+    @property
+    def session_cookie(self) -> str:
+        return self.manager.config_manager.authentication_data.coomer.session
 
     async def async_startup(self) -> None:
         await super().async_startup()

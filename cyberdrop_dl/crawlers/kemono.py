@@ -26,3 +26,7 @@ class KemonoCrawler(KemonoBaseCrawler):
         "subscribestar",
     )
     OLD_DOMAINS: ClassVar[tuple[str, ...]] = "kemono.party", "kemono.su"
+
+    @property
+    def session_cookie(self):
+        return self.manager.config_manager.authentication_data.kemono.session
