@@ -61,10 +61,13 @@ class LogHandler(RichHandler):
         is_file: bool = file is not None
         redacted: bool = is_file and not debug
         console_cls = RedactedConsole if redacted else Console
-        console = console_cls(file=file, width=width)
+        if file is None and width is None:
+            console_ = console
+        else:
+            console_ = console_cls(file=file, width=width)
         options = constants.RICH_HANDLER_DEBUG_CONFIG if debug else constants.RICH_HANDLER_CONFIG
         options = options | kwargs
-        super().__init__(level, console, show_time=is_file, **options)
+        super().__init__(level, console_, show_time=is_file, **options)
         if is_file:
             self._log_render = NoPaddingLogRender(show_level=True)
 
