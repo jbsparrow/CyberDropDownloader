@@ -293,35 +293,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self._register_attachments_servers(json_resp["attachments"])
         await self._handle_user_post(scrape_item, post)
 
-    def _register_attachments_servers(self, attachments: list[File]) -> None:
-        for attach in attachments:
-            if server := attach.get("server"):
-                path = attach["path"]
-                if previous_server := self.__known_attachment_servers.get(path):
-                    if previous_server != server:
-                        msg = f"[{self.NAME}] {path} found with multiple diferent servers: {server = } {previous_server = } "
-                        self.log(msg)
-                    continue
-                self.__known_attachment_servers[path] = server
-
-    @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
-        def thumbanil_to_src(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-            url = remove_parts(og_url, "thumbnails", "thumbnail").with_query(None)
-            if f := og_url.query.get("f"):
-                return url.with_query(f=f)
-            return url
-
-        scrape_item.url = thumbanil_to_src(scrape_item.url)
-        link = thumbanil_to_src(url or scrape_item.url)
-        try:
-            filename, ext = self.get_filename_and_ext(link.query.get("f") or link.name)
-        except NoExtensionError:
-            # Some patreon URLs have another URL as the filename:
-            # ex: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
-            filename, ext = self.get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
-
     @fallback_if_no_api
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
@@ -352,7 +323,30 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             new_scrape_item = scrape_item.create_child(url)
             self.create_task(self.run(new_scrape_item))
 
+    @error_handling_wrapper
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
+        scrape_item.url = _thumbnail_to_src(scrape_item.url)
+        link = _thumbnail_to_src(url or scrape_item.url)
+        try:
+            filename, ext = self.get_filename_and_ext(link.query.get("f") or link.name)
+        except NoExtensionError:
+            # Some patreon URLs have another URL as the filename:
+            # ex: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
+            filename, ext = self.get_filename_and_ext(link.name)
+        await self.handle_file(link, scrape_item, filename, ext)
+
     # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _register_attachments_servers(self, attachments: list[File]) -> None:
+        for attach in attachments:
+            if server := attach.get("server"):
+                path = attach["path"]
+                if previous_server := self.__known_attachment_servers.get(path):
+                    if previous_server != server:
+                        msg = f"[{self.NAME}] {path} found with multiple different servers: {server = } {previous_server = } "
+                        self.log(msg)
+                    continue
+                self.__known_attachment_servers[path] = server
 
     async def _handle_user_post(self, scrape_item: ScrapeItem, post: UserPost):
         user_name = self._user_names[post.user]
@@ -381,7 +375,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     _handle_discord_post_task = auto_task_id(_handle_discord_post)
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
-        """Gets links out of content in post ans sends them to a new crawler."""
+        """Gets links out of content in post and sends them to a new crawler."""
         if not post.content:
             return
 
@@ -447,7 +441,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if server := self.__known_discord_servers.get(server_id):
                 return server
 
-            api_url_server_profile = self.API_ENTRYPOINT / "discord" / "user" / server_id / "profile"
+            api_url_server_profile = self.API_ENTRYPOINT / "discord/user" / server_id / "profile"
             async with self.request_limiter:
                 server_profile_json: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url_server_profile)
 
@@ -471,6 +465,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             # From profile
             elif isinstance(json_resp, list):
                 posts: list[dict[str, Any]] = json_resp
+
             else:
                 raise ScrapeError(422)
 
@@ -540,3 +535,10 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
         self._user_names[full_post.user] = post.user_name
         await self._handle_user_post(scrape_item, full_post)
+
+
+def _thumbnail_to_src(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+    url = remove_parts(og_url, "thumbnails", "thumbnail").with_query(None)
+    if f := og_url.query.get("f"):
+        return url.with_query(f=f)
+    return url
