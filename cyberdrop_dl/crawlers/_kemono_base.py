@@ -201,7 +201,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
         self.register_cache_filter(self.PRIMARY_URL, check_kemono_page)
         if getattr(self, "API_ENTRYPOINT", None):
-            await self.__get_usernames(self.API_ENTRYPOINT / "creators")
+            await self._get_usernames(self.API_ENTRYPOINT / "creators")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -421,10 +421,10 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             return api_url.update_query(o=offset, q=query)
         return api_url.update_query(o=offset)
 
-    async def __get_usernames(self, api_url: AbsoluteHttpURL) -> None:
+    async def _get_usernames(self, api_url: AbsoluteHttpURL) -> None:
         try:
             json_resp: list[dict[str, Any]] = await self.__api_request(api_url)
-            self._user_names = {User(u["service"], u["id"]): u["name"] for u in json_resp}
+            self._user_names = {User(u["service"], u.get("user_id") or u["id"]): u["name"] for u in json_resp}
         except Exception:
             pass
 
@@ -495,7 +495,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _POST_SELECTOR):
                 n_posts += 1
-                await self.post_w_no_api(new_scrape_item)
+                self.create_task(self.post_w_no_api_task(new_scrape_item))
+                scrape_item.add_children()
 
             if n_posts < _MAX_OFFSET_PER_CALL:
                 break
@@ -525,8 +526,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             soup_attachments=files,
         )
 
-        self._user_names[full_post.user] = post.user_name
+        user = full_post.user
+        if user not in self._user_names:
+            self._user_names[user] = post.user_name
         await self._handle_user_post(scrape_item, full_post)
+
+    post_w_no_api_task = auto_task_id(post_w_no_api)
 
     async def __api_request(self, url: AbsoluteHttpURL) -> Any:
         """Get JSON from the API, with a custom Accept header."""
