@@ -39,4 +39,18 @@ TEST_CASES = [
             },
         ],
     ),
+    (
+        "https://nekohouse.su/fanbox/user/92778036",
+        [
+            {
+                "url": "https://nekohouse.su/data/01/44/014495e8f29a8a31ac008ff0038392f738a5237eff36c06a29b35f60d9ef470e.png",
+                "filename": "014495e8f29a8a31ac008ff0038392f738a5237eff36c06a29b35f60d9ef470e.png",
+                "referer": "https://nekohouse.su/fanbox/user/92778036/post/9570757",
+                "download_folder": r"re:redkingtaraba \(Nekohouse\)",
+                "album_id": "92778036",
+                "datetime": 1742473273,
+            },
+        ],
+        549,
+    ),
 ]
