@@ -487,9 +487,14 @@ def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_t
 
 
 def match_url_to_crawler(existing_crawlers: dict[str, Crawler], url: AbsoluteHttpURL) -> Crawler | None:
+    # match exact domain
+    if crawler := existing_crawlers.get(url.host):
+        return crawler
+
     # get most restrictive domain if multiple domain matches
     try:
         domain = max((domain for domain in existing_crawlers if domain in url.host), key=len)
-        return existing_crawlers[domain]
+        existing_crawlers[url.host] = crawler = existing_crawlers[domain]
+        return crawler
     except (ValueError, TypeError):
         return
