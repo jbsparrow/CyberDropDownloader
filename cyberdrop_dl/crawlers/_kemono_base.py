@@ -29,10 +29,10 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
-MAX_OFFSET_PER_CALL = 50
-DISCORD_CHANNEL_PAGE_SIZE = 150
-LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
-POST_SELECTOR = "article.post-card a"
+_MAX_OFFSET_PER_CALL = 50
+_DISCORD_CHANNEL_PAGE_SIZE = 150
+_POST_SELECTOR = "article.post-card a"
+_find_http_urls = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))").finditer
 
 
 class PostSelectors:
@@ -289,7 +289,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     async def discord_channel(self, scrape_item: ScrapeItem, channel_id: str) -> None:
         scrape_item.setup_as_profile("")
         api_url_template = self.__make_api_url_w_offset(f"discord/channel/{channel_id}", scrape_item.url)
-        async for json_response_list in self.__api_pager(api_url_template, step_size=DISCORD_CHANNEL_PAGE_SIZE):
+        async for json_response_list in self.__api_pager(api_url_template, step_size=_DISCORD_CHANNEL_PAGE_SIZE):
             if not isinstance(json_response_list, list):
                 error_msg = (
                     f"[{self.NAME}] Invalid API response for Discord channel '{channel_id}' posts (URL template: {api_url_template}). "
@@ -316,7 +316,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 await self._handle_discord_post(new_scrape_item_for_post, post)
                 scrape_item.add_children()
 
-            if num_posts_in_page < DISCORD_CHANNEL_PAGE_SIZE:
+            if num_posts_in_page < _DISCORD_CHANNEL_PAGE_SIZE:
                 break
 
     @fallback_if_no_api
@@ -416,16 +416,18 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             return
 
         def gen_yarl_urls() -> Generator[AbsoluteHttpURL]:
-            for match in re.finditer(LINK_REGEX, post.content):
-                link = match.group().replace(".md.", ".")
-                try:
-                    url = self.parse_url(link)
-                    yield url
-                except Exception:
-                    pass
+            seen: set[str] = set()
+            for match in _find_http_urls(post.content):
+                if (link := match.group().replace(".md.", ".")) not in seen:
+                    seen.add(link)
+                    try:
+                        url = self.parse_url(link)
+                        yield url
+                    except Exception:
+                        pass
 
         for link in gen_yarl_urls():
-            if not link.host or self.DOMAIN in link.host:
+            if self.DOMAIN in link.host:
                 continue
             new_scrape_item = scrape_item.create_child(link)
             self.handle_external_links(new_scrape_item)
@@ -509,12 +511,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 await self._handle_user_post(new_scrape_item, post)
                 scrape_item.add_children()
 
-            if n_posts < MAX_OFFSET_PER_CALL:
+            if n_posts < _MAX_OFFSET_PER_CALL:
                 break
 
     async def __api_pager(self, url: AbsoluteHttpURL, step_size: int | None = None) -> AsyncGenerator[Any, None]:
         """Yields JSON responses from API calls, with configurable increments."""
-        current_step_size = step_size if step_size is not None else MAX_OFFSET_PER_CALL
+        current_step_size = step_size if step_size is not None else _MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
         for current_offset in itertools.count(init_offset, current_step_size):
             api_url = url.update_query(o=current_offset)
@@ -538,20 +540,20 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         api_url = self.PRIMARY_URL / path
         scrape_item.setup_as_profile("")
         init_offset = int(scrape_item.url.query.get("o") or 0)
-        for offset in itertools.count(init_offset, MAX_OFFSET_PER_CALL):
+        for offset in itertools.count(init_offset, _MAX_OFFSET_PER_CALL):
             n_posts = 0
             api_url = api_url.with_query(o=offset)
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, api_url)
 
-            for post in soup.select(POST_SELECTOR):
+            for post in soup.select(_POST_SELECTOR):
                 n_posts += 1
                 link = self.parse_url(css.get_attr(post, "href"))
                 new_scrape_item = scrape_item.create_child(link)
                 await self.post_w_no_api(new_scrape_item)
                 scrape_item.add_children()
 
-            if n_posts < MAX_OFFSET_PER_CALL:
+            if n_posts < _MAX_OFFSET_PER_CALL:
                 break
 
     @error_handling_wrapper
