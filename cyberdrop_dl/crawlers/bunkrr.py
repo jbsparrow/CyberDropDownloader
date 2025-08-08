@@ -58,7 +58,7 @@ CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
 CDN_POSSIBILITIES = re.compile(r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
 
 # URLs
-DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://get.bunkrr.su/api/_001_v2")
+DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://apidl.bunkr.ru/api/_001_v2")
 STREAMING_API_ENTRYPOINT = AbsoluteHttpURL("https://bunkr.site/api/vs")
 PRIMARY_URL = AbsoluteHttpURL("https://bunkr.site")
 
