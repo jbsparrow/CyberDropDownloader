@@ -4,13 +4,10 @@ import dataclasses
 import itertools
 import json
 from functools import partial
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
-
-from pydantic import Field, PlainValidator
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.models import AliasModel
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
@@ -24,32 +21,27 @@ ALLOW_HLS = False
 ALLOW_AV1 = False
 
 
-class Selectors:
-    JS_VIDEO_INFO = "script#initials-script"
+class Selector:
+    JS_WINDOW_INITIALS = "script#initials-script"
     VIDEO = "a.video-thumb__image-container"
     GALLERY = "a.gallery-thumb__link"
     NEXT_PAGE = "a[data-page='next']"
 
 
-_SELECTORS = Selectors()
-
-
 _parse_url = partial(parse_url, relative_to=PRIMARY_URL)
-
-HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(_parse_url)]
 
 
 class XhamsterCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Video": "/videos/<video_title>",
+        "Video": "/videos/<title>",
         "User": "/users/<user_name>",
-        "Creator": "/creatos/<creator_name>",
-        "Gallery": "/photos/gallery/<gallery_name>",
+        "Creator": "/creators/<creator_name>",
+        "Gallery": "/photos/gallery/<gallery_name_or_id>",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
-    DOMAIN: ClassVar[str] = "xhamster"
-    FOLDER_DOMAIN: ClassVar[str] = "xHamster"
+    PRIMARY_URL = PRIMARY_URL
+    NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
+    DOMAIN = "xhamster"
+    FOLDER_DOMAIN = "xHamster"
 
     def __post_init__(self) -> None:
         self._seen_hosts: set[str] = set()
@@ -63,14 +55,21 @@ class XhamsterCrawler(Crawler):
         match scrape_item.url.parts[1:]:
             case ["photos", "gallery", _]:
                 return await self.gallery(scrape_item)
-            case ["movies" | "videos", _]:
+            case ["videos", _]:
                 return await self.video(scrape_item)
             case ["creators" | "users", _]:
                 return await self.profile(scrape_item)
-            case ["gallery"]:
-                return await self.gallery(scrape_item)
             case _:
                 raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        url = super().transform_url(url)
+        match url.parts[1:]:
+            case ["photos", "gallery", name, *rest] if rest:
+                return url.origin() / "photos/gallery" / name
+            case _:
+                return url
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -86,11 +85,11 @@ class XhamsterCrawler(Crawler):
 
         if "videos" in paths_to_scrape:
             videos_url = base_url / last_part
-            await self.process_children(scrape_item, videos_url, _SELECTORS.VIDEO, last_part)
+            await self.process_children(scrape_item, videos_url, Selector.VIDEO, last_part)
 
         if is_user and "photos" in paths_to_scrape:
             gallerys_url = base_url / "photos"
-            await self.process_children(scrape_item, gallerys_url, _SELECTORS.GALLERY, "galleries")
+            await self.process_children(scrape_item, gallerys_url, Selector.GALLERY, "galleries")
 
     @error_handling_wrapper
     async def process_children(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL, selector: str, name: str) -> None:
@@ -100,21 +99,42 @@ class XhamsterCrawler(Crawler):
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
-        json_info = await self._get_window_initials(scrape_item.url, "photosGalleryModel", "galleryModel")
-        gallery = Gallery(**json_info)
-        title = f"{gallery.title} [gallery]"
-        scrape_item.setup_as_album(title, album_id=gallery.id)
-        scrape_item.possible_datetime = gallery.created
+        initials = await self._get_window_initials(scrape_item.url)
+        page_details: dict[str, Any] = initials["galleryPage"]
+        gallery: dict[str, Any] = page_details["galleryModel"]
+        gallery_id = str(gallery["id"])
+        title = self.create_title(f"{gallery['title']} [gallery]", gallery_id)
+        scrape_item.setup_as_album(title, album_id=gallery_id)
+        scrape_item.possible_datetime = gallery["created"]
 
-        padding = max(3, len(str(gallery.quantity)))
-        for index, image in enumerate(gallery.photos, 1):
-            filename, ext = self.get_filename_and_ext(image.url.name)
-            # TODO: Adding an index prefix should be handled by `create_custom_filename`
-            custom_filename = f"{str(index).zfill(padding)} - {filename.removesuffix(ext)}"
-            custom_filename = self.create_custom_filename(custom_filename, ext, file_id=image.id)
-            new_scrape_item = scrape_item.create_child(image.page_url)
-            await self.handle_file(image.url, new_scrape_item, filename, ext, custom_filename=custom_filename)
-            scrape_item.add_children()
+        results = await self.get_album_results(gallery_id)
+        n_pages: int = page_details["paginationProps"]["lastPageNumber"]
+        index = 1
+        images: list[dict[str, Any]] = initials["photosGalleryModel"]["photos"]
+
+        for next_page in itertools.count(2):
+            for img in images:
+                img["index"] = index = index + 1
+                self._handle_img(scrape_item, img, results)
+
+            if next_page > n_pages:
+                break
+
+            next_page_url = scrape_item.url / str(next_page)
+            initials = await self._get_window_initials(next_page_url)
+            images = initials["photosGalleryModel"]["photos"]
+
+    def _handle_img(self, scrape_item: ScrapeItem, img: dict[str, Any], results: dict[str, int]):
+        src, page_url = self.parse_url(img["imageURL"]), self.parse_url(img["pageURL"])
+        if self.check_album_results(src, results):
+            return
+
+        _, ext = self.get_filename_and_ext(src.name)
+        stem = f"{str(img['index']).zfill(3)} - {src.name.removesuffix(ext)}"
+        filename = self.create_custom_filename(stem, ext, file_id=img["id"])
+        new_scrape_item = scrape_item.create_child(page_url)
+        self.create_task(self.handle_file(src, new_scrape_item, src.name, ext, custom_filename=filename))
+        scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -122,7 +142,6 @@ class XhamsterCrawler(Crawler):
             return
 
         initials = await self._get_window_initials(scrape_item.url)
-
         video = _parse_video(initials)
         scrape_item.possible_datetime = video.created
         custom_filename = self.create_custom_filename(
@@ -135,35 +154,19 @@ class XhamsterCrawler(Crawler):
         await self.handle_file(
             video.url,
             scrape_item,
-            filename=f"{video.id}.mp4",
+            filename=video.id + ".mp4",
             custom_filename=custom_filename,
             debrid_link=video.best_mp4.url,
         )
 
-    async def _get_window_initials(self, url: AbsoluteHttpURL, *model_name_choices: str) -> dict[str, Any]:
+    async def _get_window_initials(self, url: AbsoluteHttpURL) -> dict[str, Any]:
         self._disable_title_auto_translations(url)
         async with self.request_limiter:
             soup = await self.client.get_soup(self.DOMAIN, url)
 
-        js_script = css.select_one(soup, _SELECTORS.JS_VIDEO_INFO)
+        js_script = css.select_one(soup, Selector.JS_WINDOW_INITIALS)
         json_text = get_text_between(str(js_script), "window.initials=", ";</script>")
         return json.loads(json_text)
-
-
-class XHamsterItem(AliasModel):
-    id: str = Field(alias="idHashSlug")
-    page_url: HttpURL = Field(alias="pageURL")
-    created: int = 0
-
-
-class Image(XHamsterItem):
-    url: HttpURL = Field(alias="imageURL")
-
-
-class Gallery(XHamsterItem):
-    title: str
-    photos: list[Image]
-    quantity: int
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -205,8 +208,8 @@ def _parse_video(initials: dict[str, Any]):
 
 
 class Format(NamedTuple):
-    codec: str  # av1 > h264
     resolution: int
+    codec: str  #  h264 > av1
     url: AbsoluteHttpURL
 
 
@@ -227,7 +230,7 @@ def _parse_http_sources(initials: dict[str, Any]) -> Iterable[Format]:
                 continue
 
             seen_urls.add(url)
-            yield Format(codec, int(quality.removesuffix("p")), url)
+            yield Format(int(quality.removesuffix("p")), codec, url)
 
 
 def _parse_xplayer_sources(initials: dict[str, Any]) -> Iterable[Format]:
@@ -237,7 +240,7 @@ def _parse_xplayer_sources(initials: dict[str, Any]) -> Iterable[Format]:
 
     seen_urls: set[AbsoluteHttpURL] = set()
 
-    def parse_format_dict(format_dict: dict[str, str], codec: str):
+    def parse_format(format_dict: dict[str, str], codec: str):
         for key in ("url", "fallback"):
             url = format_dict.get(key)
             if not url:
@@ -254,13 +257,13 @@ def _parse_xplayer_sources(initials: dict[str, Any]) -> Iterable[Format]:
                 quality: str = format_dict.get("quality") or format_dict["label"]
                 resolution = int(quality.removesuffix("p"))
 
-            yield Format(codec, resolution, url)
+            yield Format(resolution, codec, url)
 
-    hls_sources: dict[str, dict[str, str]] = xplayer_sources.get("hls") or {}
+    hls_sources: dict[str, dict[str, str]] = xplayer_sources.get("hls", {})
     for codec, format_dict in hls_sources.items():
-        yield from parse_format_dict(format_dict, codec)
+        yield from parse_format(format_dict, codec)
 
-    standard_sources: dict[str, list[dict[str, Any]]] = xplayer_sources.get("standard") or {}
+    standard_sources: dict[str, list[dict[str, Any]]] = xplayer_sources.get("standard", {})
     for codec, formats_list in standard_sources.items():
         for format_dict in formats_list:
-            yield from parse_format_dict(format_dict, codec)
+            yield from parse_format(format_dict, codec)

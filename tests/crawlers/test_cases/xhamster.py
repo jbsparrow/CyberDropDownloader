@@ -13,4 +13,34 @@ TEST_CASES = [
             }
         ],
     ),
+    (
+        "https://ge.xhamster.com/photos/gallery/15860946/511409507",
+        [
+            {
+                "url": "https://ic-ph-nss.xhcdn.com/a/M2JlNDhlZTJkNjk0NjY1ZGMyMWMwY2Q2ZTU3NGNlNjQ/webp/000/511/409/501_1000.jpg",
+                "filename": "010 - 501_1000 [511409501].jpg",
+                "original_filename": "501_1000.jpg",
+                "referer": "https://ge.xhamster.com/photos/gallery/15860946/511409501",
+                "download_folder": r"re:Take me to the carwash at DigitalDesire \[gallery\] \(xHamster\)",
+                "album_id": "15860946",
+                "datetime": 1643783409,
+            }
+        ],
+        19,
+    ),
+    (
+        "https://ge.xhamster.com/photos/gallery/15860946",
+        [
+            {
+                "url": "https://ic-ph-nss.xhcdn.com/a/M2JlNDhlZTJkNjk0NjY1ZGMyMWMwY2Q2ZTU3NGNlNjQ/webp/000/511/409/501_1000.jpg",
+                "filename": "010 - 501_1000 [511409501].jpg",
+                "original_filename": "501_1000.jpg",
+                "referer": "https://ge.xhamster.com/photos/gallery/15860946/511409501",
+                "download_folder": r"re:Take me to the carwash at DigitalDesire \[gallery\] \(xHamster\)",
+                "album_id": "15860946",
+                "datetime": 1643783409,
+            }
+        ],
+        19,
+    ),
 ]
