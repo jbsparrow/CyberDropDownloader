@@ -22,6 +22,34 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.4.0] - 2025-08-15
+
+### Added
+
+- xvideos support
+- odnoklassniki (ok.ru) support
+
+### Changed
+
+- Handle subalbum URLs as normal albums (chevereto)
+- Read cookie files asynchronously
+- Parse full spec cookies, including expire values
+- Downloading videos no longer requires an account (xxxbunkrr)
+- Subfolders created from the same site will no longer include the folder domain
+- Update cdns (bunkr)
+
+### Removed
+
+- PHPSESSID session auth option (xxxbunkrr)
+
+### Fixed
+
+- Resolution parsing for videos (ashemaletube)
+- Some videos missing when downloading from a playlist (xxxbunkrr)
+- Playlist pagination (xxxbunkrr)
+- `--ui` options not working
+
+
 ## [7.3.1] - 2025-08-02
 
 ### Changed
