@@ -34,6 +34,7 @@ from .files_vc import FilesVcCrawler
 from .flugel_anime import FlugelAnimeCrawler
 from .fourchan import FourChanCrawler
 from .generic import GenericCrawler
+from .girlsreleased import GirlsReleasedCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
 from .hitomi_la import HitomiLaCrawler
