@@ -84,7 +84,7 @@ class ScrapeMapper:
 
     async def __aenter__(self) -> Self:
         self.manager.scrape_mapper = self
-        self.manager.client_manager.load_cookie_files()
+        await self.manager.client_manager.load_cookie_files()
         await self.manager.client_manager.scraper_session.__aenter__()
         self.manager.task_group = asyncio.TaskGroup()
         await self.manager.task_group.__aenter__()
@@ -487,9 +487,14 @@ def disable_crawlers_by_config(existing_crawlers: dict[str, Crawler], crawlers_t
 
 
 def match_url_to_crawler(existing_crawlers: dict[str, Crawler], url: AbsoluteHttpURL) -> Crawler | None:
+    # match exact domain
+    if crawler := existing_crawlers.get(url.host):
+        return crawler
+
     # get most restrictive domain if multiple domain matches
     try:
         domain = max((domain for domain in existing_crawlers if domain in url.host), key=len)
-        return existing_crawlers[domain]
+        existing_crawlers[url.host] = crawler = existing_crawlers[domain]
+        return crawler
     except (ValueError, TypeError):
         return
