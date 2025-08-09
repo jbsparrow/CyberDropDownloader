@@ -49,6 +49,7 @@ from .imx_to import ImxToCrawler
 from .incestflix import IncestflixCrawler
 from .influencer_bitches import InfluencerBitchesCrawler
 from .invision import INVISION_CRAWLERS
+from .iwara import IwaraCrawler
 from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
 from .leakedzone import LeakedZoneCrawler
