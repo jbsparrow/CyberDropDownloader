@@ -9,7 +9,6 @@ from rich.live import Live
 
 from cyberdrop_dl import constants
 from cyberdrop_dl.utils.args import is_terminal_in_portrait
-from cyberdrop_dl.utils.logger import console
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -25,7 +24,7 @@ class LiveManager:
         self.ui_setting = self.manager.parsed_args.cli_only_args.ui
         self.fullscreen = f = self.manager.parsed_args.cli_only_args.fullscreen_ui
         self.refresh_rate = rate = self.manager.config_manager.global_settings_data.ui_options.refresh_rate
-        self.live = Live(refresh_per_second=rate, console=console, transient=True, screen=f, auto_refresh=True)
+        self.live = Live(refresh_per_second=rate, transient=True, screen=f, auto_refresh=True)
         self.current_layout: str
 
     @contextmanager
@@ -61,13 +60,17 @@ class LiveManager:
     def live_context_manager(self, layout: RenderableType | None, stop: bool = False) -> Generator[Live | None]:
         stop_event = asyncio.Event()
         orientation_task = None
+        og_console = constants.console_handler.console
         try:
+            constants.console_handler.console = self.live.console
             self.live.start()
-            if not (10 <= constants.CONSOLE_LEVEL <= 50) and layout:
+            if layout:
                 self.live.update(layout, refresh=True)
-                orientation_task = asyncio.create_task(self.watch_orientation(stop_event))
+                if self.current_layout in ("vertical_layout", "horizontal_layout"):
+                    orientation_task = asyncio.create_task(self.watch_orientation(stop_event))
             yield self.live
         finally:
+            constants.console_handler.console = og_console
             stop_event.set()
             if orientation_task:
                 orientation_task.cancel()
