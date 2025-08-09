@@ -18,12 +18,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPa
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
 from cyberdrop_dl.utils import css, open_graph
-from cyberdrop_dl.utils.utilities import (
-    error_handling_wrapper,
-    get_text_between,
-    parse_url,
-    with_suffix_encoded,
-)
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, with_suffix_encoded
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
@@ -54,6 +49,7 @@ BASE_CDNS = [
     "taquito",
     "wiener",
     "wings",
+    "maple",
     r"mlk-bk\.cdn\.gigachad-cdn",
 ]
 EXTENDED_CDNS = [f"cdn-{cdn}" for cdn in BASE_CDNS]
@@ -62,7 +58,7 @@ CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
 CDN_POSSIBILITIES = re.compile(r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
 
 # URLs
-DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://get.bunkrr.su/api/_001")
+DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://apidl.bunkr.ru/api/_001_v2")
 STREAMING_API_ENTRYPOINT = AbsoluteHttpURL("https://bunkr.site/api/vs")
 PRIMARY_URL = AbsoluteHttpURL("https://bunkr.site")
 
@@ -97,13 +93,13 @@ class AlbumItem:
     date: str
     path_qs: str
 
-    @classmethod
-    def from_tag(cls, tag: Tag) -> AlbumItem:
+    @staticmethod
+    def from_tag(tag: Tag) -> AlbumItem:
         name = css.select_one_get_text(tag, _SELECTORS.ITEM_NAME)
         thumbnail: str = css.select_one_get_attr(tag, _SELECTORS.THUMBNAIL, "src")
         date_str = css.select_one_get_text(tag, _SELECTORS.ITEM_DATE)
         path_qs: str = css.select_one_get_attr(tag, "a", "href")
-        return cls(name, thumbnail, date_str, path_qs)
+        return AlbumItem(name, thumbnail, date_str, path_qs)
 
     @property
     def src(self) -> AbsoluteHttpURL:
