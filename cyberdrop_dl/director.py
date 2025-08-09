@@ -340,6 +340,8 @@ class Director:
         if os.name == "nt":
             asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
         self.loop = asyncio.new_event_loop()
+        if sys.version_info > (3, 12):
+            self.loop.set_task_factory(asyncio.eager_task_factory)
         asyncio.set_event_loop(self.loop)
         self.manager = _setup_manager(args)
 
