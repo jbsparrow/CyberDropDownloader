@@ -3,8 +3,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -40,9 +38,6 @@ class VideoProvider:
 
 
 class Selector:
-    VIDEO_DELETED = "a:contains('видео') div.empty"
-    UNAUTHORIZED = "div:contains('Access to this video is restricted')"
-    GEO_BLOCKED = "div:contains('This video is not available in your region')"
     CHANNEL_NAME = ".album-info_name"
     CHANNEL_HASH = "script:contains('gwtHash:')"
 
@@ -62,9 +57,6 @@ class OdnoklassnikiCrawler(Crawler):
     PRIMARY_URL = AbsoluteHttpURL("https://ok.ru")
     DOMAIN = "odnoklassniki"
     FOLDER_DOMAIN = "ok.ru"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 10)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -142,6 +134,9 @@ class OdnoklassnikiCrawler(Crawler):
         if (provider := metadata["provider"]) != VideoProvider.OK_RU:
             raise ScrapeError(422, f"Unsupported provider: {provider}")
 
+        if metadata["movie"].get("is_live"):
+            raise ScrapeError(422, "Livestreams are not supported")
+
         resolution, src = _get_best_src(metadata)
         cdn_url = self.parse_url(src)
         # downloads may fail if we have cdn cookies
@@ -158,20 +153,26 @@ class OdnoklassnikiCrawler(Crawler):
 def _get_best_src(metadata: dict[str, Any]) -> tuple[int, str]:
     def parse():
         for video in metadata["videos"]:
-            resolution = {"full": 1080, "hd": 720, "sd": 480, "low": 360, "lowest": 240, "mobile": 144}.get(
-                video["name"], 0
-            )
-            yield resolution, video["url"]
+            if not video["disallowed"]:
+                resolution = {
+                    "ultra": 2160,
+                    "quad": 1440,
+                    "full": 1080,
+                    "hd": 720,
+                    "sd": 480,
+                    "low": 360,
+                    "lowest": 240,
+                    "mobile": 144,
+                }[video["name"]]
+                yield resolution, video["url"]
 
     return max(parse())
 
 
 def _check_video_is_available(soup: BeautifulSoup) -> None:
-    if error := soup.select_one(Selector.VIDEO_DELETED):
-        raise ScrapeError(404, css.get_text(error))
-
-    if soup.select_one(Selector.UNAUTHORIZED):
+    soup_text = soup.text
+    if "Access to this video is restricted" in soup_text:
         raise ScrapeError(503)
 
-    if soup.select_one(Selector.GEO_BLOCKED):
+    if "This video is not available in your region" in soup_text:
         raise ScrapeError(403)
