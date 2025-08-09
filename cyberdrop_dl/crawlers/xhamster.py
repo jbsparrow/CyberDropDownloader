@@ -6,6 +6,8 @@ import json
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
+from aiolimiter import AsyncLimiter
+
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
@@ -16,9 +18,9 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-PRIMARY_URL = AbsoluteHttpURL("https://xhamster.com/")
-ALLOW_HLS = False
-ALLOW_AV1 = False
+_PRIMARY_URL = AbsoluteHttpURL("https://xhamster.com/")
+_ALLOW_AV1 = False
+_ALLOW_HLS = False
 
 
 class Selector:
@@ -28,22 +30,30 @@ class Selector:
     NEXT_PAGE = "a[data-page='next']"
 
 
-_parse_url = partial(parse_url, relative_to=PRIMARY_URL)
+_parse_url = partial(parse_url, relative_to=_PRIMARY_URL)
 
 
 class XhamsterCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Video": "/videos/<title>",
-        "User": "/users/<user_name>",
+        "User": (
+            "/users/<user_name>",
+            "/users/profiles/<user_name>",
+        ),
+        "User Videos": "/users/<user_name>/videos",
+        "User Galleries": "/users/<user_name>/photos",
         "Creator": "/creators/<creator_name>",
+        "Creator Videos": "/creators/<creator_name>/exclusive",
+        "Creator Galleries": "/creators/<creator_name>/photos",
         "Gallery": "/photos/gallery/<gallery_name_or_id>",
     }
-    PRIMARY_URL = PRIMARY_URL
+    PRIMARY_URL = _PRIMARY_URL
     NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
     DOMAIN = "xhamster"
     FOLDER_DOMAIN = "xHamster"
 
     def __post_init__(self) -> None:
+        self.request_limiter = AsyncLimiter(4, 1)
         self._seen_hosts: set[str] = set()
 
     def _disable_title_auto_translations(self, url: AbsoluteHttpURL) -> None:
@@ -57,8 +67,18 @@ class XhamsterCrawler(Crawler):
                 return await self.gallery(scrape_item)
             case ["videos", _]:
                 return await self.video(scrape_item)
-            case ["creators" | "users", _]:
-                return await self.profile(scrape_item)
+            case ["users" | "creators" as type_, _, *rest]:
+                match rest:
+                    case []:
+                        return await self.profile(scrape_item)
+                    case ["photos"]:
+                        return await self.profile(scrape_item, only_photos=True)
+                    case ["videos"] if type_ == "users":
+                        return await self.profile(scrape_item, only_videos=True)
+                    case ["exclusive"] if type_ == "creators":
+                        return await self.profile(scrape_item, only_videos=True)
+                    case _:
+                        raise ValueError
             case _:
                 raise ValueError
 
@@ -68,34 +88,52 @@ class XhamsterCrawler(Crawler):
         match url.parts[1:]:
             case ["photos", "gallery", name, *rest] if rest:
                 return url.origin() / "photos/gallery" / name
+            case ["users", "profiles", name]:
+                return url.origin() / "users" / name
             case _:
                 return url
 
     @error_handling_wrapper
-    async def profile(self, scrape_item: ScrapeItem) -> None:
-        profile_type, username = scrape_item.url.parts[1:3]
-        title = self.create_title(f"{username} [{profile_type.removesuffix('s')}]")
+    async def profile(self, scrape_item: ScrapeItem, only_photos: bool = False, only_videos: bool = False) -> None:
+        url_type, username = scrape_item.url.parts[1:3]
+        base_url = scrape_item.url.origin() / url_type / username
+        initials = await self._get_window_initials(base_url)
+        is_creator_url = url_type == "creators"
+        info = initials["infoComponent"]["displayUserModel"] if is_creator_url else initials["displayUserModel"]
+
+        # every creator is actually an user
+        # 'pageTitle' has the creator's name (for a creator's URL)
+        # 'name' and 'displayName' are the actual user's name
+        # they are different but we will use the user name in both cases
+        name: str = info.get("displayName") or info["name"]
+        title = self.create_title(f"{name} [user]")
         scrape_item.setup_as_profile(title)
-        is_user = "users" in scrape_item.url.parts
-        last_part = "videos" if is_user else "exclusive"
-        base_url = PRIMARY_URL / profile_type / username
 
-        all_paths = ("videos", "photos")
-        paths_to_scrape = next(((p,) for p in all_paths if p in scrape_item.url.parts), all_paths)
+        if is_creator_url:
+            user_url = self.parse_url(info["pageURL"])
+            has_videos = bool(initials["infoComponent"].get("pornstarTop", {}).get("videoCount", 0))
+            has_galleries = bool(initials.get("galleriesComponent", {}).get("galleriesTotal", 0))
 
-        if "videos" in paths_to_scrape:
-            videos_url = base_url / last_part
-            await self.process_children(scrape_item, videos_url, Selector.VIDEO, last_part)
+        else:
+            user_url = base_url
+            has_videos = bool(initials["counters"]["videos"])
+            has_galleries = bool(initials["counters"]["galleries"])
 
-        if is_user and "photos" in paths_to_scrape:
-            gallerys_url = base_url / "photos"
-            await self.process_children(scrape_item, gallerys_url, Selector.GALLERY, "galleries")
+        if has_videos and not only_photos:
+            videos_url = user_url / "videos"
+            await self._iter_profile_pages(scrape_item, videos_url, Selector.VIDEO, "videos")
+
+        if has_galleries and not only_videos:
+            gallerys_url = user_url / "photos"
+            await self._iter_profile_pages(scrape_item, gallerys_url, Selector.GALLERY, "galleries")
 
     @error_handling_wrapper
-    async def process_children(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL, selector: str, name: str) -> None:
+    async def _iter_profile_pages(
+        self, scrape_item: ScrapeItem, url: AbsoluteHttpURL, selector: str, name: str
+    ) -> None:
         async for soup in self.web_pager(url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
@@ -109,7 +147,7 @@ class XhamsterCrawler(Crawler):
 
         results = await self.get_album_results(gallery_id)
         n_pages: int = page_details["paginationProps"]["lastPageNumber"]
-        index = 1
+        index = 0
         images: list[dict[str, Any]] = initials["photosGalleryModel"]["photos"]
 
         for next_page in itertools.count(2):
@@ -188,10 +226,10 @@ def _parse_video(initials: dict[str, Any]):
     sources = itertools.chain(_parse_http_sources(initials), _parse_xplayer_sources(initials))
 
     for src in sources:
-        if src.codec == "av1" and not ALLOW_AV1:
+        if src.codec == "av1" and not _ALLOW_AV1:
             continue
         if src.url.suffix == ".m3u8":
-            if not ALLOW_HLS:
+            if not _ALLOW_HLS:
                 continue
             hls_sources.append(src)
         else:
