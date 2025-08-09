@@ -51,6 +51,14 @@ class XhamsterCrawler(Crawler):
     DOMAIN: ClassVar[str] = "xhamster"
     FOLDER_DOMAIN: ClassVar[str] = "xHamster"
 
+    def __post_init__(self) -> None:
+        self._seen_hosts: set[str] = set()
+
+    def _disable_title_auto_translations(self, url: AbsoluteHttpURL) -> None:
+        if url.host not in self._seen_hosts:
+            self.update_cookies({"lang": "en", "video_titles_translation": "0"}, url.origin())
+            self._seen_hosts.add(url.host)
+
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["photos", "gallery", _]:
@@ -133,6 +141,7 @@ class XhamsterCrawler(Crawler):
         )
 
     async def _get_window_initials(self, url: AbsoluteHttpURL, *model_name_choices: str) -> dict[str, Any]:
+        self._disable_title_auto_translations(url)
         async with self.request_limiter:
             soup = await self.client.get_soup(self.DOMAIN, url)
 
