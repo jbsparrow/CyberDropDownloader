@@ -153,7 +153,10 @@ def get_json_ld(soup: Tag, /, contains: str | None = None) -> dict[str, Any]:
     if contains:
         selector += f":contains('{contains}')"
 
-    ld_json = json.loads(select_one_get_text(soup, selector))
+    ld_json = json.loads(select_one_get_text(soup, selector)) or {}
+    if isinstance(ld_json, list):
+        return ld_json[0]
+
     return ld_json
 
 

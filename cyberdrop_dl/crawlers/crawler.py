@@ -48,6 +48,7 @@ _T_co = TypeVar("_T_co", covariant=True)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
+    from http.cookies import BaseCookie
 
     from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup, Tag
@@ -96,6 +97,7 @@ class Crawler(ABC):
     NEXT_PAGE_SELECTOR: ClassVar[str] = ""
     DEFAULT_TRIM_URLS: ClassVar[bool] = True
 
+    DEFAULT_TRIM_URLS: ClassVar[bool] = True
     FOLDER_DOMAIN: ClassVar[str] = ""
     DOMAIN: ClassVar[str]
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
@@ -230,7 +232,7 @@ class Crawler(ABC):
 
         Override it to transform thumbnail URLs into full res URLs or URLs in an old unsupported format into a new one"""
         if cls.REPLACE_OLD_DOMAINS_REGEX is not None:
-            new_host = re.sub(cls.REPLACE_OLD_DOMAINS_REGEX, cls.PRIMARY_URL.host, url.host)
+            new_host = cls.REPLACE_OLD_DOMAINS_REGEX.sub(cls.PRIMARY_URL.host, url.host)
             return url.with_host(new_host)
         return url
 
@@ -685,8 +687,7 @@ class Crawler(ABC):
         only_truncate_stem: bool = True,
     ) -> str:
         calling_args = {name: value for name, value in locals().items() if value is not None and name not in ("self",)}
-        clean_name = sanitize_filename(Path(name).as_posix().replace("/", "-"))  # remove OS separators (if any)
-        stem = Path(clean_name).stem.removesuffix(".")  # remove extensions (if any)
+        stem = sanitize_filename(Path(name).as_posix().replace("/", "-"))  # remove OS separators (if any)
         extra_info: list[str] = []
 
         if _placeholder_config.include_file_id and file_id:
@@ -724,6 +725,23 @@ class Crawler(ABC):
             )
             log(msg, bug=True)
         return filename
+
+    @final
+    def get_cookies(self, partial_match_domain: bool = False) -> Iterable[tuple[str, BaseCookie[str]]]:
+        if partial_match_domain:
+            yield from self.client.client_manager.filter_cookies_by_word_in_domain(self.DOMAIN)
+        else:
+            yield str(self.PRIMARY_URL.host), self.client.client_manager.cookies.filter_cookies(self.PRIMARY_URL)
+
+    @final
+    def get_cookie_value(self, cookie_name: str, partial_match_domain: bool = False) -> str | None:
+        def get_morsels_by_name():
+            for _, cookie in self.get_cookies(partial_match_domain):
+                if morsel := cookie.get(cookie_name):
+                    yield morsel
+
+        if newest := max(get_morsels_by_name(), key=lambda x: int(x["max-age"] or 0), default=None):
+            return newest.value
 
 
 def _make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
