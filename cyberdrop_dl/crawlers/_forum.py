@@ -504,7 +504,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         if seen:
             self.log(f"[{self.FOLDER_DOMAIN}] post #{post.id} {stats = }")
         if duplicates:
-            msg = f"Found duplicate links in post {scrape_item.url}. Selectors are too generic: {duplicates}"
+            msg = f"Found duplicate links in post {scrape_item.parent}. Selectors are too generic: {duplicates}"
             self.log(msg, bug=True)
         await asyncio.gather(*tasks)
         if max_children_error is not None:

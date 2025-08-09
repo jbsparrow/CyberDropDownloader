@@ -5,7 +5,7 @@ import logging
 import queue
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any
+from typing import IO, TYPE_CHECKING
 
 from rich._log_render import LogRender
 from rich.console import Console, Group
@@ -208,10 +208,10 @@ class RedactedConsole(Console):
         return _redact_message(output)
 
 
-def process_log_msg(message: dict[str, Any] | Exception | str) -> str:
+def process_log_msg(message: object) -> object:
     if isinstance(message, dict):
         return json.dumps(message, indent=4, ensure_ascii=False)
-    return str(message)
+    return message
 
 
 def create_rich_log_msg(msg: str, level: int = 10) -> Text:
@@ -220,19 +220,17 @@ def create_rich_log_msg(msg: str, level: int = 10) -> Text:
     return rich_level + indent_string(msg)
 
 
-def log(
-    message: dict[str, Any] | Exception | str, level: int = 10, prefix: str = "", bug: bool = False, **kwargs
-) -> None:
+def log(message: object, level: int = 10, bug: bool = False, **kwargs) -> None:
     """Simple logging function."""
-    msg = prefix + process_log_msg(message)
+    msg = process_log_msg(message)
     log_debug(msg, level, **kwargs)
     if bug:
-        msg = msg.rstrip() + f". Please open a bug report at {NEW_ISSUE_URL}"
+        msg = f"{msg}. Please open a bug report at {NEW_ISSUE_URL}"
         level = 30
     logger.log(level, msg, **kwargs)
 
 
-def log_debug(message: dict[str, Any] | Exception | str, level: int = 10, **kwargs) -> None:
+def log_debug(message: object, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     if env.DEBUG_VAR:
         msg = process_log_msg(message)

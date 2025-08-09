@@ -70,8 +70,8 @@ class Dataclass(Protocol):
 
 
 def error_handling_wrapper(
-    func: Callable[Concatenate[CrawerOrDownloader, Origin, P], R | Coroutine[None, None, R]],
-) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], Coroutine[None, None, R | None]]:
+    func: Callable[Concatenate[CrawerOrDownloader, Origin, P], R | Coroutine[Any, Any, R]],
+) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], Coroutine[Any, Any, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)

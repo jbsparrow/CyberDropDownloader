@@ -75,7 +75,7 @@ class HashClient:
             )
             await self.save_hash_data(media_item, hash)
         except Exception as e:
-            log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
+            log(f"After hash processing failed: '{media_item.complete_file}' with error {e}", 40, exc_info=True)
 
     async def update_db_and_retrive_hash(
         self, file: Path | str, original_filename: str | None = None, referer: URL | None = None
@@ -123,7 +123,7 @@ class HashClient:
                     referer,
                 )
         except Exception as e:
-            log(f"Error hashing {file} : {e}", 40, exc_info=True)
+            log(f"Error hashing '{file}' : {e}", 40, exc_info=True)
         else:
             return hash
 

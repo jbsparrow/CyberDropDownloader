@@ -458,7 +458,7 @@ class DownloadClient:
                     if media_item.partial_file.stat().st_size == media_item.filesize:
                         if media_item.complete_file.exists():
                             log(
-                                f"Found conflicting complete file {media_item.complete_file} locally, iterating filename",
+                                f"Found conflicting complete file '{media_item.complete_file}' locally, iterating filename",
                                 30,
                             )
                             new_complete_filename, new_partial_file = await self.iterate_filename(
@@ -474,15 +474,15 @@ class DownloadClient:
                             proceed = False
                             media_item.partial_file.rename(media_item.complete_file)
                         log(
-                            f"Renaming found partial file {media_item.partial_file} to complete file {media_item.complete_file}"
+                            f"Renaming found partial file '{media_item.partial_file}' to complete file {media_item.complete_file}"
                         )
                 elif media_item.complete_file.exists():
                     if media_item.complete_file.stat().st_size == media_item.filesize:
-                        log(f"Found complete file {media_item.complete_file} locally, skipping download")
+                        log(f"Found complete file '{media_item.complete_file}' locally, skipping download")
                         proceed = False
                     else:
                         log(
-                            f"Found conflicting complete file {media_item.complete_file} locally, iterating filename",
+                            f"Found conflicting complete file '{media_item.complete_file}' locally, iterating filename",
                             30,
                         )
                         media_item.complete_file, media_item.partial_file = await self.iterate_filename(
