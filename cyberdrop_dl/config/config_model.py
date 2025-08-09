@@ -41,6 +41,9 @@ _SORTING_COMMON_FIELDS = {
 
 
 class DownloadOptions(BaseModel):
+    album_download_preference: constants.AlbumDownloadPreference = (
+        constants.AlbumDownloadPreference.INDIVIDUAL_FILES_ONLY
+    )
     block_download_sub_folders: bool = False
     disable_download_attempt_limit: bool = False
     disable_file_timestamps: bool = False
