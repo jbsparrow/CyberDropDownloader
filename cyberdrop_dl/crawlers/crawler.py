@@ -95,6 +95,7 @@ class Crawler(ABC):
     UPDATE_UNSUPPORTED: ClassVar[bool] = False
     SKIP_PRE_CHECK: ClassVar[bool] = False
     NEXT_PAGE_SELECTOR: ClassVar[str] = ""
+    DEFAULT_TRIM_URLS: ClassVar[bool] = True
 
     DEFAULT_TRIM_URLS: ClassVar[bool] = True
     FOLDER_DOMAIN: ClassVar[str] = ""
