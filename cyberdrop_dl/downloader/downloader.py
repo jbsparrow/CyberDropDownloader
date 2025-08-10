@@ -22,6 +22,7 @@ from cyberdrop_dl.exceptions import (
     ErrorLogMessage,
     InvalidContentTypeError,
     RestrictedFiletypeError,
+    TooManyCrawlerErrors,
 )
 from cyberdrop_dl.utils import ffmpeg
 from cyberdrop_dl.utils.logger import log
@@ -348,6 +349,11 @@ class Downloader:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def start_download(self, media_item: MediaItem) -> bool:
+        try:
+            self.client.client_manager.check_domain_errors(self.domain)
+        except TooManyCrawlerErrors:
+            return False
+
         if not media_item.is_segment:
             log(f"{self.log_prefix} starting: {media_item.url}", 20)
         lock = self._file_lock_vault.get_lock(media_item.filename)
@@ -363,6 +369,7 @@ class Downloader:
             raise DownloadError(KNOWN_BAD_URLS[url_as_str])
         try:
             await self.manager.states.RUNNING.wait()
+            self.client.client_manager.check_domain_errors(self.domain)
             media_item.current_attempt = media_item.current_attempt or 1
             if not media_item.is_segment:
                 media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
