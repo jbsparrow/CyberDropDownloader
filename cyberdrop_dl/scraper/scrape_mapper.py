@@ -50,6 +50,7 @@ class ScrapeMapper:
         self.using_input_file = False
         self.groups = set()
         self.count = 0
+        self._crawlers_disabled_at_runtime: set[str] = set()
         self.fallback_generic: GenericCrawler
         self.real_debrid: RealDebridCrawler
 
@@ -349,9 +350,13 @@ class ScrapeMapper:
 
         """
 
+        if domain in self._crawlers_disabled_at_runtime:
+            return
+
         crawler = next((crawler for crawler in self.existing_crawlers.values() if crawler.DOMAIN == domain), None)
         if crawler and not crawler.disabled:
             crawler.disabled = True
+            self._crawlers_disabled_at_runtime.add(domain)
             return crawler
 
 
