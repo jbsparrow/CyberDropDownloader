@@ -234,6 +234,7 @@ class DownloadClient:
         fallback_url_generator = gen_fallback()
         next(fallback_url_generator)  # Prime the generator, waiting for response
         await self.manager.states.RUNNING.wait()
+        fallback_count = 0
         while True:
             resp = None
             try:
@@ -243,19 +244,21 @@ class DownloadClient:
                 if resp is None:
                     raise
                 try:
-                    download_url = fallback_url_generator.send(resp)
+                    next_download_url = fallback_url_generator.send(resp)
                 except StopIteration:
                     pass
                 else:
-                    if not download_url:
+                    if not next_download_url:
                         raise
                     if media_item.debrid_link and media_item.debrid_link == download_url:
                         msg = f" with debrid URL {download_url} failed, retrying with fallback URL: "
                     elif media_item.url == download_url:
                         msg = " failed, retrying with fallback URL: "
                     else:
-                        msg = f" with fallback URL {download_url} failed, retrying with new fallback URL: "
-                    log(f"Download of {media_item.url}{msg}{download_url}", 40)
+                        fallback_count += 1
+                        msg = f" with fallback URL #{fallback_count} {download_url} failed, retrying with new fallback URL: "
+                    log(f"Download of {media_item.url}{msg}{next_download_url}", 40)
+                    download_url = next_download_url
                     continue
                 raise
 
