@@ -215,7 +215,6 @@ class ClientManager:
             yield
         except DDOSGuardError:
             _crawler_errors[domain] += 1
-            self.check_domain_errors(domain)
             raise
         else:
             # we could potencially reset the counter here
