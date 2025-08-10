@@ -7,7 +7,8 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
+    from cyberdrop_dl.utils import m3u8
 
 
 CDN_HOST = "pbs.twimg.com"
@@ -30,9 +31,25 @@ class TwimgCrawler(Crawler):
         link = url or scrape_item.url
         if "emoji" in link.parts:
             return
-        # name could be "orig", "large", "medium", "small"
-        # `orig`` is original quality but it's not always available
-        link = link.with_host(CDN_HOST).with_query(format="jpg", name="large")
-        filename = Path(link.name).with_suffix(".jpg").as_posix()
+
+        # name could be "orig", "4096x4096", "large", "medium", or "small"
+        # `orig`` is original quality but it's not always available, same as "4096x4096"
+        # "large", "medium", or "small" are always avaliable
+
+        link = link.with_host(CDN_HOST).with_query(format="png", name="orig")
+        filename = Path(link.name).with_suffix(".png").as_posix()
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(link, scrape_item, filename, ext)
+
+    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
+        formats = "png", "jpg"
+        names = "orig", "4096x4096", "large"
+        media_item.fallbacks = []
+
+        for f in formats:
+            for name in names:
+                url = media_item.url.update_query(format=f, name=name)
+                if url != media_item.url:
+                    media_item.fallbacks.append(url)
+
+        return await super().handle_media_item(media_item, m3u8)
