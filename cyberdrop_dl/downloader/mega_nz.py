@@ -834,13 +834,6 @@ class MegaDownloadClient(DownloadClient):
 
         return asyncio.to_thread(prepare)
 
-    async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
-        try:
-            return await super().download_file(manager, domain, media_item)
-        except DownloadError as e:
-            e.retry = False  # can not retry
-            raise e
-
 
 class MegaDownloader(Downloader):
     client: MegaDownloadClient
@@ -848,6 +841,10 @@ class MegaDownloader(Downloader):
     def __init__(self, manager: Manager, domain: str) -> None:
         super().__init__(manager, domain)
         self.api = MegaApi(manager)
+
+    @property
+    def max_attempts(self):
+        return 1
 
     def startup(self) -> None:
         """Starts the downloader."""
