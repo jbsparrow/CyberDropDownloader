@@ -32,10 +32,8 @@ class ToonilyCrawler(Crawler):
                         return await self.series(scrape_item)
                     case [chapter] if chapter.startswith("chapter-"):
                         return await self.chapter(scrape_item)
-                    case _:
-                        raise ValueError
-            case _:
-                raise ValueError
+
+        raise ValueError
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
@@ -60,9 +58,8 @@ class ToonilyCrawler(Crawler):
             scrape_item.add_to_parent_title(series_title)
 
         scrape_item.setup_as_album(chapter_title)
-        scrape_item.possible_datetime = self.parse_iso_date(
-            css.get_json_ld(soup, "@graph")["@graph"][0]["datePublished"],
-        )
+        iso_date = css.get_json_ld(soup)["@graph"][0]["datePublished"]
+        scrape_item.possible_datetime = self.parse_iso_date(iso_date)
 
         for _, link in self.iter_tags(soup, Selector.IMAGE, "data-src"):
             filename, ext = self.get_filename_and_ext(link.name)
