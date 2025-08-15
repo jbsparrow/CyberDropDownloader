@@ -76,4 +76,29 @@ TEST_CASES = [
         ],
         285,
     ),
+    (
+        # Password protected, no password supplied
+        "https://jpg6.su/a/alyrosez.Y2Pmn",
+        [],
+    ),
+    (
+        # Password protected, incorrect password supplied
+        "https://jpg6.su/a/alyrosez.Y2Pmn?password=1234",
+        [],
+    ),
+    (
+        # Password protected, valid password supplied
+        "https://jpg6.su/a/alyrosez.Y2Pmn?password=aly",
+        [
+            {
+                "url": "https://simp2.jpg5.su/0afcc905cd6c64e52.jpg",
+                "filename": "0afcc905cd6c64e52.jpg",
+                "referer": "https://jpg6.su/img/ahfHow",
+                "datetime": None,
+                "download_folder": r"re:alyrosez \(JPG5\)",
+                "album_id": "Y2Pmn",
+            },
+        ],
+        1065,
+    ),
 ]
