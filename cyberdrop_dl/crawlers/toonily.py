@@ -1,74 +1,67 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_PROFILE, AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
-if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
 
-
-CHAPTER_SELECTOR = "li[class*=wp-manga-chapter] a"
-IMAGE_SELECTOR = 'div[class="page-break no-gaps"] img'
-SERIES_TITLE_SELECTOR = "div.post-title > h1"
-PRIMARY_URL = AbsoluteHttpURL("https://toonily.com")
+class Selector:
+    CHAPTER = ".wp-manga-chapter a"
+    IMAGE = ".reading-content .page-break.no-gaps img"
+    SERIES_TITLE = ".post-title > h1"
+    CHAPTER_TITLE = "#chapter-heading"
 
 
 class ToonilyCrawler(Crawler):
+    # TODO: Make this a general crawler for any site that uses wordpress madara
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Chapter": "/webtoon/.../...",
-        "Webtoon": "/webtoon/...",
-        "Direct links": "",
+        "Serie": "/serie/<name>",
+        "Charpter": "/serie/<name>/chapter-<chapter-id>",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN: ClassVar[str] = "toonily"
+    PRIMARY_URL = AbsoluteHttpURL("https://toonily.com")
+    DOMAIN = "toonily"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if "chapter" in scrape_item.url.name:
-            return await self.chapter(scrape_item)
-        if any(p in scrape_item.url.parts for p in ("webtoon", "series")):
-            return await self.series(scrape_item)
-        await self.handle_direct_link(scrape_item)
+        match scrape_item.url.parts[1:]:
+            case ["serie", _, *rest]:
+                match rest:
+                    case []:
+                        return await self.series(scrape_item)
+                    case [chapter] if chapter.startswith("chapter-"):
+                        return await self.chapter(scrape_item)
+
+        raise ValueError
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        series_name = css.select_one_get_text(soup, SERIES_TITLE_SELECTOR)
-        series_title = self.create_title(series_name)
+        title_tag = css.select_one(soup, Selector.SERIES_TITLE)
+        css.decompose(title_tag, "*")
+        series_title = self.create_title(css.get_text(title_tag))
         scrape_item.setup_as_profile(series_title)
-        for _, new_scrape_item in self.iter_children(scrape_item, soup, CHAPTER_SELECTOR):
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, Selector.CHAPTER):
+            self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        series_name, chapter_title = css.select_one_get_text(soup, "title").split(" - ", 2)
+        series_name, chapter_title = css.select_one_get_text(soup, Selector.CHAPTER_TITLE).split(" - ", 1)
         if scrape_item.type != FILE_HOST_PROFILE:
             series_title = self.create_title(series_name)
             scrape_item.add_to_parent_title(series_title)
 
         scrape_item.setup_as_album(chapter_title)
+        iso_date = css.get_json_ld(soup)["@graph"][0]["datePublished"]
+        scrape_item.possible_datetime = self.parse_iso_date(iso_date)
 
-        for script in soup.select("script"):
-            if "datePublished" in (text := script.get_text()):
-                date_str = text.split('datePublished":"')[1].split("+")[0]
-                scrape_item.possible_datetime = self.parse_date(date_str)
-                break
-
-        for _, link in self.iter_tags(soup, IMAGE_SELECTOR, "data-src"):
+        for _, link in self.iter_tags(soup, Selector.IMAGE, "data-src"):
             filename, ext = self.get_filename_and_ext(link.name)
-            await self.handle_file(link, scrape_item, filename, ext)
-
-    @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
-        """Handles a direct link."""
-        scrape_item.url = scrape_item.url.with_query(None)
-        filename, ext = self.get_filename_and_ext(scrape_item.url.name)
-        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+            self.create_task(self.handle_file(link, scrape_item, filename, ext))
+            scrape_item.add_children()
