@@ -64,8 +64,7 @@ class NHentaiCrawler(Crawler):
                     if soup.select_one(Selector.LOGIN_PAGE):
                         raise LoginError("No cookies provided to download favorites")
 
-                    for span in soup.select("span"):
-                        span.decompose()
+                    css.decompose(title_tag, "span")
 
                 else:
                     title_tag = css.select_one(soup, Selector.COLLECTION_TITLE)
@@ -91,8 +90,7 @@ class NHentaiCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=gallery_id)
         scrape_item.possible_datetime = json_resp["upload_date"]
 
-        n_images: int = json_resp["num_pages"]
-        padding = max(3, len(str(n_images)))
+        padding = max(3, len(str(json_resp["num_pages"])))
         for index, link in _gen_image_urls(json_resp):
             filename = self.create_custom_filename(str(index).zfill(padding), link.suffix)
             self.create_task(self.handle_file(link, scrape_item, link.name, custom_filename=filename))
