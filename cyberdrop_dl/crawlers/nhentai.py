@@ -47,7 +47,7 @@ class NHentaiCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["favorites", "tag", "search", "parody", "group", "character", "artist" as type_, _]:
+            case ["favorites" | "tag" | "search" | "parody" | "group" | "character" | "artist" as type_, _]:
                 return await self.collection(scrape_item, type_)
             case ["g", _]:
                 return await self.gallery(scrape_item)
@@ -57,7 +57,7 @@ class NHentaiCrawler(Crawler):
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, collection_type: str) -> None:
         title: str = ""
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not title:
                 if collection_type == "favorites":
                     title_tag = css.select_one(soup, Selector.FAVORITES_TITLE)

@@ -153,7 +153,7 @@ class ScraperClient:
         method: HttpMethod = "GET",
         **request_params: Unpack[CurlRequestParams],
     ) -> CurlResponse:
-        headers: dict[str, Any] = request_params.pop("headers", {})  # type: ignore[reportAssignmentType]
+        headers: dict[str, Any] = request_params.get("headers") or {}  # type: ignore[reportAssignmentType]
         request_params["headers"] = self.client_manager._headers | headers
         response = await self._curl_session.request(method, str(url), **request_params)
         async with self.write_soup_on_error(url, response):
