@@ -215,7 +215,7 @@ def _parse_video(soup: BeautifulSoup) -> Video:
     # This may have invalid json. They do not sanitize the description field
     # See: https://github.com/jbsparrow/CyberDropDownloader/issues/1211
     return Video(
-        title=get_text_between(ld_json, 'name": "', '"'),
+        title=get_text_between(ld_json, 'name": "', '",'),
         date=get_text_between(ld_json, 'uploadDate": "', '"'),
         best_src=_get_best_src(soup),
     )
