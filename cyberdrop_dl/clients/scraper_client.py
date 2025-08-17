@@ -10,7 +10,7 @@ from functools import wraps
 from json import dumps as json_dumps
 from json import loads as json_loads
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ParamSpec, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, ParamSpec, Self, TypeVar, Unpack
 
 import aiohttp
 from aiohttp_client_cache.response import AnyResponse
@@ -29,10 +29,13 @@ if TYPE_CHECKING:
     from aiohttp_client_cache.session import CachedSession
     from curl_cffi.requests.impersonate import BrowserTypeLiteral as BrowserTarget
     from curl_cffi.requests.models import Response as CurlResponse
+    from curl_cffi.requests.session import RequestParams as CurlRequestParams
     from multidict import CIMultiDictProxy
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
     from cyberdrop_dl.managers.client_manager import ClientManager
+
+    HttpMethod = Literal["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "TRACE", "PATCH", "QUERY"]
 
 _curl_import_error = None
 try:
@@ -101,7 +104,7 @@ class ScraperClient:
         min_html_file_path_len = len(str(self._pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
         self._max_html_stem_len = 245 - min_html_file_path_len
         self._session: CachedSession
-        self._curl_session: AsyncSession
+        self._curl_session: AsyncSession[CurlResponse]
 
     def _startup(self) -> None:
         self._session = self.client_manager.new_scrape_session()
@@ -143,6 +146,26 @@ class ScraperClient:
             raise
 
     @limiter
+    async def _request_cffi(
+        self,
+        domain: str,
+        url: AbsoluteHttpURL,
+        method: HttpMethod = "GET",
+        **request_params: Unpack[CurlRequestParams],
+    ) -> CurlResponse:
+        headers: dict[str, Any] = request_params.get("headers") or {}  # type: ignore[reportAssignmentType]
+        request_params["headers"] = self.client_manager._headers | headers
+        response = await self._curl_session.request(method, str(url), **request_params)
+        async with self.write_soup_on_error(url, response):
+            await self.client_manager.check_http_status(response)
+        self.client_manager.cookies.update_cookies(self._curl_session.cookies, url)
+        return response
+
+    @copy_signature(_request_cffi)
+    async def request_json_cffi(self, *args, **kwargs) -> Any:
+        response = await self._request_cffi(*args, **kwargs)
+        return await response_to_json(response)
+
     async def _get_response_and_soup_cffi(
         self,
         domain: str,
@@ -160,18 +183,10 @@ class ScraperClient:
         :param request_params: Additional keyword arguments to pass to `curl_session.get` (e.g., `timeout`).
         """
         request_params = request_params or {}
-        headers = self.client_manager._headers | (headers or {})
-        response: CurlResponse = await self._curl_session.get(
-            str(url), impersonate=impersonate, headers=headers, **request_params
-        )
-
-        async with self.write_soup_on_error(url, response):
-            await self.client_manager.check_http_status(response)
-
+        response = await self._request_cffi(domain, url, headers=headers, impersonate=impersonate, **request_params)
         soup = await response_to_soup(response)
         if self._save_pages_html:
             await self.write_soup_to_disk(url, response, soup)
-        self.client_manager.cookies.update_cookies(self._curl_session.cookies, url)
         return response, soup
 
     @copy_signature(_get_response_and_soup_cffi)
@@ -201,11 +216,16 @@ class ScraperClient:
         :param request_params: Additional keyword arguments to pass to `curl_session.post` (e.g., `timeout`).
         """
         request_params = request_params or {}
-        headers = self.client_manager._headers | (headers or {})
-        response: CurlResponse = await self._curl_session.post(
-            str(url), data=data, json=json, impersonate=impersonate, headers=headers, **request_params
+        response = await self._request_cffi(
+            domain,
+            url,
+            method="POST",
+            data=data,
+            json=json,
+            impersonate=impersonate,
+            headers=headers,
+            **request_params,
         )
-        await self.client_manager.check_http_status(response)
         return response
 
     # ~~~~~~~~~~~~~ AIOHTTP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -418,25 +438,28 @@ class ScraperClient:
 
 
 async def response_to_soup(response: AnyResponse | CurlResponse) -> BeautifulSoup:
-    content_type: str = response.headers.get("Content-Type") or ""
-    if not any(s in content_type.lower() for s in ("html", "text")):
-        raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text")
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    if "text" in content_type or "html" in content_type:
+        if isinstance(response, AnyResponse):
+            content = await response.text()
+        else:
+            content = response.text
 
-    if isinstance(response, AnyResponse):
-        content = await response.read()  # aiohttp
-    else:
-        content = response.content  # curl response
-    return BeautifulSoup(content, "html.parser")
+        return BeautifulSoup(content, "html.parser")
+
+    raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text")
 
 
-async def response_to_json(response: AnyResponse) -> Any:
-    content_type: str = response.headers["Content-Type"].lower()
-    if "text/plain" in content_type:
-        return json_loads(await response.text())
-    elif "json" in content_type:
-        return await response.json()
-    else:
-        raise InvalidContentTypeError(message=f"Received {content_type}, was expecting JSON")
+async def response_to_json(response: AnyResponse | CurlResponse) -> Any:
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    if "text/plain" in content_type or "json" in content_type:
+        if isinstance(response, AnyResponse):
+            content = await response.text()
+        else:
+            content = response.text
+        return json_loads(content)
+
+    raise InvalidContentTypeError(message=f"Received {content_type}, was expecting JSON")
 
 
 def add_request_log_hooks(trace_configs: list[aiohttp.TraceConfig]) -> None:

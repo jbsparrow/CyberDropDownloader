@@ -141,7 +141,7 @@ class Sorter:
             bitrate = int(float(props.get("bit_rate", 0))) or None
             sample_rate = int(float(props.get("sample_rate", 0))) or None
         except (RuntimeError, CalledProcessError):
-            log(f"Unable to get audio properties of {file}")
+            log(f"Unable to get audio properties of '{file}'")
 
         if await self._process_file_move(
             file,
@@ -164,7 +164,7 @@ class Sorter:
                 width, height = image.size
                 resolution = f"{width}x{height}"
         except (PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError):  # type: ignore
-            log(f"Unable to get some image properties of {file}")
+            log(f"Unable to get some image properties of '{file}'")
 
         if await self._process_file_move(
             file,
@@ -198,7 +198,7 @@ class Sorter:
                 else None
             )
         except (RuntimeError, CalledProcessError):
-            log(f"Unable to get some video properties of {file}")
+            log(f"Unable to get some video properties of '{file}'")
 
         if fps is not None:
             fps = str(int(fps)) if fps.is_integer() else f"{fps:.2f}"

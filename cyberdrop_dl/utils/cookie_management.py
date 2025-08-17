@@ -1,18 +1,25 @@
 from __future__ import annotations
 
+import asyncio
 import os
+import time
 from functools import wraps
-from http.cookiejar import CookieJar, MozillaCookieJar
+from http.cookiejar import Cookie, CookieJar, MozillaCookieJar
+from http.cookies import SimpleCookie
 from textwrap import dedent
 from typing import TYPE_CHECKING, NamedTuple, ParamSpec, TypeVar
 
 import browser_cookie3
 
+from cyberdrop_dl.utils.logger import log
+
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import AsyncIterable, Callable
+    from pathlib import Path
 
     from cyberdrop_dl.constants import BROWSERS
     from cyberdrop_dl.managers.manager import Manager
+
 
 from cyberdrop_dl.data_structures.supported_domains import (
     SUPPORTED_FORUMS,
@@ -131,3 +138,58 @@ def extract_cookies(extractor_name: str) -> CookieJar:
             msg = f"Cookie extraction from {extractor.name.capitalize()} is not supported on Windows - {msg}"
             raise UnsupportedBrowserError(msg) from None
         raise
+
+
+async def read_netscape_files(cookie_files: list[Path]) -> AsyncIterable[tuple[str, SimpleCookie]]:
+    now = time.time()
+    domains_seen = set()
+    cookie_jars = await asyncio.gather(*(_read_netscape_file(file) for file in cookie_files))
+    for file, cookie_jar in zip(cookie_files, cookie_jars, strict=True):
+        if not cookie_jar:
+            continue
+        current_cookie_file_domains: set[str] = set()
+        expired_cookies_domains: set[str] = set()
+        for cookie in cookie_jar:
+            if not cookie.value:
+                continue
+            simplified_domain = cookie.domain.removeprefix(".")
+            if simplified_domain not in current_cookie_file_domains:
+                log(f"Found cookies for {simplified_domain} in file '{file.name}'", 20)
+                current_cookie_file_domains.add(simplified_domain)
+                if simplified_domain in domains_seen:
+                    log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
+
+            if (simplified_domain not in expired_cookies_domains) and cookie.is_expired(now):  # type: ignore
+                expired_cookies_domains.add(simplified_domain)
+                log(f"Cookies for {simplified_domain} are expired", 30)
+
+            domains_seen.add(simplified_domain)
+            simple_cookie = _make_simple_cookie(cookie, now)
+            yield cookie.domain, simple_cookie
+
+
+async def _read_netscape_file(file: Path) -> MozillaCookieJar | None:
+    def read():
+        cookie_jar = MozillaCookieJar(file)
+        try:
+            cookie_jar.load(ignore_discard=True)
+            return cookie_jar
+        except OSError as e:
+            log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
+
+    return await asyncio.to_thread(read)
+
+
+def _make_simple_cookie(cookie: Cookie, now: float) -> SimpleCookie:
+    simple_cookie = SimpleCookie()
+    assert cookie.value is not None
+    simple_cookie[cookie.name] = cookie.value
+    morsel = simple_cookie[cookie.name]
+    morsel["domain"] = cookie.domain
+    morsel["path"] = cookie.path
+    morsel["secure"] = cookie.secure
+    if cookie.expires:
+        morsel["max-age"] = str(max(0, cookie.expires - int(now)))
+    else:
+        morsel["max-age"] = ""
+    return simple_cookie
