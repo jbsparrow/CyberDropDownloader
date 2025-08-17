@@ -31,6 +31,7 @@ TEST_CASES = [
             {
                 "url": r"re:https\:\/\/p1\.cyberfile\.me/b8lt/Sophia_Locke__-_Inserted_\(4K\).mp4\?download_token\=",
                 "filename": "Sophia Locke  - Inserted (4K).mp4",
+                "original_filename": "Sophia_Locke__-_Inserted_(4K).mp4",
                 "referer": "https://cyberfile.me/b8lt",
                 "album_id": None,
                 "datetime": 1696232232,
@@ -50,5 +51,30 @@ TEST_CASES = [
             }
         ],
         44,
+    ),
+    (
+        # Password protected folder, no password supplied
+        "https://cyberfile.me/folder/30cab170dd652309c8b8f25aaba4ec85/Autumn_Falls_JulesJordan_Videos",
+        [],
+    ),
+    (
+        # Password protected folder, invalid password supplied
+        "https://cyberfile.me/folder/30cab170dd652309c8b8f25aaba4ec85/Autumn_Falls_JulesJordan_Videos?password=1234",
+        [],
+    ),
+    (
+        # Password protected folder, valid password supplied
+        "https://cyberfile.me/folder/30cab170dd652309c8b8f25aaba4ec85/Autumn_Falls_JulesJordan_Videos?password=studio",
+        [
+            {
+                "url": r"re:https\:\/\/p1\.cyberfile\.me/8QdR/www\.0xxx\.ws_JulesJordan\.20\.03\.03\.Autumn\.Falls\.XXX\.1080p\.MP4-KTR\.mp4\?download_token\=",
+                "filename": "www.0xxx.ws_JulesJordan.20.03.03.Autumn.Falls.XXX.1080p.MP4-KTR.mp4",
+                "referer": "https://cyberfile.me/8QdR",
+                "download_folder": r"re:Autumn Falls JulesJordan Videos \(Cyberfile\)",
+                "album_id": "30cab170dd652309c8b8f25aaba4ec85",
+                "datetime": 1669199683,
+            }
+        ],
+        6,
     ),
 ]

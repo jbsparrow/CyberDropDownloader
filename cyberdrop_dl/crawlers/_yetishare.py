@@ -29,6 +29,7 @@ class Selector:
     FOLDER_N_PAGES = "a[onclick*=loadImages]"
 
     LOGIN_FORM = "form#form_login"
+    FOLDER_PASSWORD_FORM = "#folderPasswordForm"
     PASSWORD_FORM = "form[method='POST']"
     FOLDER_TOTAL_PAGES = "input#rspTotalPages"
     FILE_INFO = "script:contains('showFileInformation')"
@@ -85,10 +86,6 @@ class YetiShareCrawler(Crawler, is_abc=True):
             page_type = "folder"
             load_images = get_text_between(soup.select(Selector.LOAD_IMAGES)[-1].text, "loadImages(", ");")
             node_id = load_images.replace("'", "").split(",")[1].strip()
-            if _is_password_protected(soup):
-                await self._unlock_password_protected_folder(scrape_item, node_id)
-                async with self.request_limiter:
-                    soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         page = 1
         total_pages = None
@@ -182,12 +179,12 @@ class YetiShareCrawler(Crawler, is_abc=True):
             return BeautifulSoup(json_resp["html"].replace("\\", ""), "html.parser")
 
         soup = await ajax_api_request()
-        _check_is_available(soup)
         if _is_password_protected(soup):
             node_id: str = data.get("nodeId") or css.select_one_get_attr(soup, Selector.FOLDER_ID, "value")
             await self._unlock_password_protected_folder(scrape_item, node_id)
             soup = await ajax_api_request()
 
+        _check_is_available(soup)
         return soup
 
     async def _unlock_password_protected_file(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> BeautifulSoup:
@@ -241,5 +238,8 @@ def _check_is_available(soup: BeautifulSoup):
 
 
 def _is_password_protected(soup: BeautifulSoup):
+    if soup.select_one(Selector.FOLDER_PASSWORD_FORM):
+        return True
+
     html = soup.get_text()
     return "Enter File Password" in html or "Password Required" in html
