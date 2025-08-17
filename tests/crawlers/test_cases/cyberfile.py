@@ -1,3 +1,5 @@
+import re
+
 DOMAIN = "cyberfile"
 TEST_CASES = [
     (
@@ -31,7 +33,7 @@ TEST_CASES = [
             {
                 "url": r"re:https\:\/\/p1\.cyberfile\.me/b8lt/Sophia_Locke__-_Inserted_\(4K\).mp4\?download_token\=",
                 "filename": "Sophia Locke  - Inserted (4K).mp4",
-                "original_filename": "Sophia_Locke__-_Inserted_(4K).mp4",
+                "original_filename": "Sophia Locke  - Inserted (4K).mp4",
                 "referer": "https://cyberfile.me/b8lt",
                 "album_id": None,
                 "datetime": 1696232232,
@@ -92,6 +94,36 @@ TEST_CASES = [
                 "referer": "https://cyberfile.me/ktP2",
                 "album_id": None,
                 "datetime": 1726582638,
+            }
+        ],
+    ),
+    (  # File with malformed download URL ( in the slug)
+        "https://cyberfile.me/7cfu",
+        [
+            {
+                "url": r"re:https\:\/\/p1\.cyberfile\.me/7cfu/1_Hour_ASMR___\?download_token\=",
+                "filename": "1 Hour ASMR.mp4",
+                "original_filename": "1 Hour ASMR   ???? ????.mp4",
+                "referer": "https://cyberfile.me/7cfu",
+                "album_id": None,
+                "datetime": 1703854148,
+            }
+        ],
+    ),
+    (  # File with emojis in the name
+        # This will fail on Windows and MacOS
+        "https://cyberfile.me/7cfq",
+        [
+            {
+                "url": "re:"
+                + re.escape(
+                    "https://p1.cyberfile.me/7cfq/ASMR___1_HOUR_OF_UP-CLOSE_&_PERSONAL_ATTENTION_%E2%9D%A4%EF%B8%8F_NEGATIVE_ENERGY_&_STRESS_REMOVAL_%E2%9D%A4%EF%B8%8F_(LIGHT_LOFI).mp4?download_token="
+                ),
+                "filename": "ASMR   1 HOUR OF UP-CLOSE & PERSONAL ATTENTION ❤️ NEGATIVE ENERGY & STRESS REMOVAL ❤️ (LIGHT LO.mp4",
+                "original_filename": "ASMR   1 HOUR OF UP-CLOSE & PERSONAL ATTENTION ❤️ NEGATIVE ENERGY & STRESS REMOVAL ❤️ (LIGHT LOFI).mp4",
+                "referer": "https://cyberfile.me/7cfq",
+                "album_id": None,
+                "datetime": 1703853101,
             }
         ],
     ),

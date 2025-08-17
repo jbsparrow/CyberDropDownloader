@@ -153,15 +153,20 @@ class YetiShareCrawler(Crawler, is_abc=True):
         )
 
         file_tag = soup.select_one(Selector.FILE_MENU) or css.select_one(soup, Selector.DOWNLOAD_BUTTON)
-        download_text = css.get_attr(file_tag, "onclick")
-        link = self.parse_url(get_text_between(download_text, "('", "');"))
+
+        # Manually parse link. Some URL are invalid. ex: https://cyberfile.me/7cfu
+        # The slug of the download URL does not actually matter
+        raw_link = get_text_between(css.get_attr(file_tag, "onclick"), "('", "');")
+        token = raw_link.rpartition("?download_token=")[-1]
+        link = self.parse_url(raw_link).with_query(download_token=token)
 
         scrape_item.possible_datetime = self.parse_date(
             css.select_one_get_text(soup, Selector.FILE_UPLOAD_DATE), "%d/%m/%Y %H:%M:%S"
         )
 
-        custom_filename, ext = self.get_filename_and_ext(css.select_one_get_text(soup, Selector.FILE_NAME))
-        await self.handle_file(link, scrape_item, link.name, ext, custom_filename=custom_filename)
+        filename = css.select_one_get_text(soup, Selector.FILE_NAME)
+        custom_filename, ext = self.get_filename_and_ext(filename)
+        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def _get_soup_from_ajax_api(
         self, scrape_item: ScrapeItem, data: dict[str, Any], *, is_file: bool = False
