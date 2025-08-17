@@ -91,7 +91,6 @@ class TikTokCrawler(Crawler):
                 if item.get("images"):
                     await self.handle_image_post(scrape_item, item)
                     continue
-                
                 if post_url.path.endswith("mp3"):
                     continue
 
