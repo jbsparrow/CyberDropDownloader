@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
-from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
+from cyberdrop_dl.exceptions import DDOSGuardError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -16,20 +16,21 @@ if TYPE_CHECKING:
 
 
 class Selector:
-    DOWNLOAD_BUTTON = "div.btn-group.responsiveMobileMargin button:last-of-type"
+    DOWNLOAD_BUTTON = "div.btn-group.responsiveMobileMargin button:contains('Download')[onclick*='download_token']"
     FILE_MENU = "ul.dropdown-menu.dropdown-info.account-dropdown-resize-menu li a"
     FILE_NAME = ".image-name-title"
     FILE_UPLOAD_DATE = "td:contains('Uploaded:') + td"
 
     LOAD_IMAGES = "div[class*='page-container'] script:contains('loadImages')"
     FOLDER_ID = "#folderId"
-    FOLDER_ITEM = "#fileListing [class*=fileItem]"
-    FILES = f"{FOLDER_ITEM}[fileid]"
-    SUBFOLDERS = f"{FOLDER_ITEM}[folderid]"
+    _FOLDER_ITEM = "#fileListing [class*=fileItem]"
+    FILES = f"{_FOLDER_ITEM}[fileid]"
+    SUBFOLDERS = f"{_FOLDER_ITEM}[folderid]"
     FOLDER_N_PAGES = "a[onclick*=loadImages]"
 
     LOGIN_FORM = "form#form_login"
     PASSWORD_PROTECTED = "#folderPasswordForm, #filePassword"
+    RECAPTCHA = "form[method=POST] script[src*='/recaptcha/api.js']"
     FOLDER_TOTAL_PAGES = "input#rspTotalPages"
     FILE_INFO = "script:contains('showFileInformation')"
 
@@ -63,6 +64,8 @@ class YetiShareCrawler(Crawler, is_abc=True):
             case ["shared", folder_id]:
                 return await self.folder(scrape_item, folder_id, is_shared=True)
             case [file_id]:
+                return await self.file(scrape_item, file_id)
+            case [file_id, _]:
                 return await self.file(scrape_item, file_id)
             case _:
                 raise ValueError
@@ -110,8 +113,12 @@ class YetiShareCrawler(Crawler, is_abc=True):
             if total_pages is None:
                 total_pages = int(css.select_one_get_attr(ajax_soup, Selector.FOLDER_TOTAL_PAGES, "value"))
 
-            for _, new_scrape_item in self.iter_children(scrape_item, ajax_soup, Selector.FILES, attribute="dtfullurl"):
-                self.create_task(self.run(new_scrape_item))
+            for file in ajax_soup.select(Selector.FILES):
+                file_url = self.parse_url(css.get_attr(file, "dtfullurl"))
+                file_id = css.get_attr(file, "fileid")
+                new_scrape_item = scrape_item.create_child(file_url)
+                self.create_task(self._handle_content_id_task(new_scrape_item, file_id))
+                scrape_item.add_children()
 
             for _, new_scrape_item in self.iter_children(
                 scrape_item, ajax_soup, Selector.SUBFOLDERS, attribute="sharing-url"
@@ -167,6 +174,8 @@ class YetiShareCrawler(Crawler, is_abc=True):
         filename = css.select_one_get_text(soup, Selector.FILE_NAME)
         custom_filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+
+    _handle_content_id_task = auto_task_id(_handle_content_id)
 
     async def _get_soup_from_ajax_api(
         self, scrape_item: ScrapeItem, data: dict[str, Any], *, is_file: bool = False
@@ -231,6 +240,9 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
 
 def _check_is_available(soup: BeautifulSoup):
+    if soup.select(Selector.RECAPTCHA):
+        raise DDOSGuardError("Google recaptcha found")
+
     content = soup.get_text()
 
     if "File has been removed" in content:
