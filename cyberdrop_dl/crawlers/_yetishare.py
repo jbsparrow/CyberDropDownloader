@@ -29,8 +29,7 @@ class Selector:
     FOLDER_N_PAGES = "a[onclick*=loadImages]"
 
     LOGIN_FORM = "form#form_login"
-    FOLDER_PASSWORD_FORM = "#folderPasswordForm"
-    PASSWORD_FORM = "form[method='POST']"
+    PASSWORD_PROTECTED = "#folderPasswordForm, #filePassword"
     FOLDER_TOTAL_PAGES = "input#rspTotalPages"
     FILE_INFO = "script:contains('showFileInformation')"
 
@@ -63,8 +62,8 @@ class YetiShareCrawler(Crawler, is_abc=True):
                 return await self.folder(scrape_item, folder_id)
             case ["shared", folder_id]:
                 return await self.folder(scrape_item, folder_id, is_shared=True)
-            case [_]:
-                return await self.file(scrape_item)
+            case [file_id]:
+                return await self.file(scrape_item, file_id)
             case _:
                 raise ValueError
 
@@ -123,16 +122,17 @@ class YetiShareCrawler(Crawler, is_abc=True):
                 break
 
     @error_handling_wrapper
-    async def file(self, scrape_item: ScrapeItem) -> None:
+    async def file(self, scrape_item: ScrapeItem, file_id: str) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
         async with self.request_limiter:
             soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
+        if soup.select_one(Selector.PASSWORD_PROTECTED):
+            soup = await self._unlock_password_protected_file(scrape_item, file_id)
+
         _check_is_available(soup)
-        if _is_password_protected(soup):
-            soup = await self._unlock_password_protected_file(scrape_item, soup)
 
         content_id = int(
             get_text_between(
@@ -179,7 +179,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
             return BeautifulSoup(json_resp["html"].replace("\\", ""), "html.parser")
 
         soup = await ajax_api_request()
-        if _is_password_protected(soup):
+        if soup.select_one(Selector.PASSWORD_PROTECTED):
             node_id: str = data.get("nodeId") or css.select_one_get_attr(soup, Selector.FOLDER_ID, "value")
             await self._unlock_password_protected_folder(scrape_item, node_id)
             soup = await ajax_api_request()
@@ -187,25 +187,23 @@ class YetiShareCrawler(Crawler, is_abc=True):
         _check_is_available(soup)
         return soup
 
-    async def _unlock_password_protected_file(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> BeautifulSoup:
+    async def _unlock_password_protected_file(self, scrape_item: ScrapeItem, file_id: str) -> BeautifulSoup:
         password = scrape_item.pop_query("password")
         if not password:
             raise PasswordProtectedError
 
-        form = css.select_one(soup, Selector.PASSWORD_FORM)
-        # Figure out the format of this URL to build it instead of selecting it
-        password_post_url = self.parse_url(css.get_attr(form, "action"))
+        password_post_url = (self.PRIMARY_URL / file_id).with_query("pt=")
         async with self.request_limiter:
             resp_bytes = await self.client.post_data_raw(
                 self.DOMAIN,
                 password_post_url,
                 data={"filePassword": password, "submitme": 1},
             )
-        new_soup = BeautifulSoup(resp_bytes, "html.parser")
+        soup = BeautifulSoup(resp_bytes, "html.parser")
 
-        if _is_password_protected(new_soup):
+        if soup.select_one(Selector.PASSWORD_PROTECTED):
             raise PasswordProtectedError("File password is invalid")
-        return new_soup
+        return soup
 
     async def _unlock_password_protected_folder(self, scrape_item: ScrapeItem, node_id: str) -> None:
         password = scrape_item.pop_query("password")
@@ -235,11 +233,3 @@ def _check_is_available(soup: BeautifulSoup):
 
     if "File is not publicly available" in content:
         raise ScrapeError(401)
-
-
-def _is_password_protected(soup: BeautifulSoup):
-    if soup.select_one(Selector.FOLDER_PASSWORD_FORM):
-        return True
-
-    html = soup.get_text()
-    return "Enter File Password" in html or "Password Required" in html

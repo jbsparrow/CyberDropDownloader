@@ -77,4 +77,22 @@ TEST_CASES = [
         ],
         6,
     ),
+    (
+        # Password protected file
+        "https://cyberfile.me/ktP2",
+        [],
+    ),
+    (
+        # Password protected file
+        "https://cyberfile.me/ktP2?password=pass",
+        [
+            {
+                "url": r"re:https\:\/\/p2\.cyberfile\.me/ktP2/HIPANGEL_021\.mp4\?download_token\=",
+                "filename": "HIPANGEL_021.mp4",
+                "referer": "https://cyberfile.me/ktP2",
+                "album_id": None,
+                "datetime": 1726582638,
+            }
+        ],
+    ),
 ]
