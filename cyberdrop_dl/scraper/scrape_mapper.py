@@ -35,7 +35,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 existing_crawlers: dict[str, Crawler] = {}
-seen_urls: set[AbsoluteHttpURL] = set()
+_seen_urls: set[AbsoluteHttpURL] = set()
+_crawlers_disabled_at_runtime: set[str] = set()
 
 
 class ScrapeMapper:
@@ -287,9 +288,9 @@ class ScrapeMapper:
         if not is_valid_url(scrape_item):
             return False
 
-        if scrape_item.url in seen_urls:
+        if scrape_item.url in _seen_urls:
             return False
-        seen_urls.add(scrape_item.url)
+        _seen_urls.add(scrape_item.url)
 
         if is_in_domain_list(scrape_item, BLOCKED_DOMAINS):
             log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
@@ -349,9 +350,13 @@ class ScrapeMapper:
 
         """
 
+        if domain in _crawlers_disabled_at_runtime:
+            return
+
         crawler = next((crawler for crawler in self.existing_crawlers.values() if crawler.DOMAIN == domain), None)
         if crawler and not crawler.disabled:
             crawler.disabled = True
+            _crawlers_disabled_at_runtime.add(domain)
             return crawler
 
 
