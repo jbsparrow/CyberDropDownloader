@@ -23,9 +23,9 @@ class Selector:
 
     LOAD_IMAGES = "div[class*='page-container'] script:contains('loadImages')"
     FOLDER_ID = "#folderId"
-    FOLDER_ITEM = "#fileListing div[class*=fileItem]"
-    FILES = f"{FOLDER_ITEM} [fileid]"
-    SUBFOLDERS = f"{FOLDER_ITEM} [folderid]"
+    FOLDER_ITEM = "#fileListing [class*=fileItem]"
+    FILES = f"{FOLDER_ITEM}[fileid]"
+    SUBFOLDERS = f"{FOLDER_ITEM}[folderid]"
     FOLDER_N_PAGES = "a[onclick*=loadImages]"
 
     LOGIN_FORM = "form#form_login"
@@ -36,12 +36,15 @@ class Selector:
 
 class YetiShareCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Files": "/<file_id>",
-        "Folder": (
+        "Files": (
+            "/<file_id>",
+            "/<file_id>/<file_name>",
+        ),
+        "Public Folders": (
             "/folder/<folder_id>",
             "/folder/<folder_id>/<folder_name>",
         ),
-        "Shared folder": "/shared/<share_key>",
+        "Shared folders": "/shared/<share_key>",
     }
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -55,9 +58,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["folder", folder_id, _]:
-                return await self.folder(scrape_item, folder_id)
-            case ["folder", folder_id]:
+            case ["folder", folder_id, *_]:
                 return await self.folder(scrape_item, folder_id)
             case ["shared", folder_id]:
                 return await self.folder(scrape_item, folder_id, is_shared=True)
@@ -83,14 +84,20 @@ class YetiShareCrawler(Crawler, is_abc=True):
             # ex:  loadImages('folder', '12345', 1, 0, '', {'searchTerm': "", 'filterUploadedDateRange': ""});
             page_type = "folder"
             load_images = get_text_between(soup.select(Selector.LOAD_IMAGES)[-1].text, "loadImages(", ");")
-            _, node_id = load_images.replace("'", "").split(",", 1)
+            node_id = load_images.replace("'", "").split(",")[1].strip()
             if _is_password_protected(soup):
                 await self._unlock_password_protected_folder(scrape_item, node_id)
                 async with self.request_limiter:
                     soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        page = total_pages = 1
-        scrape_item.setup_as_album("", album_id=folder_id)
+        page = 1
+        total_pages = None
+        if not scrape_item.album_id:
+            scrape_item.setup_as_album("", album_id=folder_id)
+
+        if not is_shared:
+            title = css.page_title(soup, self.DOMAIN).removesuffix("Folder").strip()
+            scrape_item.add_to_parent_title(self.create_title(title, folder_id))
 
         for page in itertools.count(1):
             ajax_soup = await self._get_soup_from_ajax_api(
@@ -103,10 +110,9 @@ class YetiShareCrawler(Crawler, is_abc=True):
                     "pageStart": page,
                 },
             )
-            if not is_shared and page == 1:
-                title = self.create_title(css.page_title(soup, self.DOMAIN), folder_id)
-                scrape_item.add_to_parent_title(title)
-                total_pages = int(css.select_one_get_attr(ajax_soup, Selector.FOLDER_TOTAL_PAGES, "value")) + 1
+
+            if total_pages is None:
+                total_pages = int(css.select_one_get_attr(ajax_soup, Selector.FOLDER_TOTAL_PAGES, "value"))
 
             for _, new_scrape_item in self.iter_children(scrape_item, ajax_soup, Selector.FILES, attribute="dtfullurl"):
                 self.create_task(self.run(new_scrape_item))
@@ -151,14 +157,14 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
         file_tag = soup.select_one(Selector.FILE_MENU) or css.select_one(soup, Selector.DOWNLOAD_BUTTON)
         download_text = css.get_attr(file_tag, "onclick")
-        link = self.parse_url(get_text_between(download_text, "'", "'"))
+        link = self.parse_url(get_text_between(download_text, "('", "');"))
 
         scrape_item.possible_datetime = self.parse_date(
             css.select_one_get_text(soup, Selector.FILE_UPLOAD_DATE), "%d/%m/%Y %H:%M:%S"
         )
-        filename = css.select_one_get_text(soup, Selector.FILE_NAME)
-        custom_filename, ext = self.get_filename_and_ext(filename)
-        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+
+        custom_filename, ext = self.get_filename_and_ext(css.select_one_get_text(soup, Selector.FILE_NAME))
+        await self.handle_file(link, scrape_item, link.name, ext, custom_filename=custom_filename)
 
     async def _get_soup_from_ajax_api(
         self, scrape_item: ScrapeItem, data: dict[str, Any], *, is_file: bool = False
