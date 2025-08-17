@@ -16,23 +16,22 @@ if TYPE_CHECKING:
 
 
 class Selector:
-    DOWNLOAD_BUTTON = "div.btn-group.responsiveMobileMargin button:contains('Download')[onclick*='download_token']"
-    FILE_MENU = "ul.dropdown-menu.dropdown-info.account-dropdown-resize-menu li a"
+    DOWNLOAD_BUTTON = ".btn-group.responsiveMobileMargin button:contains('Download')[onclick*='download_token']"
+    DROPDOWN_MENU = ".dropdown-menu.dropdown-info a[onclick*='download_token']"
     FILE_NAME = ".image-name-title"
     FILE_UPLOAD_DATE = "td:contains('Uploaded:') + td"
+    FILE_INFO = "script:contains('showFileInformation')"
 
     LOAD_IMAGES = "div[class*='page-container'] script:contains('loadImages')"
     FOLDER_ID = "#folderId"
     _FOLDER_ITEM = "#fileListing [class*=fileItem]"
     FILES = f"{_FOLDER_ITEM}[fileid]"
     SUBFOLDERS = f"{_FOLDER_ITEM}[folderid]"
-    FOLDER_N_PAGES = "a[onclick*=loadImages]"
+    FOLDER_TOTAL_PAGES = "input#rspTotalPages"
 
     LOGIN_FORM = "form#form_login"
     PASSWORD_PROTECTED = "#folderPasswordForm, #filePassword"
     RECAPTCHA = "form[method=POST] script[src*='/recaptcha/api.js']"
-    FOLDER_TOTAL_PAGES = "input#rspTotalPages"
-    FILE_INFO = "script:contains('showFileInformation')"
 
 
 class YetiShareCrawler(Crawler, is_abc=True):
@@ -115,9 +114,9 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
             for file in ajax_soup.select(Selector.FILES):
                 file_url = self.parse_url(css.get_attr(file, "dtfullurl"))
-                file_id = css.get_attr(file, "fileid")
+                content_id = css.get_attr(file, "fileid")
                 new_scrape_item = scrape_item.create_child(file_url)
-                self.create_task(self._handle_content_id_task(new_scrape_item, file_id))
+                self.create_task(self._handle_content_id_task(new_scrape_item, content_id))
                 scrape_item.add_children()
 
             for _, new_scrape_item in self.iter_children(
@@ -159,11 +158,11 @@ class YetiShareCrawler(Crawler, is_abc=True):
             is_file=True,
         )
 
-        file_tag = soup.select_one(Selector.FILE_MENU) or css.select_one(soup, Selector.DOWNLOAD_BUTTON)
+        download_tag = soup.select_one(Selector.DROPDOWN_MENU) or css.select_one(soup, Selector.DOWNLOAD_BUTTON)
 
-        # Manually parse link. Some URL are invalid. ex: https://cyberfile.me/7cfu
-        # The slug of the download URL does not actually matter
-        raw_link = get_text_between(css.get_attr(file_tag, "onclick"), "('", "');")
+        # Manually parse link. Some URLs are invalid. ex: https://cyberfile.me/7cfu
+        # For the download URL, the slug does not actually matter. It can be anything
+        raw_link = get_text_between(css.get_attr(download_tag, "onclick"), "('", "');")
         token = raw_link.rpartition("?download_token=")[-1]
         link = self.parse_url(raw_link).with_query(download_token=token)
 
