@@ -1,7 +1,7 @@
 DOMAIN = "coomer"
 TEST_CASES = [
     (
-    "https://coomer.st/fansly/user/445978322480930816/post/644032890815913985",
+        "https://coomer.st/fansly/user/445978322480930816/post/644032890815913985",
         [
             {
                 "url": "https://coomer.st/data/03/ef/03ef02264303b2693c2acb714cf0321d3bfca04b85511dc4f66887ad134cb69e.jpg?f=644032704089694208.jpeg",
@@ -9,9 +9,9 @@ TEST_CASES = [
                 "referer": "https://coomer.st/fansly/user/445978322480930816/post/644032890815913985",
                 "download_folder": r"re:zombonn \(Coomer\)",
                 "album_id": "445978322480930816",
-                "datetime": 1715058166
+                "datetime": 1715058166,
             }
-        ]
+        ],
     ),
     (
         "https://coomer.st/onlyfans/user/lostfaefoundskates/post/729202326",
