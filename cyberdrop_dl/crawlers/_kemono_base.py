@@ -465,7 +465,9 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     async def __get_usernames(self, api_url: AbsoluteHttpURL) -> None:
         try:
-            json_resp: list[dict[str, Any]] = await self.client.get_json(self.DOMAIN, api_url)
+            json_resp: list[dict[str, Any]] = await self.client.get_json(
+                self.DOMAIN, api_url, headers={"Accept": "text/css"}
+            )
             self._user_names = {User(u["service"], u["id"]): u["name"] for u in json_resp}
         except Exception:
             pass
@@ -531,7 +533,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         for current_offset in itertools.count(init_offset, current_step_size):
             api_url = url.update_query(o=current_offset)
             async with self.request_limiter:
-                json_resp: Any = await self.client.get_json(self.DOMAIN, api_url)
+                json_resp: Any = await self.client.get_json(self.DOMAIN, api_url, headers={"Accept": "text/css"})
             yield json_resp
 
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
