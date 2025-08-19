@@ -481,14 +481,18 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
             api_url_server_profile = self.API_ENTRYPOINT / "discord" / "user" / server_id / "profile"
             async with self.request_limiter:
-                server_profile_json: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url_server_profile, headers={"Accept": "text/css"})
+                server_profile_json: dict[str, Any] = await self.client.get_json(
+                    self.DOMAIN, api_url_server_profile, headers={"Accept": "text/css"}
+                )
 
             name = server_profile_json.get("name")
             if not name:
                 name = f"Discord Server {server_id}"
             api_url_channels = self.API_ENTRYPOINT / "discord/channel/lookup" / server_id
             async with self.request_limiter:
-                channels_json_resp: list[dict] = await self.client.get_json(self.DOMAIN, api_url_channels, headers={"Accept": "text/css"})
+                channels_json_resp: list[dict] = await self.client.get_json(
+                    self.DOMAIN, api_url_channels, headers={"Accept": "text/css"}
+                )
 
             channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in channels_json_resp)
             self.__known_discord_servers[server_id] = server = DiscordServer(name, server_id, channels)

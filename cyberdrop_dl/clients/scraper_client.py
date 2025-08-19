@@ -452,7 +452,11 @@ async def response_to_soup(response: AnyResponse | CurlResponse) -> BeautifulSou
 
 async def response_to_json(response: AnyResponse | CurlResponse) -> Any:
     content_type = (response.headers.get("Content-Type") or "").lower()
-    if "text/plain" in content_type or "json" in content_type or ("text/css" in content_type and any(host in response.url.host for host in ['coomer', 'kemono'])):
+    if (
+        "text/plain" in content_type
+        or "json" in content_type
+        or ("text/css" in content_type and any(host in response.url.host for host in ["coomer", "kemono"]))
+    ):
         if isinstance(response, AnyResponse):
             content = await response.text()
         else:
