@@ -262,7 +262,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         url_info = UserURL.parse(scrape_item.url)
-        path = f"{url_info.service}/user/{url_info.user_id}"
+        path = f"{url_info.service}/user/{url_info.user_id}/posts"
         api_url = self.__make_api_url_w_offset(path, scrape_item.url)
         scrape_item.setup_as_profile("")
         await self.__iter_user_posts_from_url(scrape_item, api_url)
