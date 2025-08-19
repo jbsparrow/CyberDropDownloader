@@ -1,15 +1,14 @@
 DOMAIN = "kemono"
 TEST_CASES = [
     (
-        "https://kemono.su/patreon/user/27174868/post/133667042",
+        "https://kemono.cr/patreon/user/27174868/post/133667042",
         [
             {
-                "url": "https://kemono.cr/data/0d/c3/0dc3ecec556918b882674c5dd63f8fa1867867157ce1ca675b0bf79e6b73fb04.jpg?f=Birthday_Kim.jpg",
+                "url": "https://kemono.su/data/0d/c3/0dc3ecec556918b882674c5dd63f8fa1867867157ce1ca675b0bf79e6b73fb04.jpg?f=Birthday_Kim.jpg",
                 "filename": "Birthday_Kim.jpg",
-                "referer": "https://kemono.cr/patreon/user/27174868/post/133667042",
-                "download_folder": r"re:Manueillustrations \(Kemono\)",
+                "referer": "https://kemono.su/patreon/user/27174868/post/133667042",
                 "album_id": "27174868",
-                "datetime": 1752004344,
+                "datetime": 1752000744,
             }
         ],
     ),
@@ -40,7 +39,7 @@ TEST_CASES = [
         3,
     ),
     (
-        "https://kemono.su/patreon/user/16573132",
+        "https://kemono.cr/patreon/user/16573132",
         [
             {
                 "url": "https://kemono.cr/data/01/1e/011e7a27eca93eba99ab223553d6079495a55c87106fa0e36efb8810048da92f.jpg?f=httpswww.patreon.commedia-uZ0FBQUFBQmdWWnhiV0xoYnpvV0Nnd0ZvMnM5UnkyTVF1LXd4MEpNYmVRWGNMNEZhUE1wWWJreVBqS1F2UzB3R2lYaXpDaXBWUy14M2l1WGtITWJBX0Q4ZDRoQzBtOG5nd3JIYThERTRWNDIxeUY4RHBXaERxWkRJNS1xRXRPS2lFM3pLSEVTSW5oNVRzeU9yc21SMmo5MkJrYXVXVzFCVUtRPT0",
