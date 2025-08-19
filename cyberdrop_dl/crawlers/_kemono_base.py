@@ -232,7 +232,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
         self.register_cache_filter(self.PRIMARY_URL, check_kemono_page)
         if getattr(self, "API_ENTRYPOINT", None):
-            await self.__get_usernames(self.API_ENTRYPOINT / "creators.txt")
+            await self.__get_usernames(self.API_ENTRYPOINT / "creators")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "thumbnails" in scrape_item.url.parts:
@@ -325,7 +325,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         path = f"{url_info.service}/user/{url_info.user_id}/post/{url_info.post_id}"
         api_url = self.__make_api_url_w_offset(path, scrape_item.url)
         async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url)
+            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url, headers={"Accept": "text/css"})
 
         post = UserPost.model_validate(json_resp["post"])
         self._register_attachments_servers(json_resp["attachments"])
@@ -374,7 +374,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         query_url = api_url.with_query(type="post" if is_post else "artist")
 
         async with self.request_limiter:
-            json_resp: list[dict] = await self.client.get_json(self.DOMAIN, query_url)
+            json_resp: list[dict] = await self.client.get_json(self.DOMAIN, query_url, headers={"Accept": "text/css"})
 
         self.update_cookies({"session": ""})
 
@@ -481,14 +481,14 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
             api_url_server_profile = self.API_ENTRYPOINT / "discord" / "user" / server_id / "profile"
             async with self.request_limiter:
-                server_profile_json: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url_server_profile)
+                server_profile_json: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url_server_profile, headers={"Accept": "text/css"})
 
             name = server_profile_json.get("name")
             if not name:
                 name = f"Discord Server {server_id}"
             api_url_channels = self.API_ENTRYPOINT / "discord/channel/lookup" / server_id
             async with self.request_limiter:
-                channels_json_resp: list[dict] = await self.client.get_json(self.DOMAIN, api_url_channels)
+                channels_json_resp: list[dict] = await self.client.get_json(self.DOMAIN, api_url_channels, headers={"Accept": "text/css"})
 
             channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in channels_json_resp)
             self.__known_discord_servers[server_id] = server = DiscordServer(name, server_id, channels)
