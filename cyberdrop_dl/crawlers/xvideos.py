@@ -25,7 +25,12 @@ _EXTENDED_ACCOUNTS = tuple(
     )
 )
 
-_ACCOUNT_PATHS = (f"/{'|'.join(sorted(_EXTENDED_ACCOUNTS))}/<name>", "/<channel_name>")
+
+def _escape(strings: list[str]) -> str:
+    return r"\|".join(strings)
+
+
+_ACCOUNT_PATHS = (f"/{_escape(sorted(_EXTENDED_ACCOUNTS))}/<name>", "/<channel_name>")
 
 
 class Selectors:
@@ -49,7 +54,7 @@ class XVideosCrawler(Crawler):
         "Video": (
             "/video<id>/<title>",
             "/video.<encoded_id>/<title>",
-            f"/{'|'.join(sorted(_EXTENDED_ACCOUNTS))}#quickies/(a|h|v)/<video_id>",
+            f"/{_escape(sorted(_EXTENDED_ACCOUNTS))}#quickies/({_escape(['a', 'h', 'v'])})/<video_id>",
         ),
         "Account": _ACCOUNT_PATHS,
         "Account Videos": tuple(f"{path}#_tabVideos" for path in _ACCOUNT_PATHS),
