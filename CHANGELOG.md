@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handle videos with invalid character in description and title (ePorner)
 - Series and chapter downloads (toonily)
 - `--ui` options not working
+- Do not sort unjoined HSL files.
 
 
 ## [7.3.1] - 2025-08-02
