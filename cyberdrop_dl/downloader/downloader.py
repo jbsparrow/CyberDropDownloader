@@ -39,7 +39,18 @@ class Win32Con:
     FILE_ATTRIBUTE_NORMAL = 128
     FILE_FLAG_BACKUP_SEMANTICS = 33554432
 
-
+# Try to import win32con for Windows constants, fallback to hardcoded values if unavailable
+try:
+    import win32con
+    FILE_WRITE_ATTRIBUTES = win32con.FILE_WRITE_ATTRIBUTES
+    OPEN_EXISTING = win32con.OPEN_EXISTING
+    FILE_ATTRIBUTE_NORMAL = win32con.FILE_ATTRIBUTE_NORMAL
+    FILE_FLAG_BACKUP_SEMANTICS = win32con.FILE_FLAG_BACKUP_SEMANTICS
+except ImportError:
+    FILE_WRITE_ATTRIBUTES = 256
+    OPEN_EXISTING = 3
+    FILE_ATTRIBUTE_NORMAL = 128
+    FILE_FLAG_BACKUP_SEMANTICS = 33554432
 if sys.platform == "win32":
     from ctypes import byref, windll, wintypes
 
