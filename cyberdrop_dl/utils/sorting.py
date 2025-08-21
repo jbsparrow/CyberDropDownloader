@@ -113,7 +113,8 @@ class Sorter:
                 ext = file.suffix.lower()
                 if ".part" in ext:
                     continue
-
+                if ".cdl_hsl" in ext:
+                    continue
                 if ext in FILE_FORMATS["Audio"]:
                     await self.sort_audio(file, folder_name)
                 elif ext in FILE_FORMATS["Images"]:
