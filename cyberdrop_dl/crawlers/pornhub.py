@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://www.pornhub.com")
-ALBUM_API_URL = PRIMARY_URL / "album/show_album_json"
 MP4_NOT_AVAILABLE_SINCE = datetime.datetime(2025, 6, 25).timestamp()
+TOKEN_SELECTOR = css.CssAttributeSelector("input#xsrfToken", "value")
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -182,29 +182,26 @@ class PornHubCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem, album_id: str) -> None:
-        api_url = ALBUM_API_URL.with_query(album=album_id)
         async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        if not json_resp:
-            return
+        album_name = css.select_one_get_text(soup, _SELECTORS.ALBUM_TITLE)
+        scrape_item.setup_as_album(self.create_title(album_name, album_id), album_id=album_id)
 
-        title = await self._get_album_title(scrape_item.url, album_id)
-        scrape_item.setup_as_album(title, album_id=album_id)
+        api_url = self.PRIMARY_URL / "api/v1/album" / album_id / "show_album_json"
+        async with self.request_limiter:
+            json_resp: dict[str, Any] = await self.client.get_json(
+                self.DOMAIN, api_url.with_query(token=TOKEN_SELECTOR(soup))
+            )
+
+        photos: dict[str, dict[str, Any]] = json_resp["photos"]
         results = await self.get_album_results(album_id)
-
-        for id, photo in json_resp.items():
-            web_url = PRIMARY_URL / "photo" / id
+        for id_, photo in photos.items():
+            web_url = PRIMARY_URL / "photo" / id_
             link = self.parse_url(photo["img_large"])
             new_scrape_item = scrape_item.create_new(web_url)
-            await self._process_photo(new_scrape_item, link, results)
-
-    async def _get_album_title(self, url: AbsoluteHttpURL, album_id: str) -> str:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, url)
-
-        album_name: str = css.select_one_get_text(soup, _SELECTORS.ALBUM_TITLE)
-        return self.create_title(album_name, album_id)
+            self.create_task(self._process_photo(new_scrape_item, link, results))
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def photo(self, scrape_item: ScrapeItem) -> None:
@@ -239,12 +236,15 @@ class PornHubCrawler(Crawler):
         self, scrape_item: ScrapeItem, link: AbsoluteHttpURL, results: dict[str, Any] | None = None
     ) -> None:
         results = results or {}
-        name = link.name.rsplit(")")[-1].removeprefix("original_")
+        original_name = link.name.rsplit(")")[-1]
+        name = original_name.removeprefix("original_")
         canonical_url = link.with_name(name)
         if self.check_album_results(canonical_url, results):
             return
-        filename, ext = self.get_filename_and_ext(name, assume_ext=".jpg")
-        await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
+        custom_filename, ext = self.get_filename_and_ext(name, assume_ext=".jpg")
+        await self.handle_file(
+            canonical_url, scrape_item, original_name, ext, custom_filename=custom_filename, debrid_link=link
+        )
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem, playlist_id: str) -> None:
