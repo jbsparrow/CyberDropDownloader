@@ -25,6 +25,7 @@ from cyberdrop_dl.exceptions import (
     TooManyCrawlerErrors,
 )
 from cyberdrop_dl.utils import ffmpeg
+from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none, parse_url
 
@@ -107,7 +108,7 @@ class Downloader:
 
         self.client: DownloadClient = field(init=False)
         self.log_prefix = "Download attempt (unsupported domain)" if domain in GENERIC_CRAWLERS else "Download"
-        self.processed_items: set = set()
+        self.processed_items: set[str] = set()
         self.waiting_items = 0
 
         self._additional_headers = {}
@@ -151,7 +152,7 @@ class Downloader:
         async with self._semaphore:
             await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
-            self.processed_items.add(media_item.url.path)
+            self.processed_items.add(get_db_path(media_item.url, self.domain))
             self.update_queued_files(increase_total=False)
             async with self.manager.client_manager.download_session_limit:
                 return await self.start_download(media_item)
