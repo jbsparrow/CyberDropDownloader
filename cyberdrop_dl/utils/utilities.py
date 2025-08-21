@@ -429,7 +429,7 @@ def get_field_names(dataclass: Dataclass | type[Dataclass]) -> list[str]:
 
 
 def get_text_between(original_text: str, start: str, end: str) -> str:
-    """Extracts the text between two strings in a larger text."""
+    """Extracts the text between two strings in a larger text. Result will be stripped"""
     start_index = original_text.index(start) + len(start)
     end_index = original_text.index(end, start_index)
     return original_text[start_index:end_index].strip()
