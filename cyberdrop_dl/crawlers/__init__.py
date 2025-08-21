@@ -62,6 +62,7 @@ from .nekohouse import NekohouseCrawler
 from .nhentai import NHentaiCrawler
 from .noodle_magazine import NoodleMagazineCrawler
 from .nudostartv import NudoStarTVCrawler
+from .odnoklassniki import OdnoklassnikiCrawler
 from .omegascans import OmegaScansCrawler
 from .onedrive import OneDriveCrawler
 from .pimpandhost import PimpAndHostCrawler
@@ -100,6 +101,7 @@ from .wordpress import WP_CRAWLERS, WordPressHTMLCrawler, WordPressMediaCrawler
 from .xbunkr import XBunkrCrawler
 from .xenforo import XF_CRAWLERS, SimpCityCrawler
 from .xhamster import XhamsterCrawler
+from .xvideos import XVideosCrawler
 from .xxxbunker import XXXBunkerCrawler
 from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler

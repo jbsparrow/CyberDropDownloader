@@ -22,8 +22,10 @@ from cyberdrop_dl.exceptions import (
     ErrorLogMessage,
     InvalidContentTypeError,
     RestrictedFiletypeError,
+    TooManyCrawlerErrors,
 )
 from cyberdrop_dl.utils import ffmpeg
+from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none, parse_url
 
@@ -32,12 +34,19 @@ WIN_EPOCH_OFFSET = 116444736e9
 MAC_OS_SET_FILE = None
 
 
-class Win32Con:
+# Try to import win32con for Windows constants, fallback to hardcoded values if unavailable
+try:
+    import win32con
+
+    FILE_WRITE_ATTRIBUTES = 256
+    OPEN_EXISTING = win32con.OPEN_EXISTING
+    FILE_ATTRIBUTE_NORMAL = win32con.FILE_ATTRIBUTE_NORMAL
+    FILE_FLAG_BACKUP_SEMANTICS = win32con.FILE_FLAG_BACKUP_SEMANTICS
+except ImportError:
     FILE_WRITE_ATTRIBUTES = 256
     OPEN_EXISTING = 3
     FILE_ATTRIBUTE_NORMAL = 128
     FILE_FLAG_BACKUP_SEMANTICS = 33554432
-
 
 if sys.platform == "win32":
     from ctypes import byref, windll, wintypes
@@ -106,7 +115,7 @@ class Downloader:
 
         self.client: DownloadClient = field(init=False)
         self.log_prefix = "Download attempt (unsupported domain)" if domain in GENERIC_CRAWLERS else "Download"
-        self.processed_items: set = set()
+        self.processed_items: set[str] = set()
         self.waiting_items = 0
 
         self._additional_headers = {}
@@ -150,7 +159,7 @@ class Downloader:
         async with self._semaphore:
             await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
-            self.processed_items.add(media_item.url.path)
+            self.processed_items.add(get_db_path(media_item.url, self.domain))
             self.update_queued_files(increase_total=False)
             async with self.manager.client_manager.download_session_limit:
                 return await self.start_download(media_item)
@@ -287,13 +296,13 @@ class Downloader:
                     # Windows dates are 64bits, split into 2 32bits unsigned ints (dwHighDateTime , dwLowDateTime)
                     # XOR to get the date as bytes, then shift to get the first 32 bits (dwHighDateTime)
                     ctime = wintypes.FILETIME(timestamp & 0xFFFFFFFF, timestamp >> 32)
-                    access_mode = Win32Con.FILE_WRITE_ATTRIBUTES
+                    access_mode = FILE_WRITE_ATTRIBUTES
                     sharing_mode = 0  # Exclusive access
                     security_mode = None  # Use default security attributes
-                    creation_disposition = Win32Con.OPEN_EXISTING
+                    creation_disposition = OPEN_EXISTING
 
                     # FILE_FLAG_BACKUP_SEMANTICS allows access to directories
-                    flags = Win32Con.FILE_ATTRIBUTE_NORMAL | Win32Con.FILE_FLAG_BACKUP_SEMANTICS
+                    flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS
                     template_file = None
 
                     params = (
@@ -348,6 +357,11 @@ class Downloader:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def start_download(self, media_item: MediaItem) -> bool:
+        try:
+            self.client.client_manager.check_domain_errors(self.domain)
+        except TooManyCrawlerErrors:
+            return False
+
         if not media_item.is_segment:
             log(f"{self.log_prefix} starting: {media_item.url}", 20)
         lock = self._file_lock_vault.get_lock(media_item.filename)
@@ -363,6 +377,7 @@ class Downloader:
             raise DownloadError(KNOWN_BAD_URLS[url_as_str])
         try:
             await self.manager.states.RUNNING.wait()
+            self.client.client_manager.check_domain_errors(self.domain)
             media_item.current_attempt = media_item.current_attempt or 1
             if not media_item.is_segment:
                 media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
