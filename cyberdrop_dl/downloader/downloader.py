@@ -34,12 +34,19 @@ WIN_EPOCH_OFFSET = 116444736e9
 MAC_OS_SET_FILE = None
 
 
-class Win32Con:
+# Try to import win32con for Windows constants, fallback to hardcoded values if unavailable
+try:
+    import win32con
+
+    FILE_WRITE_ATTRIBUTES = 256
+    OPEN_EXISTING = win32con.OPEN_EXISTING
+    FILE_ATTRIBUTE_NORMAL = win32con.FILE_ATTRIBUTE_NORMAL
+    FILE_FLAG_BACKUP_SEMANTICS = win32con.FILE_FLAG_BACKUP_SEMANTICS
+except ImportError:
     FILE_WRITE_ATTRIBUTES = 256
     OPEN_EXISTING = 3
     FILE_ATTRIBUTE_NORMAL = 128
     FILE_FLAG_BACKUP_SEMANTICS = 33554432
-
 
 if sys.platform == "win32":
     from ctypes import byref, windll, wintypes
@@ -289,13 +296,13 @@ class Downloader:
                     # Windows dates are 64bits, split into 2 32bits unsigned ints (dwHighDateTime , dwLowDateTime)
                     # XOR to get the date as bytes, then shift to get the first 32 bits (dwHighDateTime)
                     ctime = wintypes.FILETIME(timestamp & 0xFFFFFFFF, timestamp >> 32)
-                    access_mode = Win32Con.FILE_WRITE_ATTRIBUTES
+                    access_mode = FILE_WRITE_ATTRIBUTES
                     sharing_mode = 0  # Exclusive access
                     security_mode = None  # Use default security attributes
-                    creation_disposition = Win32Con.OPEN_EXISTING
+                    creation_disposition = OPEN_EXISTING
 
                     # FILE_FLAG_BACKUP_SEMANTICS allows access to directories
-                    flags = Win32Con.FILE_ATTRIBUTE_NORMAL | Win32Con.FILE_FLAG_BACKUP_SEMANTICS
+                    flags = FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS
                     template_file = None
 
                     params = (
