@@ -77,12 +77,12 @@ class StorageManager:
 
     @property
     def _simplified_stats(self) -> str:
-        def simplify(mount_stats: MountStats) -> str:
+        def stringify(mount_stats: MountStats) -> str:
             free_space = mount_stats.free_space.human_readable(decimal=True)
             stats_as_dict = asdict(mount_stats.partition) | {"free_space": free_space}
             return ", ".join(f"'{k}': '{v}'" for k, v in stats_as_dict.items())
 
-        stats_as_str = "\n".join(f"    {simplify(mount_stats)}" for mount_stats in self.get_used_mounts_stats())
+        stats_as_str = "\n".join(f"    {stringify(mount_stats)}" for mount_stats in self.get_used_mounts_stats())
         return f"Storage status:\n {stats_as_str}"
 
     def get_used_mounts_stats(self) -> list[MountStats]:

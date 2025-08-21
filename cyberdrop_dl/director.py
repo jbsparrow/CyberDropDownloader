@@ -217,7 +217,7 @@ def _setup_main_logger(manager: Manager, config_name: str) -> None:
             log(f"Picking new config: '{config_name}' ...", 20)
             try:
                 manager.config_manager.change_config(config_name)
-                log(f"Changed config to {config_name}...", 20)
+                log(f"Changed config to '{config_name}'...", 20)
             finally:
                 logger.removeHandler(queued_logger.handler)
                 queued_logger.stop()
@@ -231,7 +231,7 @@ def _setup_main_logger(manager: Manager, config_name: str) -> None:
     if not manager.parsed_args.cli_only_args.fullscreen_ui:
         constants.CONSOLE_LEVEL = settings_data.runtime_options.console_log_level
 
-    console_handler = LogHandler(level=constants.CONSOLE_LEVEL)
+    constants.console_handler = console_handler = LogHandler(level=constants.CONSOLE_LEVEL)
     logger.addHandler(console_handler)
 
     file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width)

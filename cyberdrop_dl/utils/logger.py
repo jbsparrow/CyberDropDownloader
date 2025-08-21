@@ -5,7 +5,7 @@ import logging
 import queue
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any
+from typing import IO, TYPE_CHECKING
 
 from rich._log_render import LogRender
 from rich.console import Console, Group
@@ -19,7 +19,7 @@ from cyberdrop_dl import constants, env
 
 logger = logging.getLogger("cyberdrop_dl")
 logger_debug = logging.getLogger("cyberdrop_dl_debug")
-console = Console()
+_DEFAULT_CONSOLE = Console()
 
 ERROR_PREFIX = "\n[bold red]ERROR: [/bold red]"
 USER_NAME = Path.home().resolve().parts[-1]
@@ -61,7 +61,10 @@ class LogHandler(RichHandler):
         is_file: bool = file is not None
         redacted: bool = is_file and not debug
         console_cls = RedactedConsole if redacted else Console
-        console = console_cls(file=file, width=width)
+        if file is None and width is None:
+            console = _DEFAULT_CONSOLE
+        else:
+            console = console_cls(file=file, width=width)
         options = constants.RICH_HANDLER_DEBUG_CONFIG if debug else constants.RICH_HANDLER_CONFIG
         options = options | kwargs
         super().__init__(level, console, show_time=is_file, **options)
@@ -168,7 +171,7 @@ class NoPaddingLogRender(LogRender):
 
 
 def get_renderable_length(renderable) -> int:
-    measurement = Measurement.get(console, console.options, renderable)
+    measurement = Measurement.get(_DEFAULT_CONSOLE, _DEFAULT_CONSOLE.options, renderable)
     return measurement.maximum
 
 
@@ -205,10 +208,10 @@ class RedactedConsole(Console):
         return _redact_message(output)
 
 
-def process_log_msg(message: dict[str, Any] | Exception | str) -> str:
+def process_log_msg(message: object) -> object:
     if isinstance(message, dict):
         return json.dumps(message, indent=4, ensure_ascii=False)
-    return str(message)
+    return message
 
 
 def create_rich_log_msg(msg: str, level: int = 10) -> Text:
@@ -217,19 +220,17 @@ def create_rich_log_msg(msg: str, level: int = 10) -> Text:
     return rich_level + indent_string(msg)
 
 
-def log(
-    message: dict[str, Any] | Exception | str, level: int = 10, prefix: str = "", bug: bool = False, **kwargs
-) -> None:
+def log(message: object, level: int = 10, bug: bool = False, **kwargs) -> None:
     """Simple logging function."""
-    msg = prefix + process_log_msg(message)
+    msg = process_log_msg(message)
     log_debug(msg, level, **kwargs)
     if bug:
-        msg = msg.rstrip() + f". Please open a bug report at {NEW_ISSUE_URL}"
+        msg = f"{msg}. Please open a bug report at {NEW_ISSUE_URL}"
         level = 30
     logger.log(level, msg, **kwargs)
 
 
-def log_debug(message: dict[str, Any] | Exception | str, level: int = 10, **kwargs) -> None:
+def log_debug(message: object, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     if env.DEBUG_VAR:
         msg = process_log_msg(message)
@@ -241,7 +242,7 @@ def log_with_color(message: Text | str, style: str, level: int = 20, show_in_sta
     text = message if isinstance(message, Text) else Text(message, style=style)
     log(text.plain, level, **kwargs)
     if constants.CONSOLE_LEVEL >= 50:
-        console.print(text)
+        _DEFAULT_CONSOLE.print(text)
     if show_in_stats:
         constants.LOG_OUTPUT_TEXT.append_text(text.append("\n"))
 
@@ -251,7 +252,7 @@ def log_spacer(level: int, char: str = "-", *, log_to_console: bool = True, log_
     if log_to_file:
         log(spacer, level)
     if log_to_console and constants.CONSOLE_LEVEL >= 50:
-        console.print("")
+        _DEFAULT_CONSOLE.print("")
     constants.LOG_OUTPUT_TEXT.append("\n", style="black")
 
 

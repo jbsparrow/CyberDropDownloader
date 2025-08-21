@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, NamedTuple, ParamSpec, TypeVar
+import json
+from typing import TYPE_CHECKING, Any, NamedTuple, ParamSpec, TypeVar
 
 import bs4.css
 
@@ -121,6 +122,47 @@ def iget(tag: Tag, selector: str, attribute: str) -> Generator[str]:
 def decompose(tag: Tag, selector: str) -> None:
     for inner_tag in tag.select(selector):
         inner_tag.decompose()
+
+
+def sanitize_page_title(title: str, domain: str) -> str:
+    sld = domain.rsplit(".", 1)[0]
+
+    def clean(string: str, char: str):
+        if char in string:
+            front, _, tail = string.rpartition(char)
+            if sld in tail.casefold():
+                string = front.strip()
+        return string
+
+    return clean(clean(title, "|"), " - ")
+
+
+def page_title(soup: Tag, domain: str | None = None) -> str:
+    title = select_one_get_text(soup, "title")
+    if domain:
+        return sanitize_page_title(title, domain)
+    return title
+
+
+def get_json_ld_date(soup: Tag) -> str:
+    return get_json_ld_value(soup, "uploadDate")
+
+
+def get_json_ld(soup: Tag, /, contains: str | None = None) -> dict[str, Any]:
+    selector = "script[type='application/ld+json']"
+    if contains:
+        selector += f":contains('{contains}')"
+
+    ld_json = json.loads(select_one_get_text(soup, selector)) or {}
+    if isinstance(ld_json, list):
+        return ld_json[0]
+
+    return ld_json
+
+
+def get_json_ld_value(soup: Tag, key: str) -> Any:
+    ld_json = get_json_ld(soup, key)
+    return ld_json[key]
 
 
 iframes = CssAttributeSelector("iframe", "src")
