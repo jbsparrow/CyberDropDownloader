@@ -25,17 +25,22 @@ DB_UPDATES = (
 )
 
 
-def get_db_path(url: URL, referer: str = "") -> str:
+def get_db_path(url: URL, domain: str = "") -> str:
     """Gets the URL path to be put into the DB and checked from the DB."""
-    url_path = url.path
 
-    if referer and "e-hentai" in referer:
-        url_path = url_path.split("keystamp")[0][:-1]
+    # TODO: domain SHOULD be mandatory, not optional. Make it mandatory and update any place that uses it
 
-    if referer and "mediafire" in referer:
-        url_path = url.name
+    if domain:
+        if "e-hentai" in domain:
+            return url.path.split("keystamp")[0][:-1]
 
-    return url_path
+        if "mediafire" in domain:
+            return url.name
+
+        if "mega.nz" in domain:
+            return url.path_qs if not (frag := url.fragment) else f"{url.path_qs}#{frag}"
+
+    return url.path
 
 
 class HistoryTable:
