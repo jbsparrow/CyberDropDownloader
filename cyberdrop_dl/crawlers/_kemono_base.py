@@ -325,9 +325,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         url_info = UserPostURL.parse(scrape_item.url)
         path = f"{url_info.service}/user/{url_info.user_id}/post/{url_info.post_id}"
         api_url = self.__make_api_url_w_offset(path, scrape_item.url)
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.get_json(self.DOMAIN, api_url)
-
+        json_resp: dict[str, Any] = await self.__api_request(api_url)
         post = UserPost.model_validate(json_resp["post"])
         self._register_attachments_servers(json_resp["attachments"])
         await self._handle_user_post(scrape_item, post)
@@ -373,10 +371,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self.update_cookies({"session": self.session_cookie})
         api_url = self.API_ENTRYPOINT / "account/favorites"
         query_url = api_url.with_query(type="post" if is_post else "artist")
-
-        async with self.request_limiter:
-            json_resp: list[dict] = await self.get_json(self.DOMAIN, query_url)
-
+        json_resp: list[dict] = await self.__api_request(query_url)
         self.update_cookies({"session": ""})
 
         for item in json_resp:
@@ -466,7 +461,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     async def __get_usernames(self, api_url: AbsoluteHttpURL) -> None:
         try:
-            json_resp: list[dict[str, Any]] = await self.get_json(self.DOMAIN, api_url)
+            json_resp: list[dict[str, Any]] = await self.__api_request(api_url)
             self._user_names = {User(u["service"], u["id"]): u["name"] for u in json_resp}
         except Exception:
             pass
@@ -481,16 +476,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 return server
 
             api_url_server_profile = self.API_ENTRYPOINT / "discord" / "user" / server_id / "profile"
-            async with self.request_limiter:
-                server_profile_json: dict[str, Any] = await self.get_json(self.DOMAIN, api_url_server_profile)
-
+            server_profile_json: dict[str, Any] = await self.__api_request(api_url_server_profile)
             name = server_profile_json.get("name")
             if not name:
                 name = f"Discord Server {server_id}"
             api_url_channels = self.API_ENTRYPOINT / "discord/channel/lookup" / server_id
-            async with self.request_limiter:
-                channels_json_resp: list[dict] = await self.get_json(self.DOMAIN, api_url_channels)
-
+            channels_json_resp: list[dict] = await self.__api_request(api_url_channels)
             channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in channels_json_resp)
             self.__known_discord_servers[server_id] = server = DiscordServer(name, server_id, channels)
             return server
@@ -527,9 +518,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         init_offset = int(url.query.get("o") or 0)
         for current_offset in itertools.count(init_offset, current_step_size):
             api_url = url.update_query(o=current_offset)
-            async with self.request_limiter:
-                json_resp: Any = await self.get_json(self.DOMAIN, api_url)
-            yield json_resp
+            yield await self.__api_request(api_url)
 
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -593,13 +582,15 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self._user_names[full_post.user] = post.user_name
         await self._handle_user_post(scrape_item, full_post)
 
-    async def get_json(self, domain: str, url: AbsoluteHttpURL) -> Any:
+    async def __api_request(self, url: AbsoluteHttpURL) -> Any:
         """Get JSON from the API, with a custom Accept header."""
-        response, soup_or_none = await self.client._get(domain, url, headers={"Accept": "text/css"})
+
+        async with self.request_limiter:
+            response, soup_or_none = await self.client._get(self.DOMAIN, url, headers={"Accept": "text/css"})
 
         if soup_or_none:
             return json_loads(soup_or_none.text)
 
-        # Force utf-8. When using the 'text/css' header, the response is missing the charset header
-        # and charset detection may return a random codec if the body has non english chars
+        # When using the 'text/css' header, the response is missing the charset header
+        # and charset detection may return a random codec if the body has non english chars, so we force utf-8
         return json_loads(await response.text(encoding="utf-8"))
