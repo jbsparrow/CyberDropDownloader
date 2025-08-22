@@ -6,8 +6,10 @@ import itertools
 import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
+from json import loads as json_loads
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple, NotRequired, cast
 
+from aiohttp_client_cache.response import AnyResponse
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
 
@@ -22,7 +24,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
 
-    from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
@@ -325,7 +326,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         path = f"{url_info.service}/user/{url_info.user_id}/post/{url_info.post_id}"
         api_url = self.__make_api_url_w_offset(path, scrape_item.url)
         async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url, headers={"Accept": "text/css"})
+            json_resp: dict[str, Any] = await self.get_json(self.DOMAIN, api_url)
 
         post = UserPost.model_validate(json_resp["post"])
         self._register_attachments_servers(json_resp["attachments"])
@@ -374,7 +375,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         query_url = api_url.with_query(type="post" if is_post else "artist")
 
         async with self.request_limiter:
-            json_resp: list[dict] = await self.client.get_json(self.DOMAIN, query_url, headers={"Accept": "text/css"})
+            json_resp: list[dict] = await self.get_json(self.DOMAIN, query_url)
 
         self.update_cookies({"session": ""})
 
@@ -465,9 +466,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     async def __get_usernames(self, api_url: AbsoluteHttpURL) -> None:
         try:
-            json_resp: list[dict[str, Any]] = await self.client.get_json(
-                self.DOMAIN, api_url, headers={"Accept": "text/css"}
-            )
+            json_resp: list[dict[str, Any]] = await self.get_json(self.DOMAIN, api_url)
             self._user_names = {User(u["service"], u["id"]): u["name"] for u in json_resp}
         except Exception:
             pass
@@ -483,18 +482,14 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
             api_url_server_profile = self.API_ENTRYPOINT / "discord" / "user" / server_id / "profile"
             async with self.request_limiter:
-                server_profile_json: dict[str, Any] = await self.client.get_json(
-                    self.DOMAIN, api_url_server_profile, headers={"Accept": "text/css"}
-                )
+                server_profile_json: dict[str, Any] = await self.get_json(self.DOMAIN, api_url_server_profile)
 
             name = server_profile_json.get("name")
             if not name:
                 name = f"Discord Server {server_id}"
             api_url_channels = self.API_ENTRYPOINT / "discord/channel/lookup" / server_id
             async with self.request_limiter:
-                channels_json_resp: list[dict] = await self.client.get_json(
-                    self.DOMAIN, api_url_channels, headers={"Accept": "text/css"}
-                )
+                channels_json_resp: list[dict] = await self.get_json(self.DOMAIN, api_url_channels)
 
             channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in channels_json_resp)
             self.__known_discord_servers[server_id] = server = DiscordServer(name, server_id, channels)
@@ -533,7 +528,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         for current_offset in itertools.count(init_offset, current_step_size):
             api_url = url.update_query(o=current_offset)
             async with self.request_limiter:
-                json_resp: Any = await self.client.get_json(self.DOMAIN, api_url, headers={"Accept": "text/css"})
+                json_resp: Any = await self.get_json(self.DOMAIN, api_url)
             yield json_resp
 
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -597,3 +592,16 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
         self._user_names[full_post.user] = post.user_name
         await self._handle_user_post(scrape_item, full_post)
+
+    async def get_json(self, domain: str, url: AbsoluteHttpURL) -> Any:
+        """Get JSON from the API, with a custom Accept header."""
+        response, soup_or_none = await self.client._get(domain, url, headers={"Accept": "text/css"})
+
+        if soup_or_none:
+            return json_loads(soup_or_none.text)
+
+        if isinstance(response, AnyResponse):
+            content = await response.text()
+        else:
+            content = response.text
+        return json_loads(content)
