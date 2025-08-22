@@ -273,15 +273,24 @@ class PornHubCrawler(Crawler):
         title = css.select_one_get_text(soup, _SELECTORS.TITLE)
         formats = [Format.new(media) for media in get_media_list(soup)]
         best_hls = max(f for f in formats if f.format == "hls")
-        debrid_link = m3u8 = None
+        debrid_link = m3u8 = best_format = None
         scrape_item.possible_datetime = date = self.parse_iso_date(get_upload_date_str(soup))
         assert date
-        if date >= MP4_NOT_AVAILABLE_SINCE:
+        use_hls = date >= MP4_NOT_AVAILABLE_SINCE
+
+        if not use_hls:
+            best_format = await self.get_best_mp4_format(formats)
+            if best_format is None:
+                self.log(
+                    f"[{self.FOLDER_DOMAIN}] Video {video_id} has no mp4 formats available. Falling back to HLS", 30
+                )
+
+            else:
+                debrid_link = self.parse_url(best_format.url)
+
+        if use_hls or best_format is None:
             m3u8, _ = await self.get_m3u8_from_playlist_url(self.parse_url(best_hls.url))
             best_format = best_hls
-        else:
-            best_format = await self.get_best_mp4_format(formats)
-            debrid_link = self.parse_url(best_format.url)
 
         scrape_item.url = page_url
         filename, ext = self.get_filename_and_ext(f"{video_id}.mp4")
@@ -296,19 +305,17 @@ class PornHubCrawler(Crawler):
             m3u8=m3u8,
         )
 
-    async def get_best_mp4_format(self, formats: list[Format]) -> Format:
+    async def get_best_mp4_format(self, formats: list[Format]) -> Format | None:
         mp4_format = next((f for f in formats if f.format == "mp4"), None)
         if not mp4_format:
             raise ScrapeError(422, message="Unable to get mp4 format")
 
         mp4_media_url = self.parse_url(mp4_format.url)
         async with self.request_limiter:
+            # This returns an empty list when downloading multiple videos concurrently
             mp4_media: list[Media] = await self.client.get_json(self.DOMAIN, mp4_media_url, cache_disabled=True)
 
-        if not mp4_media:
-            raise ScrapeError(422, message="Video has no mp4 formats available")
-
-        return max(Format.new(media) for media in mp4_media)
+        return max((Format.new(media) for media in mp4_media), default=None)
 
 
 def get_upload_date_str(soup: BeautifulSoup) -> str:
