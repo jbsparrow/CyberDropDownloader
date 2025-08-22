@@ -9,7 +9,6 @@ from datetime import datetime  # noqa: TC003
 from json import loads as json_loads
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple, NotRequired, cast
 
-from aiohttp_client_cache.response import AnyResponse
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
 
@@ -24,6 +23,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
 
+    from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
@@ -600,8 +600,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         if soup_or_none:
             return json_loads(soup_or_none.text)
 
-        if isinstance(response, AnyResponse):
-            content = await response.text()
-        else:
-            content = response.text
-        return json_loads(content)
+        # Force utf-8. When using the 'text/css' header, the response is missing the charset header
+        # and charset detection may return a random codec if the body has non english chars
+        return json_loads(await response.text(encoding="utf-8"))
