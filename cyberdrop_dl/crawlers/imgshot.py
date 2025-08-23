@@ -202,33 +202,6 @@ class ImgAdultCrawler(ImgShotCrawler):
         self.update_cookies({"img_i_d": 1})
 
 
-class AcidImgCrawler(ImgShotCrawler):
-    SUPPORTED_PATHS: ClassVar = {
-        "Image": "/i/<image_id>",
-        "Direct Link": "/upload/...",
-    }
-    PRIMARY_URL = AbsoluteHttpURL("https://acidimg.cc")
-    FOLDER_DOMAIN = "AcidImg"
-    HAS_CAPTCHA = True
-
-    async def fetch(self, scrape_item: ScrapeItem) -> None:
-        match scrape_item.url.parts[1:]:
-            case ["g", _]:
-                return await self.gallery(scrape_item)
-            case ["i", _]:
-                return await self.image(scrape_item)
-
-        await ImgShotCrawler.fetch(self, scrape_item)
-
-    @classmethod
-    def transform_url(cls, url: AbsoluteHttpURL):
-        match url.parts[1:]:
-            case ["upload", "small" | "small-medium" | "big", _, *_]:
-                return cls._thumb_to_web_url(url)
-            case _:
-                return url
-
-
 class PicstateCrawler(ImgShotCrawler):
     SUPPORTED_PATHS: ClassVar = {
         "Image": "/view/full/<image_id>",
