@@ -42,6 +42,7 @@ class ScraperClient:
     async def _request(
         self,
         url: AbsoluteHttpURL,
+        /,
         method: HttpMethod = "GET",
         headers: dict[str, str] | None = None,
         impersonate: BrowserTypeLiteral | bool | None = None,
