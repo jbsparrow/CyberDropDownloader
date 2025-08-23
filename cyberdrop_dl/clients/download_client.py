@@ -2,19 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import calendar
+import contextlib
 import itertools
 import time
-from functools import partial, wraps
+from functools import partial
 from http import HTTPStatus
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import aiofiles
 from dateutil import parser
-from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
+from cyberdrop_dl.managers.client_manager import check_file_duration
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
@@ -24,7 +25,6 @@ if TYPE_CHECKING:
     from typing import Any
 
     import aiohttp
-    from aiohttp import ClientSession
     from multidict import CIMultiDictProxy
 
     from cyberdrop_dl.data_structures.url_objects import MediaItem
@@ -38,72 +38,6 @@ R = TypeVar("R")
 CONTENT_TYPES_OVERRIDES = {"text/vnd.trolltech.linguist": "video/MP2T"}
 
 
-def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
-    """Wrapper handles limits for download session."""
-
-    @wraps(func)
-    async def wrapper(*args, **kwargs) -> R:
-        self: DownloadClient = args[0]
-        domain: str = args[1]
-        with self.client_manager.request_context(domain):
-            domain_limiter = await self.client_manager.get_rate_limiter(domain)
-            await asyncio.sleep(await self.client_manager.get_downloader_spacer(domain))
-            await self.client_manager.global_rate_limiter.acquire()
-            await domain_limiter.acquire()
-
-            # TODO: Use a single global download session for the entire run
-            # TODO: Unify download limiter with scrape limiter # https://github.com/jbsparrow/CyberDropDownloader/issues/556
-            async with self.client_manager.new_download_session() as client:
-                kwargs["client_session"] = client
-                return await func(*args, **kwargs)
-
-    return wrapper
-
-
-def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
-    """Checks the file runtime against the config runtime limits."""
-    if media_item.is_segment:
-        return True
-
-    is_video = media_item.ext.lower() in FILE_FORMATS["Videos"]
-    is_audio = media_item.ext.lower() in FILE_FORMATS["Audio"]
-    if not (is_video or is_audio):
-        return True
-
-    def get_duration() -> float | None:
-        if media_item.duration:
-            return media_item.duration
-        props: dict = {}
-        if is_video:
-            props: dict = get_video_properties(str(media_item.complete_file))
-        elif is_audio:
-            props: dict = get_audio_properties(str(media_item.complete_file))
-        return float(props.get("duration", 0)) or None
-
-    duration_limits = manager.config_manager.settings_data.media_duration_limits
-    min_video_duration: float = duration_limits.minimum_video_duration.total_seconds()
-    max_video_duration: float = duration_limits.maximum_video_duration.total_seconds()
-    min_audio_duration: float = duration_limits.minimum_audio_duration.total_seconds()
-    max_audio_duration: float = duration_limits.maximum_audio_duration.total_seconds()
-    video_duration_limits = min_video_duration, max_video_duration
-    audio_duration_limits = min_audio_duration, max_audio_duration
-    if is_video and not any(video_duration_limits):
-        return True
-    if is_audio and not any(audio_duration_limits):
-        return True
-
-    duration: float = get_duration()  # type: ignore
-    media_item.duration = duration
-    if duration is None:
-        return True
-
-    max_video_duration = max_video_duration or float("inf")
-    max_audio_duration = max_audio_duration or float("inf")
-    if is_video:
-        return min_video_duration <= media_item.duration <= max_video_duration
-    return min_audio_duration <= media_item.duration <= max_audio_duration
-
-
 class DownloadClient:
     """AIOHTTP operations for downloading."""
 
@@ -114,13 +48,18 @@ class DownloadClient:
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
         self.chunk_size = client_manager.speed_limiter.chunk_size
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    @contextlib.asynccontextmanager
+    async def limiter(self, domain: str):
+        with self.client_manager.request_context(domain):
+            await self.client_manager.manager.states.RUNNING.wait()
+            await asyncio.sleep(await self.client_manager.get_downloader_spacer(domain))
+            yield
 
     def add_api_key_headers(self, domain: str, referer: AbsoluteHttpURL) -> dict:
-        download_headers = self.client_manager._headers | {"Referer": str(referer)}
+        download_headers = self.client_manager._default_headers | {"Referer": str(referer)}
         auth_data = self.manager.config_manager.authentication_data
         if domain == "pixeldrain" and auth_data.pixeldrain.api_key:
-            download_headers["Authorization"] = self.manager.download_manager.basic_auth(
+            download_headers["Authorization"] = self.manager.client_manager.basic_auth(
                 "Cyberdrop-DL", auth_data.pixeldrain.api_key
             )
         elif domain == "gofile":
@@ -138,18 +77,31 @@ class DownloadClient:
             }
         return download_headers
 
-    @limiter
     async def _download(
         self,
         domain: str,
-        manager: Manager,
+        media_item: MediaItem,
+    ) -> bool:
+        async def save_content(content: aiohttp.StreamReader) -> None:
+            assert media_item.task_id is not None
+            await self._append_content(
+                media_item,
+                content,
+                partial(self.manager.progress_manager.file_progress.advance_file, media_item.task_id),
+            )
+
+        async with self.limiter(domain):
+            return await self._really_download(domain, media_item, save_content)
+
+    async def _really_download(
+        self,
+        domain: str,
         media_item: MediaItem,
         save_content: Callable[[aiohttp.StreamReader], Coroutine[Any, Any, None]],
-        client_session: ClientSession,
     ) -> bool:
         """Downloads a file."""
         download_headers = self.add_api_key_headers(domain, media_item.referer)
-
+        client_session = self.client_manager.new_download_session()
         downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain, media_item)
         download_dir = self.get_download_dir(media_item)
         if media_item.is_segment:
@@ -329,7 +281,7 @@ class DownloadClient:
 
         return check_download_speed
 
-    async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
+    async def download_file(self, domain: str, media_item: MediaItem) -> bool:
         """Starts a file."""
         if (
             self.manager.config_manager.settings_data.download_options.skip_download_mark_completed
@@ -341,15 +293,7 @@ class DownloadClient:
             await self.process_completed(media_item, domain)
             return False
 
-        async def save_content(content: aiohttp.StreamReader) -> None:
-            assert media_item.task_id is not None
-            await self._append_content(
-                media_item,
-                content,
-                partial(manager.progress_manager.file_progress.advance_file, media_item.task_id),
-            )
-
-        downloaded = await self._download(domain, manager, media_item, save_content)  # type: ignore
+        downloaded = await self._download(domain, media_item)
         if downloaded:
             await asyncio.to_thread(media_item.partial_file.rename, media_item.complete_file)
             if not media_item.is_segment:

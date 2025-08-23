@@ -849,7 +849,7 @@ class MegaDownloader(Downloader):
     def startup(self) -> None:
         """Starts the downloader."""
         self.client = MegaDownloadClient(self.manager)  # type: ignore[reportIncompatibleVariableOverride]
-        self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
+        self._semaphore = asyncio.Semaphore(self.manager.client_manager.get_download_limit(self.domain))
 
     def register(self, url: URL, crypto: DecryptData) -> None:
         self.client.decrypt_mapping[url] = crypto

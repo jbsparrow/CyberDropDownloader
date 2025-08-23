@@ -36,7 +36,7 @@ MAC_OS_SET_FILE = None
 
 # Try to import win32con for Windows constants, fallback to hardcoded values if unavailable
 try:
-    import win32con
+    import win32con  # type: ignore[reportMissingModuleSource]
 
     FILE_WRITE_ATTRIBUTES = 256
     OPEN_EXISTING = win32con.OPEN_EXISTING
@@ -120,7 +120,7 @@ class Downloader:
 
         self._additional_headers = {}
         self._current_attempt_filesize = {}
-        self._file_lock_vault = manager.download_manager.file_locks
+        self._file_lock_vault = manager.client_manager.file_locks
         self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
         self._semaphore: asyncio.Semaphore = field(init=False)
 
@@ -133,7 +133,7 @@ class Downloader:
     def startup(self) -> None:
         """Starts the downloader."""
         self.client = self.manager.client_manager.downloader_session
-        self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
+        self._semaphore = asyncio.Semaphore(self.manager.client_manager.get_download_limit(self.domain))
 
         self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
         if self.manager.config_manager.settings_data.sorting.sort_downloads:
@@ -270,9 +270,9 @@ class Downloader:
     async def check_file_can_download(self, media_item: MediaItem) -> None:
         """Checks if the file can be downloaded."""
         await self.manager.storage_manager.check_free_space(media_item)
-        if not self.manager.download_manager.check_allowed_filetype(media_item):
+        if not self.manager.client_manager.check_allowed_filetype(media_item):
             raise RestrictedFiletypeError(origin=media_item)
-        if not self.manager.download_manager.pre_check_duration(media_item):
+        if not self.manager.client_manager.pre_check_duration(media_item):
             raise DurationError(origin=media_item)
 
     async def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
@@ -382,7 +382,7 @@ class Downloader:
             if not media_item.is_segment:
                 media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
                 await self.check_file_can_download(media_item)
-            downloaded = await self.client.download_file(self.manager, self.domain, media_item)
+            downloaded = await self.client.download_file(self.domain, media_item)
             if downloaded:
                 await asyncio.to_thread(Path.chmod, media_item.complete_file, 0o666)
                 if not media_item.is_segment:

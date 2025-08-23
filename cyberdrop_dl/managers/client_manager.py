@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ssl
+from base64 import b64encode
 from collections import defaultdict
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -18,11 +19,12 @@ from aiohttp_client_cache.session import CachedSession
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from multidict import CIMultiDict, CIMultiDictProxy
+from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl import constants, env
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.exceptions import (
     DDOSGuardError,
     DownloadError,
@@ -30,14 +32,17 @@ from cyberdrop_dl.exceptions import (
     ScrapeError,
     TooManyCrawlerErrors,
 )
-from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.cookie_management import read_netscape_files
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.utilities import parse_url
 
+_VALID_EXTENSIONS = (
+    constants.FILE_FORMATS["Images"] | constants.FILE_FORMATS["Videos"] | constants.FILE_FORMATS["Audio"]
+)
+
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterable, Mapping
+    from collections.abc import AsyncGenerator, Generator, Iterable, Mapping
     from http.cookies import BaseCookie
 
     from aiohttp_client_cache.response import CachedResponse
@@ -56,6 +61,32 @@ DOWNLOAD_ERROR_ETAGS = {
 }
 
 _crawler_errors: dict[str, int] = defaultdict(int)
+
+
+if TYPE_CHECKING:
+    from cyberdrop_dl.managers.manager import Manager
+
+
+class DownloadSpeedLimiter(AsyncLimiter):
+    __slots__ = (*AsyncLimiter.__slots__, "chunk_size")
+
+    max_rate: int
+
+    def __init__(self, speed_limit: int) -> None:
+        self.chunk_size: int = 1024 * 1024 * 10  # 10MB
+        if speed_limit:
+            self.chunk_size = min(self.chunk_size, self.max_rate)
+        super().__init__(speed_limit, 1)
+
+    async def acquire(self, amount: float | None = None) -> None:
+        if self.max_rate <= 0:
+            return
+        if not amount:
+            amount = self.chunk_size
+        await super().acquire(amount)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(speed_limit={self.max_rate}, chunk_size={self.chunk_size})"
 
 
 class DDosGuard:
@@ -125,6 +156,29 @@ class AbstractResponse:
 
         raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting JSON")
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} [{self.status}] ({self.url})>"
+
+
+class FileLocksVault:
+    """Is this necessary? No. But I want it."""
+
+    def __init__(self) -> None:
+        self._locked_files: dict[str, asyncio.Lock] = {}
+
+    @contextlib.asynccontextmanager
+    async def get_lock(self, filename: str) -> AsyncGenerator:
+        """Get filelock for the provided filename. Creates one if none exists"""
+        log_debug(f"Checking lock for '{filename}'", 20)
+        if filename not in self._locked_files:
+            log_debug(f"Lock for '{filename}' does not exists", 20)
+
+        self._locked_files[filename] = self._locked_files.get(filename, asyncio.Lock())
+        async with self._locked_files[filename]:
+            log_debug(f"Lock for '{filename}' acquired", 20)
+            yield
+            log_debug(f"Lock for '{filename}' released", 20)
+
 
 class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions."""
@@ -165,6 +219,17 @@ class ClientManager:
             "nhentai.net": 1,
         }
 
+        self.download_limits = {
+            "bunkr": 1,
+            "bunkrr": 1,
+            "cyberdrop": 1,
+            "cyberfile": 1,
+            "noodlemagazine": 2,
+            "4chan": 1,
+            "pixeldrain": 2,
+            "xxxbunker": 2,
+        }
+
         self.global_rate_limiter = AsyncLimiter(self.manager.global_config.rate_limiting_options.rate_limit, 1)
         self.session_limit = asyncio.Semaphore(50)
         self.download_session_limit = asyncio.Semaphore(
@@ -172,10 +237,49 @@ class ClientManager:
         )
 
         self.scraper_session = ScraperClient(self)
-        self.speed_limiter = DownloadSpeedLimiter(manager)
+        self.speed_limiter = DownloadSpeedLimiter(
+            manager.config_manager.global_settings_data.rate_limiting_options.download_speed_limit
+        )
         self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
-        self._headers = {"user-agent": self.manager.global_config.general.user_agent}
+        self._default_headers = {"user-agent": self.manager.global_config.general.user_agent}
+
+        self.file_locks = FileLocksVault()
+
+    def get_download_limit(self, key: str) -> int:
+        """Returns the download limit for a domain."""
+        rate_limiting_options = self.manager.config_manager.global_settings_data.rate_limiting_options
+        instances = self.download_limits.get(key, rate_limiting_options.max_simultaneous_downloads_per_domain)
+
+        return min(
+            instances,
+            rate_limiting_options.max_simultaneous_downloads_per_domain,
+        )
+
+    @staticmethod
+    def basic_auth(username: str, password: str) -> str:
+        """Returns a basic auth token."""
+        token = b64encode(f"{username}:{password}".encode()).decode("ascii")
+        return f"Basic {token}"
+
+    def check_allowed_filetype(self, media_item: MediaItem) -> bool:
+        """Checks if the file type is allowed to download."""
+        ignore_options = self.manager.config_manager.settings_data.ignore_options
+
+        if media_item.ext.lower() in constants.FILE_FORMATS["Images"] and ignore_options.exclude_images:
+            return False
+        if media_item.ext.lower() in constants.FILE_FORMATS["Videos"] and ignore_options.exclude_videos:
+            return False
+        if media_item.ext.lower() in constants.FILE_FORMATS["Audio"] and ignore_options.exclude_audio:
+            return False
+        return not (ignore_options.exclude_other and media_item.ext.lower() not in _VALID_EXTENSIONS)
+
+    def pre_check_duration(self, media_item: MediaItem) -> bool:
+        """Checks if the download is above the maximum runtime."""
+        if not media_item.duration:
+            return True
+
+        return check_file_duration(media_item, self.manager)
 
     def filter_cookies_by_word_in_domain(self, word: str) -> Iterable[tuple[str, BaseCookie[str]]]:
         """Yields pairs of `[domain, BaseCookie]` for every cookie with a domain that has `word` in it"""
@@ -195,7 +299,7 @@ class ClientManager:
 
         proxy_or_none = str(proxy) if (proxy := self.manager.global_config.general.proxy) else None
         return AsyncSession(
-            headers=self._headers,
+            headers=self._default_headers,
             impersonate="chrome",
             verify=bool(self.ssl_context),
             proxy=proxy_or_none,
@@ -233,7 +337,7 @@ class ClientManager:
             session_cls = ClientSession
             kwargs = {}
         return session_cls(
-            headers=self._headers,
+            headers=self._default_headers,
             raise_for_status=False,
             cookie_jar=self.cookies,
             timeout=timeout,
@@ -303,26 +407,26 @@ class ClientManager:
     @classmethod
     async def check_http_status(
         cls,
-        response: ClientResponse | CurlResponse | CachedResponse,
+        response: ClientResponse | CachedResponse | CurlResponse | AbstractResponse,
         download: bool = False,
     ) -> BeautifulSoup | None:
         """Checks the HTTP status code and raises an exception if it's not acceptable.
 
         If the response is successful and has valid html, returns soup
         """
-        status: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
-        headers = response.headers
-        url_host: str = AbsoluteHttpURL(response.url).host
+        if not isinstance(response, AbstractResponse):
+            response = AbstractResponse(response)
+
         message = None
 
         def check_etag() -> None:
-            if download and (e_tag := headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
+            if download and (e_tag := response.headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
                 message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
                 raise DownloadError(HTTPStatus.NOT_FOUND, message=message)
 
         async def check_ddos_guard() -> BeautifulSoup | None:
             try:
-                soup = BeautifulSoup(await AbstractResponse(response).text(), "html.parser")
+                soup = BeautifulSoup(await response.text(), "html.parser")
             except UnicodeDecodeError:
                 return
             else:
@@ -331,29 +435,32 @@ class ClientManager:
                 return soup
 
         async def check_json_status() -> None:
-            if not any(domain in url_host for domain in ("gofile", "imgur")):
+            if not any(domain in response.url.host for domain in ("gofile", "imgur")):
                 return
 
-            with contextlib.suppress(ContentTypeError):
+            try:
                 json_resp: dict[str, Any] | None = await response.json()
-                if not json_resp:
-                    return
-                json_status: str | int | None = json_resp.get("status")
-                if json_status and isinstance(status, str) and "notFound" in status:
-                    raise ScrapeError(404)
+            except (ContentTypeError, InvalidContentTypeError):
+                return
 
-                if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
-                    raise ScrapeError(json_status or status, data["error"])
+            if not json_resp:
+                return
+            json_status: str | int | None = json_resp.get("status")
+            if json_status and isinstance(json_status, str) and "notFound" in json_status:
+                raise ScrapeError(404)
+
+            if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
+                raise ScrapeError(json_status or response.status, data["error"])
 
         check_etag()
-        if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
+        if HTTPStatus.OK <= response.status < HTTPStatus.BAD_REQUEST:
             # Check DDosGuard even on successful pages
             # await check_ddos_guard()
             return
 
         await check_json_status()
         await check_ddos_guard()
-        raise DownloadError(status=status, message=message)
+        raise DownloadError(status=response.status, message=message)
 
     @staticmethod
     def check_content_length(headers: Mapping[str, Any]) -> None:
@@ -554,3 +661,47 @@ def _create_request_log_hooks(client_type: Literal["scrape", "download"]) -> lis
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
     return [trace_config]
+
+
+def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
+    """Checks the file runtime against the config runtime limits."""
+    if media_item.is_segment:
+        return True
+
+    is_video = media_item.ext.lower() in constants.FILE_FORMATS["Videos"]
+    is_audio = media_item.ext.lower() in constants.FILE_FORMATS["Audio"]
+    if not (is_video or is_audio):
+        return True
+
+    def get_duration() -> float | None:
+        if media_item.duration:
+            return media_item.duration
+        props: dict = {}
+        if is_video:
+            props: dict = get_video_properties(str(media_item.complete_file))
+        elif is_audio:
+            props: dict = get_audio_properties(str(media_item.complete_file))
+        return float(props.get("duration", 0)) or None
+
+    duration_limits = manager.config_manager.settings_data.media_duration_limits
+    min_video_duration: float = duration_limits.minimum_video_duration.total_seconds()
+    max_video_duration: float = duration_limits.maximum_video_duration.total_seconds()
+    min_audio_duration: float = duration_limits.minimum_audio_duration.total_seconds()
+    max_audio_duration: float = duration_limits.maximum_audio_duration.total_seconds()
+    video_duration_limits = min_video_duration, max_video_duration
+    audio_duration_limits = min_audio_duration, max_audio_duration
+    if is_video and not any(video_duration_limits):
+        return True
+    if is_audio and not any(audio_duration_limits):
+        return True
+
+    duration: float = get_duration()  # type: ignore
+    media_item.duration = duration
+    if duration is None:
+        return True
+
+    max_video_duration = max_video_duration or float("inf")
+    max_audio_duration = max_audio_duration or float("inf")
+    if is_video:
+        return min_video_duration <= media_item.duration <= max_video_duration
+    return min_audio_duration <= media_item.duration <= max_audio_duration

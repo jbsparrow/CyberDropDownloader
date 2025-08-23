@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, Self
 
 import cyberdrop_dl.constants as constants
 from cyberdrop_dl import env
-from cyberdrop_dl.data_structures.url_objects import copy_signature
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, copy_signature
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.managers.client_manager import AbstractResponse
 from cyberdrop_dl.utils.utilities import sanitize_filename
@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from curl_cffi.requests.models import Response as CurlResponse
     from curl_cffi.requests.session import HttpMethod
 
-    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
     from cyberdrop_dl.managers.client_manager import ClientManager
 
 
@@ -98,7 +97,7 @@ class ScraperClient:
         cache_disabled: bool = False,
         **request_params: Any,
     ) -> AbstractResponse:
-        request_params["headers"] = self.client_manager._headers | (headers or {})
+        request_params["headers"] = self.client_manager._default_headers | (headers or {})
         request_params["data"] = data
         request_params["json"] = json
 
