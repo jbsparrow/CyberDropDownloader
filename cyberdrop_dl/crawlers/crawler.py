@@ -100,6 +100,24 @@ class Crawler(ABC):
     FOLDER_DOMAIN: ClassVar[str] = ""
     DOMAIN: ClassVar[str]
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
+    if TYPE_CHECKING:
+        request = ScraperClient._request
+        request_json = ScraperClient._request_json
+        request_soup = ScraperClient._request_soup
+
+    else:
+
+        async def request(self, *args, **kwargs):
+            async with self.client.limiter(self.DOMAIN):
+                return self.client._request(*args, *kwargs)
+
+        async def request_json(self, *args, **kwargs):
+            async with self.client.limiter(self.DOMAIN):
+                return self.client._request_json(*args, *kwargs)
+
+        async def request_soup(self, *args, **kwargs):
+            async with self.client.limiter(self.DOMAIN):
+                return self.client._request_soup(*args, *kwargs)
 
     @final
     def __init__(self, manager: Manager) -> None:
