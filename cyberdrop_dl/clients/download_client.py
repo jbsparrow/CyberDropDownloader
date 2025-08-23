@@ -354,10 +354,12 @@ class DownloadClient:
                 if media_item.partial_file.exists():
                     log(f"Found {downloaded_filename} locally, trying to resume")
                     assert media_item.filesize
-                    if media_item.partial_file.stat().st_size >= media_item.filesize != 0:
+                    size = media_item.partial_file.stat().st_size
+                    if size >= media_item.filesize != 0:
                         log(f"Deleting partial file {media_item.partial_file}")
                         media_item.partial_file.unlink()
-                    if media_item.partial_file.stat().st_size == media_item.filesize:
+
+                    elif size == media_item.filesize:
                         if media_item.complete_file.exists():
                             log(
                                 f"Found conflicting complete file '{media_item.complete_file}' locally, iterating filename",

@@ -108,16 +108,16 @@ class Crawler(ABC):
     else:
 
         async def request(self, *args, **kwargs):
-            async with self.client.limiter(self.DOMAIN):
-                return self.client._request(*args, *kwargs)
+            async with self.client._limiter(self.DOMAIN):
+                return await self.client._request(*args, **kwargs)
 
         async def request_json(self, *args, **kwargs):
-            async with self.client.limiter(self.DOMAIN):
-                return self.client._request_json(*args, *kwargs)
+            async with self.client._limiter(self.DOMAIN):
+                return await self.client._request_json(*args, **kwargs)
 
         async def request_soup(self, *args, **kwargs):
-            async with self.client.limiter(self.DOMAIN):
-                return self.client._request_soup(*args, *kwargs)
+            async with self.client._limiter(self.DOMAIN):
+                return await self.client._request_soup(*args, **kwargs)
 
     @final
     def __init__(self, manager: Manager) -> None:
@@ -590,10 +590,8 @@ class Crawler(ABC):
             func = css.select_one_get_attr_or_none
             get_next_page = partial(func, selector=selector, attribute="href")
 
-        get_soup = self.client.get_soup_cffi if cffi else self.client.get_soup
         while True:
-            async with self.request_limiter:
-                soup = await get_soup(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url, impersonate=cffi or None)
             yield soup
             page_url_str = get_next_page(soup)
             if not page_url_str:
@@ -648,11 +646,8 @@ class Crawler(ABC):
         log(msg, bug=True)
 
     async def _get_redirect_url(self, url: AbsoluteHttpURL):
-        async with self.request_limiter:
-            head = await self.client.get_head(self.DOMAIN, url)
-        if location := head.get("location"):
-            return self.parse_url(location, url.origin())
-        return url
+        head = await self.request(url, method="HEAD")
+        return head.location or url
 
     @staticmethod
     def register_cache_filter(
@@ -685,9 +680,7 @@ class Crawler(ABC):
         return m3u8.RenditionGroup(await self._get_m3u8(url, headers))
 
     async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> m3u8.M3U8:
-        headers = headers or {}
-        async with self.request_limiter:
-            content = await self.client.get_text(self.DOMAIN, url, headers)
+        content = await (await self.request(url, headers=headers)).text()
         return m3u8.M3U8(content, url.parent)
 
     def create_custom_filename(

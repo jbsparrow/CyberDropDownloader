@@ -5,7 +5,7 @@ import contextlib
 from datetime import datetime
 from json import dumps as json_dumps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import cyberdrop_dl.constants as constants
 from cyberdrop_dl.clients.response import AbstractResponse
@@ -44,7 +44,7 @@ class ScraperClient:
         url: AbsoluteHttpURL,
         method: HttpMethod = "GET",
         headers: dict[str, str] | None = None,
-        impersonate: BrowserTypeLiteral | Literal[True] | None = None,
+        impersonate: BrowserTypeLiteral | bool | None = None,
         data: Any = None,
         json: Any = None,
         cache_disabled: bool = False,

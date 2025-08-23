@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from json import loads as json_loads
 from typing import TYPE_CHECKING, Any
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 class AbstractResponse:
     """Class to represent common methods and attributes between aiohttp ClientResponse and a CurlResponse"""
 
-    __slots__ = ("_resp", "content_type", "headers", "location", "status", "url")
+    __slots__ = ("_read_lock", "_resp", "content_type", "headers", "location", "status", "url")
 
     def __init__(self, response: AnyResponse | CurlResponse) -> None:
         self._resp = response
@@ -36,10 +37,13 @@ class AbstractResponse:
         else:
             self.location = None
 
+        self._read_lock = asyncio.Lock()
+
     async def text(self) -> str:
-        if isinstance(self._resp, AnyResponse):
-            return await self._resp.text()
-        return self._resp.text
+        async with self._read_lock:
+            if isinstance(self._resp, AnyResponse):
+                return await self._resp.text()
+            return self._resp.text
 
     async def soup(self) -> BeautifulSoup:
         if "text" in self.content_type or "html" in self.content_type:
