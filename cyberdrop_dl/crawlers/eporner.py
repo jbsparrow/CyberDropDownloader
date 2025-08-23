@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import dataclasses
-import json
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
@@ -183,6 +182,7 @@ class EpornerCrawler(Crawler):
             raise ScrapeError(410)
 
         scrape_item.url = canonical_url
+        # TODO: Force utf8 for soup
         video = _parse_video(soup)
         link = self.parse_url(video.best_src.url)
         scrape_item.possible_datetime = self.parse_date(video.date)
@@ -212,10 +212,11 @@ def _get_best_src(soup: BeautifulSoup) -> VideoSource:
 
 def _parse_video(soup: BeautifulSoup) -> Video:
     ld_json = css.select_one_get_text(soup, _SELECTORS.DATE_JS)
-    video_data = json.loads(ld_json)
+    # This may have invalid json. They do not sanitize the description field
+    # See: https://github.com/jbsparrow/CyberDropDownloader/issues/1211
     return Video(
-        title=video_data["name"],
-        date=video_data["uploadDate"],
+        title=get_text_between(ld_json, 'name": "', '",'),
+        date=get_text_between(ld_json, 'uploadDate": "', '"'),
         best_src=_get_best_src(soup),
     )
 
