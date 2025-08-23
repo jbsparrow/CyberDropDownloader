@@ -121,7 +121,9 @@ class CheveretoCrawler(Crawler, is_generic=True):
         async for soup in self.web_pager(_sort_by_new(scrape_item.url), trim=False):
             if not title:
                 if _is_password_protected(soup):
-                    soup = await self._get_soup_w_password(scrape_item)
+                    await self._unlock_password_protected_album(scrape_item)
+                    return await self.album(scrape_item, album_id)
+
                 title = self.create_title(open_graph.title(soup), album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
             self._process_page(scrape_item, soup, results)
@@ -149,17 +151,17 @@ class CheveretoCrawler(Crawler, is_generic=True):
 
             self.create_task(self.run(new_scrape_item))
 
-    async def _get_soup_w_password(self, scrape_item: ScrapeItem) -> BeautifulSoup:
+    async def _unlock_password_protected_album(self, scrape_item: ScrapeItem) -> None:
         password = scrape_item.pop_query("password")
         if not password:
             raise PasswordProtectedError
+
         async with self.request_limiter:
             soup = await self.client.post_data_get_soup(
-                self.DOMAIN, _sort_by_new(scrape_item.url), data={"content-password": password}
+                self.DOMAIN, _sort_by_new(scrape_item.url / ""), data={"content-password": password}
             )
         if _is_password_protected(soup):
             raise PasswordProtectedError(message="Wrong password")
-        return soup
 
     @error_handling_wrapper
     async def direct_file(
