@@ -324,7 +324,16 @@ class ImageBamCrawler(ImgShotCrawler):
     IMG_SELECTOR = "a .main-image"
 
     async def async_startup(self) -> None:
-        self.update_cookies({"nsfw_inter": "1"})
+        self.update_cookies(
+            dict.fromkeys(
+                (
+                    "nsfw_inter",
+                    "sfw_inter",
+                    "_pre_js",
+                ),
+                1,
+            )
+        )
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
