@@ -100,6 +100,10 @@ class Crawler(ABC):
     FOLDER_DOMAIN: ClassVar[str] = ""
     DOMAIN: ClassVar[str]
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
+
+    _RATE_LIMIT: ClassVar[tuple[float, float]] = 25, 1
+    _DOWNLOAD_SLOTS: ClassVar[int | None] = None
+
     if TYPE_CHECKING:
         request = ScraperClient._request
         request_json = ScraperClient._request_json
@@ -125,11 +129,11 @@ class Crawler(ABC):
         self.downloader: Downloader = field(init=False)
         self.client: ScraperClient = field(init=False)
         self.startup_lock = asyncio.Lock()
-        self.request_limiter = AsyncLimiter(10, 1)
         self.ready: bool = False
         self.disabled: bool = False
         self.logged_in: bool = False
         self.scraped_items: set[str] = set()
+        self.RATE_LIMIT = AsyncLimiter(*self._RATE_LIMIT)
         self.waiting_items = 0
         self.log = log
         self.log_debug = log_debug
@@ -208,6 +212,9 @@ class Crawler(ABC):
             if self.ready:
                 return
             self.client = self.manager.client_manager.scraper_client
+            self.manager.client_manager.rate_limits[self.DOMAIN] = self.RATE_LIMIT
+            if self._DOWNLOAD_SLOTS:
+                self.manager.client_manager.download_slots[self.DOMAIN] = self._DOWNLOAD_SLOTS
             self.downloader = self._init_downloader()
             await self.async_startup()
             self.ready = True

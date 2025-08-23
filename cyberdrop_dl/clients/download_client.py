@@ -49,7 +49,6 @@ class DownloadClient:
     async def _limiter(self, domain: str):
         with self.client_manager.request_context(domain):
             await self.client_manager.manager.states.RUNNING.wait()
-            await asyncio.sleep(await self.client_manager.get_downloader_spacer(domain))
             yield
 
     def _get_download_headers(self, domain: str, referer: AbsoluteHttpURL) -> dict[str, str]:

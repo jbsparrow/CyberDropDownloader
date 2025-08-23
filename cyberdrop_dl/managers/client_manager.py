@@ -158,50 +158,18 @@ class ClientManager:
             ctx.load_verify_locations(cafile=certifi.where())
 
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.domain_rate_limits = {
-            "bunkrr": AsyncLimiter(5, 1),
-            "cyberdrop": AsyncLimiter(5, 1),
-            "coomer": AsyncLimiter(1, 1),
-            "kemono": AsyncLimiter(1, 1),
-            "pixeldrain": AsyncLimiter(10, 1),
-            "gofile": AsyncLimiter(100, 60),
-            "hitomi.la": AsyncLimiter(3, 1),
-            "other": AsyncLimiter(25, 1),
-        }
-
-        self.download_spacer = {
-            "bunkr": 0.5,
-            "bunkrr": 0.5,
-            "cyberdrop": 0,
-            "cyberfile": 0,
-            "pixeldrain": 0,
-            "coomer": 0.5,
-            "kemono": 0.5,
-            "nhentai.net": 1,
-        }
-
-        self.download_limits = {
-            "bunkr": 1,
-            "bunkrr": 1,
-            "cyberdrop": 1,
-            "cyberfile": 1,
-            "noodlemagazine": 2,
-            "4chan": 1,
-            "pixeldrain": 2,
-            "xxxbunker": 2,
-        }
-
+        self.rate_limits: dict[str, AsyncLimiter] = {}
+        self.download_slots: dict[str, int] = {}
         self.global_rate_limiter = AsyncLimiter(self.rate_limiting_options.rate_limit, 1)
         self.global_download_slots = asyncio.Semaphore(self.rate_limiting_options.max_simultaneous_downloads)
         self.scraper_client = ScraperClient(self)
         self.speed_limiter = DownloadSpeedLimiter(self.rate_limiting_options.download_speed_limit)
         self.download_client = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
-        self._default_headers = {"user-agent": self.manager.global_config.general.user_agent}
-
         self.file_locks = FileLocksVault()
-        self._session: CachedSession
+        self._default_headers = {"user-agent": self.manager.global_config.general.user_agent}
         self.reddit_session: CachedSession
+        self._session: CachedSession
         self._download_session: aiohttp.ClientSession
         self._curl_session: AsyncSession[CurlResponse]
 
@@ -233,10 +201,10 @@ class ClientManager:
     def rate_limiting_options(self):
         return self.manager.global_config.rate_limiting_options
 
-    def get_download_slots(self, key: str) -> int:
+    def get_download_slots(self, domain: str) -> int:
         """Returns the download limit for a domain."""
 
-        instances = self.download_limits.get(key, self.rate_limiting_options.max_simultaneous_downloads_per_domain)
+        instances = self.download_slots.get(domain, self.rate_limiting_options.max_simultaneous_downloads_per_domain)
 
         return min(instances, self.rate_limiting_options.max_simultaneous_downloads_per_domain)
 
@@ -394,17 +362,11 @@ class ClientManager:
 
         log_spacer(20, log_to_console=False)
 
-    async def get_downloader_spacer(self, key: str) -> float:
-        """Returns the download spacer for a domain."""
-        if key in self.download_spacer:
-            return self.download_spacer[key]
-        return 0.1
-
     def get_rate_limiter(self, domain: str) -> AsyncLimiter:
         """Get a rate limiter for a domain."""
-        if domain in self.domain_rate_limits:
-            return self.domain_rate_limits[domain]
-        return self.domain_rate_limits["other"]
+        if domain in self.rate_limits:
+            return self.rate_limits[domain]
+        return self.rate_limits["other"]
 
     @classmethod
     async def check_http_status(
