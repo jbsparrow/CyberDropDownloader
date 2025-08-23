@@ -22,6 +22,28 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.4.1] - 2025-08-23
+
+### Changed
+
+- Try to download images in original quality (twitter images)
+- Ignore auto translated titles, always use original title (xhamster)
+- Detect and report captcha responses as `DDoS-Guard` Errors (iceyfile)
+- Better detection and error messages for geo blocked videos (PornHub)
+- Fallback to HLS source when MP4 sources are blocked (PornHub)
+
+### Fixed
+
+- Folder downloads always being skipped as duplicates (mega.nz)
+- Handle videos without http sources (xhamster)
+- User URL parsing and pagination (xhamster)
+- Shared folders always using `Shared Files Folders` as title instead of the actual folder name (cyberfile, iceyfile)
+- Handle files with malformed download URLs (emojis / special characters in name/URL slug) (cyberfile, iceyfile)
+- 404 when downloading from albums (PornHub)
+- Update API endpoints and parsing (Coomer, Kemono)
+- Files with mangled names if they had non english characters (Coomer, Kemono)
+
+
 ## [7.4.0] - 2025-08-21
 
 ### Added

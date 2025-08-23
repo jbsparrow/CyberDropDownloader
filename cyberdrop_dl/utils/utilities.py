@@ -190,6 +190,7 @@ def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     filename_as_path = filename_as_path.with_suffix(filename_as_path.suffix.lower())
     filename_as_str = truncate_str(filename_as_path.stem.removesuffix(".")) + filename_as_path.suffix
     filename_as_path = Path(sanitize_filename(filename_as_str))
+    filename_as_path = Path(filename_as_path.stem.strip() + filename_as_path.suffix)
     return filename_as_path.name, filename_as_path.suffix
 
 
