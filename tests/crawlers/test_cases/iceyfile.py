@@ -2,7 +2,7 @@ import re
 
 DOMAIN = "iceyfile"
 TEST_CASES = [
-    # This will fail. iceyfile now always requires a 1 type access only captcha ofr individual files
+    # This will fail. iceyfile now always requires a 1 type access only captcha for individual files
     (
         "https://iceyfile.com/be60cca8a9dec177/fff.png",
         [
