@@ -207,7 +207,7 @@ class Crawler(ABC):
         async with self.startup_lock:
             if self.ready:
                 return
-            self.client = self.manager.client_manager.scraper_session
+            self.client = self.manager.client_manager.scraper_client
             self.downloader = self._init_downloader()
             await self.async_startup()
             self.ready = True

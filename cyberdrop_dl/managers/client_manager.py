@@ -7,22 +7,21 @@ from base64 import b64encode
 from collections import defaultdict
 from dataclasses import dataclass
 from http import HTTPStatus
-from json import loads as json_loads
-from typing import TYPE_CHECKING, Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, Self, overload
 
 import aiohttp
 import certifi
 import truststore
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
-from aiohttp_client_cache.response import AnyResponse, CachedResponse
+from aiohttp_client_cache.response import CachedResponse
 from aiohttp_client_cache.session import CachedSession
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
-from multidict import CIMultiDict, CIMultiDictProxy
 from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl import constants, env
 from cyberdrop_dl.clients.download_client import DownloadClient
+from cyberdrop_dl.clients.response import AbstractResponse
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.exceptions import (
@@ -35,7 +34,6 @@ from cyberdrop_dl.exceptions import (
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.cookie_management import read_netscape_files
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
-from cyberdrop_dl.utils.utilities import parse_url
 
 _VALID_EXTENSIONS = (
     constants.FILE_FORMATS["Images"] | constants.FILE_FORMATS["Videos"] | constants.FILE_FORMATS["Audio"]
@@ -51,7 +49,13 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
 
-DOWNLOAD_ERROR_ETAGS = {
+_curl_import_error = None
+try:
+    from curl_cffi.requests import AsyncSession  # noqa: TC002
+except ImportError as e:
+    _curl_import_error = e
+
+_DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
     "65b7753c-528a": "SC Scrape Image",
     "5c4fb843-ece": "PixHost Removed Image",
@@ -65,6 +69,8 @@ _crawler_errors: dict[str, int] = defaultdict(int)
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+
+_null_context = contextlib.nullcontext()
 
 
 class DownloadSpeedLimiter(AsyncLimiter):
@@ -113,51 +119,6 @@ class CloudflareTurnstile:
         "script:contains('Dont open Developer Tools')",
     )
     ALL_SELECTORS = ", ".join(SELECTORS)
-
-
-class AbstractResponse:
-    """Class to represent common methods and attributes between aiohttp ClientResponse and a CurlResponse"""
-
-    __slots__ = ("_resp", "content_type", "headers", "location", "status", "url")
-
-    def __init__(self, response: AnyResponse | CurlResponse) -> None:
-        self._resp = response
-        self.content_type = (self._resp.headers.get("Content-Type") or "").lower()
-        if isinstance(response, AnyResponse):
-            self.status = response.status
-            self.headers = response.headers
-        else:
-            self.status = response.status_code
-            self.headers = CIMultiDictProxy(CIMultiDict({k: v or "" for k, v in response.headers}))
-
-        self.url = AbsoluteHttpURL(response.url)
-        if location := response.headers.get("location"):
-            self.location = parse_url(location, self.url.origin(), trim=False)
-        else:
-            self.location = None
-
-    async def text(self) -> str:
-        if isinstance(self._resp, AnyResponse):
-            return await self._resp.text()
-        return self._resp.text
-
-    async def soup(self) -> BeautifulSoup:
-        if "text" in self.content_type or "html" in self.content_type:
-            return BeautifulSoup(await self.text(), "html.parser")
-
-        raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting text")
-
-    async def json(self) -> Any:
-        if self.status == 204:
-            raise ScrapeError(204)
-
-        if "text/plain" in self.content_type or "json" in self.content_type:
-            return json_loads(await self.text())
-
-        raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting JSON")
-
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} [{self.status}] ({self.url})>"
 
 
 class FileLocksVault:
@@ -230,31 +191,72 @@ class ClientManager:
             "xxxbunker": 2,
         }
 
-        self.global_rate_limiter = AsyncLimiter(self.manager.global_config.rate_limiting_options.rate_limit, 1)
-        self.session_limit = asyncio.Semaphore(50)
-        self.download_session_limit = asyncio.Semaphore(
-            self.manager.global_config.rate_limiting_options.max_simultaneous_downloads
-        )
-
-        self.scraper_session = ScraperClient(self)
-        self.speed_limiter = DownloadSpeedLimiter(
-            manager.config_manager.global_settings_data.rate_limiting_options.download_speed_limit
-        )
-        self.downloader_session = DownloadClient(manager, self)
+        self.global_rate_limiter = AsyncLimiter(self.rate_limiting_options.rate_limit, 1)
+        self.global_download_slots = asyncio.Semaphore(self.rate_limiting_options.max_simultaneous_downloads)
+        self.scraper_client = ScraperClient(self)
+        self.speed_limiter = DownloadSpeedLimiter(self.rate_limiting_options.download_speed_limit)
+        self.download_client = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
         self._default_headers = {"user-agent": self.manager.global_config.general.user_agent}
 
         self.file_locks = FileLocksVault()
+        self._session: CachedSession
+        self.reddit_session: CachedSession
+        self._download_session: aiohttp.ClientSession
+        self._curl_session: AsyncSession[CurlResponse]
 
-    def get_download_limit(self, key: str) -> int:
+    def _startup(self) -> None:
+        self._session = self.new_scrape_session()
+        self.reddit_session = self.new_scrape_session()
+        self._download_session = self.new_download_session()
+        if _curl_import_error is not None:
+            return
+
+        self._curl_session = self.new_curl_cffi_session()
+
+    async def __aenter__(self) -> Self:
+        self._startup()
+        return self
+
+    async def __aexit__(self, *args) -> None:
+        await self._session.close()
+        await self.reddit_session.close()
+        await self._download_session.close()
+        if _curl_import_error is not None:
+            return
+        try:
+            await self._curl_session.close()
+        except Exception:
+            pass
+
+    @property
+    def rate_limiting_options(self):
+        return self.manager.global_config.rate_limiting_options
+
+    def get_download_slots(self, key: str) -> int:
         """Returns the download limit for a domain."""
-        rate_limiting_options = self.manager.config_manager.global_settings_data.rate_limiting_options
-        instances = self.download_limits.get(key, rate_limiting_options.max_simultaneous_downloads_per_domain)
 
-        return min(
-            instances,
-            rate_limiting_options.max_simultaneous_downloads_per_domain,
+        instances = self.download_limits.get(key, self.rate_limiting_options.max_simultaneous_downloads_per_domain)
+
+        return min(instances, self.rate_limiting_options.max_simultaneous_downloads_per_domain)
+
+    @staticmethod
+    def cache_control(session: CachedSession, disabled: bool = False):
+        if constants.DISABLE_CACHE or disabled:
+            return session.disabled()
+        return _null_context
+
+    @staticmethod
+    def check_curl_cffi_is_available() -> None:
+        if _curl_import_error is None:
+            return
+
+        system = "Android" if env.RUNNING_IN_TERMUX else "the system"
+        msg = (
+            f"curl_cffi is required to scrape this URL but a dependency it's not available on {system}.\n"
+            f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{_curl_import_error!r}"
         )
+        raise ScrapeError("Missing Dependency", msg)
 
     @staticmethod
     def basic_auth(username: str, password: str) -> str:
@@ -279,7 +281,7 @@ class ClientManager:
         if not media_item.duration:
             return True
 
-        return check_file_duration(media_item, self.manager)
+        return self.check_file_duration(media_item)
 
     def filter_cookies_by_word_in_domain(self, word: str) -> Iterable[tuple[str, BaseCookie[str]]]:
         """Yields pairs of `[domain, BaseCookie]` for every cookie with a domain that has `word` in it"""
@@ -303,7 +305,7 @@ class ClientManager:
             impersonate="chrome",
             verify=bool(self.ssl_context),
             proxy=proxy_or_none,
-            timeout=self.manager.global_config.rate_limiting_options._timeout,
+            timeout=self.rate_limiting_options._timeout,
             cookies={cookie.key: cookie.value for cookie in self.cookies},
         )
 
@@ -329,11 +331,11 @@ class ClientManager:
         self, cached: bool = False, trace_configs: list[aiohttp.TraceConfig] | None = None
     ) -> CachedSession | ClientSession:
         if cached:
-            timeout = self.manager.global_config.rate_limiting_options._scrape_timeout
+            timeout = self.rate_limiting_options._scrape_timeout
             session_cls = CachedSession
             kwargs: dict[str, Any] = {"cache": self.manager.cache_manager.request_cache}
         else:
-            timeout = self.manager.global_config.rate_limiting_options._download_timeout
+            timeout = self.rate_limiting_options._download_timeout
             session_cls = ClientSession
             kwargs = {}
         return session_cls(
@@ -420,8 +422,8 @@ class ClientManager:
         message = None
 
         def check_etag() -> None:
-            if download and (e_tag := response.headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
-                message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
+            if download and (e_tag := response.headers.get("ETag")) in _DOWNLOAD_ERROR_ETAGS:
+                message = _DOWNLOAD_ERROR_ETAGS.get(e_tag)
                 raise DownloadError(HTTPStatus.NOT_FOUND, message=message)
 
         async def check_ddos_guard() -> BeautifulSoup | None:
@@ -487,6 +489,49 @@ class ClientManager:
                 return True
 
         return bool(soup.select_one(CloudflareTurnstile.ALL_SELECTORS))
+
+    def check_file_duration(self, media_item: MediaItem) -> bool:
+        """Checks the file runtime against the config runtime limits."""
+        if media_item.is_segment:
+            return True
+
+        is_video = media_item.ext.lower() in constants.FILE_FORMATS["Videos"]
+        is_audio = media_item.ext.lower() in constants.FILE_FORMATS["Audio"]
+        if not (is_video or is_audio):
+            return True
+
+        def get_duration() -> float | None:
+            if media_item.duration:
+                return media_item.duration
+            props: dict = {}
+            if is_video:
+                props: dict = get_video_properties(str(media_item.complete_file))
+            elif is_audio:
+                props: dict = get_audio_properties(str(media_item.complete_file))
+            return float(props.get("duration", 0)) or None
+
+        duration_limits = self.manager.config.media_duration_limits
+        min_video_duration: float = duration_limits.minimum_video_duration.total_seconds()
+        max_video_duration: float = duration_limits.maximum_video_duration.total_seconds()
+        min_audio_duration: float = duration_limits.minimum_audio_duration.total_seconds()
+        max_audio_duration: float = duration_limits.maximum_audio_duration.total_seconds()
+        video_duration_limits = min_video_duration, max_video_duration
+        audio_duration_limits = min_audio_duration, max_audio_duration
+        if is_video and not any(video_duration_limits):
+            return True
+        if is_audio and not any(audio_duration_limits):
+            return True
+
+        duration: float = get_duration()  # type: ignore
+        media_item.duration = duration
+        if duration is None:
+            return True
+
+        max_video_duration = max_video_duration or float("inf")
+        max_audio_duration = max_audio_duration or float("inf")
+        if is_video:
+            return min_video_duration <= media_item.duration <= max_video_duration
+        return min_audio_duration <= media_item.duration <= max_audio_duration
 
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
@@ -661,47 +706,3 @@ def _create_request_log_hooks(client_type: Literal["scrape", "download"]) -> lis
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
     return [trace_config]
-
-
-def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
-    """Checks the file runtime against the config runtime limits."""
-    if media_item.is_segment:
-        return True
-
-    is_video = media_item.ext.lower() in constants.FILE_FORMATS["Videos"]
-    is_audio = media_item.ext.lower() in constants.FILE_FORMATS["Audio"]
-    if not (is_video or is_audio):
-        return True
-
-    def get_duration() -> float | None:
-        if media_item.duration:
-            return media_item.duration
-        props: dict = {}
-        if is_video:
-            props: dict = get_video_properties(str(media_item.complete_file))
-        elif is_audio:
-            props: dict = get_audio_properties(str(media_item.complete_file))
-        return float(props.get("duration", 0)) or None
-
-    duration_limits = manager.config_manager.settings_data.media_duration_limits
-    min_video_duration: float = duration_limits.minimum_video_duration.total_seconds()
-    max_video_duration: float = duration_limits.maximum_video_duration.total_seconds()
-    min_audio_duration: float = duration_limits.minimum_audio_duration.total_seconds()
-    max_audio_duration: float = duration_limits.maximum_audio_duration.total_seconds()
-    video_duration_limits = min_video_duration, max_video_duration
-    audio_duration_limits = min_audio_duration, max_audio_duration
-    if is_video and not any(video_duration_limits):
-        return True
-    if is_audio and not any(audio_duration_limits):
-        return True
-
-    duration: float = get_duration()  # type: ignore
-    media_item.duration = duration
-    if duration is None:
-        return True
-
-    max_video_duration = max_video_duration or float("inf")
-    max_audio_duration = max_audio_duration or float("inf")
-    if is_video:
-        return min_video_duration <= media_item.duration <= max_video_duration
-    return min_audio_duration <= media_item.duration <= max_audio_duration

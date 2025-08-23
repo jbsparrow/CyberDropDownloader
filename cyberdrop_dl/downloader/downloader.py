@@ -132,8 +132,8 @@ class Downloader:
 
     def startup(self) -> None:
         """Starts the downloader."""
-        self.client = self.manager.client_manager.downloader_session
-        self._semaphore = asyncio.Semaphore(self.manager.client_manager.get_download_limit(self.domain))
+        self.client = self.manager.client_manager.download_client
+        self._semaphore = asyncio.Semaphore(self.manager.client_manager.get_download_slots(self.domain))
 
         self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
         if self.manager.config_manager.settings_data.sorting.sort_downloads:
@@ -161,7 +161,7 @@ class Downloader:
             self.waiting_items -= 1
             self.processed_items.add(get_db_path(media_item.url, self.domain))
             self.update_queued_files(increase_total=False)
-            async with self.manager.client_manager.download_session_limit:
+            async with self.manager.client_manager.global_download_slots:
                 return await self.start_download(media_item)
 
     @error_handling_wrapper

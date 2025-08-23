@@ -2,43 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from contextlib import nullcontext
 from datetime import datetime
 from json import dumps as json_dumps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal
 
 import cyberdrop_dl.constants as constants
-from cyberdrop_dl import env
+from cyberdrop_dl.clients.response import AbstractResponse
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, copy_signature
-from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
-from cyberdrop_dl.managers.client_manager import AbstractResponse
+from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError
 from cyberdrop_dl.utils.utilities import sanitize_filename
 
 if TYPE_CHECKING:
-    from aiohttp_client_cache.session import CachedSession
     from bs4 import BeautifulSoup
     from curl_cffi.requests.impersonate import BrowserTypeLiteral
-    from curl_cffi.requests.models import Response as CurlResponse
     from curl_cffi.requests.session import HttpMethod
 
     from cyberdrop_dl.managers.client_manager import ClientManager
-
-
-_curl_import_error = None
-try:
-    from curl_cffi.requests import AsyncSession  # noqa: TC002
-except ImportError as e:
-    _curl_import_error = e
-
-
-_null_context = nullcontext()
-
-
-def cache_control_manager(client_session: CachedSession, disabled: bool = False):
-    if constants.DISABLE_CACHE or disabled:
-        return client_session.disabled()
-    return _null_context
 
 
 class ScraperClient:
@@ -50,41 +30,14 @@ class ScraperClient:
         self._pages_folder = self.client_manager.manager.path_manager.pages_folder
         min_html_file_path_len = len(str(self._pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
         self._max_html_stem_len = 245 - min_html_file_path_len
-        self._session: CachedSession
-        self._curl_session: AsyncSession[CurlResponse]
 
     @contextlib.asynccontextmanager
-    async def limiter(self, domain: str):
+    async def _limiter(self, domain: str):
         with self.client_manager.request_context(domain):
             domain_limiter = self.client_manager.get_rate_limiter(domain)
             async with self.client_manager.global_rate_limiter, domain_limiter:
                 await self.client_manager.manager.states.RUNNING.wait()
                 yield
-
-    def _startup(self) -> None:
-        self._session = self.client_manager.new_scrape_session()
-        self.reddit_session = self.client_manager.new_scrape_session()
-        if _curl_import_error is not None:
-            return
-
-        self._curl_session = self.client_manager.new_curl_cffi_session()
-
-    async def __aenter__(self) -> Self:
-        self._startup()
-        return self
-
-    async def __aexit__(self, *args) -> None:
-        await self._session.close()
-        await self.reddit_session.close()
-        if _curl_import_error is not None:
-            return
-        try:
-            await self._curl_session.close()
-        except Exception:
-            pass
-
-    def is_ddos(self, soup: BeautifulSoup) -> bool:
-        return self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
 
     async def _request(
         self,
@@ -102,15 +55,15 @@ class ScraperClient:
         request_params["json"] = json
 
         if impersonate:
-            _check_curl_cffi_is_available()
+            self.client_manager.check_curl_cffi_is_available()
             if impersonate is True:
                 impersonate = "chrome"
             request_params["impersonate"] = impersonate
-            response = await self._curl_session.request(method, str(url), **request_params)
+            response = await self.client_manager._curl_session.request(method, str(url), **request_params)
 
         else:
-            async with cache_control_manager(self._session, disabled=cache_disabled):
-                response = await self._session._request(method, url, **request_params)
+            async with self.client_manager.cache_control(self.client_manager._session, disabled=cache_disabled):
+                response = await self.client_manager._session._request(method, url, **request_params)
 
         abs_resp = AbstractResponse(response)
         exc = None
@@ -122,7 +75,9 @@ class ScraperClient:
 
         else:
             if impersonate:
-                self.client_manager.cookies.update_cookies(self._curl_session.cookies.get_dict(url.host), url)
+                self.client_manager.cookies.update_cookies(
+                    self.client_manager._curl_session.cookies.get_dict(url.host), url
+                )
             return abs_resp
         finally:
             self.client_manager.manager.task_group.create_task(self.write_soup_to_disk(url, abs_resp, exc))
@@ -178,15 +133,3 @@ class ScraperClient:
             await asyncio.to_thread(file_path.write_text, text, "utf8")
         except OSError:
             pass
-
-
-def _check_curl_cffi_is_available() -> None:
-    if _curl_import_error is None:
-        return
-
-    system = "Android" if env.RUNNING_IN_TERMUX else "the system"
-    msg = (
-        f"curl_cffi is required to scrape this URL but a dependency it's not available on {system}.\n"
-        f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{_curl_import_error!r}"
-    )
-    raise ScrapeError("Missing Dependency", msg)
