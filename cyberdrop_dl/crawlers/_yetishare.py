@@ -71,7 +71,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, folder_id: str, is_shared: bool = False) -> None:
-        # Make request to update cookies. Access to folders in saved on cookies
+        # Make request to update cookies. Access to folders is saved in cookies
         async with self.request_limiter:
             soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
