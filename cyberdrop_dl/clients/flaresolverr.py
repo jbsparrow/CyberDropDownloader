@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import aiohttp
 from multidict import CIMultiDict, CIMultiDictProxy
 
+from cyberdrop_dl.compat import StrEnum
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError
 from cyberdrop_dl.utils.logger import log
@@ -19,8 +20,15 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.client_manager import ClientManager
 
 
+class _Command(StrEnum):
+    CREATE_SESSION = "sessions.create"
+    DESTROY_SESSION = "sessions.destroy"
+    GET_REQUEST = "request.get"
+    LIST_SESSIONS = "sessions.list"
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
-class FlareSolverrResponse:
+class _FlareSolverrResponse:
     content: str
     cookies: SimpleCookie
     headers: CIMultiDictProxy
@@ -30,7 +38,7 @@ class FlareSolverrResponse:
     user_agent: str
 
     @classmethod
-    def from_dict(cls, resp: dict[str, Any]) -> FlareSolverrResponse:
+    def from_dict(cls, resp: dict[str, Any]) -> _FlareSolverrResponse:
         solution: dict[str, Any] = resp["solution"]
         cookies: list[dict[str, Any]] = solution.get("cookies") or []
         return cls(
@@ -66,24 +74,26 @@ class FlareSolverr:
             f"{self.__class__.__name__}(enabled={self.enabled}{f', url={str(self._url)=!r}' if self.enabled else ''})"
         )
 
+    async def close(self):
+        await self.__destroy_session()
+
     async def _request(
         self,
-        command: str,
-        session: str | None = None,
+        command: _Command,
         **kwargs,
     ) -> dict[str, Any]:
         """Base request function to call flaresolverr."""
         if not self.enabled:
-            raise DDOSGuardError("Found DDoS Challenge, but FlareSolverr is not configured")
+            raise DDOSGuardError("Found DDoS challenge, but FlareSolverr is not configured")
 
         async with self._session_lock:
-            if not (self._session_id or session):
-                await self._create_session()
+            if not self._session_id:
+                await self.__create_session()
         return await self.__make_request(command, **kwargs)
 
-    async def __make_request(self, command: str, **kwargs: Any) -> dict[str, Any]:
+    async def __make_request(self, command: _Command, /, **kwargs: Any) -> dict[str, Any]:
         timeout = self.client_manager.manager.global_config.rate_limiting_options._scrape_timeout
-        if command == "sessions.create":
+        if command is _Command.CREATE_SESSION:
             timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
 
         for key, value in kwargs.items():
@@ -110,31 +120,31 @@ class FlareSolverr:
 
         return await response.json()
 
-    async def _create_session(self) -> None:
+    async def __create_session(self) -> None:
         """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
         kwargs = {}
         if proxy := self.client_manager.manager.global_config.general.proxy:
             kwargs["proxy"] = {"url": str(proxy)}
 
-        flaresolverr_resp = await self.__make_request("sessions.create", session=session_id, **kwargs)
+        flaresolverr_resp = await self.__make_request(_Command.CREATE_SESSION, session=session_id, **kwargs)
         if flaresolverr_resp.get("status") != "ok":
-            raise DDOSGuardError("Failed to create flaresolverr session")
+            raise DDOSGuardError(f"Failed to create flaresolverr session. {flaresolverr_resp.get('message')}")
         self._session_id = session_id
 
-    async def _destroy_session(self) -> None:
+    async def __destroy_session(self) -> None:
         if self._session_id:
-            await self.__make_request("sessions.destroy", session=self._session_id)
+            await self.__make_request(_Command.DESTROY_SESSION)
             self._session_id = ""
 
     async def request(self, url: AbsoluteHttpURL) -> tuple[BeautifulSoup | None, AbsoluteHttpURL]:
         """Returns the resolved URL from the given URL."""
 
         # TODO: make this method return an abstract response
-        json_resp = await self._request("request.get", url=url)
+        json_resp = await self._request(_Command.GET_REQUEST, url=url)
 
         try:
-            fs_resp = FlareSolverrResponse.from_dict(json_resp)
+            fs_resp = _FlareSolverrResponse.from_dict(json_resp)
         except (AttributeError, KeyError):
             raise DDOSGuardError("Invalid response from flaresolverr") from None
 
