@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import time
+from http.cookies import SimpleCookie
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError
@@ -18,28 +21,35 @@ if TYPE_CHECKING:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class FlareSolverrResponse:
+    content: str
+    cookies: SimpleCookie
+    headers: CIMultiDictProxy
+    message: str
     status: str
     url: AbsoluteHttpURL
-    cookies: dict[str, str]
     user_agent: str
-    content: str
 
     @classmethod
-    def from_dict(cls, flaresolverr_resp: dict[str, Any]) -> FlareSolverrResponse:
-        solution: dict[str, Any] = flaresolverr_resp["solution"]
+    def from_dict(cls, resp: dict[str, Any]) -> FlareSolverrResponse:
+        solution: dict[str, Any] = resp["solution"]
+        cookies: list[dict[str, Any]] = solution.get("cookies") or []
         return cls(
-            status=flaresolverr_resp["status"],
-            cookies=solution.get("cookies") or {},
+            status=resp["status"],
+            cookies=_parse_cookies(cookies),
             user_agent=solution["userAgent"].strip(),
             content=solution["response"],
             url=AbsoluteHttpURL(solution["url"]),
+            headers=CIMultiDictProxy(CIMultiDict(solution["headers"])),
+            message=resp["message"],
         )
 
 
 class FlareSolverr:
     """Class that handles communication with flaresolverr."""
 
-    endpoint: AbsoluteHttpURL
+    __slots__ = ("_request_count", "_request_lock", "_session_id", "_session_lock", "_url", "client_manager", "enabled")
+
+    _url: AbsoluteHttpURL
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
@@ -47,9 +57,14 @@ class FlareSolverr:
         self._session_id: str = ""
         self._session_lock = asyncio.Lock()
         self._request_lock = asyncio.Lock()
-        self.request_count = 0
+        self._request_count = 0
         if self.client_manager.manager.global_config.general.flaresolverr:
-            self.endpoint = AbsoluteHttpURL(self.client_manager.manager.global_config.general.flaresolverr / "v1")
+            self._url = AbsoluteHttpURL(self.client_manager.manager.global_config.general.flaresolverr / "v1")
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(enabled={self.enabled}{f', url={str(self._url)=!r}' if self.enabled else ''})"
+        )
 
     async def _request(
         self,
@@ -81,16 +96,16 @@ class FlareSolverr:
             "session": self._session_id,
         } | kwargs
 
-        self.request_count += 1
+        self._request_count += 1
 
         async with (
             self._request_lock,
             self.client_manager.manager.progress_manager.show_status_msg(
-                f"Waiting For Flaresolverr Response [{self.request_count}]"
+                f"Waiting For Flaresolverr Response [{self._request_count}]"
             ),
         ):
             response = await self.client_manager.scraper_session._session.post(
-                self.endpoint, json=playload, timeout=timeout
+                self._url, json=playload, timeout=timeout
             )
 
         return await response.json()
@@ -114,6 +129,8 @@ class FlareSolverr:
 
     async def request(self, url: AbsoluteHttpURL) -> tuple[BeautifulSoup | None, AbsoluteHttpURL]:
         """Returns the resolved URL from the given URL."""
+
+        # TODO: make this method return an abstract response
         json_resp = await self._request("request.get", url=url)
 
         try:
@@ -122,7 +139,7 @@ class FlareSolverr:
             raise DDOSGuardError("Invalid response from flaresolverr") from None
 
         if fs_resp.status != "ok":
-            raise DDOSGuardError("Failed to resolve URL with flaresolverr")
+            raise DDOSGuardError(f"Failed to resolve URL with flaresolverr. {fs_resp.message}")
 
         user_agent = self.client_manager.manager.global_config.general.user_agent
         mismatch_ua_msg = (
@@ -140,9 +157,23 @@ class FlareSolverr:
         if fs_resp.user_agent != user_agent:
             log(f"{mismatch_ua_msg}\nResponse was successful but cookies will not be valid", 30)
 
-        for cookie in fs_resp.cookies:
-            self.client_manager.cookies.update_cookies(
-                {cookie["name"]: cookie["value"]}, AbsoluteHttpURL(f"https://{cookie['domain']}")
-            )
+        self.client_manager.cookies.update_cookies(fs_resp.cookies)
 
         return fs_resp.soup, fs_resp.url
+
+
+def _parse_cookies(cookies: list[dict[str, Any]]) -> SimpleCookie:
+    simple_cookie = SimpleCookie()
+    now = time.time()
+    for cookie in cookies:
+        name: str = cookie["name"]
+        simple_cookie[name] = cookie["value"]
+        morsel = simple_cookie[name]
+        morsel["domain"] = cookie["domain"]
+        morsel["path"] = cookie["path"]
+        morsel["secure"] = "TRUE" if cookie["secure"] else ""
+        if expires := cookie["expires"]:
+            morsel["max-age"] = str(max(0, int(expires) - int(now)))
+        else:
+            morsel["max-age"] = ""
+    return simple_cookie
