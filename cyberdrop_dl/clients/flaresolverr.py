@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import itertools
 import time
+from functools import partial
 from http.cookies import SimpleCookie
 from typing import TYPE_CHECKING, Any
 
@@ -15,6 +17,8 @@ from cyberdrop_dl.exceptions import DDOSGuardError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.client_manager import ClientManager
@@ -24,6 +28,7 @@ class _Command(StrEnum):
     CREATE_SESSION = "sessions.create"
     DESTROY_SESSION = "sessions.destroy"
     GET_REQUEST = "request.get"
+    POST_REQUEST = "request.post"
     LIST_SESSIONS = "sessions.list"
 
 
@@ -44,7 +49,7 @@ class _FlareSolverrResponse:
         return cls(
             status=resp["status"],
             cookies=_parse_cookies(cookies),
-            user_agent=solution["userAgent"].strip(),
+            user_agent=solution["userAgent"],
             content=solution["response"],
             url=AbsoluteHttpURL(solution["url"]),
             headers=CIMultiDictProxy(CIMultiDict(solution["headers"])),
@@ -55,7 +60,15 @@ class _FlareSolverrResponse:
 class FlareSolverr:
     """Class that handles communication with flaresolverr."""
 
-    __slots__ = ("_request_count", "_request_lock", "_session_id", "_session_lock", "_url", "client_manager", "enabled")
+    __slots__ = (
+        "_next_request_id",
+        "_request_lock",
+        "_session_id",
+        "_session_lock",
+        "_url",
+        "client_manager",
+        "enabled",
+    )
 
     _url: AbsoluteHttpURL
 
@@ -65,7 +78,7 @@ class FlareSolverr:
         self._session_id: str = ""
         self._session_lock = asyncio.Lock()
         self._request_lock = asyncio.Lock()
-        self._request_count = 0
+        self._next_request_id: Callable[[], int] = partial(next, itertools.count())
         if self.client_manager.manager.global_config.general.flaresolverr:
             self._url = AbsoluteHttpURL(self.client_manager.manager.global_config.general.flaresolverr / "v1")
 
@@ -77,9 +90,46 @@ class FlareSolverr:
     async def close(self):
         await self.__destroy_session()
 
+    async def request(self, url: AbsoluteHttpURL, data: Any = None) -> tuple[BeautifulSoup | None, AbsoluteHttpURL]:
+        """Returns the resolved URL from the given URL."""
+
+        # TODO: make this method return an abstract response
+
+        command = _Command.POST_REQUEST if data else _Command.GET_REQUEST
+        json_resp = await self._request(command, url=str(url), data=data)
+
+        try:
+            resp = _FlareSolverrResponse.from_dict(json_resp)
+        except (AttributeError, KeyError):
+            raise DDOSGuardError("Invalid response from flaresolverr") from None
+
+        if resp.status != "ok":
+            raise DDOSGuardError(f"Failed to resolve URL with flaresolverr. {resp.message}")
+
+        user_agent = self.client_manager.manager.global_config.general.user_agent
+        mismatch_ua_msg = (
+            "Config user_agent and flaresolverr user_agent do not match:"
+            f"\n  Cyberdrop-DL: '{user_agent}'"
+            f"\n  Flaresolverr: '{resp.user_agent}'"
+        )
+
+        if resp.soup and (
+            self.client_manager.check_ddos_guard(resp.soup) or self.client_manager.check_cloudflare(resp.soup)
+        ):
+            if resp.user_agent != user_agent:
+                raise DDOSGuardError(mismatch_ua_msg)
+
+        if resp.user_agent != user_agent:
+            log(f"{mismatch_ua_msg}\nResponse was successful but cookies will not be valid", 30)
+
+        self.client_manager.cookies.update_cookies(resp.cookies)
+
+        return resp.soup, resp.url
+
     async def _request(
         self,
         command: _Command,
+        data: Any = None,
         **kwargs,
     ) -> dict[str, Any]:
         """Base request function to call flaresolverr."""
@@ -89,16 +139,12 @@ class FlareSolverr:
         async with self._session_lock:
             if not self._session_id:
                 await self.__create_session()
-        return await self.__make_request(command, **kwargs)
+        return await self.__make_request(command, data=data, **kwargs)
 
-    async def __make_request(self, command: _Command, /, **kwargs: Any) -> dict[str, Any]:
+    async def __make_request(self, command: _Command, /, data: Any = None, **kwargs: Any) -> dict[str, Any]:
         timeout = self.client_manager.manager.global_config.rate_limiting_options._scrape_timeout
         if command is _Command.CREATE_SESSION:
             timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
-
-        for key, value in kwargs.items():
-            if isinstance(value, AbsoluteHttpURL):
-                kwargs[key] = str(value)
 
         playload = {
             "cmd": command,
@@ -106,12 +152,14 @@ class FlareSolverr:
             "session": self._session_id,
         } | kwargs
 
-        self._request_count += 1
+        if data:
+            assert command is _Command.POST_REQUEST
+            playload["postData"] = aiohttp.FormData(data)().decode()
 
         async with (
             self._request_lock,
             self.client_manager.manager.progress_manager.show_status_msg(
-                f"Waiting For Flaresolverr Response [{self._request_count}]"
+                f"Waiting For Flaresolverr Response [{self._next_request_id()}]"
             ),
         ):
             response = await self.client_manager.scraper_session._session.post(
@@ -136,40 +184,6 @@ class FlareSolverr:
         if self._session_id:
             await self.__make_request(_Command.DESTROY_SESSION)
             self._session_id = ""
-
-    async def request(self, url: AbsoluteHttpURL) -> tuple[BeautifulSoup | None, AbsoluteHttpURL]:
-        """Returns the resolved URL from the given URL."""
-
-        # TODO: make this method return an abstract response
-        json_resp = await self._request(_Command.GET_REQUEST, url=url)
-
-        try:
-            fs_resp = _FlareSolverrResponse.from_dict(json_resp)
-        except (AttributeError, KeyError):
-            raise DDOSGuardError("Invalid response from flaresolverr") from None
-
-        if fs_resp.status != "ok":
-            raise DDOSGuardError(f"Failed to resolve URL with flaresolverr. {fs_resp.message}")
-
-        user_agent = self.client_manager.manager.global_config.general.user_agent
-        mismatch_ua_msg = (
-            "Config user_agent and flaresolverr user_agent do not match:"
-            f"\n  Cyberdrop-DL: '{user_agent}'"
-            f"\n  Flaresolverr: '{fs_resp.user_agent}'"
-        )
-
-        if fs_resp.soup and (
-            self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup)
-        ):
-            if fs_resp.user_agent != user_agent:
-                raise DDOSGuardError(mismatch_ua_msg)
-
-        if fs_resp.user_agent != user_agent:
-            log(f"{mismatch_ua_msg}\nResponse was successful but cookies will not be valid", 30)
-
-        self.client_manager.cookies.update_cookies(fs_resp.cookies)
-
-        return fs_resp.soup, fs_resp.url
 
 
 def _parse_cookies(cookies: list[dict[str, Any]]) -> SimpleCookie:
