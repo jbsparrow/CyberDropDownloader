@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl import constants, env
 from cyberdrop_dl.clients.download_client import DownloadClient
+from cyberdrop_dl.clients.flaresolverr import FlareSolverr
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError, TooManyCrawlerErrors
@@ -123,7 +124,7 @@ class ClientManager:
         self.scraper_session = ScraperClient(self)
         self.speed_limiter = DownloadSpeedLimiter(manager)
         self.downloader_session = DownloadClient(manager, self)
-        self.flaresolverr = Flaresolverr(self)
+        self.flaresolverr = FlareSolverr(self.manager)
         self._headers = {"user-agent": self.manager.global_config.general.user_agent}
 
     def filter_cookies_by_word_in_domain(self, word: str) -> Iterable[tuple[str, BaseCookie[str]]]:
@@ -327,7 +328,7 @@ class ClientManager:
         return bool(soup.select_one(CloudflareTurnstile.ALL_SELECTORS))
 
     async def close(self) -> None:
-        await self.flaresolverr._destroy_session()
+        await self.flaresolverr.close()
 
 
 @dataclass(frozen=True, slots=True)

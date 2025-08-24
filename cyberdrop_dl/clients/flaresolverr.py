@@ -86,7 +86,7 @@ class FlareSolverr:
         return f"{type(self)}(url={self.url!r})"
 
     async def close(self):
-        await self.__destroy_session()
+        await self._destroy_session()
 
     async def request(self, url: AbsoluteHttpURL, data: Any = None) -> _FlareSolverrSolution:
         # TODO: make this method return an abstract response
@@ -96,9 +96,9 @@ class FlareSolverr:
             if not self._session_id:
                 async with self._session_lock:
                     if not self._session_id:
-                        await self.__create_session()
+                        await self._create_session()
 
-            resp = await self.__request(
+            resp = await self._request(
                 _Command.POST_REQUEST if data else _Command.GET_REQUEST,
                 url=str(url),
                 data=data,
@@ -114,11 +114,11 @@ class FlareSolverr:
         if not resp.solution:
             raise invalid_response_error
 
-        self.__check_user_agent(resp.solution)
         self.manager.client_manager.cookies.update_cookies(resp.solution.cookies)
+        self._check_user_agent(resp.solution)
         return resp.solution
 
-    def __check_user_agent(self, solution: _FlareSolverrSolution) -> None:
+    def _check_user_agent(self, solution: _FlareSolverrSolution) -> None:
         cdl_user_agent = self.manager.global_config.general.user_agent
         mismatch_ua_msg = (
             "Config user_agent and flaresolverr user_agent do not match:"
@@ -137,7 +137,7 @@ class FlareSolverr:
             msg = f"{mismatch_ua_msg}\n Response was successful but cookies will not be valid"
             log(msg, 30)
 
-    async def __request(self, command: _Command, /, data: Any = None, **kwargs: Any) -> _FlareSolverrResponse:
+    async def _request(self, command: _Command, /, data: Any = None, **kwargs: Any) -> _FlareSolverrResponse:
         if not self.url:
             raise DDOSGuardError("Found DDoS challenge, but FlareSolverr is not configured")
 
@@ -164,20 +164,20 @@ class FlareSolverr:
 
         return _FlareSolverrResponse.from_dict(await response.json())
 
-    async def __create_session(self) -> None:
+    async def _create_session(self) -> None:
         session_id = "cyberdrop-dl"
         kwargs = {}
         if proxy := self.manager.global_config.general.proxy:
             kwargs["proxy"] = {"url": str(proxy)}
 
-        resp = await self.__request(_Command.CREATE_SESSION, session=session_id, **kwargs)
+        resp = await self._request(_Command.CREATE_SESSION, session=session_id, **kwargs)
         if not resp.ok:
             raise DDOSGuardError(f"Failed to create flaresolverr session: {resp.message}")
         self._session_id = session_id
 
-    async def __destroy_session(self) -> None:
+    async def _destroy_session(self) -> None:
         if self._session_id:
-            await self.__request(_Command.DESTROY_SESSION)
+            await self._request(_Command.DESTROY_SESSION)
             self._session_id = ""
 
 
