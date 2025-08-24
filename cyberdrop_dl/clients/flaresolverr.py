@@ -33,27 +33,41 @@ class _Command(StrEnum):
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
-class _FlareSolverrResponse:
+class _FlareSolverrSolution:
     content: str
     cookies: SimpleCookie
     headers: CIMultiDictProxy
-    message: str
-    status: str
     url: AbsoluteHttpURL
     user_agent: str
+    status: int
 
-    @classmethod
-    def from_dict(cls, resp: dict[str, Any]) -> _FlareSolverrResponse:
-        solution: dict[str, Any] = resp["solution"]
-        cookies: list[dict[str, Any]] = solution.get("cookies") or []
-        return cls(
-            status=resp["status"],
-            cookies=_parse_cookies(cookies),
+    @staticmethod
+    def from_dict(solution: dict[str, Any]) -> _FlareSolverrSolution:
+        return _FlareSolverrSolution(
+            status=int(solution["status"]),
+            cookies=_parse_cookies(solution.get("cookies") or []),
             user_agent=solution["userAgent"],
             content=solution["response"],
             url=AbsoluteHttpURL(solution["url"]),
             headers=CIMultiDictProxy(CIMultiDict(solution["headers"])),
+        )
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _FlareSolverrResponse:
+    status: str
+    message: str
+    ok: bool
+    solution: _FlareSolverrSolution | None
+
+    @staticmethod
+    def from_dict(resp: dict[str, Any]) -> _FlareSolverrResponse:
+        status = resp["status"]
+        return _FlareSolverrResponse(
+            status=status,
+            ok=status == "ok",
             message=resp["message"],
+            solution=_FlareSolverrSolution.from_dict(sol) if (sol := resp.get("solution")) else None,
         )
 
 
@@ -96,42 +110,40 @@ class FlareSolverr:
         # TODO: make this method return an abstract response
 
         command = _Command.POST_REQUEST if data else _Command.GET_REQUEST
-        json_resp = await self._request(command, url=str(url), data=data)
-
-        try:
-            resp = _FlareSolverrResponse.from_dict(json_resp)
-        except (AttributeError, KeyError):
-            raise DDOSGuardError("Invalid response from flaresolverr") from None
-
-        if resp.status != "ok":
+        resp = await self.__request(command, url=str(url), data=data)
+        if not resp.ok:
             raise DDOSGuardError(f"Failed to resolve URL with flaresolverr. {resp.message}")
 
-        user_agent = self.client_manager.manager.global_config.general.user_agent
+        if not resp.solution:
+            raise DDOSGuardError("Invalid response from flaresolverr") from None
+
+        solution = resp.solution
+        cdl_user_agent = self.client_manager.manager.global_config.general.user_agent
         mismatch_ua_msg = (
             "Config user_agent and flaresolverr user_agent do not match:"
-            f"\n  Cyberdrop-DL: '{user_agent}'"
-            f"\n  Flaresolverr: '{resp.user_agent}'"
+            f"\n  Cyberdrop-DL: '{cdl_user_agent}'"
+            f"\n  Flaresolverr: '{solution.user_agent}'"
         )
 
         if resp.soup and (
             self.client_manager.check_ddos_guard(resp.soup) or self.client_manager.check_cloudflare(resp.soup)
         ):
-            if resp.user_agent != user_agent:
+            if resp.user_agent != cdl_user_agent:
                 raise DDOSGuardError(mismatch_ua_msg)
 
-        if resp.user_agent != user_agent:
-            log(f"{mismatch_ua_msg}\nResponse was successful but cookies will not be valid", 30)
+        if solution.user_agent != cdl_user_agent:
+            msg = f"{mismatch_ua_msg}\n Response was successful but cookies will not be valid"
+            log(msg, 30)
 
-        self.client_manager.cookies.update_cookies(resp.cookies)
+        self.client_manager.cookies.update_cookies(solution.cookies)
+        return resp.soup, solution.url
 
-        return resp.soup, resp.url
-
-    async def _request(
+    async def __request(
         self,
         command: _Command,
         data: Any = None,
         **kwargs,
-    ) -> dict[str, Any]:
+    ) -> _FlareSolverrResponse:
         """Base request function to call flaresolverr."""
         if not self.enabled:
             raise DDOSGuardError("Found DDoS challenge, but FlareSolverr is not configured")
@@ -139,9 +151,9 @@ class FlareSolverr:
         async with self._session_lock:
             if not self._session_id:
                 await self.__create_session()
-        return await self.__make_request(command, data=data, **kwargs)
+        return await self.__raw_request(command, data=data, **kwargs)
 
-    async def __make_request(self, command: _Command, /, data: Any = None, **kwargs: Any) -> dict[str, Any]:
+    async def __raw_request(self, command: _Command, /, data: Any = None, **kwargs: Any) -> _FlareSolverrResponse:
         timeout = self.client_manager.manager.global_config.rate_limiting_options._scrape_timeout
         if command is _Command.CREATE_SESSION:
             timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
@@ -166,23 +178,23 @@ class FlareSolverr:
                 self._url, json=playload, timeout=timeout
             )
 
-        return await response.json()
+        return _FlareSolverrResponse.from_dict(await response.json())
 
     async def __create_session(self) -> None:
-        """Creates a permanet flaresolverr session."""
+        """Creates a permanent flaresolverr session."""
         session_id = "cyberdrop-dl"
         kwargs = {}
         if proxy := self.client_manager.manager.global_config.general.proxy:
             kwargs["proxy"] = {"url": str(proxy)}
 
-        flaresolverr_resp = await self.__make_request(_Command.CREATE_SESSION, session=session_id, **kwargs)
-        if flaresolverr_resp.get("status") != "ok":
-            raise DDOSGuardError(f"Failed to create flaresolverr session. {flaresolverr_resp.get('message')}")
+        resp = await self.__raw_request(_Command.CREATE_SESSION, session=session_id, **kwargs)
+        if not resp.ok:
+            raise DDOSGuardError(f"Failed to create flaresolverr session: {resp.message}")
         self._session_id = session_id
 
     async def __destroy_session(self) -> None:
         if self._session_id:
-            await self.__make_request(_Command.DESTROY_SESSION)
+            await self.__raw_request(_Command.DESTROY_SESSION)
             self._session_id = ""
 
 
@@ -198,6 +210,4 @@ def _parse_cookies(cookies: list[dict[str, Any]]) -> SimpleCookie:
         morsel["secure"] = "TRUE" if cookie["secure"] else ""
         if expires := cookie["expires"]:
             morsel["max-age"] = str(max(0, int(expires) - int(now)))
-        else:
-            morsel["max-age"] = ""
     return simple_cookie
