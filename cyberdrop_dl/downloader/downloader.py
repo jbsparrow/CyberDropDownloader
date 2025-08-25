@@ -178,11 +178,13 @@ class Downloader:
         task_id = self.manager.progress_manager.file_progress.add_task(domain=self.domain, filename=media_item.filename)
         media_item.set_task_id(task_id)
         video, audio, subtitles = await self._download_rendition_group(media_item, m3u8_group)
-        if not subtitles and not audio:
+        if not audio:
             await asyncio.to_thread(video.rename, media_item.complete_file)
         else:
-            parts = [part for part in (video, audio, subtitles) if part]
-            ffmpeg_result = await ffmpeg.merge(parts, media_item.complete_file)
+            # TODO: add remux method to ffmpeg to create an mkv file instead of mp4
+            # Subtitles format may be incompatible with mp4 and they will be silently dropped by ffmpeg
+            # so we leave them as independent files for now
+            ffmpeg_result = await ffmpeg.merge((video, audio), media_item.complete_file)
 
             if not ffmpeg_result.success:
                 raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
@@ -199,7 +201,6 @@ class Downloader:
             download_folder = media_item.complete_file.with_suffix(".cdl_hls") / m3u8.media_type
             items, tasks = self._make_hls_tasks(media_item, m3u8, download_folder)
             n_segmets = len(tasks)
-            suffix = media_item.complete_file
             if n_segmets > 1:
                 suffix = f".{m3u8.media_type}.ts"
             else:
@@ -228,7 +229,16 @@ class Downloader:
 
         audio = subtitles = None
         if m3u8_group.subtitle:
-            subtitles = await download(m3u8_group.subtitle)
+            try:
+                subtitles = await download(m3u8_group.subtitle)
+            except Exception as e:
+                log(f"Unable to download subtitles for {media_item.url}, Skipping. {e!r}", 40)
+            else:
+                log(
+                    f"Found subtitles for {media_item.url}, but CDL is currently unable to merge them. Subtitle were saved at {subtitles} ",
+                    30,
+                )
+
         if m3u8_group.audio:
             audio = await download(m3u8_group.audio)
         video = await download(m3u8_group.video)
@@ -264,6 +274,8 @@ class Downloader:
             seg_media_items.append(seg_media_item)
 
             async def run() -> bool:
+                # TODO: segments download should bypass the downloads slots limits.
+                # They count as a single download
                 async with semaphore_hls:
                     return await self.start_download(seg_media_item)
 
