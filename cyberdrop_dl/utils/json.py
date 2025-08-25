@@ -189,12 +189,13 @@ class JSONWebToken:
         return cls(headers["alg"], headers, cls._decode(b64_payload), b64_signature)
 
     @classmethod
-    def _decode(cls, value: str, /) -> dict[str, Any]:
+    def _decode(cls, value: str) -> dict[str, Any]:
         return loads(base64.urlsafe_b64decode(f"{value}==="))
 
-    @classmethod
-    def parse_playload(cls, jwt: str, /) -> dict[str, Any]:
-        return cls.parse(jwt).payload
+
+def jwt_decode(jwt: str) -> dict[str, Any]:
+    return JSONWebToken.parse(jwt).payload
 
 
-jwt_decode = JSONWebToken.parse_playload
+def is_jwt(string: str) -> bool:
+    return string.startswith("eyJ") and string.count(".") == 2

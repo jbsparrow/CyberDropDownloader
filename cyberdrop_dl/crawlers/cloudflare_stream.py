@@ -12,11 +12,13 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils.json import jwt_decode
+from cyberdrop_dl.utils.json import is_jwt, jwt_decode
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+
+_DEFAULT_VIDEO_CDN = AbsoluteHttpURL("https://watch.cloudflarestream.com")
 
 
 class CloudflareStreamCrawler(Crawler):
@@ -39,7 +41,6 @@ class CloudflareStreamCrawler(Crawler):
     DOMAIN = "cloudflarestream"
     FOLDER_DOMAIN = "CloudflareStream"
     PRIMARY_URL = AbsoluteHttpURL("https://cloudflarestream.com")
-    _DEFAULT_VIDEO_CDN = AbsoluteHttpURL("https://watch.cloudflarestream.com")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -53,8 +54,7 @@ class CloudflareStreamCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
         is_expired: bool = False
         token = None
-        is_jwt = video_id.startswith("eyJ") and "." in video_id
-        if is_jwt:
+        if is_jwt(video_id):
             # https://developers.cloudflare.com/stream/viewing-videos/securing-your-stream/
             token = video_id
             payload = jwt_decode(token)
@@ -63,7 +63,7 @@ class CloudflareStreamCrawler(Crawler):
                 is_expired = time.time() > expires
 
         _ = uuid.UUID(hex=video_id)  # raise ValueError if video_id is not a valid uuid
-        scrape_item.url = self._DEFAULT_VIDEO_CDN / video_id
+        scrape_item.url = _DEFAULT_VIDEO_CDN / video_id
         return await self._video(scrape_item, video_id, token, is_expired)
 
     @error_handling_wrapper
