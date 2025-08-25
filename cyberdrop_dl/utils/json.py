@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import dataclasses
 import datetime
 import enum
@@ -10,7 +11,7 @@ import json.decoder
 import json.scanner
 import re
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, Protocol, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, Protocol, Self, TypeGuard, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -171,3 +172,29 @@ def load_js_obj(string: str, /) -> Any:
         string = string.replace(old, new)
     string = re.sub(r"\s\b(?!http)(\w+)\s?:", r' "\1" : ', string)  # wrap keys without quotes with double quotes
     return _JS_DECODER.decode(string)
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class JSONWebToken:
+    # https://www.rfc-editor.org/rfc/rfc7519.html
+    alg: str
+    headers: dict[str, str] = dataclasses.field(repr=False)
+    payload: dict[str, Any] = dataclasses.field(repr=False)
+    signature: str
+
+    @classmethod
+    def parse(cls, jwt: str) -> Self:
+        b64_headers, b64_payload, b64_signature = jwt.split(".")
+        headers = cls._decode(b64_headers)
+        return cls(headers["alg"], headers, cls._decode(b64_payload), b64_signature)
+
+    @classmethod
+    def _decode(cls, value: str, /) -> dict[str, Any]:
+        return loads(base64.urlsafe_b64decode(f"{value}==="))
+
+    @classmethod
+    def parse_playload(cls, jwt: str, /) -> dict[str, Any]:
+        return cls.parse(jwt).payload
+
+
+jwt_decode = JSONWebToken.parse_playload
