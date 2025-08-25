@@ -15,7 +15,7 @@ from videoprops import get_audio_properties, get_video_properties
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
@@ -197,13 +197,17 @@ class DownloadClient:
                 _ = get_content_type(media_item.ext, resp.headers)
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0")) or None
-            if not media_item.complete_file and not media_item.is_segment:
+            if not media_item.complete_file:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
                 self.client_manager.check_content_length(resp.headers)
                 if skip:
+                    if media_item.is_segment:
+                        return True
                     self.manager.progress_manager.download_progress.add_skipped()
                     return False
                 if not proceed:
+                    if media_item.is_segment:
+                        return True
                     log(f"Skipping {media_item.url} as it has already been downloaded", 10)
                     self.manager.progress_manager.download_progress.add_previously_completed(False)
                     await self.process_completed(media_item, domain)
@@ -423,6 +427,9 @@ class DownloadClient:
         expected_size = media_item.filesize
         proceed = True
         skip = False
+
+        if not TYPE_CHECKING:
+            log = log_debug if media_item.is_segment else globals()["log"]
 
         while True:
             if expected_size:

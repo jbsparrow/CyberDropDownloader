@@ -198,8 +198,18 @@ class Downloader:
             assert m3u8.media_type
             download_folder = media_item.complete_file.with_suffix(".cdl_hls") / m3u8.media_type
             items, tasks = self._make_hls_tasks(media_item, m3u8, download_folder)
+            n_segmets = len(tasks)
+            suffix = media_item.complete_file
+            if n_segmets > 1:
+                suffix = f".{m3u8.media_type}.ts"
+            else:
+                suffix = media_item.complete_file.suffix + items[0].url.suffix
+
+            output = media_item.complete_file.with_suffix(suffix)
+            if await asyncio.to_thread(output.is_file):
+                return output
+
             tasks_results = await asyncio.gather(*tasks)
-            n_segmets = len(tasks_results)
             n_successful = sum(1 for r in tasks_results if r)
 
             if n_successful != n_segmets:
@@ -207,13 +217,12 @@ class Downloader:
                 raise DownloadError("HLS Seg Error", msg, media_item)
 
             seg_paths = [item.complete_file for item in items if item.complete_file]
-            output = media_item.complete_file.with_suffix(f".{m3u8.media_type}.ts")
+
             if n_segmets > 1:
                 ffmpeg_result = await ffmpeg.concat(seg_paths, output)
                 if not ffmpeg_result.success:
                     raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
             else:
-                output = output.with_suffix(items[0].url.suffix)
                 await asyncio.to_thread(seg_paths[0].rename, output)
             return output
 
@@ -227,7 +236,7 @@ class Downloader:
 
     def _make_hls_tasks(
         self, media_item: MediaItem, m3u8: M3U8, download_folder: Path
-    ) -> tuple[list[MediaItem], list[Coroutine]]:
+    ) -> tuple[list[MediaItem], list[Coroutine[None, None, bool]]]:
         seg_media_items: list[MediaItem] = []
         padding = max(5, len(str(len(m3u8.segments))))
 
@@ -239,7 +248,7 @@ class Downloader:
                 name = f"{index:0{padding}d}.cdl_hsl"
                 yield HlsSegment(segment.title, name, parse_url(segment.absolute_uri))
 
-        def make_download_task(segment: HlsSegment) -> Coroutine:
+        def make_download_task(segment: HlsSegment) -> Coroutine[None, None, bool]:
             seg_media_item = MediaItem.from_item(
                 media_item,
                 segment.url,
