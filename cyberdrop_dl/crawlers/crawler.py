@@ -11,7 +11,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, Literal, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
 
 import yarl
 from aiolimiter import AsyncLimiter
@@ -655,22 +655,30 @@ class Crawler(ABC):
         m3u8_playlist = await self._get_m3u8(m3u8_playlist_url, headers)
         rendition_group_info = m3u8.get_best_group_from_playlist(m3u8_playlist, only=only, exclude=exclude)
         renditions_urls = rendition_group_info.urls
-        video = await self._get_m3u8(renditions_urls.video, headers)
-        audio = await self._get_m3u8(renditions_urls.audio, headers) if renditions_urls.audio else None
-        subtitle = await self._get_m3u8(renditions_urls.subtitle, headers) if renditions_urls.subtitle else None
+        video = await self._get_m3u8(renditions_urls.video, headers, "video")
+        audio = await self._get_m3u8(renditions_urls.audio, headers, "audio") if renditions_urls.audio else None
+        subtitle = (
+            await self._get_m3u8(renditions_urls.subtitle, headers, "subtitles") if renditions_urls.subtitle else None
+        )
         return m3u8.RenditionGroup(video, audio, subtitle), rendition_group_info
 
     async def get_m3u8_from_index_url(
         self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None
     ) -> m3u8.RenditionGroup:
         """Get m3u8 rendition group from an index that only has 1 rendition, a video (non variant m3u8)"""
-        return m3u8.RenditionGroup(await self._get_m3u8(url, headers))
+        return m3u8.RenditionGroup(await self._get_m3u8(url, headers, "video"))
 
-    async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> m3u8.M3U8:
+    async def _get_m3u8(
+        self,
+        url: AbsoluteHttpURL,
+        /,
+        headers: dict[str, str] | None = None,
+        media_type: Literal["video", "audio", "subtitles"] | None = None,
+    ) -> m3u8.M3U8:
         headers = headers or {}
         async with self.request_limiter:
             content = await self.client.get_text(self.DOMAIN, url, headers)
-        return m3u8.M3U8(content, url.parent)
+        return m3u8.M3U8(content, url.parent, media_type)
 
     def create_custom_filename(
         self,

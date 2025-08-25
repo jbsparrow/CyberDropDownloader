@@ -193,7 +193,8 @@ class DownloadClient:
 
             await self.client_manager.check_http_status(resp, download=True)
 
-            _ = get_content_type(media_item.ext, resp.headers)
+            if not media_item.is_segment:
+                _ = get_content_type(media_item.ext, resp.headers)
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0")) or None
             if not media_item.complete_file and not media_item.is_segment:
