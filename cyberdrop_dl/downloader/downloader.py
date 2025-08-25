@@ -212,9 +212,12 @@ class Downloader:
 
             seg_paths = [item.complete_file for item in items if item.complete_file]
             output = media_item.complete_file.with_suffix(f".{media_type}.ts")
-            ffmpeg_result = await ffmpeg.concat(seg_paths, output)
-            if not ffmpeg_result.success:
-                raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
+            if n_segmets > 1:
+                ffmpeg_result = await ffmpeg.concat(seg_paths, output)
+                if not ffmpeg_result.success:
+                    raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
+            else:
+                await asyncio.to_thread(seg_paths[0].rename, output)
             results.append(output)
 
         video, audio, subtitles = results
@@ -226,7 +229,8 @@ class Downloader:
     ) -> tuple[list[MediaItem], list[Coroutine]]:
         seg_media_items: list[MediaItem] = []
         padding = max(5, len(str(len(m3u8.segments))))
-        semaphore_hls = asyncio.Semaphore(10)
+
+        semaphore_hls = asyncio.Semaphore(10 if download_folder.name == "video" else 50)
 
         def create_segments() -> Generator[HlsSegment]:
             for index, segment in enumerate(m3u8.segments, 1):
