@@ -34,10 +34,7 @@ class GoogleDriveCrawler(Crawler):
         "Slides": "/presentation/d/<file_id>",
     }
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "drive.google", "docs.google", "drive.usercontent.google.com"
-    PRIMARY_URL = _PRIMARY_URL
-    DOMAIN = "drive.google"
-    FOLDER_DOMAIN = "GoogleDrive"
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "drive.google"
     FOLDER_DOMAIN: ClassVar[str] = "GoogleDrive"
 
@@ -45,9 +42,7 @@ class GoogleDriveCrawler(Crawler):
         self.request_limiter = AsyncLimiter(4, 6)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        url = scrape_item.url
-        is_user_content = "usercontent" in url.host or url.path == "/uc"
-        if is_user_content and (file_id := url.query.get("id")):
+        if file_id := scrape_item.url.query.get("id"):
             return await self.file(scrape_item, file_id)
 
         match scrape_item.url.parts[1:]:
@@ -58,7 +53,7 @@ class GoogleDriveCrawler(Crawler):
             case ["d", file_id, *_]:
                 return await self.file(scrape_item, file_id)
             case [doc, "d", file_id, *_] if doc in _DOC_FORMATS:
-                format = url.query.get("format") or _DOC_FORMATS[doc]
+                format = scrape_item.url.query.get("format") or _DOC_FORMATS[doc]
                 return await self.file(scrape_item, file_id, format)
             case _:
                 raise ValueError
@@ -84,9 +79,28 @@ class GoogleDriveCrawler(Crawler):
             if index % 200 == 0:
                 await asyncio.sleep(0)
 
-    @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem, file_id: str = "", format: str | None = None) -> None:
-        scrape_item.url = canonical_url = self.PRIMARY_URL / "file/d" / file_id
+        # from personal testing, file ids are always 33 chars, doc ids are always 44 chars
+        # but i did not find any official docs about it
+        if len(file_id) < 25:
+            raise ValueError
+
+        looks_like_google_docs = len(file_id) > 40
+        if looks_like_google_docs and not format:
+            msg = f"[{self.FOLDER_DOMAIN}] {file_id=} looks like a google docs file but no format was specified. Falling back to pdf"
+            self.log(msg, 30)
+            format = "pdf"
+
+        format = format if looks_like_google_docs else None
+        return await self._file(scrape_item, file_id, format)
+
+    @error_handling_wrapper
+    async def _file(self, scrape_item: ScrapeItem, file_id: str, format: str | None) -> None:
+        canonical_url = self.PRIMARY_URL / "file/d" / file_id
+        if format:
+            canonical_url = canonical_url.with_query(format=format)
+
+        scrape_item.url = canonical_url
         if await self.check_complete_from_referer(canonical_url):
             return
 
