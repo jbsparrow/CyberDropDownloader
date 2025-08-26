@@ -54,12 +54,12 @@ TEST_CASES = [
         ],
     ),
     (
-        "https://drive.google.com/file/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY/edit",
+        "https://docs.google.com/document/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY/edit",
         [
             {
                 "url": "ANY",
-                "filename": "test.pdf",
-                "referer": "https://drive.google.com/file/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY?format=pdf",
+                "filename": "test.docx",
+                "referer": "https://docs.google.com/document/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY?format=docx",
                 "album_id": None,
                 "datetime": None,
             }
@@ -71,19 +71,7 @@ TEST_CASES = [
             {
                 "url": "ANY",
                 "filename": "test.txt",
-                "referer": "https://drive.google.com/file/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY?format=txt",
-                "album_id": None,
-                "datetime": None,
-            }
-        ],
-    ),
-    (
-        "https://docs.google.com/document/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY",
-        [
-            {
-                "url": "ANY",
-                "filename": "test.docx",
-                "referer": "https://drive.google.com/file/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY?format=docx",
+                "referer": "https://docs.google.com/document/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY?format=txt",
                 "album_id": None,
                 "datetime": None,
             }
@@ -91,7 +79,29 @@ TEST_CASES = [
     ),
     (
         "https://docs.google.com/document/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY?format=xlsx",
-        [],
+        [
+            {
+                "url": "ANY",
+                "filename": "test.docx",
+                "referer": "https://docs.google.com/document/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY?format=docx",
+                "album_id": None,
+                "datetime": None,
+            }
+        ],
+    ),
+    (
+        # This is a spreeadsheet but the id is a normal file id
+        # We will not be able to download it with a custom format
+        "https://docs.google.com/spreadsheets/d/1E3LpudUdUZycJpxSKK-c9-oIDuJoo5_7/edit?format=ods",
+        [
+            {
+                "url": "ANY",
+                "filename": "TK Online 1.5.xlsx",
+                "referer": "https://drive.google.com/file/d/1E3LpudUdUZycJpxSKK-c9-oIDuJoo5_7",
+                "album_id": None,
+                "datetime": None,
+            }
+        ],
     ),
     (
         # Folder with +50 files

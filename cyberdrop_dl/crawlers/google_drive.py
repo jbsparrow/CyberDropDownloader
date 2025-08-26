@@ -3,8 +3,6 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, ClassVar, cast
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
@@ -13,28 +11,53 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+
+# from personal testing, file ids are always 33 chars, doc ids are always 44 chars
+# but i could not find any official documentation about it, so i used slightly lower numbers
+_DRIVE_MIN_FILE_ID_LEN = 25
+_DOCS_MIN_FILE_ID_LEN = 40
+
 _PRIMARY_URL = AbsoluteHttpURL("https://drive.google.com")
-_DOCS_DOWNLOAD = AbsoluteHttpURL("https://docs.google.com/document/export")
-_FILE_DOWNLOAD = _PRIMARY_URL / "uc"
+_DOCS_URL = AbsoluteHttpURL("https://docs.google.com")
+
 _FOLDER_ITEM_SELECTOR = "div.flip-entry-info > a[href]"
-_DOC_FORMATS = {"spreadsheets": "xlsx", "presentation": "pptx", "document": "docx"}
+_DOC_FORMATS: dict[str, tuple[str, ...]] = {
+    "spreadsheets": ("xslx", "ods", "html", "csv", "tsv"),
+    "presentation": ("pptx", "odp"),
+    "document": ("docx", "odt", "rtf", "txt", "epub", "pdf", "md", "zip"),
+}
+
+
+def _valid_formats_string() -> str:
+    string = ""
+    sep = "\n  - "
+    for doc, formats in sorted(_DOC_FORMATS.items()):
+        default, *others = formats
+        string += f"\n\n{doc}:{sep}"
+        string += sep.join(sorted((f"{default} (default)", *others)))
+    return string
 
 
 class GoogleDriveCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Files": "/file/d/<file_id>",
+        "Folders": (
+            "/drive/folders/<folder_id>",
+            "/embeddedfolderview/<folder_id>",
+        ),
         "Docs": "/document/d/<file_id>",
-        "Files": ("/d/<file_id>", "/file/d/<file_id>"),
-        "Folders": "/drive/folders/<folder_id>",
         "Sheets": "/spreadsheets/d/<file_id>",
         "Slides": "/presentation/d/<file_id>",
+        "**NOTE**": (
+            "You can download sheets, slides and docs in a custom format by using it as a query param.\n"
+            "ex: https://docs.google.com/document/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY?format=ods\n"
+            f"Valid Formats:{_valid_formats_string()}"
+        ),
     }
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "drive.google", "docs.google", "drive.usercontent.google.com"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "drive.google"
     FOLDER_DOMAIN: ClassVar[str] = "GoogleDrive"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(4, 6)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         url = scrape_item.url
@@ -52,8 +75,11 @@ class GoogleDriveCrawler(Crawler):
             return await self.folder(scrape_item, folder_id)
 
         if file_id := next_to("d"):
-            format = url.query.get("format") or next((f for x, f in _DOC_FORMATS.items() if x in url.parts), None)
-            return await self.file(scrape_item, file_id, format)
+            if (first := url.parts[1]) in _DOC_FORMATS:
+                doc = first
+            else:
+                doc = None
+            return await self.file(scrape_item, file_id, doc)
 
         raise ValueError
 
@@ -74,48 +100,63 @@ class GoogleDriveCrawler(Crawler):
             if index % 200 == 0:
                 await asyncio.sleep(0)
 
-    async def file(self, scrape_item: ScrapeItem, file_id: str = "", format: str | None = None) -> None:
-        # from personal testing, file ids are always 33 chars, doc ids are always 44 chars
-        # but i did not find any official docs about it
-        if len(file_id) < 25:
+    async def file(self, scrape_item: ScrapeItem, file_id: str = "", doc: str | None = None) -> None:
+        if len(file_id) < _DRIVE_MIN_FILE_ID_LEN:
             raise ValueError
 
-        looks_like_google_docs = len(file_id) > 40
-        if looks_like_google_docs and not format:
-            msg = f"[{self.FOLDER_DOMAIN}] {file_id=} looks like a google docs file but no format was specified. Falling back to pdf"
-            self.log(msg, 30)
-            format = "pdf"
+        if len(file_id) < _DOCS_MIN_FILE_ID_LEN:
+            return await self._drive_file(scrape_item, file_id)
 
-        format = format if looks_like_google_docs else None
-        return await self._file(scrape_item, file_id, format)
+        if not doc:
+            msg = f"{scrape_item.url} has a google docs file_id but is not google docs URL"
+            self.log(msg, 40)
+            raise ValueError
+
+        format_ = scrape_item.url.query.get("format")
+        proper_format = _get_proper_doc_format(doc, format_)
+        if format_ and format_ != proper_format:
+            msg = f"{scrape_item.url} with {format_ = } is not valid. Falling back to {proper_format}"
+            self.log(msg, 30)
+
+        return await self._docs_file(scrape_item, file_id, doc, proper_format)
+
+    async def _docs_file(self, scrape_item: ScrapeItem, file_id: str, doc: str, format: str) -> None:
+        scrape_item.url = (_DOCS_URL / doc / "d" / file_id).with_query(format=format)
+        export_url = (_DOCS_URL / doc / "export").with_query(id=file_id, format=format)
+        return await self._file(scrape_item, export_url)
+
+    async def _drive_file(self, scrape_item: ScrapeItem, file_id: str) -> None:
+        scrape_item.url = _PRIMARY_URL / "file/d" / file_id
+        export_url = (_PRIMARY_URL / "uc").with_query(id=file_id, export="download", confirm="True")
+        return await self._file(scrape_item, export_url)
 
     @error_handling_wrapper
-    async def _file(self, scrape_item: ScrapeItem, file_id: str, format: str | None) -> None:
-        canonical_url = self.PRIMARY_URL / "file/d" / file_id
-        if format:
-            canonical_url = canonical_url.with_query(format=format)
-
-        scrape_item.url = canonical_url
-        if await self.check_complete_from_referer(canonical_url):
+    async def _file(self, scrape_item: ScrapeItem, export_url: AbsoluteHttpURL) -> None:
+        if await self.check_complete_from_referer(scrape_item):
             return
 
-        link, filename = await self._get_file_info(file_id, format)
-        custom_filename, ext = self.get_filename_and_ext(filename)
-        await self.handle_file(
-            canonical_url, scrape_item, filename, ext, debrid_link=link, custom_filename=custom_filename
-        )
+        link, name = await self._get_file_info(export_url)
+        filename, ext = self.get_filename_and_ext(name)
+        await self.handle_file(scrape_item.url, scrape_item, name, ext, debrid_link=link, custom_filename=filename)
 
-    async def _get_file_info(self, file_id: str, format: str | None) -> tuple[AbsoluteHttpURL, str]:
-        if format:
-            method, url = "GET", _DOCS_DOWNLOAD.with_query(id=file_id, format=format)
-        else:
-            method, url = "POST", _FILE_DOWNLOAD.with_query(id=file_id, export="download", confirm="True")
+    async def _get_file_info(self, export_url: AbsoluteHttpURL) -> tuple[AbsoluteHttpURL, str]:
+        method = "GET" if export_url.host == _DOCS_URL.host else "POST"
 
         # TODO: This request bypasses the config limiter. Use the new request method when PR #1251 is merged
-        async with self.request_limiter, self.client._session.request(method, url) as resp:
+        async with self.request_limiter, self.client._session.request(method, export_url) as resp:
             if not resp.ok or "html" in resp.content_type:
                 await self.client.client_manager.check_http_status(resp)
 
         direct_url = cast("AbsoluteHttpURL", resp.url)
         filename: str = resp.content_disposition.filename  # type: ignore[reportAssignmentType,reportOptionalMemberAccess]
         return direct_url, filename
+
+
+def _get_proper_doc_format(doc: str, format: str | None) -> str:
+    valid_formats = _DOC_FORMATS[doc]
+    default_format = valid_formats[0]
+    format_ = format or default_format
+    if format_ in valid_formats:
+        return format_
+
+    return default_format
