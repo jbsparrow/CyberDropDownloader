@@ -40,7 +40,8 @@ TEST_CASES = [
         ],
     ),
     (
-        # huge file with warning do to large size (9.8G)
+        # Huge file with warning do to large size (9.8G), this test may fail.
+        # Public download wihtout an account are limited to about 5G per day and they return 429 with that happends
         "https://drive.google.com/file/d/1WHv5Dm1GtrDZj-AxJZd3T-NMIBXty3eV/view",
         [
             {
@@ -91,5 +92,11 @@ TEST_CASES = [
     (
         "https://docs.google.com/document/d/1ZzEzJbemBMPm46O2q5VcGNoPbqDu9AhhUc2djQbvbTY?format=xlsx",
         [],
+    ),
+    (
+        # Folder with +50 files
+        "https://drive.google.com/drive/folders/1k8pgIaGw6PribxVqMgmDtlpzbUPJuzrX",
+        [],
+        135,
     ),
 ]

@@ -17,12 +17,7 @@ _PRIMARY_URL = AbsoluteHttpURL("https://drive.google.com")
 _DOCS_DOWNLOAD = AbsoluteHttpURL("https://docs.google.com/document/export")
 _FILE_DOWNLOAD = _PRIMARY_URL / "uc"
 _FOLDER_ITEM_SELECTOR = "div.flip-entry-info > a[href]"
-_DOC_FORMATS = {
-    "file": None,
-    "spreadsheets": "xlsx",
-    "presentation": "pptx",
-    "document": "docx",
-}
+_DOC_FORMATS = {"spreadsheets": "xlsx", "presentation": "pptx", "document": "docx"}
 
 
 class GoogleDriveCrawler(Crawler):
@@ -42,21 +37,25 @@ class GoogleDriveCrawler(Crawler):
         self.request_limiter = AsyncLimiter(4, 6)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if file_id := scrape_item.url.query.get("id"):
+        url = scrape_item.url
+        if file_id := url.query.get("id"):
             return await self.file(scrape_item, file_id)
 
-        match scrape_item.url.parts[1:]:
-            case ["drive", "folders", folder_id, *_]:
-                return await self.folder(scrape_item, folder_id)
-            case ["embeddedfolderview", folder_id, *_]:
-                return await self.folder(scrape_item, folder_id)
-            case ["d", file_id, *_]:
-                return await self.file(scrape_item, file_id)
-            case [doc, "d", file_id, *_] if doc in _DOC_FORMATS:
-                format = scrape_item.url.query.get("format") or _DOC_FORMATS[doc]
-                return await self.file(scrape_item, file_id, format)
-            case _:
-                raise ValueError
+        def next_to(name: str):
+            try:
+                index = url.parts.index(name)
+                return url.parts[index + 1]
+            except (ValueError, IndexError):
+                return
+
+        if folder_id := (next_to("folders") or next_to("embeddedfolderview")):
+            return await self.folder(scrape_item, folder_id)
+
+        if file_id := next_to("d"):
+            format = url.query.get("format") or next((f for x, f in _DOC_FORMATS.items() if x in url.parts), None)
+            return await self.file(scrape_item, file_id, format)
+
+        raise ValueError
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, folder_id: str) -> None:
@@ -67,12 +66,8 @@ class GoogleDriveCrawler(Crawler):
         folder_name = css.select_one_get_text(soup, "title")
         title = self.create_title(folder_name, folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)
-        results = await self.get_album_results(folder_id)
 
         for index, (_, child) in enumerate(self.iter_tags(soup, _FOLDER_ITEM_SELECTOR), 1):
-            if self.check_album_results(child, results):
-                continue
-
             new_scrape_item = scrape_item.create_child(child)
             self.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
