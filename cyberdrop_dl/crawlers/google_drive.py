@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
 
 
 # This versions numbers and restrictions are not documented and may actually be wrong
-# These values are  just from personal experience
+# These values are just from personal experience
 _KNOWN_FILE_ID_VERSIONS = 0, 1
 _DRIVE_ID_LEN = 28  # v0 uses 28, v1 uses 33
 _DOCS_ID_LEN = 44  # v1 uses 44. I have not seen v0 doc URL
@@ -105,7 +106,7 @@ class GoogleDriveCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem, file_id: str = "", doc: str | None = None) -> None:
         version = int(file_id[0])
         if version not in _KNOWN_FILE_ID_VERSIONS:
-            msg = f"{scrape_item.url} has an unknown file_id {version = }. Trying to process as a normal drive file"
+            msg = f"{scrape_item.url} has an unknown file_id {version = }. Falling back to download as normal file"
             self.log(msg, 30)
             return await self._drive_file(scrape_item, file_id)
 
@@ -117,10 +118,23 @@ class GoogleDriveCrawler(Crawler):
         if len(file_id) < _DOCS_ID_LEN:
             return await self._drive_file(scrape_item, file_id)
 
+        return await self._docs_file(scrape_item, file_id, doc)
+
+    async def _drive_file(self, scrape_item: ScrapeItem, file_id: str) -> None:
+        scrape_item.url = _PRIMARY_URL / "file/d" / file_id
+        export_url = (_PRIMARY_URL / "uc").with_query(id=file_id, export="download", confirm="True")
+        return await self._file(scrape_item, export_url)
+
+    @error_handling_wrapper
+    async def _docs_file(self, scrape_item: ScrapeItem, file_id: str, doc: str | None) -> None:
         if not doc:
-            msg = f"{scrape_item.url} has a google docs file_id but is not a google docs URL"
-            self.log(msg, 40)
-            raise ValueError
+            open_url = (_DOCS_URL / "open").with_query(id=file_id)
+            url = await self._get_redirect_url(open_url)
+            if (first := url.parts[1]) in _DOC_FORMATS:
+                doc = first
+
+        if not doc:
+            raise ScrapeError(422, "Unable to identify google docs file type")
 
         format_ = scrape_item.url.query.get("format")
         proper_format = _get_proper_doc_format(doc, format_)
@@ -128,16 +142,8 @@ class GoogleDriveCrawler(Crawler):
             msg = f"{scrape_item.url} with {format_ = } is not valid. Falling back to {proper_format}"
             self.log(msg, 30)
 
-        return await self._docs_file(scrape_item, file_id, doc, proper_format)
-
-    async def _docs_file(self, scrape_item: ScrapeItem, file_id: str, doc: str, format: str) -> None:
-        scrape_item.url = (_DOCS_URL / doc / "d" / file_id).with_query(format=format)
-        export_url = (_DOCS_URL / doc / "export").with_query(id=file_id, format=format)
-        return await self._file(scrape_item, export_url)
-
-    async def _drive_file(self, scrape_item: ScrapeItem, file_id: str) -> None:
-        scrape_item.url = _PRIMARY_URL / "file/d" / file_id
-        export_url = (_PRIMARY_URL / "uc").with_query(id=file_id, export="download", confirm="True")
+        scrape_item.url = (_DOCS_URL / doc / "d" / file_id).with_query(format=proper_format)
+        export_url = (_DOCS_URL / doc / "export").with_query(id=file_id, format=proper_format)
         return await self._file(scrape_item, export_url)
 
     @error_handling_wrapper
@@ -165,9 +171,7 @@ class GoogleDriveCrawler(Crawler):
 
 def _get_proper_doc_format(doc: str, format: str | None) -> str:
     valid_formats = _DOC_FORMATS[doc]
-    default_format = valid_formats[0]
-    format_ = format or default_format
-    if format_ in valid_formats:
-        return format_
+    if format in valid_formats:
+        return format
 
-    return default_format
+    return valid_formats[0]
