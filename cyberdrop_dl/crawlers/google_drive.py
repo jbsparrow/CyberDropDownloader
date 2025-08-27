@@ -12,10 +12,12 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-# from personal testing, file ids are always 33 chars, doc ids are always 44 chars
-# but i could not find any official documentation about it, so i used slightly lower numbers
-_DRIVE_MIN_FILE_ID_LEN = 25
-_DOCS_MIN_FILE_ID_LEN = 40
+# This versions numbers and restrictions are not documented and may actually be wrong
+# These values are  just from personal experience
+_KNOWN_FILE_ID_VERSIONS = 0, 1
+_DRIVE_ID_LEN = 28  # v0 uses 28, v1 uses 33
+_DOCS_ID_LEN = 44  # v1 uses 44. I have not seen v0 doc URL
+
 
 _PRIMARY_URL = AbsoluteHttpURL("https://drive.google.com")
 _DOCS_URL = AbsoluteHttpURL("https://docs.google.com")
@@ -101,14 +103,22 @@ class GoogleDriveCrawler(Crawler):
                 await asyncio.sleep(0)
 
     async def file(self, scrape_item: ScrapeItem, file_id: str = "", doc: str | None = None) -> None:
-        if len(file_id) < _DRIVE_MIN_FILE_ID_LEN:
+        version = int(file_id[0])
+        if version not in _KNOWN_FILE_ID_VERSIONS:
+            msg = f"{scrape_item.url} has an unknown file_id {version = }. Trying to process as a normal drive file"
+            self.log(msg, 30)
+            return await self._drive_file(scrape_item, file_id)
+
+        if len(file_id) < _DRIVE_ID_LEN:
+            msg = f"{scrape_item.url} has an invalid file_id. Needs to be at least {_DRIVE_ID_LEN} long"
+            self.log(msg, 40)
             raise ValueError
 
-        if len(file_id) < _DOCS_MIN_FILE_ID_LEN:
+        if len(file_id) < _DOCS_ID_LEN:
             return await self._drive_file(scrape_item, file_id)
 
         if not doc:
-            msg = f"{scrape_item.url} has a google docs file_id but is not google docs URL"
+            msg = f"{scrape_item.url} has a google docs file_id but is not a google docs URL"
             self.log(msg, 40)
             raise ValueError
 
@@ -140,6 +150,7 @@ class GoogleDriveCrawler(Crawler):
         await self.handle_file(scrape_item.url, scrape_item, name, ext, debrid_link=link, custom_filename=filename)
 
     async def _get_file_info(self, export_url: AbsoluteHttpURL) -> tuple[AbsoluteHttpURL, str]:
+        # Use POST request to bypass "file is too large to scan. Would you still like to download this file" warning
         method = "GET" if export_url.host == _DOCS_URL.host else "POST"
 
         # TODO: This request bypasses the config limiter. Use the new request method when PR #1251 is merged

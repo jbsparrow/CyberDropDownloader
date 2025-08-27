@@ -104,6 +104,31 @@ TEST_CASES = [
         ],
     ),
     (
+        # v0 file id (28 chars)
+        "https://drive.google.com/file/d/0ByeS4oOUV-49Zzh4R1J6R09zazQ/edit",
+        [
+            {
+                "url": "ANY",
+                "filename": "Big Buck Bunny.mp4",
+                "referer": "https://drive.google.com/file/d/0ByeS4oOUV-49Zzh4R1J6R09zazQ",
+                "album_id": None,
+                "datetime": None,
+            }
+        ],
+    ),
+    (
+        "https://drive.google.com/uc?id=1IP0o8dHcQrIHGgVyp0Ofvx2cGfLzyO1x",
+        [
+            {
+                "url": "ANY",
+                "filename": "My Buddy - Henry Burr - Gus Kahn - Walter Donaldson.mp3",
+                "referer": "https://drive.google.com/file/d/1IP0o8dHcQrIHGgVyp0Ofvx2cGfLzyO1x",
+                "album_id": None,
+                "datetime": None,
+            }
+        ],
+    ),
+    (
         # Folder with +50 files
         "https://drive.google.com/drive/folders/1k8pgIaGw6PribxVqMgmDtlpzbUPJuzrX",
         [],
