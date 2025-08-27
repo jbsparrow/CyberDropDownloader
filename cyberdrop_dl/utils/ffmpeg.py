@@ -185,18 +185,19 @@ class Duration(NamedTuple):
 
     @staticmethod
     def parse(duration: float | str) -> float:
-        if isinstance(duration, float | int):
-            return float(duration)
         try:
             return float(duration)
         except (ValueError, TypeError):
             pass
+
+        assert isinstance(duration, str)
         days, _, other_parts = duration.partition(" ")
-        if days:
+        if other_parts:
             days = "".join(char for char in days if char.isdigit())
         else:
-            days = "0"
+            other_parts = days
 
+        days = days or "0"
         time_parts = other_parts.split(":")
         missing_parts = [0 for _ in range(3 - len(time_parts))]
         seconds = float(Fraction(time_parts.pop(-1)))
@@ -254,7 +255,7 @@ class Stream:
     def from_dict(cls, stream_info: StreamDict) -> Self:
         return cls(**cls.validate(stream_info))
 
-    def as_dict(self) -> dict[str, Any]:
+    def as_jsonable_dict(self) -> dict[str, Any]:
         return asdict(self) | {"tags": dict(self.tags)}
 
 
@@ -300,14 +301,14 @@ class FFprobeResult:
 
     @staticmethod
     def from_output(ffprobe_output: FFprobeOutput) -> FFprobeResult:
-        streams: list[Stream] = []
-        for stream in ffprobe_output.get("streams", []):
-            if stream["codec_type"] == "video":
-                streams.append(VideoStream.from_dict(stream))
-            elif stream["codec_type"] == "audio":
-                streams.append(AudioStream.from_dict(stream))
+        def streams():
+            for stream in ffprobe_output.get("streams", []):
+                if stream["codec_type"] == "video":
+                    yield VideoStream.from_dict(stream)
+                elif stream["codec_type"] == "audio":
+                    yield AudioStream.from_dict(stream)
 
-        return FFprobeResult(ffprobe_output, tuple(streams))
+        return FFprobeResult(ffprobe_output, tuple(streams()))
 
     def video_streams(self) -> Generator[VideoStream]:
         for stream in self.streams:
