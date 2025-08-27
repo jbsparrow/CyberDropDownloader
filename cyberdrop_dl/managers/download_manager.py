@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import time
+import weakref
 from base64 import b64encode
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
@@ -17,23 +19,80 @@ if TYPE_CHECKING:
 
 
 class FileLocksVault:
-    """Is this necessary? No. But I want it."""
+    """File locks vault with automatic cleanup of unused locks to prevent memory leaks."""
 
     def __init__(self) -> None:
         self._locked_files: dict[str, asyncio.Lock] = {}
+        self._lock_refs: dict[str, weakref.ref] = {}
+        self._last_cleanup = time.time()
+        self._cleanup_interval = 300  # Cleanup every 5 minutes
+        self._main_lock = asyncio.Lock()
+
+    def _cleanup_unused_locks(self) -> None:
+        """Remove locks that are no longer referenced (garbage collected)."""
+        current_time = time.time()
+        if current_time - self._last_cleanup < self._cleanup_interval:
+            return
+            
+        self._last_cleanup = current_time
+        stale_keys = []
+        
+        for filename, weak_ref in self._lock_refs.items():
+            if weak_ref() is None:  # Lock was garbage collected
+                stale_keys.append(filename)
+        
+        for key in stale_keys:
+            self._locked_files.pop(key, None)
+            self._lock_refs.pop(key, None)
+            log_debug(f"Cleaned up unused lock for '{key}'", 20)
 
     @asynccontextmanager
     async def get_lock(self, filename: str) -> AsyncGenerator:
         """Get filelock for the provided filename. Creates one if none exists"""
         log_debug(f"Checking lock for '{filename}'", 20)
-        if filename not in self._locked_files:
-            log_debug(f"Lock for '{filename}' does not exists", 20)
+        
+        async with self._main_lock:
+            # Periodic cleanup of unused locks
+            self._cleanup_unused_locks()
+            
+            if filename not in self._locked_files:
+                log_debug(f"Lock for '{filename}' does not exist, creating new one", 20)
+                lock = asyncio.Lock()
+                self._locked_files[filename] = lock
+                self._lock_refs[filename] = weakref.ref(lock)
+            else:
+                log_debug(f"Lock for '{filename}' already exists", 20)
+            
+            file_lock = self._locked_files[filename]
 
-        self._locked_files[filename] = self._locked_files.get(filename, asyncio.Lock())
-        async with self._locked_files[filename]:
+        async with file_lock:
             log_debug(f"Lock for '{filename}' acquired", 20)
             yield
             log_debug(f"Lock for '{filename}' released", 20)
+    
+    def force_cleanup(self) -> int:
+        """Force cleanup of unused locks and return number of locks removed."""
+        stale_keys = []
+        
+        for filename, weak_ref in self._lock_refs.items():
+            if weak_ref() is None:  # Lock was garbage collected
+                stale_keys.append(filename)
+        
+        for key in stale_keys:
+            self._locked_files.pop(key, None)
+            self._lock_refs.pop(key, None)
+        
+        self._last_cleanup = time.time()
+        log_debug(f"Force cleanup removed {len(stale_keys)} unused locks", 10)
+        return len(stale_keys)
+    
+    def get_stats(self) -> dict[str, int]:
+        """Get statistics about the locks vault."""
+        return {
+            "total_locks": len(self._locked_files),
+            "tracked_refs": len(self._lock_refs),
+            "seconds_since_last_cleanup": int(time.time() - self._last_cleanup)
+        }
 
 
 class DownloadManager:
