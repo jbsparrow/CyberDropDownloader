@@ -174,6 +174,10 @@ class Downloader:
             raise DownloadError("FFmpeg Error", msg, media_item) from None
 
         media_item.complete_file = media_item.download_folder / media_item.filename
+        # TODO: register database duration from m3u8 info
+        # TODO: compute approx size for UI from the m3u8 info
+        media_item.download_filename = media_item.complete_file.name
+        await self.manager.db_manager.history_table.add_download_filename(self.domain, media_item)
         self.update_queued_files()
         task_id = self.manager.progress_manager.file_progress.add_task(domain=self.domain, filename=media_item.filename)
         media_item.set_task_id(task_id)
