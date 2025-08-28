@@ -312,9 +312,14 @@ class Crawler(ABC):
 
         self.create_task(self.handle_media_item(media_item, m3u8))
 
-    async def _write_jsonl_ctx(self, media_item: MediaItem, coro: Coroutine[Any, Any, T]) -> T:
+    @final
+    async def _download(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None) -> None:
         try:
-            return await coro
+            if m3u8:
+                await self.downloader.download_hls(media_item, m3u8)
+            else:
+                await self.downloader.run(media_item)
+
         finally:
             if self.manager.config_manager.settings_data.files.dump_json:
                 data = [media_item.as_jsonable_dict()]
@@ -340,12 +345,7 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if not m3u8:
-            coro = self.downloader.run(media_item)
-        else:
-            coro = self.downloader.download_hls(media_item, m3u8)
-
-        self.create_task(self._write_jsonl_ctx(media_item, coro))
+        self.create_task(self._download(media_item, m3u8))
 
     @final
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
