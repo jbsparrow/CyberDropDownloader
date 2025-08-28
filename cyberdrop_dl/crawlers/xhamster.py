@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import base64
 import dataclasses
 import itertools
 import json
-from functools import partial
+from itertools import cycle
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
@@ -30,7 +31,17 @@ class Selector:
     NEXT_PAGE = "a[data-page='next']"
 
 
-_parse_url = partial(parse_url, relative_to=_PRIMARY_URL)
+def _parse_url(url: str) -> AbsoluteHttpURL:
+    if url.startswith("eG9y"):
+        url = xor_decrypt(base64.b64decode(url)[4:])
+    return parse_url(url, relative_to=_PRIMARY_URL)
+
+
+# TODO:  Move to utils. Bunkr and Chevereto also use this exact same logic
+def xor_decrypt(encrypted_data: bytes) -> str:
+    key_bytes = b"xh7999"
+    decrypted_data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, cycle(key_bytes)))
+    return decrypted_data.decode("utf-8", errors="ignore")
 
 
 class XhamsterCrawler(Crawler):
