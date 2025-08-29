@@ -53,16 +53,18 @@ class HistoryTable:
 
     async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None:
         """Update old `no_crawler` entries that are now supported."""
-        domains_to_update = [
-            (c.DOMAIN, f"http%{c.PRIMARY_URL.host}%") for c in crawlers.values() if c.UPDATE_UNSUPPORTED
-        ]
+        domains_to_update = {
+            crawler.DOMAIN: f"http%{crawler.PRIMARY_URL.host}%"
+            for crawler in crawlers.values()
+            if crawler.UPDATE_UNSUPPORTED
+        }
         if not domains_to_update:
             return
-        referers = [(d[1],) for d in domains_to_update]
+
         query = "UPDATE OR IGNORE media SET domain = ? WHERE domain = 'no_crawler' AND referer LIKE ?"
-        cursor = await self.db_conn.executemany(query, domains_to_update)
+        cursor = await self.db_conn.executemany(query, domains_to_update.items())
         query = "DELETE FROM media WHERE domain = 'no_crawler' AND referer LIKE ?"
-        await cursor.executemany(query, referers)
+        await cursor.executemany(query, domains_to_update.values())
         await self.db_conn.commit()
 
     async def run_updates(self) -> None:
@@ -92,8 +94,7 @@ class HistoryTable:
             query = "SELECT referer, completed FROM media WHERE domain = ? and url_path = ?"
             cursor = await self.db_conn.execute(query, (domain, url_path))
             if row := await cursor.fetchone():
-                referer, completed = row
-                return referer, bool(completed)
+                return row[0], row[1]
             return "", False
 
         async def update_referer() -> None:
@@ -102,11 +103,10 @@ class HistoryTable:
             await self.db_conn.commit()
 
         current_referer, completed = await select_referer_and_completed()
-        if completed:
+        if completed and url != referer and str(referer) != current_referer:
             # Update the referer if it has changed so that check_complete_by_referer can work
-            if url != referer and str(referer) != current_referer:
-                log(f"Updating referer of {url} from {current_referer} to {referer}")
-                await update_referer()
+            log(f"Updating referer of {url} from {current_referer} to {referer}")
+            await update_referer()
 
         return completed
 
@@ -133,9 +133,11 @@ class HistoryTable:
         if self.ignore_history:
             return False
         if domain is None:
-            query, *params = "SELECT completed FROM media WHERE referer = ?", str(referer)
+            query = "SELECT completed FROM media WHERE referer = ?"
+            params = (str(referer),)
         else:
-            query, *params = "SELECT completed FROM media WHERE referer = ? and domain = ?", str(referer), domain
+            query = "SELECT completed FROM media WHERE referer = ? and domain = ?"
+            params = str(referer), domain
 
         cursor = await self.db_conn.execute(query, params)
         if domain is None:
@@ -160,11 +162,11 @@ class HistoryTable:
             delete_query = "DELETE FROM media WHERE domain = 'no_crawler' and url_path = ?"
             await cursor.execute(delete_query, (url_path,))
 
-        insert_query = (
-            "INSERT OR IGNORE INTO media (domain, url_path, referer, album_id, download_path, "
-            "download_filename, original_filename, completed, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);"
-        )
+        insert_query = """
+        INSERT OR IGNORE INTO media (domain, url_path, referer, album_id, download_path,
+        download_filename, original_filename, completed, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
+        """
 
         await cursor.execute(
             insert_query,
@@ -217,8 +219,8 @@ class HistoryTable:
         url_path = get_db_path(media_item.url, str(media_item.referer))
         query = "SELECT duration FROM media WHERE domain = ? and url_path = ?"
         cursor = await self.db_conn.execute(query, (domain, url_path))
-        sql_duration = await cursor.fetchone()
-        return sql_duration[0] if sql_duration else None
+        if row := await cursor.fetchone():
+            return row[0]
 
     async def add_download_filename(self, domain: str, media_item: MediaItem) -> None:
         """Add the download_filename to the db."""
@@ -231,9 +233,9 @@ class HistoryTable:
         """Checks whether a downloaded filename exists in the database."""
         query = "SELECT EXISTS(SELECT 1 FROM media WHERE download_filename = ?)"
         cursor = await self.db_conn.execute(query, (filename,))
-        sql_file_check = await cursor.fetchone()
+        row = await cursor.fetchone()
         # TODO: this is a bug. It should check the first index
-        return sql_file_check == 1
+        return row == 1
 
     async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str | None:
         """Returns the downloaded filename from the database."""
@@ -244,8 +246,8 @@ class HistoryTable:
         url_path = get_db_path(media_item.url, str(media_item.referer))
         query = "SELECT download_filename FROM media WHERE domain = ? and url_path = ?"
         cursor = await self.db_conn.execute(query, (domain, url_path))
-        sql_file_check = await cursor.fetchone()
-        return sql_file_check[0] if sql_file_check else None
+        if row := await cursor.fetchone():
+            return row[0]
 
     async def get_failed_items(self) -> list[Row]:
         """Returns a list of failed items."""
@@ -255,11 +257,11 @@ class HistoryTable:
 
     async def get_all_items(self, after: datetime.date, before: datetime.date) -> list[Row]:
         """Returns a list of all items."""
-        query = (
-            "SELECT referer,download_path,completed_at,created_at "
-            "FROM media WHERE COALESCE(completed_at, '1970-01-01') BETWEEN ? AND ? "
-            "ORDER BY completed_at DESC;"
-        )
+        query = """
+        SELECT referer,download_path,completed_at,created_at
+        FROM media WHERE COALESCE(completed_at, '1970-01-01') BETWEEN ? AND ?
+        ORDER BY completed_at DESC;
+        """
         cursor = await self.db_conn.execute(query, (after.isoformat(), before.isoformat()))
         return cast("list[Row]", await cursor.fetchall())
 
@@ -287,11 +289,11 @@ class HistoryTable:
             return []
 
     async def get_all_bunkr_failed_via_hash(self) -> list:
-        query = (
-            "SELECT m.referer,download_path,completed_at,created_at "
-            "FROM hash h INNER JOIN media m ON h.download_filename= m.download_filename "
-            "WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';"
-        )
+        query = """
+        SELECT m.referer,download_path,completed_at,created_at
+        FROM hash h INNER JOIN media m ON h.download_filename= m.download_filename
+        WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';
+        """
 
         try:
             cursor = await self.db_conn.execute(query)
@@ -302,18 +304,19 @@ class HistoryTable:
 
     async def fix_primary_keys(self) -> None:
         domain_column, *_ = await self._get_media_table_columns()
-        domain_is_primary_key: bool = domain_column[5] != 0
+        domain_is_primary_key: bool = domain_column["pk"] != 0
         if domain_is_primary_key:
             return
 
         await self.db_conn.execute(create_fixed_history)
         await self.db_conn.commit()
-        script = (
-            "INSERT INTO media_copy (domain, url_path, referer, download_path, download_filename, original_filename, completed) "
-            "SELECT * FROM media GROUP BY domain, url_path, original_filename;"
-            "DROP TABLE media;"
-            "ALTER TABLE media_copy RENAME TO media;"
-        )
+        script = """
+        INSERT INTO media_copy (domain, url_path, referer, download_path,
+        download_filename, original_filename, completed)
+        SELECT * FROM media GROUP BY domain, url_path, original_filename;
+        DROP TABLE media;
+        ALTER TABLE media_copy RENAME TO media;
+        """
         await self.db_conn.executescript(script)
         await self.db_conn.commit()
 
@@ -324,7 +327,7 @@ class HistoryTable:
 
     async def add_columns_media(self) -> None:
         columns = await self._get_media_table_columns()
-        current_column_names: tuple[str, ...] = tuple(col[1] for col in columns)
+        current_column_names: tuple[str, ...] = tuple(col["name"] for col in columns)
         new_columns = (
             ("album_id", "TEXT"),
             ("created_at", "TIMESTAMP"),
