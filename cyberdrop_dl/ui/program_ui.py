@@ -304,8 +304,7 @@ def vacuum_database(db_path: Path) -> None:
     conn = None
     try:
         conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("VACUUM")
+        conn.execute("VACUUM")
         conn.commit()
     finally:
         if conn:

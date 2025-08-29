@@ -36,20 +36,15 @@ class HashTable:
         Returns:
             hash if  exists
         """
+        query = "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL"
         try:
             # Extract folder, filename, and size from the full pathg
             path = Path(full_path).absolute()
             folder = str(path.parent)
             filename = str(path.name)
 
-            # Connect to the database
-            cursor = await self.db_conn.cursor()
-
             # Check if the file exists with matching folder, filename, and size
-            await cursor.execute(
-                "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL",
-                (folder, filename, hash_type),
-            )
+            cursor = await self.db_conn.execute(query, (folder, filename, hash_type))
             result = await cursor.fetchone()
             if result:
                 return result[0]
@@ -71,13 +66,20 @@ class HashTable:
         """
 
         try:
-            cursor = await self.db_conn.cursor()
             if hash_type:
-                query = "SELECT files.folder, files.download_filename,files.date FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;"
+                query = (
+                    "SELECT files.folder, files.download_filename,files.date "
+                    "FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename "
+                    "WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;"
+                )
 
             else:
-                query = "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;"
-            await cursor.execute(query, (hash_value, size, hash_type))
+                query = (
+                    "SELECT files.folder, files.download_filename FROM hash JOIN files "
+                    "ON hash.folder = files.folder AND hash.download_filename = files.download_filename "
+                    "WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;"
+                )
+            cursor = await self.db_conn.execute(query, (hash_value, size, hash_type))
             return cast("list[aiosqlite.Row]", await cursor.fetchall())
 
         except Exception as e:
@@ -105,15 +107,16 @@ class HashTable:
         return file_ and hash
 
     async def insert_or_update_hashes(self, hash_value: str, hash_type: str, file: Path | str) -> bool:
+        query = (
+            "INSERT INTO hash (hash, hash_type, folder, download_filename) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?;"
+        )
+
         try:
             full_path = Path(file).absolute()
             download_filename = str(full_path.name)
             folder = str(full_path.parent)
-            cursor = await self.db_conn.cursor()
-            insert_query = """INSERT INTO hash (hash, hash_type, folder, download_filename)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?"""
-            await cursor.execute(insert_query, (hash_value, hash_type, folder, download_filename, hash_value))
+            await self.db_conn.execute(query, (hash_value, hash_type, folder, download_filename, hash_value))
             await self.db_conn.commit()
         except Exception as e:
             console.print(f"Error inserting/updating record: {e}")
@@ -123,33 +126,31 @@ class HashTable:
     async def insert_or_update_file(
         self, original_filename: str | None, referer: URL | str | None, file: Path | str
     ) -> bool:
+        referer_ = str(referer) if referer else None
+        query = (
+            "INSERT INTO files (folder, original_filename, download_filename, file_size, referer, date) "
+            "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(download_filename, folder) "
+            "DO UPDATE SET original_filename = ?, file_size = ?, referer = ?, date = ?;"
+        )
+
         try:
-            referer = str(referer) if referer else None
             full_path = Path(file).absolute()
-            file_size = int(full_path.stat().st_size)
-            file_date = int(full_path.stat().st_mtime)
             download_filename = str(full_path.name)
             folder = str(full_path.parent)
-
-            cursor = await self.db_conn.cursor()
-            insert_query = """INSERT INTO files (folder, original_filename, download_filename, file_size, referer, date)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(download_filename, folder) DO UPDATE
-            SET original_filename = ?, file_size = ?, referer = ?, date = ?
-            """
-
-            await cursor.execute(
-                insert_query,
+            file_size = int(full_path.stat().st_size)
+            file_date = int(full_path.stat().st_mtime)
+            await self.db_conn.execute(
+                query,
                 (
                     folder,
                     original_filename,
                     download_filename,
                     file_size,
-                    referer,
+                    referer_,
                     file_date,
                     original_filename,
                     file_size,
-                    referer,
+                    referer_,
                     file_date,
                 ),
             )
@@ -169,18 +170,15 @@ class HashTable:
         Returns:
             A list of (folder, filename) tuples, or an empty list if no matches found.
         """
-        try:
-            cursor = await self.db_conn.cursor()
+        if hash_type:
+            query, params = "SELECT DISTINCT hash FROM hash WHERE hash_type =?", (hash_type,)
 
-            if hash_type:
-                await cursor.execute(
-                    "SELECT DISTINCT hash FROM hash WHERE hash_type =?",
-                    (hash_type,),
-                )
-            else:
-                await cursor.execute("SELECT DISTINCT hash FROM hash")
-            results = await cursor.fetchall()
-            return [x[0] for x in results]
+        else:
+            query, params = "SELECT DISTINCT hash FROM hash", ()
+        try:
+            cursor = await self.db_conn.execute(query, params)
+            rows = await cursor.fetchall()
+            return [row[0] for row in rows]
         except Exception as e:
             console.print(f"Error retrieving folder and filename: {e}")
             return []
