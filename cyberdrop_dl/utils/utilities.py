@@ -628,35 +628,33 @@ def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
 
 
-async def async_enumerate(
-    iterable: Iterable[T], start: int = 0, sleep_after_items: int = 200
-) -> AsyncIterable[tuple[int, T]]:
+async def async_enumerate(iterable: Iterable[T], batch_size: int = 200, start: int = 0) -> AsyncIterable[tuple[int, T]]:
     """Asynchronously enumerates a normal iterable.
 
-    Calls asyncio.sleep(0) after every sleep_after_items have been processed
+    Calls asyncio.sleep(0) after a 'batch' of `batch_size` items have been processed.
     """
 
     if isinstance(iterable, Sized):
         size = len(iterable)
         if size == 0:
             return
-        elif size <= sleep_after_items:
+        elif size <= batch_size:
             for pair in enumerate(iterable, start):
                 yield pair
             return
 
     for index, value in enumerate(iterable, start):
         yield index, value
-        if (index + 1) % sleep_after_items == 0:
+        if (index + 1) % batch_size == 0:
             await asyncio.sleep(0)
 
 
-async def async_iter(iterable: Iterable[T], start: int = 0, sleep_after_items: int = 200) -> AsyncIterable[T]:
+async def async_iter(iterable: Iterable[T], batch_size: int = 200, start: int = 0) -> AsyncIterable[T]:
     """Asynchronously yield values from a normal iterable.
 
-    Calls asyncio.sleep(0) after every sleep_after_items have been processed
+    Calls asyncio.sleep(0) after a 'batch' of `batch_size` items have been processed.
     """
-    async for _, value in async_enumerate(iterable, start, sleep_after_items):
+    async for _, value in async_enumerate(iterable, batch_size, start):
         yield value
 
 

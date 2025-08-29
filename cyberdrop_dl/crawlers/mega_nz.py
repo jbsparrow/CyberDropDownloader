@@ -7,16 +7,16 @@ It calls checks_complete_by_referer several times even if no request is going to
 
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader import mega_nz as mega
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import async_iter, error_handling_wrapper
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -165,28 +165,28 @@ class MegaNzCrawler(Crawler):
         self, scrape_item: ScrapeItem, filesystem: dict[Path, mega.Node], single_file_id: str | None
     ) -> None:
         folder_id, shared_key = scrape_item.url.name, scrape_item.url.fragment
-        processed_files = 0
-        for path, node in filesystem.items():
-            if node["t"] != mega.NodeType.FILE:
-                continue
+        files = cast(
+            "Iterable[tuple[Path, mega.File]]",
+            ((path, node) for path, node in filesystem.items() if node["t"] != mega.NodeType.FILE),
+        )
 
-            file = cast("mega.File", node)
+        async for path, file in async_iter(files, batch_size=10):
             file_id = file["h"]
-            if single_file_id and file_id != single_file_id:
-                continue
             file_fragment = f"{shared_key}/file/{file_id}"
             canonical_url = scrape_item.url.with_fragment(file_fragment)
-            if not single_file_id and await self.check_complete_from_referer(canonical_url):
+            if single_file_id:
+                if file_id != single_file_id:
+                    continue
+
+            elif await self.check_complete_from_referer(canonical_url):
                 continue
+
             new_scrape_item = scrape_item.create_child(canonical_url, possible_datetime=file["ts"])
             for part in path.parent.parts[1:]:
                 new_scrape_item.add_to_parent_title(part)
 
             file = FileTuple(file_id, mega.DecryptData(file["k_decrypted"], file["iv"], file["meta_mac"]))
-            self.manager.task_group.create_task(self._process_file(new_scrape_item, file, folder_id=folder_id))
-            processed_files += 1
-            if processed_files % 10 == 0:
-                await asyncio.sleep(0)
+            self.create_task(self._process_file(new_scrape_item, file, folder_id=folder_id))
             scrape_item.add_children()
 
     @error_handling_wrapper
