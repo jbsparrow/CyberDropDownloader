@@ -10,7 +10,7 @@ from __future__ import annotations
 from itertools import filterfalse
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
-from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader import mega_nz as mega
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
@@ -127,6 +127,8 @@ class MegaNzCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=file_url)
 
+    _process_file_task = auto_task_id(_process_file)
+
     async def _get_file_info(self, file_id: str, folder_id: str | None) -> dict[str, Any]:
         data = {"a": "g", "g": 1}
         if folder_id:
@@ -170,8 +172,8 @@ class MegaNzCrawler(Crawler):
     ) -> None:
         folder_id, shared_key = scrape_item.url.name, scrape_item.url.fragment
 
-        def exclude_node(pair: tuple[Path, mega.Node]):
-            node = pair[1]
+        def exclude_node(fs_entry: tuple[Path, mega.Node]):
+            node = fs_entry[1]
             if node["t"] != mega.NodeType.FILE:
                 return True
             if single_file_id and node["h"] != single_file_id:
@@ -192,7 +194,7 @@ class MegaNzCrawler(Crawler):
                 new_scrape_item.add_to_parent_title(part)
 
             file = FileTuple(file_id, mega.DecryptData(file["k_decrypted"], file["iv"], file["meta_mac"]))
-            self.create_task(self._process_file(new_scrape_item, file, folder_id=folder_id))
+            self.create_task(self._process_file_task(new_scrape_item, file, folder_id=folder_id))
             scrape_item.add_children()
 
     @error_handling_wrapper
