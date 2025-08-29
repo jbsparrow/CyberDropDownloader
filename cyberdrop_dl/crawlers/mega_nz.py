@@ -7,6 +7,7 @@ It calls checks_complete_by_referer several times even if no request is going to
 
 from __future__ import annotations
 
+from itertools import filterfalse
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -159,26 +160,31 @@ class MegaNzCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=folder_id)
         canonical_url = (PRIMARY_URL / "folder" / folder_id).with_fragment(shared_key)
         scrape_item.url = canonical_url
-        await self._process_folder_fs(scrape_item, filesystem, single_file_id)
+        await self._process_folder_filesystem(scrape_item, filesystem, single_file_id)
 
-    async def _process_folder_fs(
-        self, scrape_item: ScrapeItem, filesystem: dict[Path, mega.Node], single_file_id: str | None
+    async def _process_folder_filesystem(
+        self,
+        scrape_item: ScrapeItem,
+        filesystem: dict[Path, mega.Node],
+        single_file_id: str | None,
     ) -> None:
         folder_id, shared_key = scrape_item.url.name, scrape_item.url.fragment
-        files = cast(
-            "Iterable[tuple[Path, mega.File]]",
-            ((path, node) for path, node in filesystem.items() if node["t"] != mega.NodeType.FILE),
-        )
+
+        def exclude_node(pair: tuple[Path, mega.Node]):
+            node = pair[1]
+            if node["t"] != mega.NodeType.FILE:
+                return True
+            if single_file_id and node["h"] != single_file_id:
+                return True
+            return False
+
+        files = cast("Iterable[tuple[Path, mega.File]]", filterfalse(exclude_node, filesystem.items()))
 
         async for path, file in async_iter(files, batch_size=10):
             file_id = file["h"]
             file_fragment = f"{shared_key}/file/{file_id}"
             canonical_url = scrape_item.url.with_fragment(file_fragment)
-            if single_file_id:
-                if file_id != single_file_id:
-                    continue
-
-            elif await self.check_complete_from_referer(canonical_url):
+            if not single_file_id and await self.check_complete_from_referer(canonical_url):
                 continue
 
             new_scrape_item = scrape_item.create_child(canonical_url, possible_datetime=file["ts"])
