@@ -76,6 +76,7 @@ from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import CDLBaseError, DownloadError
 from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import async_iter
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterable, Generator, Mapping
@@ -717,20 +718,16 @@ class MegaApi:
         files: Folder = await self.request({"a": "f", "c": 1, "r": 1})
         shared_keys: SharedkeysDict = {}
         self._init_shared_keys(files, shared_keys)
-        for index, node in enumerate(files["f"], 1):
+        async for node in async_iter(files["f"], 1):
             yield self._process_node(node, shared_keys)
-            if index % 100 == 0:
-                await asyncio.sleep(0)
 
     async def _get_nodes_in_shared_folder(self, folder_id: str) -> AsyncIterable[Node]:
         files: Folder = await self.request(
             {"a": "f", "c": 1, "ca": 1, "r": 1},
             {"n": folder_id},
         )
-        for index, node in enumerate(files["f"], 1):
+        async for node in async_iter(files["f"], 1):
             yield self._process_node(node, self.shared_keys)
-            if index % 100 == 0:
-                await asyncio.sleep(0)
 
     async def get_nodes_public_folder(self, folder_id: str, share_key: str) -> dict[str, FileOrFolder]:
         folder_key = base64_to_a32(share_key)
