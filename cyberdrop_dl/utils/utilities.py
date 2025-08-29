@@ -11,21 +11,12 @@ import shutil
 import subprocess
 import sys
 import unicodedata
-from collections.abc import AsyncIterable, Sized
+from collections.abc import AsyncIterable, Awaitable, Generator, Sized
 from dataclasses import Field, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Concatenate,
-    ParamSpec,
-    Protocol,
-    TypeGuard,
-    TypeVar,
-)
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, Protocol, TypeGuard, TypeVar
 
 import aiofiles
 import rich
@@ -667,7 +658,7 @@ async def async_filterfalse(
 ) -> AsyncIterable[T]:
     """Return an async iterable yielding those items for which the predicate is `False`.
 
-    Calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
+    Like itertool.filterfase, but it calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
     """
 
     async for value in async_iter(iterable, batch_size):
@@ -676,6 +667,43 @@ async def async_filterfalse(
             continue
 
         yield value
+
+
+async def throttled_gather(coro_generator: Generator[Awaitable[T]], batch_size: int = 10) -> list[T]:
+    """Like `asyncio.gather`, but creates tasks lazily to minimize event loop overhead.
+
+    This function ensures there are never more than `batch_size` tasks created at any given time.
+
+    If any exception is raised within a task, all currently running tasks
+    are cancelled and any remaning task in the queue will be ignored.
+
+    Exceptions are collected and combined into a single `ExceptionGroup`.
+
+    The output list will preserve the original order of the tasks as they were generated.
+    """
+
+    # TODO: Use this function for HLS downloads to prevent creating thousands of tasks
+    # for each segment (most of them wait forever becuase they use the same semaphore)
+
+    semaphore = asyncio.BoundedSemaphore(batch_size)
+    indexed_results: list[tuple[int, T]] = []
+
+    async def worker(index: int, coro: Awaitable[T]):
+        try:
+            result = await coro
+            indexed_results.append((index, result))
+        finally:
+            semaphore.release()
+
+    async with asyncio.TaskGroup() as tg:
+        for index, coro in enumerate(coro_generator):
+            await semaphore.acquire()
+            tg.create_task(worker(index, coro))
+
+    # Sort the results by their original index
+    indexed_results.sort()
+    final_results = [result[1] for result in indexed_results]
+    return final_results
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
