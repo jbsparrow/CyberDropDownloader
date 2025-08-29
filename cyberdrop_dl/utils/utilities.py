@@ -628,10 +628,14 @@ def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
 
 
-async def async_enumerate(iterable: Iterable[T], batch_size: int = 200, start: int = 0) -> AsyncIterable[tuple[int, T]]:
+async def async_enumerate(
+    iterable: Iterable[T],
+    batch_size: int = 200,
+    start: int = 0,
+) -> AsyncIterable[tuple[int, T]]:
     """Asynchronously enumerates a normal iterable.
 
-    Calls asyncio.sleep(0) after a 'batch' of `batch_size` items have been processed.
+    Calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
     """
 
     if isinstance(iterable, Sized):
@@ -649,12 +653,28 @@ async def async_enumerate(iterable: Iterable[T], batch_size: int = 200, start: i
             await asyncio.sleep(0)
 
 
-async def async_iter(iterable: Iterable[T], batch_size: int = 200, start: int = 0) -> AsyncIterable[T]:
+async def async_iter(iterable: Iterable[T], batch_size: int = 200) -> AsyncIterable[T]:
     """Asynchronously yield values from a normal iterable.
 
-    Calls asyncio.sleep(0) after a 'batch' of `batch_size` items have been processed.
+    Calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
     """
-    async for _, value in async_enumerate(iterable, batch_size, start):
+    async for _, value in async_enumerate(iterable, batch_size):
+        yield value
+
+
+async def async_filterfalse(
+    predicate: Callable[[T], bool], iterable: Iterable[T], batch_size: int = 200
+) -> AsyncIterable[T]:
+    """Return an async iterable yielding those items for which the predicate is `False`.
+
+    Calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
+    """
+
+    async for value in async_iter(iterable, batch_size):
+        skip = predicate(value)
+        if skip:
+            continue
+
         yield value
 
 

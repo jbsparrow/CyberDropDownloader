@@ -7,17 +7,15 @@ It calls checks_complete_by_referer several times even if no request is going to
 
 from __future__ import annotations
 
-from itertools import filterfalse
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader import mega_nz as mega
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
-from cyberdrop_dl.utils.utilities import async_iter, error_handling_wrapper
+from cyberdrop_dl.utils.utilities import async_filterfalse, error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
     from pathlib import Path
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -180,13 +178,14 @@ class MegaNzCrawler(Crawler):
                 return True
             return False
 
-        files = cast("Iterable[tuple[Path, mega.File]]", filterfalse(exclude_node, filesystem.items()))
+        files = async_filterfalse(exclude_node, filesystem.items())
 
-        async for path, file in async_iter(files, batch_size=10):
+        async for path, node in files:
+            file = cast("mega.File", node)
             file_id = file["h"]
             file_fragment = f"{shared_key}/file/{file_id}"
             canonical_url = scrape_item.url.with_fragment(file_fragment)
-            if not single_file_id and await self.check_complete_from_referer(canonical_url):
+            if await self.check_complete_from_referer(canonical_url):
                 continue
 
             new_scrape_item = scrape_item.create_child(canonical_url, possible_datetime=file["ts"])
