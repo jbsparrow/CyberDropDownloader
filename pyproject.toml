@@ -24,7 +24,7 @@ dependencies = [
     "pillow >=11.3.0",
     "platformdirs >=4.3.6",
     "psutil >=7.0.0",
-    "pydantic >=2.11.7",
+    "pydantic >=2.12.0a1",
     "pywin32>=308 ; sys_platform == 'win32' and implementation_name=='cpython'",
     "pyyaml >=6.0.2",
     "rich >=14.0.0",
