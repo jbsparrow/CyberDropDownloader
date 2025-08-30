@@ -260,22 +260,33 @@ class ClientManager:
         If the response is successful and has valid html, returns soup
         """
         status: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
+        content_type: str = getattr(response, "content_type", None) or response.headers.get("Content-Type", "")
         headers = response.headers
         url_host: str = AbsoluteHttpURL(response.url).host
         message = None
 
         def check_etag() -> None:
             if download and (e_tag := headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
-                message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
+                message = DOWNLOAD_ERROR_ETAGS[e_tag]
                 raise DownloadError(HTTPStatus.NOT_FOUND, message=message)
 
         async def check_ddos_guard() -> BeautifulSoup | None:
+            if "html" not in content_type:
+                return
+
+            # TODO: use the response text instead of the raw content to prevent double encoding detection
+
             if soup := await get_soup_no_error(response):
                 if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                     raise DDOSGuardError
                 return soup
 
         async def check_json_status() -> None:
+            if "json" not in content_type:
+                return
+
+            # TODO: Define these checks inside their actual crawlers
+            # and make them register them  on instantation
             if not any(domain in url_host for domain in ("gofile", "imgur")):
                 return
 

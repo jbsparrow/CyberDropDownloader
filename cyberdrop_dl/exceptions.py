@@ -20,7 +20,7 @@ def _format_error(ui_failure: str, message: str) -> str:
 
 
 # See: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-5xx-errors/
-CLOUDFLARE_ERRORS = {
+CLOUDFLARE_HTTP_ERROR_CODES = {
     520: "Unexpected Response",
     521: "Web Server Down",
     522: "Connection Timeout",
@@ -29,6 +29,19 @@ CLOUDFLARE_ERRORS = {
     525: "SSL Handshake Failed",
     526: "Untrusted",
     530: "IP Banned / Restricted",
+}
+
+# https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#Nonstandard_codes
+# Not all of them, just the ones we actually expect to see and do not shadow standard onces
+NON_STANDARD_HTTP_ERROR_CODES = {
+    419: "Page Expired",
+    509: "Bandwidth Limit Exceeded",
+}
+
+HTTP_ERROR_CODES = {
+    **NON_STANDARD_HTTP_ERROR_CODES,
+    **CLOUDFLARE_HTTP_ERROR_CODES,
+    **{code.value: code.phrase for code in HTTPStatus},
 }
 
 
@@ -219,14 +232,9 @@ class InvalidYamlError(CDLBaseError):
 def create_error_msg(error: int | str) -> str:
     if isinstance(error, str):
         return error
-    try:
-        msg = HTTPStatus(error).phrase
-        return f"{error} {msg}"
-    except ValueError:
-        cloudflare_error = CLOUDFLARE_ERRORS.get(error)
-        if cloudflare_error:
-            return f"{error} {cloudflare_error}"
-    return f"{error} HTTP Error"
+    if phrase := HTTP_ERROR_CODES.get(error):
+        return f"{error} {phrase}"
+    return f"Unknown ({error})"
 
 
 def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Path | URL | None:
