@@ -244,7 +244,7 @@ def create_error_msg(error: int | str) -> str:
         if 500 <= error < 600:
             return f"HTTP Server Error ({error})"
 
-    return f"Unknown error ({error})"
+    return f"Unknown ({error})"
 
 
 def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Path | URL | None:
@@ -263,7 +263,7 @@ class ErrorLogMessage:
         self.main_log_msg = self.main_log_msg or self.ui_failure
         self.csv_log_msg = self.csv_log_msg or self.ui_failure
         if self.csv_log_msg == "Unknown":
-            self.csv_log_msg = "See Logs for details"
+            self.csv_log_msg = "See logs for details"
 
     @staticmethod
     def from_unknown_exc(e: Exception) -> ErrorLogMessage:
