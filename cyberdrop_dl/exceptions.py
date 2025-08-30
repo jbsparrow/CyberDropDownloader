@@ -234,7 +234,15 @@ def create_error_msg(error: int | str) -> str:
         return error
     if phrase := HTTP_ERROR_CODES.get(error):
         return f"{error} {phrase}"
-    return f"Unknown ({error})"
+
+    if isinstance(error, int):
+        if 300 <= error < 400:
+            return f"HTTP Redirection ({error})"
+        if 400 <= error < 500:
+            return f"HTTP Client Error ({error})"
+        if 500 <= error < 600:
+            return f"HTTP Server Error ({error})"
+    return f"HTTP Unknown error({error})"
 
 
 def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Path | URL | None:
