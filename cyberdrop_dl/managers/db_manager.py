@@ -4,6 +4,7 @@ from dataclasses import field
 from typing import TYPE_CHECKING
 
 import aiosqlite
+from rich.traceback import Traceback
 
 from cyberdrop_dl.utils.database.tables.hash_table import HashTable
 from cyberdrop_dl.utils.database.tables.history_table import HistoryTable
@@ -26,6 +27,45 @@ class DBManager:
         self.history_table: HistoryTable = field(init=False)
         self.hash_table: HashTable = field(init=False)
         self.temp_referer_table: TempRefererTable = field(init=False)
+
+        import json
+        import sqlite3
+        import sys
+
+        from cyberdrop_dl.utils.logger import log
+
+        log_handler = manager.loggers["debug"].log_handler
+
+        def log_hook(unraisable_args):
+            try:
+                other = vars(unraisable_args.exc_value)
+            except Exception:
+                other = None
+
+            tb = Traceback.from_exception(
+                unraisable_args.exc_type,
+                unraisable_args.exc_value,
+                unraisable_args.exc_traceback,
+            )
+            full_traceback = log_handler._log_render(log_handler.console, [tb])
+            msg = json.dumps(
+                {
+                    "Error Message": unraisable_args.err_msg,
+                    "Object": unraisable_args.object,
+                    "Exception Type": unraisable_args.exc_type.__name__,
+                    "Exception Value": unraisable_args.exc_value,
+                    "Other": other,
+                },
+                ensure_ascii=False,
+                default=str,
+                indent=4,
+            )
+
+            log(msg, 40)
+            log_handler.console.print(full_traceback)
+
+        sqlite3.enable_callback_tracebacks(True)
+        sys.unraisablehook = log_hook
 
     async def startup(self) -> None:
         """Startup process for the DBManager."""
