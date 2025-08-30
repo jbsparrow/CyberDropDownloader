@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -242,7 +243,8 @@ def create_error_msg(error: int | str) -> str:
             return f"HTTP Client Error ({error})"
         if 500 <= error < 600:
             return f"HTTP Server Error ({error})"
-    return f"HTTP Unknown error({error})"
+
+    return f"Unknown error ({error})"
 
 
 def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Path | URL | None:
@@ -251,15 +253,15 @@ def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Pat
     return origin
 
 
+@dataclasses.dataclass(slots=True)
 class ErrorLogMessage:
     ui_failure: str
-    main_log_msg: str
-    csv_log_msg: str
+    main_log_msg: str = ""
+    csv_log_msg: str = ""
 
-    def __init__(self, ui_failure: str, main_log_msg: str = "", csv_log_msg: str = "") -> None:
-        self.ui_failure = ui_failure
-        self.main_log_msg = main_log_msg or ui_failure
-        self.csv_log_msg = csv_log_msg or ui_failure
+    def __post_init__(self) -> None:
+        self.main_log_msg = self.main_log_msg or self.ui_failure
+        self.csv_log_msg = self.csv_log_msg or self.ui_failure
         if self.csv_log_msg == "Unknown":
             self.csv_log_msg = "See Logs for details"
 
