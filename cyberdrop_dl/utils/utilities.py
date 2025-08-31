@@ -11,7 +11,6 @@ import shutil
 import subprocess
 import sys
 import unicodedata
-from collections.abc import AsyncIterable, Awaitable, Generator, Sized
 from dataclasses import Field, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
@@ -617,93 +616,6 @@ def get_valid_kwargs(func: Callable[..., Any], kwargs: Mapping[str, T], accept_k
 
 def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
-
-
-async def async_enumerate(
-    iterable: Iterable[T],
-    batch_size: int = 200,
-    start: int = 0,
-) -> AsyncIterable[tuple[int, T]]:
-    """Asynchronously enumerates a normal iterable.
-
-    Calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
-    """
-
-    if isinstance(iterable, Sized):
-        size = len(iterable)
-        if size == 0:
-            return
-        elif size <= batch_size:
-            for pair in enumerate(iterable, start):
-                yield pair
-            return
-
-    for index, value in enumerate(iterable, start):
-        yield index, value
-        if (index + 1) % batch_size == 0:
-            await asyncio.sleep(0)
-
-
-async def async_iter(iterable: Iterable[T], batch_size: int = 200) -> AsyncIterable[T]:
-    """Asynchronously yield values from a normal iterable.
-
-    Calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
-    """
-    async for _, value in async_enumerate(iterable, batch_size):
-        yield value
-
-
-async def async_filterfalse(
-    predicate: Callable[[T], bool], iterable: Iterable[T], batch_size: int = 200
-) -> AsyncIterable[T]:
-    """Return an async iterable yielding those items for which the predicate is `False`.
-
-    Like itertool.filterfase, but it calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
-    """
-
-    async for value in async_iter(iterable, batch_size):
-        skip = predicate(value)
-        if skip:
-            continue
-
-        yield value
-
-
-async def throttled_gather(coro_generator: Generator[Awaitable[T]], batch_size: int = 10) -> list[T]:
-    """Like `asyncio.gather`, but creates tasks lazily to minimize event loop overhead.
-
-    This function ensures there are never more than `batch_size` tasks created at any given time.
-
-    If any exception is raised within a task, all currently running tasks
-    are cancelled and any remaning task in the queue will be ignored.
-
-    Exceptions are collected and combined into a single `ExceptionGroup`.
-
-    The output list will preserve the original order of the tasks as they were generated.
-    """
-
-    # TODO: Use this function for HLS downloads to prevent creating thousands of tasks
-    # for each segment (most of them wait forever becuase they use the same semaphore)
-
-    semaphore = asyncio.BoundedSemaphore(batch_size)
-    indexed_results: list[tuple[int, T]] = []
-
-    async def worker(index: int, coro: Awaitable[T]):
-        try:
-            result = await coro
-            indexed_results.append((index, result))
-        finally:
-            semaphore.release()
-
-    async with asyncio.TaskGroup() as tg:
-        for index, coro in enumerate(coro_generator):
-            await semaphore.acquire()
-            tg.create_task(worker(index, coro))
-
-    # Sort the results by their original index
-    indexed_results.sort()
-    final_results = [result[1] for result in indexed_results]
-    return final_results
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
