@@ -13,7 +13,8 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader import mega_nz as mega
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
-from cyberdrop_dl.utils.utilities import async_filterfalse, error_handling_wrapper
+from cyberdrop_dl.utils import aio
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -178,7 +179,7 @@ class MegaNzCrawler(Crawler):
                 return True
             return False
 
-        files = async_filterfalse(exclude_node, filesystem.items())
+        files = aio.filterfalse(exclude_node, filesystem.items())
 
         async for path, node in files:
             file = cast("mega.File", node)

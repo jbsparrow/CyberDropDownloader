@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import builtins
 from collections.abc import AsyncIterable, Awaitable, Sized
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
 
 if TYPE_CHECKING:
     import pathlib
@@ -79,7 +79,7 @@ async def gather(*coros: Awaitable[_T], batch_size: int = 10) -> list[_T]:
     # for each segment (most of them wait forever becuase they use the same semaphore)
 
     semaphore = asyncio.BoundedSemaphore(batch_size)
-    results: list[_T] = [None] * len(coros)  # type: ignore
+    results: list[_T] = cast("list[_T]", [None] * len(coros))
 
     async def worker(index: int, coro: Awaitable[_T]):
         try:
