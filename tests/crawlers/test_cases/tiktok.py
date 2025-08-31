@@ -8,7 +8,7 @@ TEST_CASES = [
                 "filename": "7271803599443791146.mp4",
                 "referer": "https://tiktok.com/@_sophialocke_/video/7271803599443791146",
                 "album_id": "7271803599443791146",
-                "download_folder": r"re:_sophialocke_ \(TikTok\)/2023-08-26 - 7271803599443791146",
+                "download_folder": r"re:_sophialocke_ \(TikTok\)",
                 "datetime": 1693098723,
             }
         ],

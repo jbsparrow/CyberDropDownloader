@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.utils.utilities import call_w_valid_kwargs, error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.utils import m3u8
 
 VIDEO_PARTS = "video", "photo", "v"
 API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
@@ -80,10 +81,6 @@ class TikTokCrawler(Crawler):
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 10)
-
-    @property
-    def separate_posts(self):
-        return True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in VIDEO_PARTS) or scrape_item.url.host.startswith("vm.tiktok"):
@@ -166,3 +163,9 @@ class TikTokCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(f"{audio.title}.mp3")
         self.create_task(self.handle_file(audio.canonical_url, scrape_item, filename, ext, debrid_link=audio_url))
         scrape_item.add_children()
+
+    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
+        if media_item.ext == ".mp3":
+            media_item.download_folder = media_item.download_folder / "Audios"
+
+        await super().handle_media_item(media_item, m3u8)
