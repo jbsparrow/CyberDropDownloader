@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import pathlib
 from collections.abc import AsyncIterable, Awaitable, Sized
+from stat import S_ISREG
 from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
 
 if TYPE_CHECKING:
-    import pathlib
     from collections.abc import Callable, Iterable
 
     _P = ParamSpec("_P")
@@ -119,8 +120,16 @@ async def unlink(path: pathlib.Path, missing_ok: bool = False) -> None:
 async def get_size(path: pathlib.Path) -> int | None:
     """If path exists and is a file, returns its size. Returns `None` otherwise"""
 
-    def size_():
-        if path.is_file():
-            return path.stat().st_size
+    # Manually parse stat result to make sure we only use 1 fs call
 
-    return await asyncio.to_thread(size_)
+    try:
+        stat_result = await stat(path)
+    except OSError as e:
+        if not pathlib._ignore_error(e):  # type: ignore[reportAttributeAccessIssue]
+            raise
+        return
+    except ValueError:
+        return
+    else:
+        if S_ISREG(stat_result.st_mode):
+            return stat_result.st_size
