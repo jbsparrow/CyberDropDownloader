@@ -11,7 +11,6 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
 if TYPE_CHECKING:
@@ -26,7 +25,6 @@ _DECRYPTION_KEY = b"xh7999"
 
 
 class Selector:
-    JS_WINDOW_INITIALS = "script#initials-script"
     VIDEO = "a.video-thumb__image-container"
     GALLERY = "a.gallery-thumb__link"
     NEXT_PAGE = "a[data-page='next']"
@@ -218,11 +216,10 @@ class XhamsterCrawler(Crawler):
     async def _get_window_initials(self, url: AbsoluteHttpURL) -> dict[str, Any]:
         self._disable_ai_title_translations(url)
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, url)
+            content = await self.client.get_text(self.DOMAIN, url)
 
-        js_script = css.select_one(soup, Selector.JS_WINDOW_INITIALS)
-        json_text = get_text_between(str(js_script), "window.initials=", ";</script>")
-        return json.loads(json_text)
+        initials = get_text_between(content, "window.initials=", ";</script>")
+        return json.loads(initials)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
