@@ -41,13 +41,14 @@ class TikTokCrawler(Crawler):
     async def profile_post_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict[str, Any]]:
         username = scrape_item.url.parts[1].removeprefix("@")
         cursor = 0
+        title: str = ""
         while True:
             posts_api_url = API_URL / "user" / "posts"
             posts_api_url = posts_api_url.with_query(cursor=cursor, unique_id=username, count=50)
             async with self.request_limiter:
                 json_data = await self.client.get_json(self.DOMAIN, posts_api_url)
 
-            if scrape_item.album_id is None:
+            if not title:
                 author_id = json_data["data"]["videos"][0]["author"]["id"]
                 title = self.create_title(username, author_id)
                 scrape_item.setup_as_profile(title)
@@ -56,6 +57,7 @@ class TikTokCrawler(Crawler):
 
             if not json_data["data"]["hasMore"]:
                 break
+
             cursor = json_data["data"]["cursor"]
 
     @error_handling_wrapper
