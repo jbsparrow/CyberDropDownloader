@@ -64,7 +64,7 @@ class TikTokCrawler(Crawler):
     async def handle_image_post(self, scrape_item: ScrapeItem, post: dict) -> None:
         author_id = post["author"]["id"]
         post_id = post["video_id"]
-        canonical_url = await self.get_canonical_url(author_id, post_id)
+        canonical_url = _canonical_url(author_id, post_id)
         if await self.check_complete_from_referer(canonical_url):
             return
 
@@ -85,7 +85,7 @@ class TikTokCrawler(Crawler):
             for item in json_data["data"]["videos"]:
                 author_id = item["author"]["id"]
                 post_id = item["video_id"]
-                canonical_url = await self.get_canonical_url(author_id, post_id)
+                canonical_url = _canonical_url(author_id, post_id)
                 if await self.check_complete_from_referer(canonical_url):
                     continue
 
@@ -93,6 +93,7 @@ class TikTokCrawler(Crawler):
                 if item.get("images"):
                     await self.handle_image_post(scrape_item, item)
                     continue
+
                 if post_url.path.endswith("mp3"):
                     continue
 
@@ -110,7 +111,7 @@ class TikTokCrawler(Crawler):
 
         author_id = json_data["data"]["author"]["id"]
         video_id = json_data["data"]["video_id"] = json_data["data"]["id"]
-        canonical_url = await self.get_canonical_url(author_id, video_id)
+        canonical_url = _canonical_url(author_id, video_id)
         if await self.check_complete_from_referer(canonical_url):
             return
 
@@ -135,7 +136,7 @@ class TikTokCrawler(Crawler):
             return
         title = json_data["music_info"]["title"]
         audio_id = json_data["music_info"]["id"]
-        canonical_audio_url = await self.get_canonical_audio_url(title, audio_id)
+        canonical_audio_url = _canonical_audio_url(title, audio_id)
         if await self.check_complete_from_referer(canonical_audio_url):
             return
 
@@ -151,12 +152,14 @@ class TikTokCrawler(Crawler):
         await self.handle_file(canonical_audio_url, new_scrape_item, filename, ext, debrid_link=audio_url)
         scrape_item.add_children()
 
-    async def get_canonical_url(self, author: str, post_id: str | None = None) -> AbsoluteHttpURL:
-        if post_id is None:
-            return PRIMARY_URL / f"@{author}"
-        return PRIMARY_URL / f"@{author}/video/{post_id}"
 
-    async def get_canonical_audio_url(self, audio_title: str, audio_id: str) -> AbsoluteHttpURL:
-        if "original audio" in audio_title.lower():
-            return PRIMARY_URL / f"music/original-audio-{audio_id}"
-        return PRIMARY_URL / f"music/{audio_title.replace(' ', '-').lower()}-{audio_id}"
+def _canonical_url(author: str, post_id: str | None = None) -> AbsoluteHttpURL:
+    if post_id is None:
+        return PRIMARY_URL / f"@{author}"
+    return PRIMARY_URL / f"@{author}/video/{post_id}"
+
+
+def _canonical_audio_url(audio_title: str, audio_id: str) -> AbsoluteHttpURL:
+    if "original audio" in audio_title.lower():
+        return PRIMARY_URL / f"music/original-audio-{audio_id}"
+    return PRIMARY_URL / f"music/{audio_title.replace(' ', '-').lower()}-{audio_id}"
