@@ -38,8 +38,8 @@ def _parse_url(url: str) -> AbsoluteHttpURL:
 
 # TODO:  Move to utils. Bunkr and Chevereto also use this exact same logic
 def xor_decrypt(encrypted_data: bytes, key: bytes) -> str:
-    decrypted_data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, cycle(_DECRYPTION_KEY)))
-    return decrypted_data.decode("utf-8", errors="ignore")
+    data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, cycle(key)))
+    return data.decode("utf-8", errors="ignore")
 
 
 class XhamsterCrawler(Crawler):
@@ -222,6 +222,12 @@ class XhamsterCrawler(Crawler):
         return json.loads(initials)
 
 
+class Format(NamedTuple):
+    resolution: int
+    codec: str  #  h264 > av1
+    url: AbsoluteHttpURL
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class Video:
     id: str
@@ -232,7 +238,7 @@ class Video:
     best_mp4: Format
 
 
-def _parse_video(initials: dict[str, Any]):
+def _parse_video(initials: dict[str, Any]) -> Video:
     video: dict[str, Any] = initials["videoModel"]
 
     hls_sources: list[Format] = []
@@ -258,12 +264,6 @@ def _parse_video(initials: dict[str, Any]):
         best_hls=max(hls_sources, default=None),
         best_mp4=max(mp4_sources),
     )
-
-
-class Format(NamedTuple):
-    resolution: int
-    codec: str  #  h264 > av1
-    url: AbsoluteHttpURL
 
 
 def _parse_http_sources(initials: dict[str, Any]) -> Iterable[Format]:
