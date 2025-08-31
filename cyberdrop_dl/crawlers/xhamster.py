@@ -4,14 +4,13 @@ import base64
 import dataclasses
 import itertools
 import json
-from itertools import cycle
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, xor_decrypt
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -34,12 +33,6 @@ def _parse_url(url: str) -> AbsoluteHttpURL:
     if url.startswith("eG9y"):
         url = xor_decrypt(base64.b64decode(url)[4:], _DECRYPTION_KEY)
     return parse_url(url, relative_to=_PRIMARY_URL)
-
-
-# TODO:  Move to utils. Bunkr and Chevereto also use this exact same logic
-def xor_decrypt(encrypted_data: bytes, key: bytes) -> str:
-    data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, cycle(key)))
-    return data.decode("utf-8", errors="ignore")
 
 
 class XhamsterCrawler(Crawler):

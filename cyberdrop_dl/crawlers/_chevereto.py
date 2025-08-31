@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import base64
-import itertools
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import PasswordProtectedError
 from cyberdrop_dl.utils import css, open_graph
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, xor_decrypt
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -190,7 +189,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
         self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool | None = None
     ) -> AbsoluteHttpURL:
         if not link_str.startswith("https") and not link_str.startswith("/"):
-            link_str = _xor_decrypt(link_str, _DECRYPTION_KEY)
+            encrypted_url = bytes.fromhex(base64.b64decode(link_str).decode())
+            link_str = xor_decrypt(encrypted_url, _DECRYPTION_KEY)
         return super().parse_url(link_str, relative_to, trim=trim)
 
 
@@ -218,9 +218,3 @@ def _thumbnail_to_src(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
 def _sort_by_new(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     init_page = int(url.query.get("page") or 1)
     return url.with_query(sort="date_desc", page=init_page)
-
-
-def _xor_decrypt(encrypted_str: str, key: bytes) -> str:
-    encrypted_data = bytes.fromhex(base64.b64decode(encrypted_str).decode())
-    decrypted_data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, itertools.cycle(key)))
-    return decrypted_data.decode("utf-8", errors="ignore")

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import inspect
+import itertools
 import json
 import os
 import platform
@@ -616,6 +617,11 @@ def get_valid_kwargs(func: Callable[..., Any], kwargs: Mapping[str, T], accept_k
 
 def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
+
+
+def xor_decrypt(encrypted_data: bytes, key: bytes) -> str:
+    data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, itertools.cycle(key)))
+    return data.decode("utf-8", errors="ignore")
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
