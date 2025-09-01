@@ -8,7 +8,6 @@ import math
 import re
 from collections import defaultdict
 from dataclasses import dataclass
-from itertools import cycle
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
@@ -19,7 +18,13 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPa
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
 from cyberdrop_dl.utils import css, open_graph
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, with_suffix_encoded
+from cyberdrop_dl.utils.utilities import (
+    error_handling_wrapper,
+    get_text_between,
+    parse_url,
+    with_suffix_encoded,
+    xor_decrypt,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -426,15 +431,10 @@ def decrypt_api_response(api_response: ApiResponse) -> str:
     if not api_response.encrypted:
         return api_response.url
 
-    def xor_decrypt(encrypted_data: bytearray, key: str) -> str:
-        key_bytes = key.encode("utf-8")
-        decrypted_data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, cycle(key_bytes)))
-        return decrypted_data.decode("utf-8", errors="ignore")
-
     time_key = math.floor(api_response.timestamp / 3600)
     secret_key = f"SECRET_KEY_{time_key}"
-    byte_array = bytearray(base64.b64decode(api_response.url))
-    return xor_decrypt(byte_array, secret_key)
+    encrypted_url = base64.b64decode(api_response.url)
+    return xor_decrypt(encrypted_url, secret_key.encode())
 
 
 def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
