@@ -4,6 +4,7 @@ from __future__ import annotations
 from cyberdrop_dl import env
 
 from ._chevereto import CheveretoCrawler
+from .acidimg import AcidImgCrawler
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
 from .beeg import BeegComCrawler
@@ -39,11 +40,12 @@ from .hitomi_la import HitomiLaCrawler
 from .hotleak_vip import HotLeakVipCrawler
 from .hotpic import HotPicCrawler
 from .iceyfile import IceyFileCrawler
+from .imagebam import ImageBamCrawler
 from .imagepond import ImagePondCrawler
 from .imgbb import ImgBBCrawler
 from .imgbox import ImgBoxCrawler
-from .imgshot import *  # noqa: F403
 from .imgur import ImgurCrawler
+from .imx_to import ImxToCrawler
 from .incestflix import IncestflixCrawler
 from .influencer_bitches import InfluencerBitchesCrawler
 from .invision import INVISION_CRAWLERS
@@ -65,6 +67,7 @@ from .omegascans import OmegaScansCrawler
 from .onedrive import OneDriveCrawler
 from .pimpandhost import PimpAndHostCrawler
 from .pixeldrain import PixelDrainCrawler
+from .pixhost import PixHostCrawler
 from .pkmncards import PkmncardsCrawler
 from .pmvhaven import PMVHavenCrawler
 from .pornhub import PornHubCrawler
@@ -92,6 +95,7 @@ from .toonily import ToonilyCrawler
 from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
 from .vbulletin import VBULLETIN_CRAWLERS
+from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
 from .wordpress import WP_CRAWLERS, WordPressHTMLCrawler, WordPressMediaCrawler
 from .xbunkr import XBunkrCrawler
