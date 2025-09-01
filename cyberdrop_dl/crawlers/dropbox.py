@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.constants import AlbumDownloadPreference
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -38,10 +37,7 @@ class DropboxCrawler(Crawler):
 
     @property
     def download_folders(self) -> bool:
-        return (
-            self.manager.config.download_options.album_download_preference
-            is not AlbumDownloadPreference.INDIVIDUAL_FILES_ONLY
-        )
+        return self.manager.parsed_args.cli_only_args.download_dropbox_folders_as_zip
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """See https://www.dropboxforum.com/discussions/101001012/shared-link--scl-to-s/689070"""
