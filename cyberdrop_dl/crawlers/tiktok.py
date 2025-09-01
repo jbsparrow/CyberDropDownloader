@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils.utilities import call_w_valid_kwargs, error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, type_adapter
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -41,10 +41,10 @@ class Post:
     def from_dict(video: dict[str, Any]) -> Post:
         video.update(
             id=video.get("id") or video["video_id"],
-            author=call_w_valid_kwargs(Author, video["author"]),
-            music_info=call_w_valid_kwargs(MusicInfo, video["music_info"]),
+            author=_parse_author(video["author"]),
+            music_info=_parse_music(video["music_info"]),
         )
-        return call_w_valid_kwargs(Post, video)
+        return _parse_post(video)
 
     @property
     def canonical_url(self) -> AbsoluteHttpURL:
@@ -65,6 +65,11 @@ class MusicInfo:
         else:
             name = f"{self.title.replace(' ', '-').lower()}-{self.id}"
         return PRIMARY_URL / "music" / name
+
+
+_parse_author = type_adapter(Author)
+_parse_music = type_adapter(MusicInfo)
+_parse_post = type_adapter(Post)
 
 
 class TikTokCrawler(Crawler):

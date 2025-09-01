@@ -619,6 +619,16 @@ def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
 
 
+def type_adapter(func: Callable[..., R]) -> Callable[[Mapping[str, Any]], R]:
+    """Like `pydantic.type_adapter`, but without validation of the type of the params (faster)"""
+    param_names = inspect.signature(func).parameters.keys()
+
+    def call(kwargs: Mapping[str, Any]):
+        return func(**{k: v for k, v in kwargs.items() if k in param_names and v is not None})
+
+    return call
+
+
 log_cyan = partial(log_with_color, style="cyan", level=20)
 log_yellow = partial(log_with_color, style="yellow", level=20)
 log_green = partial(log_with_color, style="green", level=20)
