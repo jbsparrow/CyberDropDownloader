@@ -304,10 +304,9 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self.update_cookies({"session": ""})
 
         for item in json_resp:
-            service, user_id, post_id = item["service"], item["user"], item.get("id", "")
-            url = self.PRIMARY_URL / service / "user" / user_id
+            url = self.PRIMARY_URL / item["service"] / "user" / item["user"]
             if is_post:
-                url = url / "post" / post_id
+                url = url / "post" / item["id"]
 
             new_scrape_item = scrape_item.create_child(url)
             self.create_task(self.run(new_scrape_item))
@@ -467,14 +466,13 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         current_step_size = step_size or _MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
 
-        async def get_soup(url: AbsoluteHttpURL):
-            async with self.request_limiter:
-                return await self.client.get_soup(self.DOMAIN, url)
-
-        request = self.__api_request if "api" in url.parts else get_soup
+        request = self.__api_request if "api" in url.parts else self.__get_soup
         for current_offset in itertools.count(init_offset, current_step_size):
-            url = url.update_query(o=current_offset)
-            yield await request(url)
+            yield await request(url.update_query(o=current_offset))
+
+    async def __get_soup(self, url: AbsoluteHttpURL):
+        async with self.request_limiter:
+            return await self.client.get_soup(self.DOMAIN, url)
 
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -488,16 +486,13 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _POST_SELECTOR):
                 n_posts += 1
                 self.create_task(self.post_w_no_api_task(new_scrape_item))
-                scrape_item.add_children()
 
             if n_posts < _MAX_OFFSET_PER_CALL:
                 break
 
     @error_handling_wrapper
     async def post_w_no_api(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self.__get_soup(scrape_item.url)
         service, _, user_id, _, post_id = scrape_item.url.parts[1:6]
         partial_post = PartialUserPost.from_soup(soup)
         if not partial_post.title or not partial_post.user_name:
