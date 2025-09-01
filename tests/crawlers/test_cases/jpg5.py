@@ -42,4 +42,63 @@ TEST_CASES = [
             },
         ],
     ),
+    (
+        "https://simp6.jpg5.su/images3/Screenshot-46d10ff096ae50f993.th.png",
+        [
+            {
+                "url": "https://simp6.jpg5.su/images3/Screenshot-46d10ff096ae50f993.png",
+                "filename": "Screenshot-46d10ff096ae50f993.png",
+                "referer": "https://simp6.jpg5.su/images3/Screenshot-46d10ff096ae50f993.th.png",
+            },
+        ],
+    ),
+    (
+        "https://simp6.selti-delivery.ru/images3/rebeca-yellow-pic00910102ed45e07d539.md.jpg",
+        [
+            {
+                "url": "https://simp6.selti-delivery.ru/images3/rebeca-yellow-pic00910102ed45e07d539.jpg",
+                "filename": "rebeca-yellow-pic00910102ed45e07d539.jpg",
+                "referer": "https://simp6.selti-delivery.ru/images3/rebeca-yellow-pic00910102ed45e07d539.md.jpg",
+            },
+        ],
+    ),
+    (
+        "https://jpg6.su/a/rebeca-linares-bikiniriot.aYKmSi/sub",
+        [
+            {
+                "url": "https://simp6.selti-delivery.ru/images3/rebeca-pink-pic001f1e0e301dd4d56fb.jpg",
+                "filename": "rebeca-pink-pic001f1e0e301dd4d56fb.jpg",
+                "referer": "https://jpg6.su/img/Nv7ZaLE",
+                "datetime": None,
+                "download_folder": r"re:Rebeca Linares BikiniRiot \(JPG5\)",
+                "album_id": "aYK0fu",
+            },
+        ],
+        285,
+    ),
+    (
+        # Password protected, no password supplied
+        "https://jpg6.su/a/alyrosez.Y2Pmn",
+        [],
+    ),
+    (
+        # Password protected, incorrect password supplied
+        "https://jpg6.su/a/alyrosez.Y2Pmn?password=1234",
+        [],
+    ),
+    (
+        # Password protected, valid password supplied
+        "https://jpg6.su/a/alyrosez.Y2Pmn?password=aly",
+        [
+            {
+                "url": "https://simp2.jpg5.su/0afcc905cd6c64e52.jpg",
+                "filename": "0afcc905cd6c64e52.jpg",
+                "referer": "https://jpg6.su/img/ahfHow",
+                "datetime": None,
+                "download_folder": r"re:alyrosez \(JPG5\)",
+                "album_id": "Y2Pmn",
+            },
+        ],
+        1065,
+    ),
 ]

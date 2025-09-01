@@ -210,6 +210,6 @@ def parse_player_info(script_text: str) -> Format:
     def get_resolution(video) -> int:
         return int(video["desc"].rstrip("p"))
 
-    sources = get_text_between(script_text, "var sources = ", "var playerConfig").strip().strip(";")
+    sources = get_text_between(script_text, "var sources = ", "var multiSource =").strip().strip(";")
     video_data = max(json.loads(sources), key=get_resolution)
     return Format(video_data["desc"], AbsoluteHttpURL(video_data["src"]), video_data["hls"])

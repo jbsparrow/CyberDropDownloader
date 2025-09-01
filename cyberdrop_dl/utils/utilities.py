@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import inspect
+import itertools
 import json
 import os
 import platform
@@ -70,8 +71,8 @@ class Dataclass(Protocol):
 
 
 def error_handling_wrapper(
-    func: Callable[Concatenate[CrawerOrDownloader, Origin, P], R | Coroutine[None, None, R]],
-) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], Coroutine[None, None, R | None]]:
+    func: Callable[Concatenate[CrawerOrDownloader, Origin, P], R | Coroutine[Any, Any, R]],
+) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], Coroutine[Any, Any, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
@@ -93,11 +94,12 @@ def error_handling_wrapper(
         except NotImplementedError as e:
             error_log_msg = ErrorLogMessage("NotImplemented")
             exc_info = e
-        except TimeoutError:
-            error_log_msg = ErrorLogMessage("Timeout")
+        except TimeoutError as e:
+            error_log_msg = ErrorLogMessage("Timeout", repr(e))
         except ClientConnectorError as e:
             ui_failure = "Client Connector Error"
-            log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            suffix = "" if (link.host or "").startswith(e.host) else f" from {link}"
+            log_msg = f"{e}{suffix}. If you're using a VPN, try turning it off"
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except ValidationError as e:
             exc_info = e
@@ -190,6 +192,7 @@ def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     filename_as_path = filename_as_path.with_suffix(filename_as_path.suffix.lower())
     filename_as_str = truncate_str(filename_as_path.stem.removesuffix(".")) + filename_as_path.suffix
     filename_as_path = Path(sanitize_filename(filename_as_str))
+    filename_as_path = Path(filename_as_path.stem.strip() + filename_as_path.suffix)
     return filename_as_path.name, filename_as_path.suffix
 
 
@@ -428,10 +431,10 @@ def get_field_names(dataclass: Dataclass | type[Dataclass]) -> list[str]:
 
 
 def get_text_between(original_text: str, start: str, end: str) -> str:
-    """Extracts the text between two strings in a larger text."""
+    """Extracts the text between two strings in a larger text. Result will be stripped"""
     start_index = original_text.index(start) + len(start)
     end_index = original_text.index(end, start_index)
-    return original_text[start_index:end_index]
+    return original_text[start_index:end_index].strip()
 
 
 def xdg_mime_query(*args) -> str:
@@ -615,6 +618,11 @@ def get_valid_kwargs(func: Callable[..., Any], kwargs: Mapping[str, T], accept_k
 
 def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
+
+
+def xor_decrypt(encrypted_data: bytes, key: bytes) -> str:
+    data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, itertools.cycle(key)))
+    return data.decode("utf-8", errors="ignore")
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

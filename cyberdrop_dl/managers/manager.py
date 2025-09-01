@@ -208,7 +208,7 @@ class Manager:
         args_info = (
             "Starting Cyberdrop-DL Process",
             f"Running Version: {__version__}",
-            f"System Info:{system_info}",
+            f"System Info: {system_info}",
             f"Using Config: {self.config_manager.loaded_config}",
             f"Using Config File: {self.config_manager.settings}",
             f"Using Input File: {self.path_manager.input_file}",
