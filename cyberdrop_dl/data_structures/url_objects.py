@@ -256,18 +256,18 @@ class ScrapeItem:
         if not title or self.retry:
             return
         title = sanitize_folder(title)
+        if title.endswith(")") and " (" in title:
+            for part in reversed(self.parent_title.split("/")):
+                if part.endswith(")") and " (" in part:
+                    last_domain_suffix = part.rpartition(" (")[-1]
+                    break
+            else:
+                last_domain_suffix = None
 
-        for part in reversed(self.parent_title.split("/")):
-            if part.endswith(")") and " (" in part:
-                last_domain_suffix = part.rpartition(" (")[-1]
-                break
-        else:
-            last_domain_suffix = None
-
-        if last_domain_suffix and title.endswith(")") and " (" in title:
-            og_title, _, domain_suffix = title.rpartition(" (")
-            if last_domain_suffix == domain_suffix:
-                title = og_title
+            if last_domain_suffix:
+                og_title, _, domain_suffix = title.rpartition(" (")
+                if last_domain_suffix == domain_suffix:
+                    title = og_title
 
         self.parent_title = (self.parent_title + "/" + title) if self.parent_title else title
 
