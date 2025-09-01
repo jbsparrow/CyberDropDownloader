@@ -548,6 +548,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
 def _thumbnail_to_src(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     url = remove_parts(og_url, "thumbnails", "thumbnail").with_query(None)
-    if f := og_url.query.get("f"):
-        return url.with_query(f=f)
+    if name := og_url.query.get("f"):
+        return url.with_query(f=name)
     return url

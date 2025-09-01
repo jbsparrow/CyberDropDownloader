@@ -9,7 +9,7 @@ TEST_CASES = [
                 "referer": "https://coomer.st/fansly/user/445978322480930816/post/644032890815913985",
                 "download_folder": r"re:zombonn \(Coomer\)",
                 "album_id": "445978322480930816",
-                "datetime": 1715058166,
+                "datetime": 1715061766,
             }
         ],
     ),
@@ -22,7 +22,7 @@ TEST_CASES = [
                 "referer": "https://coomer.st/onlyfans/user/lostfaefoundskates/post/729202326",
                 "download_folder": r"re:lostfaefoundskates \(Coomer\)",
                 "album_id": "lostfaefoundskates",
-                "datetime": 1694411391,
+                "datetime": 1694414991,
             }
         ],
     ),
