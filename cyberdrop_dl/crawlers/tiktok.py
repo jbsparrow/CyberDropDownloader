@@ -134,15 +134,14 @@ class TikTokCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem, unique_id: str) -> None:
-        title: str = ""
+        scrape_item.setup_as_profile("")
         async for posts in self._profile_post_pager(unique_id):
             for post in posts:
-                if not title:
-                    title = self.create_title(post.author.unique_id, post.author.id)
-                    scrape_item.setup_as_profile(title)
-
                 new_scrape_item = scrape_item.create_child(post.canonical_url)
-                self._handle_post(new_scrape_item, post)
+                if _DOWNLOAD_SRC_QUALITY_VIDEO:
+                    self.create_task(self.run(new_scrape_item))
+                else:
+                    self._handle_post(new_scrape_item, post)
                 scrape_item.add_children()
 
     @error_handling_wrapper
@@ -161,9 +160,10 @@ class TikTokCrawler(Crawler):
         delays = (0.5, 1.5, 4)
         for delay in delays:
             try:
+                await asyncio.sleep(delay)
                 return await self._api_request(result_url)
             except ScrapeError:
-                await asyncio.sleep(delay)
+                pass
 
         msg = (
             f"[{self.FOLDER_DOMAIN}] Download {task_id = } was not ready "
