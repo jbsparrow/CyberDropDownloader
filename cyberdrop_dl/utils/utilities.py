@@ -93,11 +93,12 @@ def error_handling_wrapper(
         except NotImplementedError as e:
             error_log_msg = ErrorLogMessage("NotImplemented")
             exc_info = e
-        except TimeoutError:
-            error_log_msg = ErrorLogMessage("Timeout")
+        except TimeoutError as e:
+            error_log_msg = ErrorLogMessage("Timeout", repr(e))
         except ClientConnectorError as e:
             ui_failure = "Client Connector Error"
-            log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            suffix = "" if (link.host or "").startswith(e.host) else f" from {link}"
+            log_msg = f"{e}{suffix}. If you're using a VPN, try turning it off"
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except ValidationError as e:
             exc_info = e
