@@ -20,11 +20,12 @@ if TYPE_CHECKING:
 _DOWNLOAD_SRC_QUALITY_VIDEO = True
 _API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
 _API_SUBMIT_TASK_URL = _API_URL / "video/task/submit"
-_API_GET_TASK_URL = _API_URL / "video/task/result"
+_API_TASK_RESULT_URL = _API_URL / "video/task/result"
+_API_USER_POST_URL = _API_URL / "user" / "posts"
 
 
-VIDEO_PARTS = "video", "photo", "v"
-PRIMARY_URL = AbsoluteHttpURL("https://tiktok.com/")
+_VIDEO_PARTS = "video", "photo", "v"
+_PRIMARY_URL = AbsoluteHttpURL("https://tiktok.com/")
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -54,7 +55,7 @@ class Post:
 
     @property
     def canonical_url(self) -> AbsoluteHttpURL:
-        return PRIMARY_URL / f"@{self.author.unique_id}/video/{self.id}"
+        return _PRIMARY_URL / f"@{self.author.unique_id}/video/{self.id}"
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -70,7 +71,7 @@ class MusicInfo:
             name = f"original-audio-{self.id}"
         else:
             name = f"{self.title.replace(' ', '-').lower()}-{self.id}"
-        return PRIMARY_URL / "music" / name
+        return _PRIMARY_URL / "music" / name
 
 
 _parse_author = type_adapter(Author)
@@ -84,22 +85,21 @@ class TikTokCrawler(Crawler):
         "Video": "/@<user>/video/<video_id>",
         "Photo": "/@<user>/photo/<photo_id>",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "tiktok"
     FOLDER_DOMAIN: ClassVar[str] = "TikTok"
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date:%Y-%m-%d} - {id}"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 10)
-        self.session_id: str | None
         self.headers: dict[str, Any] = {"X-Requested-With": "XMLHttpRequest"}
 
     async def async_startup(self) -> None:
         if session_id := self.get_cookie_value("sessionid"):
-            self.headers["x-proxy-cookie"] = session_id
+            self.headers["x-proxy-cookie"] = f"sessionid={session_id}"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if any(p in scrape_item.url.parts for p in VIDEO_PARTS) or scrape_item.url.host.startswith("vm.tiktok"):
+        if any(p in scrape_item.url.parts for p in _VIDEO_PARTS) or scrape_item.url.host.startswith("vm.tiktok"):
             if _DOWNLOAD_SRC_QUALITY_VIDEO:
                 return await self.src_quality_video(scrape_item)
             return await self.video(scrape_item)
@@ -123,12 +123,10 @@ class TikTokCrawler(Crawler):
 
     async def _profile_post_pager(self, unique_id: str) -> AsyncGenerator[list[Post]]:
         cursor: int = 0
-        posts_api_url = (_API_URL / "user" / "posts").with_query(unique_id=unique_id, count=50)
+        posts_api_url = _API_USER_POST_URL.with_query(unique_id=unique_id, count=50)
         while True:
             resp = await self._api_request(posts_api_url.update_query(cursor=cursor))
-
             yield [Post.from_dict(post) for post in resp["videos"]]
-
             if not resp["hasMore"]:
                 break
 
@@ -159,7 +157,7 @@ class TikTokCrawler(Crawler):
         self._video(scrape_item, post)
 
     async def _get_task_result(self, task_id: str) -> dict[str, Any]:
-        result_url = _API_GET_TASK_URL.with_query(task_id=task_id)
+        result_url = _API_TASK_RESULT_URL.with_query(task_id=task_id)
         delays = (0.5, 1.5, 4)
         for delay in delays:
             try:
@@ -168,7 +166,7 @@ class TikTokCrawler(Crawler):
                 await asyncio.sleep(delay)
 
         msg = (
-            f"[{self.FOLDER_DOMAIN}] Download {task_id = } was not ready"
+            f"[{self.FOLDER_DOMAIN}] Download {task_id = } was not ready "
             f"after {len(delays)} attempts. Total wait time: {sum(delays)}"
         )
         raise ScrapeError(503, msg)
