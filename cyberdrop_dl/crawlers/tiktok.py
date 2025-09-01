@@ -16,8 +16,13 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.utils import m3u8
 
+_DOWNLOAD_SRC_QUALITY_VIDEO = True
+_API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
+_API_SUBMIT_TASK_URL = _API_URL / "video/task/submit"
+_API_GET_TASK_URL = _API_URL / "video/task/result"
+
+
 VIDEO_PARTS = "video", "photo", "v"
-API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
 PRIMARY_URL = AbsoluteHttpURL("https://tiktok.com/")
 
 
@@ -40,7 +45,6 @@ class Post:
     @staticmethod
     def from_dict(video: dict[str, Any]) -> Post:
         video.update(
-            id=video.get("id") or video["video_id"],
             author=_parse_author(video["author"]),
             music_info=_parse_music(video["music_info"]),
         )
@@ -69,7 +73,7 @@ class MusicInfo:
 
 _parse_author = type_adapter(Author)
 _parse_music = type_adapter(MusicInfo)
-_parse_post = type_adapter(Post)
+_parse_post = type_adapter(Post, aliases={"id": "video_id", "play": "play_url"})
 
 
 class TikTokCrawler(Crawler):
@@ -88,14 +92,21 @@ class TikTokCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in VIDEO_PARTS) or scrape_item.url.host.startswith("vm.tiktok"):
+            if _DOWNLOAD_SRC_QUALITY_VIDEO:
+                return await self.src_quality_video(scrape_item)
             return await self.video(scrape_item)
         if (unique_id := scrape_item.url.parts[1]).startswith("@"):
             return await self.profile(scrape_item, unique_id.removeprefix("@"))
         raise ValueError
 
-    async def _api_request(self, url: AbsoluteHttpURL) -> dict[str, Any]:
+    async def _api_request(self, api_url: AbsoluteHttpURL, **data: Any) -> dict[str, Any]:
+        if data:
+            get_json = self.client.post_data(self.DOMAIN, api_url, data=data)
+        else:
+            get_json = self.client.get_json(self.DOMAIN, api_url)
+
         async with self.request_limiter:
-            resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, url)
+            resp: dict[str, Any] = await get_json
 
         if (code := resp["code"]) != 0:
             raise ScrapeError(code, resp["msg"])
@@ -104,7 +115,7 @@ class TikTokCrawler(Crawler):
 
     async def _profile_post_pager(self, unique_id: str) -> AsyncGenerator[list[Post]]:
         cursor: int = 0
-        posts_api_url = (API_URL / "user" / "posts").with_query(unique_id=unique_id, count=50)
+        posts_api_url = (_API_URL / "user" / "posts").with_query(unique_id=unique_id, count=50)
         while True:
             resp = await self._api_request(posts_api_url.update_query(cursor=cursor))
 
@@ -129,10 +140,22 @@ class TikTokCrawler(Crawler):
                 scrape_item.add_children()
 
     @error_handling_wrapper
+    async def src_quality_video(self, scrape_item: ScrapeItem) -> None:
+        submit_url = _API_SUBMIT_TASK_URL.with_query(url=str(scrape_item.url))
+        task_id: str = (await self._api_request(submit_url))["task_id"]
+        result_url = _API_GET_TASK_URL.with_query(task_id=task_id)
+        json_data = await self._api_request(result_url)
+        post = Post.from_dict(json_data["detail"])
+        self._video(scrape_item, post)
+
+    @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        video_data_url = API_URL.with_query(url=str(scrape_item.url))
+        video_data_url = _API_URL.with_query(url=str(scrape_item.url))
         json_data = await self._api_request(video_data_url)
         post = Post.from_dict(json_data)
+        self._video(scrape_item, post)
+
+    def _video(self, scrape_item: ScrapeItem, post: Post):
         scrape_item.url = post.canonical_url
         title = self.create_title(post.author.unique_id, post.id)
         scrape_item.add_to_parent_title(title)
