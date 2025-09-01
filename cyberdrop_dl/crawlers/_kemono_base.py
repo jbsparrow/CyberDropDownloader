@@ -233,7 +233,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     @fallback_if_no_api
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        api_url = self.__make_api_url_w_offset(scrape_item.url)
+        path = (scrape_item.url / "posts").path
+        api_url = self.__make_api_url_w_offset(scrape_item.url, path)
         scrape_item.setup_as_profile("")
         await self.__iter_user_posts_from_url(scrape_item, api_url)
 
@@ -285,9 +286,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     @fallback_if_no_api
     @error_handling_wrapper
-    async def post(self, scrape_item: ScrapeItem, service: str, user_id: str, post_id: str) -> None:
-        path = f"{service}/user/{user_id}/post/{post_id}"
-        api_url = self.__make_api_url_w_offset(path, scrape_item.url)
+    async def post(self, scrape_item: ScrapeItem) -> None:
+        api_url = self.__make_api_url_w_offset(scrape_item.url)
         json_resp: dict[str, Any] = await self.__api_request(api_url)
         post = UserPost.model_validate(json_resp["post"])
         self._register_attachments_servers(json_resp["attachments"])
@@ -302,7 +302,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         is_post = scrape_item.url.query.get("type") == "post"
         title = "My favorite posts" if is_post else "My favorite artists"
         scrape_item.setup_as_profile(self.create_title(title))
-
         self.update_cookies({"session": self.session_cookie})
         api_url = self.API_ENTRYPOINT / "account/favorites"
         query_url = api_url.with_query(type="post" if is_post else "artist")
@@ -402,7 +401,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             await self.handle_direct_link(scrape_item, file_url)
             scrape_item.add_children()
 
-        # Process files if the post was generated from soup
         for file_url in post.soup_attachments:
             await self.handle_direct_link(scrape_item, file_url)
             scrape_item.add_children()
@@ -479,10 +477,15 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         """Yields JSON responses from API calls, or soup for web page calls, with configurable increments."""
         current_step_size = step_size or _MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
-        request = self.client.get_json if "api" in url.parts else self.client.get_soup
+
+        async def get_soup(url: AbsoluteHttpURL):
+            async with self.request_limiter:
+                return await self.client.get_soup(self.DOMAIN, url)
+
+        request = self.__api_request if "api" in url.parts else get_soup
         for current_offset in itertools.count(init_offset, current_step_size):
-            api_url = url.update_query(o=current_offset)
-            yield await self.__api_request(api_url)
+            url = url.update_query(o=current_offset)
+            yield await request(url)
 
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
