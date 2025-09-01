@@ -97,30 +97,31 @@ class TikTokCrawler(Crawler):
 
         return resp["data"]
 
-    async def _profile_post_pager(self, unique_id: str) -> AsyncGenerator[Post]:
+    async def _profile_post_pager(self, unique_id: str) -> AsyncGenerator[list[Post]]:
         cursor: int = 0
         posts_api_url = (API_URL / "user" / "posts").with_query(unique_id=unique_id, count=50)
         while True:
-            json_data = await self._api_request(posts_api_url.update_query(cursor=cursor))
-            for post in json_data["videos"]:
-                yield Post.from_dict(post)
+            resp = await self._api_request(posts_api_url.update_query(cursor=cursor))
 
-            if not json_data["hasMore"]:
+            yield [Post.from_dict(post) for post in resp["videos"]]
+
+            if not resp["hasMore"]:
                 break
 
-            cursor = json_data["cursor"]
+            cursor = resp["cursor"]
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem, unique_id: str) -> None:
         title: str = ""
-        async for post in self._profile_post_pager(unique_id):
-            if not title:
-                title = self.create_title(post.author.unique_id, post.author.id)
-                scrape_item.setup_as_profile(title)
+        async for posts in self._profile_post_pager(unique_id):
+            for post in posts:
+                if not title:
+                    title = self.create_title(post.author.unique_id, post.author.id)
+                    scrape_item.setup_as_profile(title)
 
-            new_scrape_item = scrape_item.create_child(post.canonical_url)
-            self._handle_post(new_scrape_item, post)
-            scrape_item.add_children()
+                new_scrape_item = scrape_item.create_child(post.canonical_url)
+                self._handle_post(new_scrape_item, post)
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
