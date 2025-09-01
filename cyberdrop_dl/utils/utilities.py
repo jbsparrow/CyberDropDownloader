@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import inspect
+import itertools
 import json
 import os
 import platform
@@ -619,14 +620,26 @@ def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
 
 
-def type_adapter(func: Callable[..., R]) -> Callable[[Mapping[str, Any]], R]:
-    """Like `pydantic.type_adapter`, but without validation of the type of the params (faster)"""
+def type_adapter(func: Callable[..., R], aliases: dict[str, str] | None = None) -> Callable[[dict[str, Any]], R]:
+    """Like `pydantic.TypeAdapter`, but without type validation of attributes (faster)
+
+    Ignores attributes with `None` as value"""
     param_names = inspect.signature(func).parameters.keys()
 
-    def call(kwargs: Mapping[str, Any]):
-        return func(**{k: v for k, v in kwargs.items() if k in param_names and v is not None})
+    def call(kwargs: dict[str, Any]):
+        if aliases:
+            for original, alias in aliases.items():
+                if original not in kwargs:
+                    kwargs[original] = kwargs.get(alias)
+
+        return func(**{name: value for name in param_names if (value := kwargs.get(name)) is not None})
 
     return call
+
+
+def xor_decrypt(encrypted_data: bytes, key: bytes) -> str:
+    data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, itertools.cycle(key)))
+    return data.decode("utf-8", errors="ignore")
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
