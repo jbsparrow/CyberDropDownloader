@@ -620,6 +620,23 @@ def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
 
 
+def type_adapter(func: Callable[..., R], aliases: dict[str, str] | None = None) -> Callable[[dict[str, Any]], R]:
+    """Like `pydantic.TypeAdapter`, but without type validation of attributes (faster)
+
+    Ignores attributes with `None` as value"""
+    param_names = inspect.signature(func).parameters.keys()
+
+    def call(kwargs: dict[str, Any]):
+        if aliases:
+            for original, alias in aliases.items():
+                if original not in kwargs:
+                    kwargs[original] = kwargs.get(alias)
+
+        return func(**{k: v for k, v in kwargs.items() if k in param_names and v is not None})
+
+    return call
+
+
 def xor_decrypt(encrypted_data: bytes, key: bytes) -> str:
     data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, itertools.cycle(key)))
     return data.decode("utf-8", errors="ignore")
