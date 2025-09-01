@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -32,7 +33,7 @@ class Author:
     unique_id: str
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(slots=True)
 class Post:
     id: str
     title: str
@@ -41,6 +42,7 @@ class Post:
     create_time: int
     author: Author
     images: list[str] = dataclasses.field(default_factory=list)
+    is_src_quality: bool = False
 
     @staticmethod
     def from_dict(video: dict[str, Any]) -> Post:
@@ -89,6 +91,12 @@ class TikTokCrawler(Crawler):
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 10)
+        self.session_id: str | None
+        self.headers: dict[str, Any] = {"X-Requested-With": "XMLHttpRequest"}
+
+    async def async_startup(self) -> None:
+        if session_id := self.get_cookie_value("sessionid"):
+            self.headers["x-proxy-cookie"] = session_id
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in VIDEO_PARTS) or scrape_item.url.host.startswith("vm.tiktok"):
@@ -101,9 +109,9 @@ class TikTokCrawler(Crawler):
 
     async def _api_request(self, api_url: AbsoluteHttpURL, **data: Any) -> dict[str, Any]:
         if data:
-            get_json = self.client.post_data(self.DOMAIN, api_url, data=data)
+            get_json = self.client.post_data(self.DOMAIN, api_url, data=data, headers=self.headers)
         else:
-            get_json = self.client.get_json(self.DOMAIN, api_url)
+            get_json = self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
 
         async with self.request_limiter:
             resp: dict[str, Any] = await get_json
@@ -141,12 +149,29 @@ class TikTokCrawler(Crawler):
 
     @error_handling_wrapper
     async def src_quality_video(self, scrape_item: ScrapeItem) -> None:
-        submit_url = _API_SUBMIT_TASK_URL.with_query(url=str(scrape_item.url))
+        url = str(scrape_item.url)
+        submit_url = _API_SUBMIT_TASK_URL.with_query(url=url)
         task_id: str = (await self._api_request(submit_url))["task_id"]
-        result_url = _API_GET_TASK_URL.with_query(task_id=task_id)
-        json_data = await self._api_request(result_url)
+        self.log(f"[{self.FOLDER_DOMAIN}] trying to download {url} with {task_id = }")
+        json_data = await self._get_task_result(task_id)
         post = Post.from_dict(json_data["detail"])
+        post.is_src_quality = True
         self._video(scrape_item, post)
+
+    async def _get_task_result(self, task_id: str) -> dict[str, Any]:
+        result_url = _API_GET_TASK_URL.with_query(task_id=task_id)
+        delays = (0.5, 1.5, 4)
+        for delay in delays:
+            try:
+                return await self._api_request(result_url)
+            except ScrapeError:
+                await asyncio.sleep(delay)
+
+        msg = (
+            f"[{self.FOLDER_DOMAIN}] Download {task_id = } was not ready"
+            f"after {len(delays)} attempts. Total wait time: {sum(delays)}"
+        )
+        raise ScrapeError(503, msg)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -175,7 +200,7 @@ class TikTokCrawler(Crawler):
             self.handle_file(
                 scrape_item.url,
                 scrape_item,
-                filename=f"{post.id}.mp4",
+                filename=f"{post.id}{'_HD' if post.is_src_quality else ''}.mp4",
                 ext=".mp4",
                 debrid_link=video_url,
             )
