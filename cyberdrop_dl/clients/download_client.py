@@ -159,6 +159,7 @@ class DownloadClient:
 
         resume_point = 0
         if media_item.partial_file and (size := await asyncio.to_thread(get_size_or_none, media_item.partial_file)):
+            resume_point = size
             download_headers["Range"] = f"bytes={size}-"
 
         await asyncio.sleep(self.manager.config_manager.global_settings_data.rate_limiting_options.total_delay)
