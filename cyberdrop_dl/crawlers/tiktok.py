@@ -140,7 +140,7 @@ class TikTokCrawler(Crawler):
         async for posts in self._profile_post_pager(unique_id):
             for post in posts:
                 new_scrape_item = scrape_item.create_child(post.canonical_url)
-                if _DOWNLOAD_SRC_QUALITY_VIDEO:
+                if not post.images and _DOWNLOAD_SRC_QUALITY_VIDEO:
                     self.create_task(self.src_quality_media(new_scrape_item, post.id, post))
                 else:
                     self._handle_post(new_scrape_item, post)
