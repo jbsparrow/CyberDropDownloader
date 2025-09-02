@@ -54,7 +54,7 @@ class AbstractResponse:
             _resp=response,
         )
 
-    async def text(self) -> str:
+    async def text(self, encoding: str | None = None) -> str:
         if self._text:
             return self._text
 
@@ -63,25 +63,32 @@ class AbstractResponse:
             if self._text:
                 return self._text
             if isinstance(self._resp, AnyResponse):
-                self._text = await self._resp.text()
+                self._text = await self._resp.text(encoding)
             else:
-                self._text = self._resp.text
+                if encoding:
+                    self._resp.encoding = encoding
+                    self._text = self._resp.text
         return self._text
 
-    async def soup(self) -> BeautifulSoup:
+    async def soup(self, encoding: str | None = None) -> BeautifulSoup:
         if "text" in self.content_type or "html" in self.content_type:
-            return BeautifulSoup(await self.text(), "html.parser")
+            return BeautifulSoup(await self.text(encoding), "html.parser")
 
-        raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting text")
+        raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting HTML")
 
-    async def json(self) -> Any:
+    async def json(self, encoding: str | None = None, content_type: str | bool = True) -> Any:
         if self.status == 204:
             raise ScrapeError(204)
 
-        if "text/plain" in self.content_type or "json" in self.content_type:
-            return json_loads(await self.text())
+        if content_type:
+            if isinstance(content_type, str):
+                check = (content_type,)
+            else:
+                check = ("text/plain", "json")
+            if not any(type_ in self.content_type for type_ in check):
+                raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting JSON")
 
-        raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting JSON")
+        return json_loads(await self.text(encoding))
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} [{self.status}] ({self.url})>"
+        return f"<{self.__class__.__name__} [{self.status}] ({self.url!r})>"
