@@ -147,13 +147,19 @@ class TikTokCrawler(Crawler):
             for post in posts:
                 new_scrape_item = scrape_item.create_child(post.canonical_url)
                 if _DOWNLOAD_SRC_QUALITY_VIDEO:
-                    self.create_task(self.run(new_scrape_item))
+                    self.create_task(self.src_quality_media(new_scrape_item, post.id, post))
                 else:
                     self._handle_post(new_scrape_item, post)
                 scrape_item.add_children()
 
     @error_handling_wrapper
-    async def src_quality_media(self, scrape_item: ScrapeItem, media_id: str) -> None:
+    async def src_quality_media(self, scrape_item: ScrapeItem, media_id: str, post: Post | None = None) -> None:
+        if await self.check_complete(scrape_item.url, scrape_item.url):
+            # The video was downloaded, but the images/audio may not
+            if post:
+                return self.post(scrape_item, post)
+            return await self.media(scrape_item, media_id)
+
         submit_url = _API_SUBMIT_TASK_URL.with_query(url=media_id)
         task_id: str = (await self._api_request(submit_url))["task_id"]
         self.log(f"[{self.FOLDER_DOMAIN}] trying to download {media_id = } with {task_id = }")

@@ -320,20 +320,27 @@ class Crawler(ABC):
                 data = [media_item.as_jsonable_dict()]
                 await self.manager.log_manager.write_jsonl(data)
 
+    async def check_complete(self, url: AbsoluteHttpURL, referer: AbsoluteHttpURL) -> bool:
+        """Checks if this URL has been download before.
+
+        This method is called automatically on a created media item,
+        but Crawler code can use it to skip unnecessary requests"""
+        check_complete = await self.manager.db_manager.history_table.check_complete(self.DOMAIN, url, referer)
+        if check_complete:
+            log(f"Skipping {url} as it has already been downloaded", 10)
+            self.manager.progress_manager.download_progress.add_previously_completed()
+        return check_complete
+
     async def _handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int."
             log(msg, bug=True)
 
-        check_complete = await self.manager.db_manager.history_table.check_complete(
-            self.DOMAIN, media_item.url, media_item.referer
-        )
+        check_complete = await self.check_complete(media_item.url, media_item.referer)
         if check_complete:
             if media_item.album_id:
                 await self.manager.db_manager.history_table.set_album_id(self.DOMAIN, media_item)
-            log(f"Skipping {media_item.url} as it has already been downloaded", 10)
-            self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
         if await self.check_skip_by_config(media_item):
