@@ -124,9 +124,7 @@ class DiscordPost(Post):
 
 
 class PartialUserPost(NamedTuple):
-    """A simplified version of Post that we can built from a soup, for sites that do not have an API
-
-    Pros: We can get the post data + user_name in a single request
+    """A simplified version of Post that we can built from a soup, for sites that do not have an API.
 
     Cons: We need to make a request for every individual post"""
 
@@ -334,8 +332,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if previous_server := self.__known_attachment_servers.get(path):
                 if previous_server != server:
                     msg = (
-                        f"[{self.NAME}] {path} found with multiple "
-                        "different servers: {server = } {previous_server = } "
+                        f"[{self.NAME}] {path} found with multiple "  #
+                        f"different servers: {server = } {previous_server = } "
                     )
                     self.log(msg)
                 continue
@@ -412,8 +410,9 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self._handle_post_content(scrape_item, post)
 
     def __make_file_url(self, file: File) -> AbsoluteHttpURL:
-        server = self.__known_attachment_servers.get(file["path"], "")
-        url = self.parse_url(server + f"/data{file['path']}")
+        path = file["path"]
+        server = self.__known_attachment_servers.get(path) or ""
+        url = self.parse_url(server + f"/data{path}")
         return url.with_query(f=file.get("name") or url.name)
 
     def __make_api_url_w_offset(self, web_url: AbsoluteHttpURL, path: str | None = None) -> AbsoluteHttpURL:
