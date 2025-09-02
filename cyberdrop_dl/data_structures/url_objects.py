@@ -149,6 +149,8 @@ class MediaItem:
     download_folder: Path
     filename: str
     original_filename: str
+    download_filename: str | None = field(default=None)
+    filesize: int | None = field(default=None, compare=False)
     ext: str
     debrid_link: AbsoluteHttpURL | None = field(default=None, compare=False)
     duration: float | None = field(default=None, compare=False)
@@ -160,14 +162,14 @@ class MediaItem:
     datetime: int | None = field(default=None, compare=False)
     parents: list[AbsoluteHttpURL] = field(default_factory=list, compare=False)
     parent_threads: set[AbsoluteHttpURL] = field(default_factory=set, compare=False)
-    parent_media_item: MediaItem | None = field(default=None, compare=False)
-    download_filename: str | None = field(default=None)
-    filesize: int | None = field(default=None, compare=False)
+
     current_attempt: int = field(default=0, compare=False)
     partial_file: Path = None  # type: ignore
     complete_file: Path = None  # type: ignore
     hash: str | None = field(default=None, compare=False)
     downloaded: bool = field(default=False, compare=False)
+
+    parent_media_item: MediaItem | None = field(default=None, compare=False)
     _task_id: TaskID | None = field(default=None, compare=False)
 
     @staticmethod
@@ -225,7 +227,9 @@ class MediaItem:
             assert isinstance(self.datetime, int), f"Invalid {self.datetime =!r} from {self.referer}"
             item["datetime"] = datetime.datetime.fromtimestamp(self.datetime)
         item["attempts"] = item.pop("current_attempt")
-        for name in ("fallbacks", "_task_id"):
+        if self.hash:
+            item["hash"] = f"xxh128:{self.hash}"
+        for name in ("fallbacks", "_task_id", "is_segment", "parent_media_item"):
             _ = item.pop(name)
         return item
 
@@ -256,18 +260,18 @@ class ScrapeItem:
         if not title or self.retry:
             return
         title = sanitize_folder(title)
+        if title.endswith(")") and " (" in title:
+            for part in reversed(self.parent_title.split("/")):
+                if part.endswith(")") and " (" in part:
+                    last_domain_suffix = part.rpartition(" (")[-1]
+                    break
+            else:
+                last_domain_suffix = None
 
-        for part in reversed(self.parent_title.split("/")):
-            if part.endswith(")") and " (" in part:
-                last_domain_suffix = part.rpartition(" (")[-1]
-                break
-        else:
-            last_domain_suffix = None
-
-        if last_domain_suffix and title.endswith(")") and " (" in title:
-            og_title, _, domain_suffix = title.rpartition(" (")
-            if last_domain_suffix == domain_suffix:
-                title = og_title
+            if last_domain_suffix:
+                og_title, _, domain_suffix = title.rpartition(" (")
+                if last_domain_suffix == domain_suffix:
+                    title = og_title
 
         self.parent_title = (self.parent_title + "/" + title) if self.parent_title else title
 
