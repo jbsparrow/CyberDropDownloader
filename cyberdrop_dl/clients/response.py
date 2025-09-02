@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 from json import loads as json_loads
 from typing import TYPE_CHECKING, Any
 
@@ -16,34 +17,56 @@ if TYPE_CHECKING:
     from curl_cffi.requests.models import Response as CurlResponse
 
 
+@dataclasses.dataclass(slots=True, weakref_slot=True)
 class AbstractResponse:
-    """Class to represent common methods and attributes between aiohttp ClientResponse and a CurlResponse"""
+    """Class to represent common methods and attributes between an `aiohttp.ClientResponse` and a `CurlResponse`"""
 
-    __slots__ = ("_read_lock", "_resp", "content_type", "headers", "location", "status", "url")
+    content_type: str
+    status: int
+    headers: CIMultiDictProxy[str]
+    url: AbsoluteHttpURL
+    location: AbsoluteHttpURL | None
 
-    def __init__(self, response: AnyResponse | CurlResponse) -> None:
-        self._resp = response
-        self.content_type = (self._resp.headers.get("Content-Type") or "").lower()
+    _resp: AnyResponse | CurlResponse | None = None
+    _text: str = ""
+    _read_lock: asyncio.Lock = dataclasses.field(init=False, default_factory=asyncio.Lock)
+
+    @staticmethod
+    def from_resp(response: AnyResponse | CurlResponse) -> AbstractResponse:
         if isinstance(response, AnyResponse):
-            self.status = response.status
-            self.headers = response.headers
+            status = response.status
+            headers = response.headers
         else:
-            self.status = response.status_code
-            self.headers = CIMultiDictProxy(CIMultiDict({k: v or "" for k, v in response.headers}))
+            status = response.status_code
+            headers = CIMultiDictProxy(CIMultiDict({k: v or "" for k, v in response.headers}))
 
-        self.url = AbsoluteHttpURL(response.url)
+        url = AbsoluteHttpURL(response.url)
         if location := response.headers.get("location"):
-            self.location = parse_url(location, self.url.origin(), trim=False)
+            location = parse_url(location, url.origin(), trim=False)
         else:
-            self.location = None
-
-        self._read_lock = asyncio.Lock()
+            location = None
+        return AbstractResponse(
+            content_type=(response.headers.get("Content-Type") or "").lower(),
+            status=status,
+            headers=headers,
+            url=url,
+            location=location,
+            _resp=response,
+        )
 
     async def text(self) -> str:
+        if self._text:
+            return self._text
+
+        assert self._resp is not None
         async with self._read_lock:
+            if self._text:
+                return self._text
             if isinstance(self._resp, AnyResponse):
-                return await self._resp.text()
-            return self._resp.text
+                self._text = await self._resp.text()
+            else:
+                self._text = self._resp.text
+        return self._text
 
     async def soup(self) -> BeautifulSoup:
         if "text" in self.content_type or "html" in self.content_type:

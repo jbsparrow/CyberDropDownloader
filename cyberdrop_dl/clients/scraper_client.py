@@ -5,7 +5,7 @@ import contextlib
 from datetime import datetime
 from json import dumps as json_dumps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import cyberdrop_dl.constants as constants
 from cyberdrop_dl.clients.response import AbstractResponse
@@ -66,7 +66,7 @@ class ScraperClient:
             async with self.client_manager.cache_control(self.client_manager._session, disabled=cache_disabled):
                 response = await self.client_manager._session._request(method, url, **request_params)
 
-        abs_resp = AbstractResponse(response)
+        abs_resp = AbstractResponse.from_resp(response)
         exc = None
         try:
             await self.client_manager.check_http_status(response)
@@ -103,7 +103,7 @@ class ScraperClient:
 
         content: str = ""
         try:
-            content: str = (await response.soup()).prettify(formatter="html")
+            content: str = cast("str", (await response.soup()).prettify(formatter="html"))
         except (UnicodeDecodeError, InvalidContentTypeError):
             pass
 
