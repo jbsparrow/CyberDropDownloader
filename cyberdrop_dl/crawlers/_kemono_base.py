@@ -7,7 +7,7 @@ import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
 from json import loads as json_loads
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple, NotRequired, ParamSpec
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, NamedTuple, NotRequired, ParamSpec
 
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
@@ -206,8 +206,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 return await self.post(scrape_item)
             case [service, "user", _] if service in self.SERVICES:
                 return await self.profile(scrape_item)
-            case ["favorites", _]:
-                return await self.favorites(scrape_item)
+            case ["favorites", _] if (type_ := scrape_item.url.query.get("type")) in ("post", "artist"):
+                return await self.favorites(scrape_item, type_)
             case ["posts"] if search_query := scrape_item.url.query.get("q"):
                 return await self.search(scrape_item, search_query)
             case ["discord", "server", server_id]:
@@ -290,22 +290,21 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     @fallback_if_no_api
     @error_handling_wrapper
-    async def favorites(self, scrape_item: ScrapeItem) -> None:
+    async def favorites(self, scrape_item: ScrapeItem, type_: Literal["post", "artist"]) -> None:
         if not self.session_cookie:
-            raise ScrapeError(401, "No session cookie found in the config file, cannot scrape favorites")
+            msg = "No session cookie found in the config file, cannot scrape favorites"
+            raise ScrapeError(401, msg)
 
-        is_post = scrape_item.url.query.get("type") == "post"
-        title = "My favorite posts" if is_post else "My favorite artists"
+        title = f"My favorite {type_}s"
         scrape_item.setup_as_profile(self.create_title(title))
         self.update_cookies({"session": self.session_cookie})
-        api_url = self.API_ENTRYPOINT / "account/favorites"
-        query_url = api_url.with_query(type="post" if is_post else "artist")
-        json_resp: list[dict[str, Any]] = await self.__api_request(query_url)
+        query_url = (self.API_ENTRYPOINT / "account/favorites").with_query(type=type_)
+        resp: list[dict[str, Any]] = await self.__api_request(query_url)
         self.update_cookies({"session": ""})
 
-        for item in json_resp:
+        for item in resp:
             url = self.PRIMARY_URL / item["service"] / "user" / item["user"]
-            if is_post:
+            if type_ == "post":
                 url = url / "post" / item["id"]
 
             new_scrape_item = scrape_item.create_child(url)
@@ -374,6 +373,17 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             self.handle_external_links(new_scrape_item)
             scrape_item.add_children()
 
+    async def _get_usernames(self, api_url: AbsoluteHttpURL) -> None:
+        try:
+            json_resp: list[dict[str, Any]] = await self.__api_request(api_url)
+            self._user_names = {User(u["service"], u.get("user_id") or u["id"]): u["name"] for u in json_resp}
+        except Exception:
+            pass
+
+        if not self._user_names:
+            self.log(f"Unable to get list of creators from {self.NAME}. Crawler has been disabled")
+            self.disabled = True
+
     """~~~~~~~~  PRIVATE METHODS, should never be overriden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def __parse_yarl_urls(self, post: Post) -> Generator[AbsoluteHttpURL]:
@@ -412,17 +422,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         if query := web_url.query.get("q"):
             return api_url.update_query(o=offset, q=query)
         return api_url.update_query(o=offset)
-
-    async def _get_usernames(self, api_url: AbsoluteHttpURL) -> None:
-        try:
-            json_resp: list[dict[str, Any]] = await self.__api_request(api_url)
-            self._user_names = {User(u["service"], u.get("user_id") or u["id"]): u["name"] for u in json_resp}
-        except Exception:
-            pass
-
-        if not self._user_names:
-            self.log(f"Unable to get list of creators from {self.NAME}. Crawler has been disabled")
-            self.disabled = True
 
     async def __get_discord_server(self, server_id: str) -> DiscordServer:
         """Get discord server information, making new API calls if needed."""
@@ -474,6 +473,25 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         async with self.request_limiter:
             return await self.client.get_soup(self.DOMAIN, url)
 
+    async def __api_request(self, url: AbsoluteHttpURL) -> Any:
+        """Get JSON from the API, with a custom Accept header."""
+
+        async with self.request_limiter:
+            response, soup_or_none = await self.client._get(
+                self.DOMAIN,
+                url,
+                headers={
+                    "Accept": "text/css",
+                },
+            )
+
+        if soup_or_none:
+            return json_loads(soup_or_none.text)
+
+        # When using the 'text/css' header, the response is missing the charset header
+        # and charset detection may return a random codec if the body has non english chars, so we force utf-8
+        return json_loads(await response.text(encoding="utf-8"))
+
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     @error_handling_wrapper
@@ -520,25 +538,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self._handle_user_post(scrape_item, post)
 
     post_w_no_api_task = auto_task_id(post_w_no_api)
-
-    async def __api_request(self, url: AbsoluteHttpURL) -> Any:
-        """Get JSON from the API, with a custom Accept header."""
-
-        async with self.request_limiter:
-            response, soup_or_none = await self.client._get(
-                self.DOMAIN,
-                url,
-                headers={
-                    "Accept": "text/css",
-                },
-            )
-
-        if soup_or_none:
-            return json_loads(soup_or_none.text)
-
-        # When using the 'text/css' header, the response is missing the charset header
-        # and charset detection may return a random codec if the body has non english chars, so we force utf-8
-        return json_loads(await response.text(encoding="utf-8"))
 
 
 def _thumbnail_to_src(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
