@@ -14,8 +14,11 @@ from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidConten
 from cyberdrop_dl.utils.utilities import sanitize_filename
 
 if TYPE_CHECKING:
+    from aiohttp import ClientResponse
+    from aiohttp_client_cache import CachedResponse
     from bs4 import BeautifulSoup
     from curl_cffi.requests.impersonate import BrowserTypeLiteral
+    from curl_cffi.requests.models import Response as CurlResponse
     from curl_cffi.requests.session import HttpMethod
 
     from cyberdrop_dl.managers.client_manager import ClientManager
@@ -66,22 +69,34 @@ class ScraperClient:
             async with self.client_manager.cache_control(self.client_manager._session, disabled=cache_disabled):
                 response = await self.client_manager._session._request(method, url, **request_params)
 
-        abs_resp = AbstractResponse.from_resp(response)
-        exc = None
         try:
-            await self.client_manager.check_http_status(response)
+            abs_resp = await self._check_response(response, url, data)
         except (DDOSGuardError, DownloadError) as e:
             exc = e
             raise
-
         else:
             if impersonate:
-                self.client_manager.cookies.update_cookies(
-                    self.client_manager._curl_session.cookies.get_dict(url.host), url
-                )
+                curl_cookies = self.client_manager._curl_session.cookies.get_dict(url.host)
+                self.client_manager.cookies.update_cookies(curl_cookies, url)
+
             return abs_resp
         finally:
             self.client_manager.manager.task_group.create_task(self.write_soup_to_disk(url, abs_resp, exc))
+
+    async def _check_response(
+        self,
+        response: CurlResponse | ClientResponse | CachedResponse,
+        url: AbsoluteHttpURL,
+        data: Any | None,
+    ):
+        abs_resp = AbstractResponse.from_resp(response)
+        try:
+            await self.client_manager.check_http_status(response)
+        except DDOSGuardError:
+            flare_solution = await self.client_manager.flaresolverr.request(url, data)
+            return AbstractResponse.from_flaresolverr(flare_solution)
+        else:
+            return abs_resp
 
     @copy_signature(_request)
     async def _request_json(self, *args, **kwargs) -> Any:

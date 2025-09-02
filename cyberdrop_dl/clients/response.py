@@ -5,7 +5,8 @@ import dataclasses
 from json import loads as json_loads
 from typing import TYPE_CHECKING, Any
 
-from aiohttp_client_cache.response import AnyResponse
+from aiohttp import ClientResponse
+from aiohttp_client_cache.response import CachedResponse
 from bs4 import BeautifulSoup
 from multidict import CIMultiDict, CIMultiDictProxy
 
@@ -15,6 +16,8 @@ from cyberdrop_dl.utils.utilities import parse_url
 
 if TYPE_CHECKING:
     from curl_cffi.requests.models import Response as CurlResponse
+
+    from cyberdrop_dl.clients.flaresolverr import FlareSolverrSolution
 
 
 @dataclasses.dataclass(slots=True, weakref_slot=True)
@@ -27,13 +30,13 @@ class AbstractResponse:
     url: AbsoluteHttpURL
     location: AbsoluteHttpURL | None
 
-    _resp: AnyResponse | CurlResponse | None = None
+    _resp: ClientResponse | CachedResponse | CurlResponse | None = None
     _text: str = ""
     _read_lock: asyncio.Lock = dataclasses.field(init=False, default_factory=asyncio.Lock)
 
-    @staticmethod
-    def from_resp(response: AnyResponse | CurlResponse) -> AbstractResponse:
-        if isinstance(response, AnyResponse):
+    @classmethod
+    def from_resp(cls, response: ClientResponse | CachedResponse | CurlResponse) -> AbstractResponse:
+        if isinstance(response, ClientResponse | CachedResponse):
             status = response.status
             headers = response.headers
         else:
@@ -41,18 +44,38 @@ class AbstractResponse:
             headers = CIMultiDictProxy(CIMultiDict({k: v or "" for k, v in response.headers}))
 
         url = AbsoluteHttpURL(response.url)
-        if location := response.headers.get("location"):
-            location = parse_url(location, url.origin(), trim=False)
-        else:
-            location = None
+        content_type, location = cls.parse_headers(url, headers)
         return AbstractResponse(
-            content_type=(response.headers.get("Content-Type") or "").lower(),
+            content_type=content_type,
             status=status,
             headers=headers,
             url=url,
             location=location,
             _resp=response,
         )
+
+    @classmethod
+    def from_flaresolverr(cls, sol: FlareSolverrSolution) -> AbstractResponse:
+        content_type, location = AbstractResponse.parse_headers(sol.url, sol.headers)
+
+        return AbstractResponse(
+            content_type=content_type,
+            status=sol.status,
+            headers=sol.headers,
+            url=sol.url,
+            location=location,
+            _text=sol.content,
+        )
+
+    @staticmethod
+    def parse_headers(url: AbsoluteHttpURL, headers: CIMultiDictProxy[str]):
+        if location := headers.get("location"):
+            location = parse_url(location, url.origin(), trim=False)
+        else:
+            location = None
+
+        content_type = (headers.get("Content-Type") or "").lower()
+        return content_type, location
 
     async def text(self, encoding: str | None = None) -> str:
         if self._text:
@@ -62,7 +85,7 @@ class AbstractResponse:
         async with self._read_lock:
             if self._text:
                 return self._text
-            if isinstance(self._resp, AnyResponse):
+            if isinstance(self._resp, ClientResponse | CachedResponse):
                 self._text = await self._resp.text(encoding)
             else:
                 if encoding:

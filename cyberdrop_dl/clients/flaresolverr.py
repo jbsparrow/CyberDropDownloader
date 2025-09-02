@@ -33,17 +33,17 @@ class _Command(StrEnum):
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
-class _FlareSolverrSolution:
+class FlareSolverrSolution:
     content: str
     cookies: SimpleCookie
-    headers: CIMultiDictProxy
+    headers: CIMultiDictProxy[str]
     url: AbsoluteHttpURL
     user_agent: str
     status: int
 
     @staticmethod
-    def from_dict(solution: dict[str, Any]) -> _FlareSolverrSolution:
-        return _FlareSolverrSolution(
+    def from_dict(solution: dict[str, Any]) -> FlareSolverrSolution:
+        return FlareSolverrSolution(
             status=int(solution["status"]),
             cookies=_parse_cookies(solution.get("cookies") or []),
             user_agent=solution["userAgent"],
@@ -58,12 +58,12 @@ class _FlareSolverrResponse:
     status: str
     message: str
     ok: bool
-    solution: _FlareSolverrSolution | None
+    solution: FlareSolverrSolution | None
 
     @staticmethod
     def from_dict(resp: dict[str, Any]) -> _FlareSolverrResponse:
         status, message = resp["status"], resp["message"]
-        solution = _FlareSolverrSolution.from_dict(sol) if (sol := resp.get("solution")) else None
+        solution = FlareSolverrSolution.from_dict(sol) if (sol := resp.get("solution")) else None
         return _FlareSolverrResponse(status, message, status == "ok", solution)
 
 
@@ -88,7 +88,7 @@ class FlareSolverr:
     async def close(self):
         await self._destroy_session()
 
-    async def request(self, url: AbsoluteHttpURL, data: Any = None) -> _FlareSolverrSolution:
+    async def request(self, url: AbsoluteHttpURL, data: Any = None) -> FlareSolverrSolution:
         # TODO: make this method return an abstract response
 
         invalid_response_error = DDOSGuardError("Invalid response from flaresolverr")
@@ -118,7 +118,7 @@ class FlareSolverr:
         self._check_user_agent(resp.solution)
         return resp.solution
 
-    def _check_user_agent(self, solution: _FlareSolverrSolution) -> None:
+    def _check_user_agent(self, solution: FlareSolverrSolution) -> None:
         cdl_user_agent = self.manager.global_config.general.user_agent
         mismatch_ua_msg = (
             "Config user_agent and flaresolverr user_agent do not match:"
