@@ -693,7 +693,8 @@ class Crawler(ABC):
         only_truncate_stem: bool = True,
     ) -> str:
         calling_args = {name: value for name, value in locals().items() if value is not None and name not in ("self",)}
-        stem = sanitize_filename(Path(name).as_posix().replace("/", "-"))  # remove OS separators (if any)
+        # remove OS separators (if any)
+        stem = sanitize_filename(Path(name).as_posix().replace("/", "-")).strip()
         extra_info: list[str] = []
 
         if _placeholder_config.include_file_id and file_id:

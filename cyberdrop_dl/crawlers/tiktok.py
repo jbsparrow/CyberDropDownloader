@@ -241,14 +241,13 @@ class TikTokCrawler(Crawler):
 
         video_url = self.parse_url(post.play, trim=False)
         ext = ".mp4"
-        name = post.id + ext
         custom_filename = f"{post.id}{'_original'}{ext}" if post.is_src_quality else None
         self.create_task(
             self.handle_file(
                 scrape_item.url,
                 scrape_item,
-                filename=name,
-                ext=".mp4",
+                post.id + ext,
+                ext,
                 debrid_link=video_url,
                 custom_filename=custom_filename,
             )
