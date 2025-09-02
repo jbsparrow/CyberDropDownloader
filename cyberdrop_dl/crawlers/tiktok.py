@@ -21,7 +21,7 @@ _DOWNLOAD_SRC_QUALITY_VIDEO = True
 _API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
 _API_SUBMIT_TASK_URL = _API_URL / "video/task/submit"
 _API_TASK_RESULT_URL = _API_URL / "video/task/result"
-_API_USER_POST_URL = _API_URL / "user" / "posts"
+_API_USER_POST_URL = _API_URL / "user/posts"
 
 
 _PRIMARY_URL = AbsoluteHttpURL("https://www.tiktok.com/")
@@ -149,7 +149,7 @@ class TikTokCrawler(Crawler):
                 if _DOWNLOAD_SRC_QUALITY_VIDEO:
                     self.create_task(self.src_quality_media(new_scrape_item, post.id, post))
                 else:
-                    self._handle_post(new_scrape_item, post)
+                    self.post(new_scrape_item, post)
                 scrape_item.add_children()
 
     @error_handling_wrapper
@@ -195,9 +195,6 @@ class TikTokCrawler(Crawler):
         scrape_item.url = post.canonical_url
         title = self.create_title(post.author.unique_id, post.id)
         scrape_item.add_to_parent_title(title)
-        self._handle_post(scrape_item, post)
-
-    def _handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
         post_title = self.create_separate_post_title(post.title, post.id, post.create_time)
         scrape_item.setup_as_album(post_title, album_id=post.id)
         scrape_item.possible_datetime = post.create_time
@@ -242,8 +239,6 @@ class TikTokCrawler(Crawler):
             return
 
         audio, ext = post.music_info, ".mp3"
-        if not audio.original:
-            pass
         audio_url = self.parse_url(audio.play, trim=False)
         filename = self.create_custom_filename(audio.title, ext, file_id=audio.id)
         self.create_task(
