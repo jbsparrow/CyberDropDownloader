@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import inspect
+import itertools
 import json
 import os
 import platform
@@ -93,11 +94,12 @@ def error_handling_wrapper(
         except NotImplementedError as e:
             error_log_msg = ErrorLogMessage("NotImplemented")
             exc_info = e
-        except TimeoutError:
-            error_log_msg = ErrorLogMessage("Timeout")
+        except TimeoutError as e:
+            error_log_msg = ErrorLogMessage("Timeout", repr(e))
         except ClientConnectorError as e:
             ui_failure = "Client Connector Error"
-            log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            suffix = "" if (link.host or "").startswith(e.host) else f" from {link}"
+            log_msg = f"{e}{suffix}. If you're using a VPN, try turning it off"
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except ValidationError as e:
             exc_info = e
@@ -616,6 +618,28 @@ def get_valid_kwargs(func: Callable[..., Any], kwargs: Mapping[str, T], accept_k
 
 def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
+
+
+def type_adapter(func: Callable[..., R], aliases: dict[str, str] | None = None) -> Callable[[dict[str, Any]], R]:
+    """Like `pydantic.TypeAdapter`, but without type validation of attributes (faster)
+
+    Ignores attributes with `None` as value"""
+    param_names = inspect.signature(func).parameters.keys()
+
+    def call(kwargs: dict[str, Any]):
+        if aliases:
+            for original, alias in aliases.items():
+                if original not in kwargs:
+                    kwargs[original] = kwargs.get(alias)
+
+        return func(**{k: v for k, v in kwargs.items() if k in param_names and v is not None})
+
+    return call
+
+
+def xor_decrypt(encrypted_data: bytes, key: bytes) -> str:
+    data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, itertools.cycle(key)))
+    return data.decode("utf-8", errors="ignore")
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
