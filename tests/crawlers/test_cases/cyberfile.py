@@ -127,4 +127,17 @@ TEST_CASES = [
             }
         ],
     ),
+    (  # Shared folder w only 1 file should be "loose files"
+        "https://cyberfile.me/shared/2c96uzj717",
+        [
+            {
+                "url": r"re:\?download_token\=",
+                "filename": "Scene 1 From Its A Mommy Thing 14 - 1080p.mp4",
+                "referer": "https://cyberfile.me/7tko",
+                "download_folder": r"re:Loose Files \(Cyberfile\)",
+                "album_id": "2c96uzj717",
+                "datetime": 1710334967,
+            }
+        ],
+    ),
 ]

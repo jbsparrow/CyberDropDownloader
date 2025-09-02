@@ -22,6 +22,25 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.5.0] - 2025-09-02
+
+### Added
+
+- Support for subfolders URLs (Mega.nz)
+
+### Changed
+
+- Removed `is_segment` and `parent_media_item` from output jsonl file
+- The `hash` attribute of the jsonl file now has `xxh128:` as prefix
+
+### Fixed
+
+- API response parse (RealDebrid)
+- Nested folders for the same creator (TikTok)
+- Handle paginated albums (Bunkr)
+- Handle encrypted URLs (xhamster)
+- Incompatible dependencies declarations causing CDL to crash on startup
+
 ## [7.4.1] - 2025-08-23
 
 ### Changed
