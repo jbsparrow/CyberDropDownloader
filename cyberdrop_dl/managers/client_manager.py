@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal, Self, overload
 import aiohttp
 import certifi
 import truststore
-from aiohttp import ClientResponse, ClientSession, ContentTypeError
+from aiohttp import ClientResponse, ClientSession
 from aiohttp_client_cache.response import CachedResponse
 from aiohttp_client_cache.session import CachedSession
 from aiolimiter import AsyncLimiter
@@ -27,7 +27,6 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.exceptions import (
     DDOSGuardError,
     DownloadError,
-    InvalidContentTypeError,
     ScrapeError,
     TooManyCrawlerErrors,
 )
@@ -385,10 +384,15 @@ class ClientManager:
 
         def check_etag() -> None:
             if download and (e_tag := response.headers.get("ETag")) in _DOWNLOAD_ERROR_ETAGS:
-                message = _DOWNLOAD_ERROR_ETAGS.get(e_tag)
+                message = _DOWNLOAD_ERROR_ETAGS[e_tag]
                 raise DownloadError(HTTPStatus.NOT_FOUND, message=message)
 
         async def check_ddos_guard() -> BeautifulSoup | None:
+            if "html" not in response.content_type:
+                return
+
+            # TODO: use the response text instead of the raw content to prevent double encoding detection
+
             try:
                 soup = BeautifulSoup(await response.text(), "html.parser")
             except UnicodeDecodeError:
@@ -399,16 +403,18 @@ class ClientManager:
                 return soup
 
         async def check_json_status() -> None:
+            if "json" not in response.content_type:
+                return
+
+            # TODO: Define these checks inside their actual crawlers
+            # and make them register them  on instantation
             if not any(domain in response.url.host for domain in ("gofile", "imgur")):
                 return
 
-            try:
-                json_resp: dict[str, Any] | None = await response.json()
-            except (ContentTypeError, InvalidContentTypeError):
-                return
-
+            json_resp: dict[str, Any] | None = await response.json()
             if not json_resp:
                 return
+
             json_status: str | int | None = json_resp.get("status")
             if json_status and isinstance(json_status, str) and "notFound" in json_status:
                 raise ScrapeError(404)

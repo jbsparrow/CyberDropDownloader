@@ -337,15 +337,20 @@ class Crawler(ABC):
 
         self.create_task(self.handle_media_item(media_item, m3u8))
 
-    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
+    @final
+    async def _download(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None) -> None:
         try:
-            return await self._handle_media_item(media_item, m3u8)
+            if m3u8:
+                await self.downloader.download_hls(media_item, m3u8)
+            else:
+                await self.downloader.run(media_item)
+
         finally:
             if self.manager.config_manager.settings_data.files.dump_json:
                 data = [media_item.as_jsonable_dict()]
                 await self.manager.log_manager.write_jsonl(data)
 
-    async def _handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
+    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int."
@@ -365,11 +370,7 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if not m3u8:
-            self.manager.task_group.create_task(self.downloader.run(media_item))
-            return
-
-        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8))
+        self.create_task(self._download(media_item, m3u8))
 
     @final
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
