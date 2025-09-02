@@ -72,11 +72,10 @@ class MusicInfo:
 
     @property
     def canonical_url(self) -> AbsoluteHttpURL:
-        if any(p in self.title.lower() for p in ("original sound", "original audio")):
-            name = f"original-audio-{self.id}"
-        else:
-            name = f"{self.title.replace(' ', '-').lower()}-{self.id}"
-        return _PRIMARY_URL / "music" / name
+        safe_title = self.title.replace(" ", "-").lower()
+        if "original-sound" in safe_title or "original-audio" in safe_title:
+            safe_title = "original-audio"
+        return _PRIMARY_URL / "music" / f"{safe_title}-{self.id}"
 
 
 _parse_author = type_adapter(Author)
