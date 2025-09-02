@@ -83,7 +83,7 @@ class FlareSolverr:
             self.url = None
 
     def __repr__(self):
-        return f"{type(self)}(url={self.url!r})"
+        return f"{type(self).__name__}(url={self.url!r})"
 
     async def close(self):
         await self._destroy_session()
@@ -158,9 +158,7 @@ class FlareSolverr:
                 f"Waiting For Flaresolverr Response [{self._next_request_id()}]"
             ),
         ):
-            response = await self.manager.client_manager.scraper_session._session.post(
-                self.url, json=playload, timeout=timeout
-            )
+            response = await self.manager.client_manager._session.post(self.url, json=playload, timeout=timeout)
 
         return _FlareSolverrResponse.from_dict(await response.json())
 
