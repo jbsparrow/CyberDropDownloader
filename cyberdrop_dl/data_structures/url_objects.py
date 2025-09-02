@@ -120,6 +120,13 @@ if TYPE_CHECKING:
 else:
     AbsoluteHttpURL = yarl.URL
 
+    def copy_signature(_):
+        def call(y):
+            return y
+
+        return call
+
+
 AnyURL = TypeVar("AnyURL", bound=yarl.URL | AbsoluteHttpURL)
 
 

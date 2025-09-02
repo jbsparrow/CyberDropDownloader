@@ -101,17 +101,39 @@ class Crawler(ABC):
     DOMAIN: ClassVar[str]
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
 
+    _RATE_LIMIT: ClassVar[tuple[float, float]] = 25, 1
+    _DOWNLOAD_SLOTS: ClassVar[int | None] = None
+
+    if TYPE_CHECKING:
+        request = ScraperClient._request
+        request_json = ScraperClient._request_json
+        request_soup = ScraperClient._request_soup
+
+    else:
+
+        async def request(self, *args, **kwargs):
+            async with self.client._limiter(self.DOMAIN):
+                return await self.client._request(*args, **kwargs)
+
+        async def request_json(self, *args, **kwargs):
+            async with self.client._limiter(self.DOMAIN):
+                return await self.client._request_json(*args, **kwargs)
+
+        async def request_soup(self, *args, **kwargs):
+            async with self.client._limiter(self.DOMAIN):
+                return await self.client._request_soup(*args, **kwargs)
+
     @final
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.downloader: Downloader = field(init=False)
         self.client: ScraperClient = field(init=False)
         self.startup_lock = asyncio.Lock()
-        self.request_limiter = AsyncLimiter(10, 1)
         self.ready: bool = False
         self.disabled: bool = False
         self.logged_in: bool = False
         self.scraped_items: set[str] = set()
+        self.RATE_LIMIT = AsyncLimiter(*self._RATE_LIMIT)
         self.waiting_items = 0
         self.log = log
         self.log_debug = log_debug
@@ -189,7 +211,10 @@ class Crawler(ABC):
         async with self.startup_lock:
             if self.ready:
                 return
-            self.client = self.manager.client_manager.scraper_session
+            self.client = self.manager.client_manager.scraper_client
+            self.manager.client_manager.rate_limits[self.DOMAIN] = self.RATE_LIMIT
+            if self._DOWNLOAD_SLOTS:
+                self.manager.client_manager.download_slots[self.DOMAIN] = self._DOWNLOAD_SLOTS
             self.downloader = self._init_downloader()
             await self.async_startup()
             self.ready = True
@@ -573,10 +598,8 @@ class Crawler(ABC):
             func = css.select_one_get_attr_or_none
             get_next_page = partial(func, selector=selector, attribute="href")
 
-        get_soup = self.client.get_soup_cffi if cffi else self.client.get_soup
         while True:
-            async with self.request_limiter:
-                soup = await get_soup(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url, impersonate=cffi or None)
             yield soup
             page_url_str = get_next_page(soup)
             if not page_url_str:
@@ -631,11 +654,8 @@ class Crawler(ABC):
         log(msg, bug=True)
 
     async def _get_redirect_url(self, url: AbsoluteHttpURL):
-        async with self.request_limiter:
-            head = await self.client.get_head(self.DOMAIN, url)
-        if location := head.get("location"):
-            return self.parse_url(location, url.origin())
-        return url
+        head = await self.request(url, method="HEAD")
+        return head.location or url
 
     @staticmethod
     def register_cache_filter(
@@ -668,9 +688,7 @@ class Crawler(ABC):
         return m3u8.RenditionGroup(await self._get_m3u8(url, headers))
 
     async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> m3u8.M3U8:
-        headers = headers or {}
-        async with self.request_limiter:
-            content = await self.client.get_text(self.DOMAIN, url, headers)
+        content = await (await self.request(url, headers=headers)).text()
         return m3u8.M3U8(content, url.parent)
 
     def create_custom_filename(
