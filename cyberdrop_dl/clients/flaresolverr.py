@@ -127,9 +127,7 @@ class FlareSolverr:
         )
 
         soup = BeautifulSoup(solution.content, "html.parser")
-        if soup and (
-            self.manager.client_manager.check_ddos_guard(soup) or self.manager.client_manager.check_cloudflare(soup)
-        ):
+        if self.manager.client_manager.check_ddos_guard(soup) or self.manager.client_manager.check_cloudflare(soup):
             if solution.user_agent != cdl_user_agent:
                 raise DDOSGuardError(mismatch_ua_msg)
 
@@ -158,9 +156,12 @@ class FlareSolverr:
                 f"Waiting For Flaresolverr Response [{self._next_request_id()}]"
             ),
         ):
-            response = await self.manager.client_manager._session.post(self.url, json=playload, timeout=timeout)
-
-        return _FlareSolverrResponse.from_dict(await response.json())
+            async with self.manager.client_manager._session.post(
+                self.url,
+                json=playload,
+                timeout=timeout,
+            ) as response:
+                return _FlareSolverrResponse.from_dict(await response.json())
 
     async def _create_session(self) -> None:
         session_id = "cyberdrop-dl"

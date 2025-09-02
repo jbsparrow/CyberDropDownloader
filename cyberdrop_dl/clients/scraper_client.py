@@ -14,11 +14,8 @@ from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidConten
 from cyberdrop_dl.utils.utilities import sanitize_filename
 
 if TYPE_CHECKING:
-    from aiohttp import ClientResponse
-    from aiohttp_client_cache import CachedResponse
     from bs4 import BeautifulSoup
     from curl_cffi.requests.impersonate import BrowserTypeLiteral
-    from curl_cffi.requests.models import Response as CurlResponse
     from curl_cffi.requests.session import HttpMethod
 
     from cyberdrop_dl.managers.client_manager import ClientManager
@@ -64,39 +61,44 @@ class ScraperClient:
                 impersonate = "chrome"
             request_params["impersonate"] = impersonate
             response = await self.client_manager._curl_session.request(method, str(url), **request_params)
-
-        else:
-            async with self.client_manager.cache_control(self.client_manager._session, disabled=cache_disabled):
-                response = await self.client_manager._session._request(method, url, **request_params)
-
-        try:
-            abs_resp = await self._check_response(response, url, data)
-        except (DDOSGuardError, DownloadError) as e:
-            exc = e
-            raise
-        else:
-            if impersonate:
+            try:
+                abs_resp = AbstractResponse.from_resp(response)
+                return await self._process_response(abs_resp, url, data)
+            finally:
                 curl_cookies = self.client_manager._curl_session.cookies.get_dict(url.host)
                 self.client_manager.cookies.update_cookies(curl_cookies, url)
 
+        async with (
+            self.client_manager.cache_control(self.client_manager._session, disabled=cache_disabled),
+            self.client_manager._session.request(method, url, **request_params) as response,
+        ):
+            abs_resp = AbstractResponse.from_resp(response)
+            return await self._process_response(abs_resp, url, data)
+
+    async def _process_response(self, abs_resp: AbstractResponse, url: AbsoluteHttpURL, data: Any | None):
+        exc = None
+        try:
+            abs_resp = await self._check_and_retry_w_flaresolverr(abs_resp, url, data)
             return abs_resp
+        except (DDOSGuardError, DownloadError) as e:
+            exc = e
+            raise
+
         finally:
             self.client_manager.manager.task_group.create_task(self.write_soup_to_disk(url, abs_resp, exc))
 
-    async def _check_response(
+    async def _check_and_retry_w_flaresolverr(
         self,
-        response: CurlResponse | ClientResponse | CachedResponse,
+        abs_resp: AbstractResponse,
         url: AbsoluteHttpURL,
         data: Any | None,
     ):
-        abs_resp = AbstractResponse.from_resp(response)
         try:
-            await self.client_manager.check_http_status(response)
+            await self.client_manager.check_http_status(abs_resp)
+            return abs_resp
         except DDOSGuardError:
             flare_solution = await self.client_manager.flaresolverr.request(url, data)
             return AbstractResponse.from_flaresolverr(flare_solution)
-        else:
-            return abs_resp
 
     @copy_signature(_request)
     async def _request_json(self, *args, **kwargs) -> Any:
