@@ -111,9 +111,10 @@ class Crawler(ABC):
 
     else:
 
+        @contextlib.asynccontextmanager
         async def request(self, *args, **kwargs):
-            async with self.client._limiter(self.DOMAIN):
-                return self.client._request(*args, **kwargs)
+            async with self.client._limiter(self.DOMAIN), self.client._request(*args, **kwargs) as resp:
+                yield resp
 
         async def request_json(self, *args, **kwargs):
             async with self.client._limiter(self.DOMAIN):
