@@ -7,13 +7,13 @@ It calls checks_complete_by_referer several times even if no request is going to
 
 from __future__ import annotations
 
+import itertools
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.downloader import mega_nz as mega
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
-from cyberdrop_dl.utils import aio
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -153,6 +153,7 @@ class MegaNzCrawler(Crawler):
     ) -> None:
         if single_file_id and await self.check_complete_from_referer(scrape_item.url):
             return
+
         nodes = await self.downloader.api.get_nodes_public_folder(folder_id, shared_key)
         root_id = root_id or next(iter(nodes))
         folder_name = nodes[root_id]["attributes"]["n"]
@@ -179,9 +180,7 @@ class MegaNzCrawler(Crawler):
                 return True
             return False
 
-        files = aio.filterfalse(exclude_node, filesystem.items())
-
-        async for path, node in files:
+        for path, node in itertools.filterfalse(exclude_node, filesystem.items()):
             file = cast("mega.File", node)
             file_id = file["h"]
             file_fragment = f"{shared_key}/file/{file_id}"
