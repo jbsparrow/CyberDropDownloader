@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import inspect
+import itertools
 import json
 import os
 import platform
@@ -20,8 +21,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, Protoco
 import aiofiles
 import rich
 from aiohttp import ClientConnectorError, FormData
-from aiohttp_client_cache.response import AnyResponse
-from bs4 import BeautifulSoup
 from pydantic import ValidationError
 from yarl import URL
 
@@ -42,7 +41,6 @@ from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Iterable, Mapping
 
-    from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
 
     from cyberdrop_dl.crawlers import Crawler
@@ -93,11 +91,12 @@ def error_handling_wrapper(
         except NotImplementedError as e:
             error_log_msg = ErrorLogMessage("NotImplemented")
             exc_info = e
-        except TimeoutError:
-            error_log_msg = ErrorLogMessage("Timeout")
+        except TimeoutError as e:
+            error_log_msg = ErrorLogMessage("Timeout", repr(e))
         except ClientConnectorError as e:
             ui_failure = "Client Connector Error"
-            log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            suffix = "" if (link.host or "").startswith(e.host) else f" from {link}"
+            log_msg = f"{e}{suffix}. If you're using a VPN, try turning it off"
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except ValidationError as e:
             exc_info = e
@@ -504,16 +503,6 @@ def remove_parts(
     return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
 
 
-async def get_soup_no_error(response: CurlResponse | AnyResponse) -> BeautifulSoup | None:
-    # We can't use `CurlResponse` at runtime so we check the reverse
-    with contextlib.suppress(UnicodeDecodeError):
-        if isinstance(response, AnyResponse):
-            content = await response.read()  # aiohttp
-        else:
-            content = response.content  # curl response
-        return BeautifulSoup(content, "html.parser")
-
-
 def get_size_or_none(path: Path) -> int | None:
     """Checks if this is a file and returns its size with a single system call.
 
@@ -616,6 +605,28 @@ def get_valid_kwargs(func: Callable[..., Any], kwargs: Mapping[str, T], accept_k
 
 def call_w_valid_kwargs(cls: Callable[..., R], kwargs: Mapping[str, Any]) -> R:
     return cls(**get_valid_kwargs(cls, kwargs))
+
+
+def type_adapter(func: Callable[..., R], aliases: dict[str, str] | None = None) -> Callable[[dict[str, Any]], R]:
+    """Like `pydantic.TypeAdapter`, but without type validation of attributes (faster)
+
+    Ignores attributes with `None` as value"""
+    param_names = inspect.signature(func).parameters.keys()
+
+    def call(kwargs: dict[str, Any]):
+        if aliases:
+            for original, alias in aliases.items():
+                if original not in kwargs:
+                    kwargs[original] = kwargs.get(alias)
+
+        return func(**{k: v for k, v in kwargs.items() if k in param_names and v is not None})
+
+    return call
+
+
+def xor_decrypt(encrypted_data: bytes, key: bytes) -> str:
+    data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, itertools.cycle(key)))
+    return data.decode("utf-8", errors="ignore")
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

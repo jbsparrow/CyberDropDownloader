@@ -43,6 +43,7 @@ class FourChanCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Board": "/<board>", "Thread": "/thread"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "4chan"
+    _DOWNLOAD_SLOTS: ClassVar[int | None] = 1
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)

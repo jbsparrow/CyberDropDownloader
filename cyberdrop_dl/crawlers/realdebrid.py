@@ -164,7 +164,7 @@ class RealDebridCrawler(Crawler):
             response = await self.client._session.request(
                 method, _API_ENTRYPOINT / path, headers=self._headers, data=data_
             )
-        return _handle_api_response(response)
+        return await _handle_api_response(response)
 
 
 def _guess_folder(url: AbsoluteHttpURL) -> str:

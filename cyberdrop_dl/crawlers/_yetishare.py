@@ -71,7 +71,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, folder_id: str, is_shared: bool = False) -> None:
-        # Make request to update cookies. Access to folders in saved on cookies
+        # Make request to update cookies. Access to folders is saved in cookies
         async with self.request_limiter:
             soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
@@ -114,8 +114,9 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
             for file in ajax_soup.select(Selector.FILES):
                 file_url = self.parse_url(css.get_attr(file, "dtfullurl"))
-                content_id = css.get_attr(file, "fileid")
+                content_id = int(css.get_attr(file, "fileid"))
                 new_scrape_item = scrape_item.create_child(file_url)
+                new_scrape_item.part_of_album = not is_shared
                 self.create_task(self._handle_content_id_task(new_scrape_item, content_id))
                 scrape_item.add_children()
 

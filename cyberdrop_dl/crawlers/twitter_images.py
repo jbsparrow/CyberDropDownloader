@@ -34,7 +34,7 @@ class TwimgCrawler(Crawler):
 
         # name could be "orig", "4096x4096", "large", "medium", or "small"
         # `orig`` is original quality but it's not always available, same as "4096x4096"
-        # "large", "medium", or "small" are always avaliable
+        # "large", "medium", or "small" are always available
 
         link = next(_make_download_urls(link.with_host(CDN_HOST)))
         filename = Path(link.name).with_suffix(".jpg").as_posix()

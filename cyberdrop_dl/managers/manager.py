@@ -13,7 +13,6 @@ from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
 from cyberdrop_dl.managers.config_manager import ConfigManager
 from cyberdrop_dl.managers.db_manager import DBManager
-from cyberdrop_dl.managers.download_manager import DownloadManager
 from cyberdrop_dl.managers.hash_manager import HashManager
 from cyberdrop_dl.managers.live_manager import LiveManager
 from cyberdrop_dl.managers.log_manager import LogManager
@@ -50,7 +49,6 @@ class Manager:
         self.client_manager: ClientManager = field(init=False)
         self.storage_manager: StorageManager = field(init=False)
 
-        self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
 
@@ -145,9 +143,6 @@ class Manager:
 
         elif self.states.RUNNING.is_set():
             await self.storage_manager.reset()  # Reset total downloaded data if running multiple configs
-
-        if not isinstance(self.download_manager, DownloadManager):
-            self.download_manager = DownloadManager(self)
 
         await self.async_db_hash_startup()
 
