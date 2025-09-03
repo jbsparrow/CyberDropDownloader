@@ -5,66 +5,15 @@ from __future__ import annotations
 import asyncio
 import builtins
 import pathlib
-from collections.abc import AsyncIterable, Awaitable, Sized
 from stat import S_ISREG
 from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Awaitable
 
     _P = ParamSpec("_P")
     _T = TypeVar("_T")
     _R = TypeVar("_R")
-
-
-async def enumerate(
-    iterable: Iterable[_T],
-    batch_size: int = 200,
-    start: int = 0,
-) -> AsyncIterable[tuple[int, _T]]:
-    """Asynchronously enumerates a normal iterable.
-
-    Calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
-    """
-
-    if isinstance(iterable, Sized):
-        size = len(iterable)
-        if size == 0:
-            return
-        elif size <= batch_size:
-            for pair in builtins.enumerate(iterable, start):
-                yield pair
-            return
-
-    for index, value in builtins.enumerate(iterable, start):
-        yield index, value
-        if (index + 1) % batch_size == 0:
-            await asyncio.sleep(0)
-
-
-async def iter(iterable: Iterable[_T], batch_size: int = 200) -> AsyncIterable[_T]:
-    """Asynchronously yield values from a normal iterable.
-
-    Calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
-    """
-    async for _, value in enumerate(iterable, batch_size):
-        yield value
-
-
-async def filterfalse(
-    predicate: Callable[[_T], bool], iterable: Iterable[_T], batch_size: int = 200
-) -> AsyncIterable[_T]:
-    """Like itertool.filterfase, yields those items for which the predicate is `False`.
-
-    Calls `asyncio.sleep(0)` after a batch of `batch_size` items have been processed.
-    """
-
-    async for value in iter(iterable, batch_size):
-        skip = predicate(value)
-        if skip:
-            continue
-
-        yield value
 
 
 async def gather(*coros: Awaitable[_T], batch_size: int = 10) -> list[_T]:
