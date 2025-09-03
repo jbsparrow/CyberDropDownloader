@@ -71,12 +71,12 @@ TEST_CASES = [
                 "datetime": 1738917721,
             },
         ],
-        31,
+        33,
     ),
     (
         "https://xhamster.com/creators/danielagomezz/exclusive",
         [],
-        29,
+        31,
     ),
     (
         "https://xhamster.com/creators/danielagomezz/photos",

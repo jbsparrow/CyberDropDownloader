@@ -125,7 +125,7 @@ def decompose(tag: Tag, selector: str) -> None:
 
 
 def sanitize_page_title(title: str, domain: str) -> str:
-    sld = domain.rsplit(".", 1)[0]
+    sld = domain.rsplit(".", 1)[0].casefold()
 
     def clean(string: str, char: str):
         if char in string:
