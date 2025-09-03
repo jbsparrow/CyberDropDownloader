@@ -27,13 +27,16 @@ if TYPE_CHECKING:
     _CMD: TypeAlias = Sequence[str | Path]
 
 
-CODEC_COPY = "-c", "copy"
-MERGE_INPUT_ARGS = "-map", "0"
-CONCAT_INPUT_ARGS = "-f", "concat", "-safe", "0", "-i"
-FFMPEG_CALL_PREFIX = "ffmpeg", "-y", "-loglevel", "error"
-FFMPEG_FIXUP_INPUT_ARGS = "-map", "0", "-ignore_unknown", *CODEC_COPY, "-f", "mp4", "-movflags", "+faststart"
-FFMPEG_FIXUP_AUDIO_DTS_FILTER_ARGS = "-bsf:a", "aac_adtstoasc"
-FFPROBE_CALL_PREFIX = "ffprobe", "-hide_banner", "-loglevel", "error", "-show_streams", "-print_format", "json"
+class Args:
+    CODEC_COPY = "-c", "copy"
+    MAP_ALL_STREAMS = "-map", "0"
+    CONCAT = "-f", "concat", "-safe", "0", "-i"
+    FIXUP_MP4 = *MAP_ALL_STREAMS, "-ignore_unknown", *CODEC_COPY, "-f", "mp4", "-movflags", "+faststart"
+    FIXUP_AUDIO_DTS_FILTER = "-bsf:a", "aac_adtstoasc"
+
+
+_FFMPEG_CALL_PREFIX = "ffmpeg", "-y", "-loglevel", "error"
+_FFPROBE_CALL_PREFIX = "ffprobe", "-hide_banner", "-loglevel", "error", "-show_streams", "-print_format", "json"
 _FFPROBE_AVAILABLE = False
 _EMPTY_FFPROBE_OUTPUT: FFprobeOutput = {"streams": []}
 
@@ -113,7 +116,7 @@ async def probe(input: Path | URL, /, *, headers: Mapping[str, str] | None = Non
     else:
         raise ValueError("Can only probe a Path or a yarl.URL")
 
-    command = *FFPROBE_CALL_PREFIX, str(input)
+    command = *_FFPROBE_CALL_PREFIX, str(input)
     if headers:
         headers_cmd = itertools.chain.from_iterable(("-headers", f"{name}: {value}") for name, value in headers.items())
         command = *command, *headers_cmd
@@ -133,10 +136,10 @@ async def _create_concat_input_file(input_files: Sequence[Path], output_file: Pa
 
 
 async def _fixup_concatenated_video_file(input_file: Path, output_file: Path) -> SubProcessResult:
-    command = *FFMPEG_CALL_PREFIX, "-i", input_file, *FFMPEG_FIXUP_INPUT_ARGS
+    command = *_FFMPEG_CALL_PREFIX, "-i", input_file, *Args.FIXUP_MP4
     probe_result = await probe(input_file)
     if probe_result and (audio := probe_result.audio) and audio.codec == "aac":
-        command += FFMPEG_FIXUP_AUDIO_DTS_FILTER_ARGS
+        command += Args.FIXUP_AUDIO_DTS_FILTER
     command = *command, output_file
     result = await _run_command(command)
     if result.success:
@@ -146,7 +149,7 @@ async def _fixup_concatenated_video_file(input_file: Path, output_file: Path) ->
 
 async def _concat(concat_input_file: Path, output_file: Path) -> SubProcessResult:
     concatenated_file = output_file.with_suffix(".concat" + output_file.suffix)
-    command = *FFMPEG_CALL_PREFIX, *CONCAT_INPUT_ARGS, concat_input_file, *CODEC_COPY, concatenated_file
+    command = *_FFMPEG_CALL_PREFIX, *Args.CONCAT, concat_input_file, *Args.CODEC_COPY, concatenated_file
     result = await _run_command(command)
     if not result.success:
         return result
@@ -154,8 +157,8 @@ async def _concat(concat_input_file: Path, output_file: Path) -> SubProcessResul
 
 
 async def _merge(input_files: Sequence[Path], output_file: Path) -> SubProcessResult:
-    input_args = itertools.chain.from_iterable(("-i", path) for path in input_files)
-    command = *FFMPEG_CALL_PREFIX, *input_args, *MERGE_INPUT_ARGS, *CODEC_COPY, output_file
+    inputs = itertools.chain.from_iterable(("-i", path) for path in input_files)
+    command = *_FFMPEG_CALL_PREFIX, *inputs, *Args.MAP_ALL_STREAMS, *Args.CODEC_COPY, output_file
     return await _run_command(command)
 
 
@@ -185,18 +188,19 @@ class Duration(NamedTuple):
 
     @staticmethod
     def parse(duration: float | str) -> float:
-        if isinstance(duration, float | int):
-            return float(duration)
         try:
             return float(duration)
         except (ValueError, TypeError):
             pass
+
+        assert isinstance(duration, str)
         days, _, other_parts = duration.partition(" ")
-        if days:
+        if other_parts:
             days = "".join(char for char in days if char.isdigit())
         else:
-            days = "0"
+            other_parts = days
 
+        days = days or "0"
         time_parts = other_parts.split(":")
         missing_parts = [0 for _ in range(3 - len(time_parts))]
         seconds = float(Fraction(time_parts.pop(-1)))
@@ -254,7 +258,7 @@ class Stream:
     def from_dict(cls, stream_info: StreamDict) -> Self:
         return cls(**cls.validate(stream_info))
 
-    def as_dict(self) -> dict[str, Any]:
+    def as_jsonable_dict(self) -> dict[str, Any]:
         return asdict(self) | {"tags": dict(self.tags)}
 
 
@@ -300,14 +304,14 @@ class FFprobeResult:
 
     @staticmethod
     def from_output(ffprobe_output: FFprobeOutput) -> FFprobeResult:
-        streams: list[Stream] = []
-        for stream in ffprobe_output.get("streams", []):
-            if stream["codec_type"] == "video":
-                streams.append(VideoStream.from_dict(stream))
-            elif stream["codec_type"] == "audio":
-                streams.append(AudioStream.from_dict(stream))
+        def streams():
+            for stream in ffprobe_output.get("streams", []):
+                if stream["codec_type"] == "video":
+                    yield VideoStream.from_dict(stream)
+                elif stream["codec_type"] == "audio":
+                    yield AudioStream.from_dict(stream)
 
-        return FFprobeResult(ffprobe_output, tuple(streams))
+        return FFprobeResult(ffprobe_output, tuple(streams()))
 
     def video_streams(self) -> Generator[VideoStream]:
         for stream in self.streams:

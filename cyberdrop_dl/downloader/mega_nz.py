@@ -79,7 +79,6 @@ from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterable, Generator, Mapping
-    from functools import partial
 
     from aiohttp_client_cache.session import CachedSession
     from yarl import URL
@@ -484,7 +483,7 @@ class MegaApi:
 
     @property
     def session(self) -> CachedSession:
-        return self.manager.client_manager.scraper_session._session
+        return self.manager.client_manager._session
 
     async def request(self, data_input: list[AnyDict] | AnyDict, add_params: AnyDict | None = None) -> Any:
         add_params = add_params or {}
@@ -795,14 +794,10 @@ class MegaDownloadClient(DownloadClient):
         super().__init__(manager, manager.client_manager)
         self.decrypt_mapping: dict[URL, DecryptData] = {}
 
-    async def _append_content(
-        self,
-        media_item: MediaItem,
-        content: aiohttp.StreamReader,
-        update_progress: partial,
-    ) -> None:
+    async def _append_content(self, media_item: MediaItem, content: aiohttp.StreamReader) -> None:
         """Appends content to a file."""
 
+        assert media_item.task_id is not None
         check_free_space = self.make_free_space_checker(media_item)
         check_download_speed = self.make_speed_checker(media_item)
         await check_free_space()
@@ -820,7 +815,7 @@ class MegaDownloadClient(DownloadClient):
                 chunk_size = len(chunk)
                 await self.client_manager.speed_limiter.acquire(chunk_size)
                 await f.write(chunk)
-                update_progress(chunk_size)
+                self.manager.progress_manager.file_progress.advance_file(media_item.task_id, chunk_size)
                 check_download_speed()
 
         self._post_download_check(media_item, content)
@@ -849,7 +844,7 @@ class MegaDownloader(Downloader):
     def startup(self) -> None:
         """Starts the downloader."""
         self.client = MegaDownloadClient(self.manager)  # type: ignore[reportIncompatibleVariableOverride]
-        self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
+        self._semaphore = asyncio.Semaphore(self.manager.client_manager.get_download_slots(self.domain))
 
     def register(self, url: URL, crypto: DecryptData) -> None:
         self.client.decrypt_mapping[url] = crypto

@@ -87,6 +87,7 @@ class GoFileCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "gofile"
     FOLDER_DOMAIN: ClassVar[str] = "GoFile"
+    _RATE_LIMIT: ClassVar[tuple[float, float]] = 100, 60
 
     def __post_init__(self) -> None:
         self.api_key = self.manager.config_manager.authentication_data.gofile.api_key

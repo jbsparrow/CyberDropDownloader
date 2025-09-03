@@ -34,6 +34,7 @@ from .files_vc import FilesVcCrawler
 from .flugel_anime import FlugelAnimeCrawler
 from .fourchan import FourChanCrawler
 from .generic import GenericCrawler
+from .girlsreleased import GirlsReleasedCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
 from .hitomi_la import HitomiLaCrawler
@@ -112,7 +113,7 @@ ALL_CRAWLERS: set[type[Crawler]] = {
     crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
 }
 ALL_CRAWLERS.update(WP_CRAWLERS, GENERIC_CRAWLERS, FORUM_CRAWLERS)
-DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler}
+DEBUG_CRAWLERS = {GirlsReleasedCrawler, SimpCityCrawler, BunkrAlbumsIOCrawler}
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
     CRAWLERS = ALL_CRAWLERS
 else:

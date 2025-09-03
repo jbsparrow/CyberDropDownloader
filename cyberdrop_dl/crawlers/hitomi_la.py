@@ -87,6 +87,7 @@ class HitomiLaCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar = PRIMARY_URL
     DOMAIN: ClassVar = "hitomi.la"
+    _RATE_LIMIT: ClassVar[tuple[float, float]] = 3, 1
 
     def __post_init__(self) -> None:
         self._semaphore = asyncio.Semaphore(3)

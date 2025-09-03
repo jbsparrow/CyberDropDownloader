@@ -37,6 +37,8 @@ class CyberdropCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "cyberdrop"
+    _RATE_LIMIT: ClassVar[tuple[float, float]] = 5, 1
+    _DOWNLOAD_SLOTS: ClassVar[int | None] = 1
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 2)
