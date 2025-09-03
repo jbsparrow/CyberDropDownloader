@@ -151,7 +151,7 @@ class MegaNzCrawler(Crawler):
     ) -> None:
         if single_file_id and await self.check_complete_from_referer(scrape_item.url):
             return
-        nodes = await self.downloader.api.get_nodes_public_folder(folder_id, shared_key)
+        nodes = await self.downloader.api.get_nodes_in_shared_folder(folder_id, shared_key)
         root_id = root_id or next(iter(nodes))
         folder_name = nodes[root_id]["attributes"]["n"]
         filesystem = await self.downloader.api.build_file_system(nodes, [root_id])
