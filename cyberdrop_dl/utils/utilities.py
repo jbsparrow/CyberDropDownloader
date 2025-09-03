@@ -21,8 +21,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, Protoco
 import aiofiles
 import rich
 from aiohttp import ClientConnectorError, FormData
-from aiohttp_client_cache.response import AnyResponse
-from bs4 import BeautifulSoup
 from pydantic import ValidationError
 from yarl import URL
 
@@ -43,7 +41,6 @@ from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Iterable, Mapping
 
-    from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
 
     from cyberdrop_dl.crawlers import Crawler
@@ -504,16 +501,6 @@ def remove_parts(
         return url
     new_parts = [p for p in url.parts[1:] if p not in parts_to_remove]
     return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
-
-
-async def get_soup_no_error(response: CurlResponse | AnyResponse) -> BeautifulSoup | None:
-    # We can't use `CurlResponse` at runtime so we check the reverse
-    with contextlib.suppress(UnicodeDecodeError):
-        if isinstance(response, AnyResponse):
-            content = await response.read()  # aiohttp
-        else:
-            content = response.content  # curl response
-        return BeautifulSoup(content, "html.parser")
 
 
 def get_size_or_none(path: Path) -> int | None:

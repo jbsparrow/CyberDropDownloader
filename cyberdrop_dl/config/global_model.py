@@ -78,7 +78,7 @@ class RateLimiting(BaseModel):
     def model_post_init(self, *_) -> None:
         self._timeout = Timeout(self.connection_timeout, self.read_timeout)
         self._scrape_timeout = aiohttp.ClientTimeout(total=self._timeout.total, connect=self._timeout.connect)
-        self._download_timeout = aiohttp.ClientTimeout(total=None, connect=self._timeout.connect, sock_read=20)
+        self._download_timeout = aiohttp.ClientTimeout(total=None, connect=self._timeout.connect)
 
     @field_validator("file_host_cache_expire_after", "forum_cache_expire_after", mode="before")
     @staticmethod

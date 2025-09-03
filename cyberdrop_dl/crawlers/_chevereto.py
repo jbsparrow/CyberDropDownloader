@@ -97,13 +97,6 @@ class CheveretoCrawler(Crawler, is_generic=True):
                 scrape_item.setup_as_profile(title)
             self._process_page(scrape_item, soup)
 
-    async def _get_redirect_url(self, url: AbsoluteHttpURL):
-        async with self.request_limiter:
-            head = await self.client.get_head(self.DOMAIN, url)
-        if location := head.get("location"):
-            return self.parse_url(location, url.origin(), trim=False)
-        return url
-
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem, album_id: str) -> None:
         results = await self.get_album_results(album_id)
@@ -155,10 +148,10 @@ class CheveretoCrawler(Crawler, is_generic=True):
         if not password:
             raise PasswordProtectedError
 
-        async with self.request_limiter:
-            soup = await self.client.post_data_get_soup(
-                self.DOMAIN, _sort_by_new(scrape_item.url / ""), data={"content-password": password}
-            )
+        soup = await self.request_soup(
+            _sort_by_new(scrape_item.url / ""), method="POST", data={"content-password": password}
+        )
+
         if _is_password_protected(soup):
             raise PasswordProtectedError(message="Wrong password")
 
@@ -175,7 +168,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.request_soup(scrape_item.url)
 
         link_str = open_graph.get("video", soup) or open_graph.get("image", soup)
         if not link_str or "loading.svg" in link_str:
