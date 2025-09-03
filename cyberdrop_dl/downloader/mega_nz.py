@@ -758,7 +758,7 @@ class MegaApi:
                     results[node_id] = processed_node
 
                 # We can compute this on another thread, so we sleep to avoid blocking the event loop for too long.
-                if index % 100 == 0:
+                if index % 500 == 0:
                     await asyncio.sleep(0)
 
             return results
