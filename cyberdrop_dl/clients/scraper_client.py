@@ -10,10 +10,12 @@ from typing import TYPE_CHECKING, Any, cast
 import cyberdrop_dl.constants as constants
 from cyberdrop_dl.clients.response import AbstractResponse
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, copy_signature
-from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError
+from cyberdrop_dl.exceptions import DDOSGuardError
 from cyberdrop_dl.utils.utilities import sanitize_filename
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from bs4 import BeautifulSoup
     from curl_cffi.requests.impersonate import BrowserTypeLiteral
     from curl_cffi.requests.session import HttpMethod
@@ -39,6 +41,7 @@ class ScraperClient:
                 await self.client_manager.manager.states.RUNNING.wait()
                 yield
 
+    @contextlib.asynccontextmanager
     async def _request(
         self,
         url: AbsoluteHttpURL,
@@ -50,48 +53,56 @@ class ScraperClient:
         json: Any = None,
         cache_disabled: bool = False,
         **request_params: Any,
-    ) -> AbstractResponse:
+    ) -> AsyncGenerator[AbstractResponse]:
         request_params["headers"] = self.client_manager._default_headers | (headers or {})
         request_params["data"] = data
         request_params["json"] = json
+        request_params["impersonate"] = impersonate
 
-        if impersonate:
+        async with self.__request_context(url, method, request_params, cache_disabled) as resp:
+            abstract_resp = AbstractResponse.from_resp(resp)
+            exc = None
+            try:
+                yield await self._check_and_retry_w_flaresolverr(abstract_resp, url)
+            except Exception as e:
+                exc = e
+                raise
+            finally:
+                await self.write_soup_to_disk(url, abstract_resp, exc)
+
+    @contextlib.asynccontextmanager
+    async def __request_context(
+        self,
+        url: AbsoluteHttpURL,
+        method: HttpMethod,
+        request_params: dict[str, Any],
+        cache_disabled: bool,
+    ):
+        if impersonate := request_params.get("impersonate"):
             self.client_manager.check_curl_cffi_is_available()
             if impersonate is True:
                 impersonate = "chrome"
             request_params["impersonate"] = impersonate
-            response = await self.client_manager._curl_session.request(method, str(url), **request_params)
+            curl_resp = await self.client_manager._curl_session.request(method, str(url), stream=True, **request_params)
             try:
-                abs_resp = AbstractResponse.from_resp(response)
-                return await self._process_response(abs_resp, url, data)
-            finally:
+                yield curl_resp
                 curl_cookies = self.client_manager._curl_session.cookies.get_dict(url.host)
                 self.client_manager.cookies.update_cookies(curl_cookies, url)
+            finally:
+                await curl_resp.aclose()
+            return
 
         async with (
             self.client_manager.cache_control(self.client_manager._session, disabled=cache_disabled),
-            self.client_manager._session.request(method, url, **request_params) as response,
+            self.client_manager._session.request(method, url, **request_params) as resp,
         ):
-            abs_resp = AbstractResponse.from_resp(response)
-            return await self._process_response(abs_resp, url, data)
-
-    async def _process_response(self, abs_resp: AbstractResponse, url: AbsoluteHttpURL, data: Any | None):
-        exc = None
-        try:
-            abs_resp = await self._check_and_retry_w_flaresolverr(abs_resp, url, data)
-            return abs_resp
-        except (DDOSGuardError, DownloadError) as e:
-            exc = e
-            raise
-
-        finally:
-            self.client_manager.manager.task_group.create_task(self.write_soup_to_disk(url, abs_resp, exc))
+            yield resp
 
     async def _check_and_retry_w_flaresolverr(
         self,
         abs_resp: AbstractResponse,
         url: AbsoluteHttpURL,
-        data: Any | None,
+        data: Any | None = None,
     ):
         try:
             await self.client_manager.check_http_status(abs_resp)
@@ -102,11 +113,13 @@ class ScraperClient:
 
     @copy_signature(_request)
     async def _request_json(self, *args, **kwargs) -> Any:
-        return await (await self._request(*args, **kwargs)).json()
+        async with self._request(*args, **kwargs) as resp:
+            return await resp.json()
 
     @copy_signature(_request)
     async def _request_soup(self, *args, **kwargs) -> BeautifulSoup:
-        return await (await self._request(*args, **kwargs)).soup()
+        async with self._request(*args, **kwargs) as resp:
+            return await resp.soup()
 
     async def write_soup_to_disk(
         self,
@@ -121,7 +134,7 @@ class ScraperClient:
         content: str = ""
         try:
             content: str = cast("str", (await response.soup()).prettify(formatter="html"))
-        except (UnicodeDecodeError, InvalidContentTypeError):
+        except Exception:
             pass
 
         content = content or await response.text()
@@ -147,7 +160,11 @@ class ScraperClient:
 
         json_data = json_dumps(info, indent=4, ensure_ascii=False)
         text = f"<!-- cyberdrop-dl scraping result\n{json_data}\n-->\n{content}"
-        try:
-            await asyncio.to_thread(file_path.write_text, text, "utf8")
-        except OSError:
-            pass
+        self.client_manager.manager.task_group.create_task(try_write(file_path, text))
+
+
+async def try_write(file: Path, content: str):
+    try:
+        await asyncio.to_thread(file.write_text, content, "utf8")
+    except OSError:
+        pass

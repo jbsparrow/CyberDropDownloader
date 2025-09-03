@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 from json import loads as json_loads
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
 
 from aiohttp import ClientResponse
 from aiohttp_client_cache.response import CachedResponse
@@ -90,7 +90,7 @@ class AbstractResponse:
             else:
                 if encoding:
                     self._resp.encoding = encoding
-                    self._text = self._resp.text
+                self._text = await self._resp.atext()
         return self._text
 
     async def soup(self, encoding: str | None = None) -> BeautifulSoup:
@@ -112,16 +112,6 @@ class AbstractResponse:
                 raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting JSON")
 
         return json_loads(await self.text(encoding))
-
-    async def __aenter__(self) -> Self:
-        return self
-
-    async def __aexit__(self, *_) -> None:
-        if self._resp is not None:
-            try:
-                self._resp.close()
-            except Exception:
-                return
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} [{self.status}] ({self.url!r})>"
