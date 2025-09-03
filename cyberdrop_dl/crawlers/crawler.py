@@ -18,7 +18,8 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
+from cyberdrop_dl.clients.scraper_client import ScraperClient
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem, copy_signature
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
@@ -54,7 +55,7 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
     from rich.progress import TaskID
 
-    from cyberdrop_dl.clients.scraper_client import ScraperClient
+    from cyberdrop_dl.clients.response import AbstractResponse
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -104,24 +105,26 @@ class Crawler(ABC):
     _RATE_LIMIT: ClassVar[tuple[float, float]] = 25, 1
     _DOWNLOAD_SLOTS: ClassVar[int | None] = None
 
-    if TYPE_CHECKING:
-        request = ScraperClient._request
-        request_json = ScraperClient._request_json
-        request_soup = ScraperClient._request_soup
+    @copy_signature(ScraperClient._request)
+    @contextlib.asynccontextmanager
+    async def request(self, *args, **kwargs) -> AsyncGenerator[AbstractResponse]:
+        async with self.client._limiter(self.DOMAIN), self.client._request(*args, **kwargs) as resp:
+            yield resp
 
-    else:
+    @copy_signature(ScraperClient._request)
+    async def request_json(self, *args, **kwargs) -> Any:
+        async with self.request(*args, **kwargs) as resp:
+            return await resp.json()
 
-        async def request(self, *args, **kwargs):
-            async with self.client._limiter(self.DOMAIN):
-                return await self.client._request(*args, **kwargs)
+    @copy_signature(ScraperClient._request)
+    async def request_soup(self, *args, **kwargs) -> BeautifulSoup:
+        async with self.request(*args, **kwargs) as resp:
+            return await resp.soup()
 
-        async def request_json(self, *args, **kwargs):
-            async with self.client._limiter(self.DOMAIN):
-                return await self.client._request_json(*args, **kwargs)
-
-        async def request_soup(self, *args, **kwargs):
-            async with self.client._limiter(self.DOMAIN):
-                return await self.client._request_soup(*args, **kwargs)
+    @copy_signature(ScraperClient._request)
+    async def request_text(self, *args, **kwargs) -> str:
+        async with self.request(*args, **kwargs) as resp:
+            return await resp.text()
 
     @final
     def __init__(self, manager: Manager) -> None:
@@ -654,8 +657,8 @@ class Crawler(ABC):
         log(msg, bug=True)
 
     async def _get_redirect_url(self, url: AbsoluteHttpURL):
-        head = await self.request(url, method="HEAD")
-        return head.location or url
+        async with self.request(url, method="HEAD") as head:
+            return head.location or url
 
     @staticmethod
     def register_cache_filter(
@@ -688,7 +691,7 @@ class Crawler(ABC):
         return m3u8.RenditionGroup(await self._get_m3u8(url, headers))
 
     async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> m3u8.M3U8:
-        content = await (await self.request(url, headers=headers)).text()
+        content = await self.request_text(url, headers=headers)
         return m3u8.M3U8(content, url.parent)
 
     def create_custom_filename(
