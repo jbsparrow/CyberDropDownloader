@@ -113,7 +113,7 @@ class Crawler(ABC):
 
         async def request(self, *args, **kwargs):
             async with self.client._limiter(self.DOMAIN):
-                return await self.client._request(*args, **kwargs)
+                return self.client._request(*args, **kwargs)
 
         async def request_json(self, *args, **kwargs):
             async with self.client._limiter(self.DOMAIN):

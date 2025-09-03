@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 from json import loads as json_loads
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from aiohttp import ClientResponse
 from aiohttp_client_cache.response import CachedResponse
@@ -22,7 +22,10 @@ if TYPE_CHECKING:
 
 @dataclasses.dataclass(slots=True, weakref_slot=True)
 class AbstractResponse:
-    """Class to represent common methods and attributes between an `aiohttp.ClientResponse` and a `CurlResponse`"""
+    """Class to represent common methods and attributes between:
+    - `aiohttp.ClientResponse`
+    - `curl_cffi.Response`
+    - `FlareSolverrSolution`"""
 
     content_type: str
     status: int
@@ -35,7 +38,7 @@ class AbstractResponse:
     _read_lock: asyncio.Lock = dataclasses.field(init=False, default_factory=asyncio.Lock)
 
     @classmethod
-    def from_resp(cls, response: ClientResponse | CachedResponse | CurlResponse) -> AbstractResponse:
+    def from_resp(cls, response: ClientResponse | CachedResponse | CurlResponse) -> Self:
         if isinstance(response, ClientResponse | CachedResponse):
             status = response.status
             headers = response.headers
@@ -45,7 +48,7 @@ class AbstractResponse:
 
         url = AbsoluteHttpURL(response.url)
         content_type, location = cls.parse_headers(url, headers)
-        return AbstractResponse(
+        return cls(
             content_type=content_type,
             status=status,
             headers=headers,
@@ -55,16 +58,15 @@ class AbstractResponse:
         )
 
     @classmethod
-    def from_flaresolverr(cls, sol: FlareSolverrSolution) -> AbstractResponse:
-        content_type, location = AbstractResponse.parse_headers(sol.url, sol.headers)
-
-        return AbstractResponse(
+    def from_flaresolverr(cls, solution: FlareSolverrSolution) -> Self:
+        content_type, location = cls.parse_headers(solution.url, solution.headers)
+        return cls(
             content_type=content_type,
-            status=sol.status,
-            headers=sol.headers,
-            url=sol.url,
+            status=solution.status,
+            headers=solution.headers,
+            url=solution.url,
             location=location,
-            _text=sol.content,
+            _text=solution.content,
         )
 
     @staticmethod
@@ -94,10 +96,8 @@ class AbstractResponse:
         return self._text
 
     async def soup(self, encoding: str | None = None) -> BeautifulSoup:
-        if "text" in self.content_type or "html" in self.content_type:
-            return BeautifulSoup(await self.text(encoding), "html.parser")
-
-        raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting HTML")
+        self._check_content_type("text", "html", expecting="HTML")
+        return BeautifulSoup(await self.text(encoding), "html.parser")
 
     async def json(self, encoding: str | None = None, content_type: str | bool = True) -> Any:
         if self.status == 204:
@@ -108,10 +108,15 @@ class AbstractResponse:
                 check = (content_type,)
             else:
                 check = ("text/plain", "json")
-            if not any(type_ in self.content_type for type_ in check):
-                raise InvalidContentTypeError(message=f"Received {self.content_type}, was expecting JSON")
+
+            self._check_content_type(*check, expecting="JSON")
 
         return json_loads(await self.text(encoding))
+
+    def _check_content_type(self, *content_types, expecting: str):
+        if not any(type_ in self.content_type for type_ in content_types):
+            msg = f"Received {self.content_type}, was expecting {expecting}"
+            raise InvalidContentTypeError(message=msg)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} [{self.status}] ({self.url!r})>"

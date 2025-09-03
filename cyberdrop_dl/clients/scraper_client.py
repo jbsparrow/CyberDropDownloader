@@ -54,30 +54,35 @@ class ScraperClient:
         cache_disabled: bool = False,
         **request_params: Any,
     ) -> AsyncGenerator[AbstractResponse]:
+        """
+        Asynchronous context manager for HTTP requests.
+
+        - If 'impersonate' is specified, uses curl_cffi for the request and updates cookies.
+        - Otherwise, uses aiohttp with optional cache control.
+        - Yield an AbstractResponse that wraps the underlying response with common methods.
+        - On DDOSGuardError, retries the request using FlareSolverr.
+        - Saves the HTML content to disk if the config option is enabled.
+        - Closes underliying response on exit.
+        """
         request_params["headers"] = self.client_manager._default_headers | (headers or {})
         request_params["data"] = data
         request_params["json"] = json
         request_params["impersonate"] = impersonate
 
         async with self.__request_context(url, method, request_params, cache_disabled) as resp:
-            abstract_resp = AbstractResponse.from_resp(resp)
             exc = None
             try:
-                yield await self._check_and_retry_w_flaresolverr(abstract_resp, url)
+                yield await self._check_response(resp, url)
             except Exception as e:
                 exc = e
                 raise
             finally:
-                await self.write_soup_to_disk(url, abstract_resp, exc)
+                await self.write_soup_to_disk(url, resp, exc)
 
     @contextlib.asynccontextmanager
     async def __request_context(
-        self,
-        url: AbsoluteHttpURL,
-        method: HttpMethod,
-        request_params: dict[str, Any],
-        cache_disabled: bool,
-    ):
+        self, url: AbsoluteHttpURL, method: HttpMethod, request_params: dict[str, Any], cache_disabled: bool
+    ) -> AsyncGenerator[AbstractResponse]:
         if impersonate := request_params.get("impersonate"):
             self.client_manager.check_curl_cffi_is_available()
             if impersonate is True:
@@ -85,7 +90,7 @@ class ScraperClient:
             request_params["impersonate"] = impersonate
             curl_resp = await self.client_manager._curl_session.request(method, str(url), stream=True, **request_params)
             try:
-                yield curl_resp
+                yield AbstractResponse.from_resp(curl_resp)
                 curl_cookies = self.client_manager._curl_session.cookies.get_dict(url.host)
                 self.client_manager.cookies.update_cookies(curl_cookies, url)
             finally:
@@ -94,16 +99,14 @@ class ScraperClient:
 
         async with (
             self.client_manager.cache_control(self.client_manager._session, disabled=cache_disabled),
-            self.client_manager._session.request(method, url, **request_params) as resp,
+            self.client_manager._session.request(method, url, **request_params) as aio_resp,
         ):
-            yield resp
+            yield AbstractResponse.from_resp(aio_resp)
 
-    async def _check_and_retry_w_flaresolverr(
-        self,
-        abs_resp: AbstractResponse,
-        url: AbsoluteHttpURL,
-        data: Any | None = None,
-    ):
+    async def _check_response(self, abs_resp: AbstractResponse, url: AbsoluteHttpURL, data: Any | None = None):
+        """Checks the HTTP response status and retries DDOS Guard errors with FlareSolverr.
+
+        Returns an AbstractResponse confirmed to not be a DDOS Guard page."""
         try:
             await self.client_manager.check_http_status(abs_resp)
             return abs_resp
@@ -121,27 +124,19 @@ class ScraperClient:
         async with self._request(*args, **kwargs) as resp:
             return await resp.soup()
 
-    async def write_soup_to_disk(
-        self,
-        url: AbsoluteHttpURL,
-        response: AbstractResponse,
-        exc: Exception | None = None,
-    ):
+    async def write_soup_to_disk(self, url: AbsoluteHttpURL, response: AbstractResponse, exc: Exception | None = None):
         """Writes html to a file."""
+
         if not self._save_pages_html:
             return
 
-        content: str = ""
+        content: str = await response.text()
         try:
-            content: str = cast("str", (await response.soup()).prettify(formatter="html"))
+            content = cast("str", (await response.soup()).prettify(formatter="html"))
         except Exception:
             pass
 
-        content = content or await response.text()
         now = datetime.now()
-
-        # The date is not really relevant in the filename and makes them longer, potencially truncating the URL part
-        # But it garanties the filename will be unique
         log_date = now.strftime(constants.LOGS_DATETIME_FORMAT)
         url_str = str(url)
         response_url_str = str(response.url)
@@ -163,7 +158,7 @@ class ScraperClient:
         self.client_manager.manager.task_group.create_task(try_write(file_path, text))
 
 
-async def try_write(file: Path, content: str):
+async def try_write(file: Path, content: str) -> None:
     try:
         await asyncio.to_thread(file.write_text, content, "utf8")
     except OSError:
