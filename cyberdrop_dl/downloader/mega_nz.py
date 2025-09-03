@@ -737,7 +737,7 @@ class MegaApi:
         predicate: Callable[[Node], bool] | None = None,
     ) -> dict[str, Node]:
         """
-        Processes a multiple nodes at once, decrypting their metadata and attributes.
+        Processes multiple nodes at once, decrypting their metadata and attributes.
 
         If predicate is provided, only nodes for which `predicate(node)` returns `False` are included in the result.
 
