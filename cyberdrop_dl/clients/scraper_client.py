@@ -9,17 +9,16 @@ from typing import TYPE_CHECKING, Any, cast
 
 import cyberdrop_dl.constants as constants
 from cyberdrop_dl.clients.response import AbstractResponse
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, copy_signature
 from cyberdrop_dl.exceptions import DDOSGuardError
 from cyberdrop_dl.utils.utilities import sanitize_filename
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from bs4 import BeautifulSoup
     from curl_cffi.requests.impersonate import BrowserTypeLiteral
     from curl_cffi.requests.session import HttpMethod
 
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
     from cyberdrop_dl.managers.client_manager import ClientManager
 
 
@@ -43,7 +42,7 @@ class ScraperClient:
 
     @contextlib.asynccontextmanager
     async def _request(
-        self,
+        self: object,
         url: AbsoluteHttpURL,
         /,
         method: HttpMethod = "GET",
@@ -64,6 +63,7 @@ class ScraperClient:
         - Saves the HTML content to disk if the config option is enabled.
         - Closes underliying response on exit.
         """
+        self = cast("ScraperClient", self)
         request_params["headers"] = self.client_manager._default_headers | (headers or {})
         request_params["data"] = data
         request_params["json"] = json
@@ -113,16 +113,6 @@ class ScraperClient:
         except DDOSGuardError:
             flare_solution = await self.client_manager.flaresolverr.request(url, data)
             return AbstractResponse.from_flaresolverr(flare_solution)
-
-    @copy_signature(_request)
-    async def _request_json(self, *args, **kwargs) -> Any:
-        async with self._request(*args, **kwargs) as resp:
-            return await resp.json()
-
-    @copy_signature(_request)
-    async def _request_soup(self, *args, **kwargs) -> BeautifulSoup:
-        async with self._request(*args, **kwargs) as resp:
-            return await resp.soup()
 
     async def write_soup_to_disk(self, url: AbsoluteHttpURL, response: AbstractResponse, exc: Exception | None = None):
         """Writes html to a file."""
