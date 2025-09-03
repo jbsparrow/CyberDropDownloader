@@ -691,9 +691,8 @@ class Crawler(ABC):
         return m3u8.RenditionGroup(await self._get_m3u8(url, headers))
 
     async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> m3u8.M3U8:
-        async with self.request(url, headers=headers) as resp:
-            content = await resp.text()
-            return m3u8.M3U8(content, url.parent)
+        content = await self.request_text(url, headers=headers)
+        return m3u8.M3U8(content, url.parent)
 
     def create_custom_filename(
         self,

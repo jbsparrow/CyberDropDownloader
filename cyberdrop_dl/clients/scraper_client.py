@@ -67,9 +67,8 @@ class ScraperClient:
         request_params["headers"] = self.client_manager._default_headers | (headers or {})
         request_params["data"] = data
         request_params["json"] = json
-        request_params["impersonate"] = impersonate
 
-        async with self.__request_context(url, method, request_params, cache_disabled) as resp:
+        async with self.__request_context(url, method, request_params, impersonate, cache_disabled) as resp:
             exc = None
             try:
                 yield await self._check_response(resp, url)
@@ -81,9 +80,14 @@ class ScraperClient:
 
     @contextlib.asynccontextmanager
     async def __request_context(
-        self, url: AbsoluteHttpURL, method: HttpMethod, request_params: dict[str, Any], cache_disabled: bool
+        self,
+        url: AbsoluteHttpURL,
+        method: HttpMethod,
+        request_params: dict[str, Any],
+        impersonate: BrowserTypeLiteral | bool | None,
+        cache_disabled: bool,
     ) -> AsyncGenerator[AbstractResponse]:
-        if impersonate := request_params.get("impersonate"):
+        if impersonate:
             self.client_manager.check_curl_cffi_is_available()
             if impersonate is True:
                 impersonate = "chrome"
