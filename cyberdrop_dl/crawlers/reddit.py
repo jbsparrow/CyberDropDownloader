@@ -7,7 +7,6 @@ import asyncprawcore
 from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
 
-from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
@@ -65,7 +64,7 @@ class RedditCrawler(Crawler):
         if not self.logged_in:
             return
 
-        self._session = self.manager.client_manager.scraper_session.reddit_session
+        self._session = self.manager.client_manager.reddit_session
         self._reddit = Reddit(
             client_id=self.reddit_personal_use_script,
             client_secret=self.reddit_secret,
@@ -78,7 +77,7 @@ class RedditCrawler(Crawler):
         if not self.logged_in:
             return
 
-        async with cache_control_manager(self._session):
+        async with self.client.client_manager.cache_control(self._session):
             if any(part in scrape_item.url.parts for part in ("user", "u")):
                 return await self.user(scrape_item)
             if any(part in scrape_item.url.parts for part in ("comments", "r")):

@@ -135,6 +135,8 @@ class BunkrrCrawler(Crawler):
     DATABASE_PRIMARY_HOST: ClassVar[str] = "bunkr.site"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL(f"https://{DATABASE_PRIMARY_HOST}")
     DOMAIN: ClassVar[str] = "bunkrr"
+    _RATE_LIMIT: ClassVar[tuple[float, float]] = 5, 1
+    _DOWNLOAD_SLOTS: ClassVar[int | None] = 3
 
     def __post_init__(self) -> None:
         self.known_good_host: str = ""
