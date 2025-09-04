@@ -40,7 +40,7 @@ class CamwhoresTVCrawler(KernelVideoSharingCrawler):
         return video._replace(title=open_graph.title(soup))
 
     def parse_url(
-        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool = False
+        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool | None = None
     ) -> AbsoluteHttpURL:
         return super().parse_url(link_str, relative_to, trim=False)
 

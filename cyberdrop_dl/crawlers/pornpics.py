@@ -62,7 +62,7 @@ class PornPicsCrawler(Crawler):
             title = self.create_title(f"{title} [{collection_type}]")
             scrape_item.setup_as_profile(title)
 
-        async for soup, items in self._web_pager(scrape_item):
+        async for soup, items in self._pager(scrape_item):
             if soup:
                 update_scrape_item(soup)
 
@@ -95,7 +95,7 @@ class PornPicsCrawler(Crawler):
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
 
-    async def _web_pager(
+    async def _pager(
         self, scrape_item: ScrapeItem
     ) -> AsyncGenerator[tuple[BeautifulSoup | None, tuple[AbsoluteHttpURL, ...]]]:
         """Generator of website pages."""

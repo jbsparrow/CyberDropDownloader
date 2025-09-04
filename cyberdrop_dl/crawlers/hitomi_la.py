@@ -117,10 +117,10 @@ class HitomiLaCrawler(Crawler):
             nozomi_url = LTN_SERVER / colletion_type / f"{name}-{language}.nozomi"
 
         scrape_item.setup_as_profile(title)
-        async with self.request_limiter:
-            response, _ = await self.client._get(self.DOMAIN, nozomi_url, self.headers)
+        async with self.request(nozomi_url, headers=self.headers) as response:
+            content = await response.read()
 
-        for gallery_id in decode_nozomi_response(await response.read()):
+        for gallery_id in decode_nozomi_response(content):
             new_scrape_item = scrape_item.create_child(PRIMARY_URL / f"galleries/{gallery_id}.html")
             # await immediately to prevent overwhelming the downloader
             # there could be thousands of galleries in the result
@@ -145,9 +145,9 @@ class HitomiLaCrawler(Crawler):
         # This is partial implementation. Only parses tagged words, ex `female:dark_skin`
         # Free form query searches are ignored
         for nozomi_search_args in (parse_query_word(word) for word in search_query.split(" ") if ":" in word):
-            async with self.request_limiter:
-                response, _ = await self.client._get(self.DOMAIN, nozomi_search_args.url, self.headers)
-            yield set(decode_nozomi_response(await response.read()))
+            async with self.request(nozomi_search_args.url, headers=self.headers) as response:
+                content = await response.read()
+            yield set(decode_nozomi_response(content))
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
@@ -165,8 +165,7 @@ class HitomiLaCrawler(Crawler):
 
     async def get_gallery(self, gallery_id: str) -> Gallery:
         gallery_url = LTN_SERVER / f"galleries/{gallery_id}.js"
-        async with self.request_limiter:
-            js_text = await self.client.get_text(self.DOMAIN, gallery_url, self.headers)
+        js_text = await self.request_text(gallery_url, headers=self.headers)
         return json.loads(js_text.split("=", 1)[-1])
 
     async def get_servers(self) -> Servers:
@@ -177,9 +176,8 @@ class HitomiLaCrawler(Crawler):
 
     async def _get_servers(self) -> Servers:
         # https://ltn.gold-usergeneratedcontent.net/gg.js
-        async with self.request_limiter:
-            js_text = await self.client.get_text(self.DOMAIN, LTN_SERVER / "gg.js", cache_disabled=True)
 
+        js_text = await self.request_text(LTN_SERVER / "gg.js", cache_disabled=True)
         root, num, default_num = [
             match_int_or_none(pattern, js_text) for pattern in (_REGEX.ROOT, _REGEX.NUM, _REGEX.DEFAULT_NUM)
         ]

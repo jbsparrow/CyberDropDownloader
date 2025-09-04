@@ -101,6 +101,13 @@ class AbstractResponse:
         """
         return 400 > self.status
 
+    async def read(self) -> bytes:
+        assert self._resp is not None
+        async with self._read_lock:
+            if isinstance(self._resp, ClientResponse | CachedResponse):
+                return await self._resp.read()
+            return await self._resp.acontent()
+
     async def text(self, encoding: str | None = None) -> str:
         if self._text:
             return self._text

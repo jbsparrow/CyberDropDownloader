@@ -48,7 +48,7 @@ class SendNowCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(debrid_link.name, assume_ext=".zip")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=debrid_link)
 
-    async def get_cookies(self, scrape_item: ScrapeItem) -> None:
+    async def _get_cookies(self, scrape_item: ScrapeItem) -> None:
         if self.got_cookies:
             return
         async with self.startup_lock:
