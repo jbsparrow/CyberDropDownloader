@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -34,9 +32,7 @@ class XXXBunkerCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "XXXBunker"
     NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
     _DOWNLOAD_SLOTS: ClassVar[int | None] = 2
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 6)
+    _RATE_LIMIT = 1, 6
 
     async def async_startup(self) -> None:
         self.update_cookies({"ageconfirm": "True"})

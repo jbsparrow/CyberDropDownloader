@@ -41,7 +41,7 @@ class PixHostCrawler(Crawler):
         match scrape_item.url.parts[1:]:
             case ["gallery", gallery_id]:
                 return await self.gallery(scrape_item, gallery_id)
-            case ["show", _]:
+            case ["show", _, *_]:
                 return await self.image(scrape_item)
             case _:
                 raise ValueError

@@ -180,7 +180,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
         async def ajax_api_request() -> BeautifulSoup:
             ajax_url = self.FILE_API_URL if is_file else self.FOLDERS_API_URL
             json_resp: dict[str, str] = await self.request_json(
-                ajax_url, data=data, headers={"X-Requested-With": "XMLHttpRequest"}
+                ajax_url, method="POST", data=data, headers={"X-Requested-With": "XMLHttpRequest"}
             )
 
             return BeautifulSoup(json_resp["html"].replace("\\", ""), "html.parser")
@@ -203,6 +203,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
         content = await self.request_text(
             password_post_url,
+            method="POST",
             data={
                 "filePassword": password,
                 "submitme": 1,
@@ -222,6 +223,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
         # Make a request with the password. Access to the file/folder will be stored in cookies
         json_resp: dict[str, Any] = await self.request_json(
             self.FOLDER_PASSWORD_API_URL,
+            method="POST",
             data={
                 "folderPassword": password,
                 "folderId": node_id,

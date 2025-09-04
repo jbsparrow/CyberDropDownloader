@@ -3,8 +3,6 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError
@@ -41,9 +39,7 @@ class NHentaiCrawler(Crawler):
     NEXT_PAGE_SELECTOR = "a.next"
     DOMAIN = "nhentai.net"
     FOLDER_DOMAIN = "nHentai"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(4, 1)
+    _RATE_LIMIT = 4, 1
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
