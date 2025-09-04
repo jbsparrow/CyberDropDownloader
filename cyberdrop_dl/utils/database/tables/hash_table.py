@@ -10,10 +10,16 @@ if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
 
+    from cyberdrop_dl.managers.db_manager import DBManager
+
 
 class HashTable:
-    def __init__(self, db_conn: aiosqlite.Connection) -> None:
-        self.db_conn: aiosqlite.Connection = db_conn
+    def __init__(self, database: DBManager) -> None:
+        self._database = database
+
+    @property
+    def db_conn(self) -> aiosqlite.Connection:
+        return self._database._db_conn
 
     async def startup(self) -> None:
         """Startup process for the HistoryTable."""

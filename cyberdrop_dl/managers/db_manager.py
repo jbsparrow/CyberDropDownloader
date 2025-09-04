@@ -34,15 +34,11 @@ class DBManager:
 
         self.ignore_history = self.manager.config_manager.settings_data.runtime_options.ignore_history
 
-        self.history_table = HistoryTable(self._db_conn)
-        self.hash_table = HashTable(self._db_conn)
-        self.temp_referer_table = TempRefererTable(self._db_conn)
-
-        self.history_table.ignore_history = self.ignore_history
-        self.temp_referer_table.ignore_history = self.ignore_history
+        self.history_table = HistoryTable(self)
+        self.hash_table = HashTable(self)
+        self.temp_referer_table = TempRefererTable(self)
 
         await self._pre_allocate()
-
         await self.history_table.startup()
         await self.hash_table.startup()
         await self.temp_referer_table.startup()

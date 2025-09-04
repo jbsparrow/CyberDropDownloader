@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.data_structures.url_objects import MediaItem
+    from cyberdrop_dl.managers.db_manager import DBManager
 
 
 def get_db_path(url: URL, domain: str = "") -> str:
@@ -35,9 +36,12 @@ def get_db_path(url: URL, domain: str = "") -> str:
 
 
 class HistoryTable:
-    def __init__(self, db_conn: aiosqlite.Connection) -> None:
-        self.db_conn: aiosqlite.Connection = db_conn
-        self.ignore_history: bool = False
+    def __init__(self, database: DBManager) -> None:
+        self._database = database
+
+    @property
+    def db_conn(self) -> aiosqlite.Connection:
+        return self._database._db_conn
 
     async def startup(self) -> None:
         """Startup process for the HistoryTable."""
@@ -85,7 +89,7 @@ class HistoryTable:
 
     async def check_complete(self, domain: str, url: URL, referer: URL) -> bool:
         """Checks whether an individual file has completed given its domain and url path."""
-        if self.ignore_history:
+        if self._database.ignore_history:
             return False
 
         url_path = get_db_path(url, domain)
@@ -112,7 +116,7 @@ class HistoryTable:
 
     async def check_album(self, domain: str, album_id: str) -> dict[str, int]:
         """Checks whether an album has completed given its domain and album id."""
-        if self.ignore_history:
+        if self._database.ignore_history:
             return {}
 
         query = "SELECT url_path, completed FROM media WHERE domain = ? and album_id = ?"
@@ -130,8 +134,9 @@ class HistoryTable:
 
     async def check_complete_by_referer(self, domain: str | None, referer: URL) -> bool:
         """Checks whether an individual file has completed given its domain and url path."""
-        if self.ignore_history:
+        if self._database.ignore_history:
             return False
+
         if domain is None:
             query = "SELECT completed FROM media WHERE referer = ?"
             params = (str(referer),)
