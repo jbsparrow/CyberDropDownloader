@@ -90,8 +90,9 @@ class LeakedZoneCrawler(Crawler):
         scrape_item.setup_as_profile(self.create_title(model_name))
         headers = {"X-Requested-With": "XMLHttpRequest"}
         for page in itertools.count(1):
-            async with self.request_limiter:
-                posts = await self.client.get_json(self.DOMAIN, scrape_item.url.with_query(page=page), headers=headers)
+            posts: list[dict[str, Any]] = await self.request_json(
+                scrape_item.url.with_query(page=page), headers=headers
+            )
             # We may be able to omit the last request by just checking the number of posts
             # Seens to always return 48 posts
             if not posts:

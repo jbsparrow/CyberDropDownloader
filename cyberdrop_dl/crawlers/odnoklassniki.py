@@ -71,7 +71,7 @@ class OdnoklassnikiCrawler(Crawler):
 
     @error_handling_wrapper
     async def channel(self, scrape_item: ScrapeItem, channel_str: str):
-        soup = await self.request_soup(scrape_item.url, _HEADERS)
+        soup = await self.request_soup(scrape_item.url, headers=_HEADERS)
 
         channel_id = channel_str.removeprefix("c")
         gwt_hash = get_text_between(css.select_one_get_text(soup, Selector.CHANNEL_HASH), 'gwtHash:"', '",')
@@ -106,25 +106,24 @@ class OdnoklassnikiCrawler(Crawler):
                 break
 
             page += 1
-            async with self.request_limiter:
-                resp = await self.client._post_data(
-                    self.DOMAIN,
-                    page_url,
-                    _HEADERS,
-                    data={
-                        "fetch": "false",
-                        "st.page": page,
-                        "st.lastelem": last_element_id,
-                        "gwt.requested": gwt_hash,
-                    },
-                )
-            last_element_id = resp.headers.get("lastelem")
-            content = await resp.text()
+            async with self.request(
+                page_url,
+                method="POST",
+                headers=_HEADERS,
+                data={
+                    "fetch": "false",
+                    "st.page": page,
+                    "st.lastelem": last_element_id,
+                    "gwt.requested": gwt_hash,
+                },
+            ) as resp:
+                last_element_id = resp.headers.get("lastelem")
+                content = await resp.text()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem, video_id: str):
         mobile_url = AbsoluteHttpURL(f"https://m.ok.ru/video/{video_id}")
-        soup = await self.request_soup(mobile_url, _MOBILE_HEADERS)
+        soup = await self.request_soup(mobile_url, headers=_MOBILE_HEADERS)
 
         _check_video_is_available(soup)
         metadata: dict[str, Any] = json.loads(Selector.FLASHVARS(soup))["flashvars"]["metadata"]

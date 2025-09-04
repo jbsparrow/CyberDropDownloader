@@ -37,13 +37,15 @@ class PostImgCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         data = {"action": "list", "album": scrape_item.url.raw_name, "page": 0}
         title: str = ""
+        album_id = scrape_item.url.parts[2]
         for page in itertools.count(1):
-            data["page"] = page
-            async with self.request_limiter:
-                json_resp = await self.client.post_data(self.DOMAIN, API_ENTRYPOINT, data=data)
+            json_resp = await self.request_json(
+                API_ENTRYPOINT,
+                method="POST",
+                data=data | {"page": page},
+            )
 
             if not title:
-                album_id = scrape_item.url.parts[2]
                 title = self.create_title(scrape_item.url.name, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
 

@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import partial
@@ -132,13 +131,8 @@ class OneDriveCrawler(Crawler):
 
     @error_handling_wrapper
     async def share_link(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            headers = await self.client.get_head(self.DOMAIN, scrape_item.url)
-        location = headers.get("location")
-        if not location:
-            raise ScrapeError(400)
         og_share_link = scrape_item.url
-        scrape_item.url = self.parse_url(location)
+        scrape_item.url = await self._get_redirect_url(scrape_item.url)
         await self.link_with_credentials(scrape_item, og_share_link)
 
     @error_handling_wrapper
@@ -213,20 +207,22 @@ class OneDriveCrawler(Crawler):
         await self.handle_file(file.url, scrape_item, filename, ext, debrid_link=file.download_url)
 
     async def make_api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
-        headers = {"Content-Type": "application/json"} | self.auth_headers
-        async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.DOMAIN, api_url, headers=headers)
-
-        return json_resp
+        return await self.request_json(
+            api_url,
+            headers={
+                "Content-Type": "application/json",
+            }
+            | self.auth_headers,
+        )
 
     @error_handling_wrapper
     async def get_badger_token(self, badger_url: AbsoluteHttpURL = BADGER_URL) -> None:
-        new_headers = {"Content-Type": "application/json", "AppId": APP_ID}
-        data = {"appId": APP_UUID}
-        data_json = json.dumps(data)
-        async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.DOMAIN, badger_url, headers=new_headers, data=data_json)
-
+        json_resp: dict[str, Any] = await self.request_json(
+            badger_url,
+            method="POST",
+            headers={"Content-Type": "application/json", "AppId": APP_ID},
+            json={"appId": APP_UUID},
+        )
         badger_token: str = json_resp["token"]
         badger_token_expires: str = json_resp["expiryTimeUtc"]
         self.auth_headers = {"Prefer": "autoredeem", "Authorization": f"Badger {badger_token}"}

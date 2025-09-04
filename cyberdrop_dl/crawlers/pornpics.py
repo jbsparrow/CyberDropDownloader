@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+import itertools
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -100,30 +100,26 @@ class PornPicsCrawler(Crawler):
     ) -> AsyncGenerator[tuple[BeautifulSoup | None, tuple[AbsoluteHttpURL, ...]]]:
         """Generator of website pages."""
         limit = 20
-        page_url = scrape_item.url.without_query_params("limit", "offset")
-        offset = int(scrape_item.url.query.get("offset") or 0)
+        page_url = scrape_item.url.without_query_params("limit", "offset").with_query(limit=limit)
+        init_offset = int(scrape_item.url.query.get("offset") or 0)
 
-        async def get_items(current_page: AbsoluteHttpURL) -> tuple[BeautifulSoup | None, tuple[AbsoluteHttpURL, ...]]:
-            offset = current_page.query.get("offset")
+        async def get_items(offset: int) -> tuple[BeautifulSoup | None, tuple[AbsoluteHttpURL, ...]]:
+            current_page = page_url.update_query(offset=offset)
             if not offset:  # offset == 0 does not return JSON
-                async with self.request_limiter:
-                    soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, current_page)
+                soup = await self.request_soup(current_page)
                 items = soup.select(IMAGE_SELECTOR)
                 return soup, tuple(self.parse_url(css.get_attr(image, "href")) for image in items)
 
-            async with self.request_limiter:
-                # The response is JSON but the "content-type" is wrong so we have to request it as text
-                json_resp = await self.client.get_text(self.DOMAIN, current_page)
-                json_resp = json.loads(json_resp)
+            # The response is JSON but the "content-type" is wrong
+            async with self.request(current_page) as resp:
+                json_resp = await resp.json(content_type=False)
             return None, tuple(self.parse_url(g["g_url"]) for g in json_resp)
 
-        while True:
-            soup, items = await get_items(page_url)
+        for offset in itertools.count(init_offset, limit):
+            soup, items = await get_items(offset)
             yield soup, items
             if len(items) < limit:
                 break
-            offset += limit
-            page_url = page_url.update_query(offset=offset, limit=limit)
 
 
 def is_cdn(url: AbsoluteHttpURL) -> bool:

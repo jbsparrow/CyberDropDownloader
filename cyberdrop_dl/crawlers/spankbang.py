@@ -89,8 +89,7 @@ class SpankBangCrawler(Crawler):
         title: str = ""
 
         for page in itertools.count(1):
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, page_url)
+            soup = await self.request_json(page_url, impersonate=True)
 
             # Get full playlist info + title from the soup
             playlist = PlaylistInfo.from_url(page_url, soup)
@@ -118,7 +117,6 @@ class SpankBangCrawler(Crawler):
                 return
 
         soup = await self.request_soup(scrape_item.url, impersonate=True)
-
         was_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
         if was_removed or "This video is no longer available" in soup.text:
             raise ScrapeError(410)
