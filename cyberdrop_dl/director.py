@@ -26,7 +26,8 @@ from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.updates import check_latest_pypi
-from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders, send_webhook_message
+from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders
+from cyberdrop_dl.utils.webhook import send_webhook_message
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
