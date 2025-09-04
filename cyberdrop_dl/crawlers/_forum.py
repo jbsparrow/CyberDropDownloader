@@ -25,7 +25,7 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError, MaxChildrenError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import TimeStamp, to_timestamp
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, is_absolute_http_url, is_blob_or_svg
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, is_blob_or_svg
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Iterable, Sequence
@@ -178,17 +178,17 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     def parse_thread(cls, url: AbsoluteHttpURL, thread_name_and_id: str) -> ThreadProtocol: ...
 
     @abstractmethod
-    async def post(self, scrape_item: ScrapeItem, post: ForumPostProtocol) -> None: ...
+    async def post(self, scrape_item: ScrapeItem, /, post: ForumPostProtocol) -> None: ...
 
     @abstractmethod
-    async def thread(self, scrape_item: ScrapeItem, thread: ThreadProtocol) -> None: ...
+    async def thread(self, scrape_item: ScrapeItem, /, thread: ThreadProtocol) -> None: ...
 
     async def forum(self, scrape_item: ScrapeItem) -> None:
         # Subclasses can define custom logic for this method.
         # They would need to also override `fetch` since the default fetch does not take this method into account
         raise NotImplementedError
 
-    async def resolve_confirmation_link(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
+    async def resolve_confirmation_link(self, url: AbsoluteHttpURL, /) -> AbsoluteHttpURL | None:
         # Not every forum has confirmation link so overriding this method is optional
         # Implementation of this method MUST return `None` instead of raising an error
         raise NotImplementedError
@@ -250,27 +250,6 @@ class MessageBoardCrawler(Crawler, is_abc=True):
         by_parts = len(link.parts) > 2 and any(p in link.parts for p in self.ATTACHMENT_URL_PARTS)
         by_host = any(host in link.host for host in self.ATTACHMENT_HOSTS)
         return by_parts or by_host
-
-    # TODO: Move this to base crawler
-    @final
-    @error_handling_wrapper
-    async def follow_redirect_w_get(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            response, _ = await self.client._get_response_and_soup(self.DOMAIN, scrape_item.url)
-        assert is_absolute_http_url(response.url)
-        scrape_item.url = response.url
-        self.manager.task_group.create_task(self.run(scrape_item))
-
-    # TODO: Move this to base crawler
-    @final
-    @error_handling_wrapper
-    async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
-        head = await self.client.get_head(self.DOMAIN, scrape_item.url)
-        redirect = head.get("location")
-        if not redirect:
-            raise ScrapeError(422)
-        scrape_item.url = self.parse_url(redirect)
-        self.manager.task_group.create_task(self.run(scrape_item))
 
     @final
     async def follow_confirmation_link(self, scrape_item: ScrapeItem) -> None:
@@ -353,8 +332,9 @@ class MessageBoardCrawler(Crawler, is_abc=True):
         self.log(msg, 30)
 
     async def check_login_with_request(self, login_url: AbsoluteHttpURL) -> tuple[str, bool]:
-        text = await self.client.get_text(self.DOMAIN, login_url, cache_disabled=True)
-        return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
+        text = await self.request_text(login_url, cache_disabled=True)
+        logged_in = '<span class="p-navgroup-user-linkText">' in text or "You are already logged in." in text
+        return text, logged_in
 
 
 class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
@@ -417,7 +397,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         return thread.url / f"{cls.POST_URL_PART_NAME}-{post_id}"
 
     @error_handling_wrapper
-    async def thread(self, scrape_item: ScrapeItem, thread: ThreadProtocol) -> None:
+    async def thread(self, scrape_item: ScrapeItem, /, thread: ThreadProtocol) -> None:
         scrape_item.setup_as_forum("")
         if thread.url in self.scraped_threads:
             return
@@ -582,12 +562,12 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
             if url.startswith("https://"):
                 return self.parse_url(url)
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, link)
+        soup = await self.request_soup(link)
         selector = self.SELECTORS.confirmation_button
         confirm_button = soup.select_one(selector.element)
         if not confirm_button:
             return
+
         link_str: str = css.get_attr(confirm_button, selector.attribute)
         link_str = link_str.split('" class="link link--internal', 1)[0]
         new_link = self.parse_url(link_str)

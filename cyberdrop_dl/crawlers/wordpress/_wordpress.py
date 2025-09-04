@@ -233,8 +233,7 @@ class WordPressMediaCrawler(WordPressBaseCrawler, is_generic=True):
             await self.filter_post(scrape_item, post)
 
     async def __make_request(self, model_cls: type[_ModelT], api_url: AbsoluteHttpURL) -> _ModelT:
-        async with self.request_limiter:
-            json_text = await self.client.get_text(self.DOMAIN, api_url)
+        json_text = await self.request_text(api_url)
         return model_cls.model_validate_json(json_text)
 
     async def __handle_collection(
@@ -264,8 +263,7 @@ class WordPressMediaCrawler(WordPressBaseCrawler, is_generic=True):
 
 class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
     async def __make_request(self, api_url: AbsoluteHttpURL) -> BeautifulSoup:
-        async with self.request_limiter:
-            return await self.client.get_soup(self.DOMAIN, api_url)
+        return await self.request_soup(api_url)
 
     @error_handling_wrapper
     async def category_or_tag(
