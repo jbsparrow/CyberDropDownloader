@@ -248,7 +248,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     async def discord_channel(self, scrape_item: ScrapeItem, channel_id: str) -> None:
         scrape_item.setup_as_profile("")
         api_url = self.__make_api_url_w_offset(scrape_item.url, f"discord/channel/{channel_id}")
-        async for posts in self.__api_pager(api_url, step_size=_DISCORD_CHANNEL_PAGE_SIZE):
+        async for posts in self._pager(api_url, step_size=_DISCORD_CHANNEL_PAGE_SIZE):
             if not isinstance(posts, list):
                 error_msg = (
                     f"[{self.NAME}] Invalid API response for Discord channel '{channel_id}' posts (URL: {api_url}). "
@@ -437,7 +437,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             return server
 
     async def __iter_user_posts(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL) -> None:
-        async for json_resp in self.__api_pager(url):
+        async for json_resp in self._pager(url):
             # From search results
             if isinstance(json_resp, dict):
                 posts = json_resp.get("posts", [])
@@ -458,7 +458,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if len(posts) < _MAX_OFFSET_PER_CALL:
                 break
 
-    async def __api_pager(self, url: AbsoluteHttpURL, step_size: int | None = None) -> AsyncGenerator[Any]:
+    async def _pager(self, url: AbsoluteHttpURL, step_size: int | None = None) -> AsyncGenerator[Any]:
         """Yields JSON responses from API calls, or soup for web page calls, with configurable increments."""
         current_step_size = step_size or _MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
@@ -481,7 +481,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     async def profile_w_no_api(self, scrape_item: ScrapeItem) -> None:
         scrape_item.setup_as_profile("")
         soup: BeautifulSoup
-        async for soup in self.__api_pager(scrape_item.url):
+        async for soup in self._pager(scrape_item.url):
             n_posts = 0
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _POST_SELECTOR):
