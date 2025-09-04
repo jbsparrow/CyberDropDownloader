@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict, cast
 
-from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -44,9 +43,7 @@ class FourChanCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "4chan"
     _DOWNLOAD_SLOTS: ClassVar[int | None] = 1
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 10)
+    _RATE_LIMIT = 3, 10
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "thread" in scrape_item.url.parts:

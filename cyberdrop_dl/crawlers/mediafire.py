@@ -3,7 +3,6 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
 from mediafire import MediaFireApi, api
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -27,10 +26,10 @@ class MediaFireCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "mediafire"
+    _RATE_LIMIT = 5, 1
 
     def __post_init__(self) -> None:
         self.api = MediaFireApi()
-        self.request_limiter = AsyncLimiter(5, 1)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "folder" in scrape_item.url.parts:

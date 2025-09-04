@@ -3,7 +3,6 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
@@ -46,15 +45,13 @@ class YetiShareCrawler(Crawler, is_abc=True):
         ),
         "Shared folders": "/shared/<share_key>",
     }
+    _RATE_LIMIT = 5, 1
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         cls.FOLDERS_API_URL = cls.PRIMARY_URL / "account/ajax/load_files"
         cls.FILE_API_URL = cls.PRIMARY_URL / "account/ajax/file_details"
         cls.FOLDER_PASSWORD_API_URL = cls.PRIMARY_URL / "ajax/folder_password_process"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(5, 1)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:

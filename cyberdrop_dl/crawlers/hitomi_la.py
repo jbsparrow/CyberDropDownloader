@@ -8,8 +8,6 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar, NamedTuple, Required, TypedDict
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -91,7 +89,6 @@ class HitomiLaCrawler(Crawler):
 
     def __post_init__(self) -> None:
         self._semaphore = asyncio.Semaphore(3)
-        self.request_limiter = AsyncLimiter(1, 1)
         self.headers = {"Referer": str(PRIMARY_URL), "Origin": str(PRIMARY_URL)}
         self._servers: Servers | None = None
 

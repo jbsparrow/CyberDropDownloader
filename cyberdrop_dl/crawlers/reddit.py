@@ -4,7 +4,6 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict
 
 import asyncprawcore
-from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
@@ -52,11 +51,11 @@ class RedditCrawler(Crawler):
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{title}"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "reddit"
+    _RATE_LIMIT = 5, 1
 
     def __post_init__(self) -> None:
         self.reddit_personal_use_script = self.manager.config_manager.authentication_data.reddit.personal_use_script
         self.reddit_secret = self.manager.config_manager.authentication_data.reddit.secret
-        self.request_limiter = AsyncLimiter(5, 1)
         self.logged_in = False
 
     async def async_startup(self) -> None:

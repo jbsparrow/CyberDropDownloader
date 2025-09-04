@@ -14,8 +14,6 @@ import re
 from re import Pattern
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import RealDebridError
@@ -74,12 +72,12 @@ class RealDebridCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "real-debrid"
     FOLDER_DOMAIN: ClassVar[str] = "RealDebrid"
+    _RATE_LIMIT = 250, 60
 
     def __post_init__(self) -> None:
         self._api_token = token = self.manager.auth_config.realdebrid.api_key
         self._supported_folder_url_regex: Pattern
         self._supported_url_regex: Pattern
-        self.request_limiter = AsyncLimiter(250, 60)
         self.disabled = not bool(token)
         self._headers = {"Authorization": f"Bearer {token}", "User-Agent": "CyberDrop-DL"}
 

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
@@ -28,9 +26,7 @@ class FapelloCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = 'div[id="next_page"] a'
     DOMAIN: ClassVar[str] = "fapello"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(5, 1)
+    _RATE_LIMIT = 5, 1
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.name:

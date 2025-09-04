@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
@@ -32,14 +30,12 @@ class BeegComCrawler(Crawler):
     }
     DOMAIN: ClassVar[str] = "beeg.com"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    _RATE_LIMIT = 4, 1
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if video_id := get_video_id(scrape_item.url):
             return await self.video(scrape_item, video_id)
         raise ValueError
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(4, 1)
 
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
         canonical_url = PRIMARY_URL / video_id

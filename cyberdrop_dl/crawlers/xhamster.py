@@ -6,8 +6,6 @@ import itertools
 import json
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, xor_decrypt
@@ -53,9 +51,9 @@ class XhamsterCrawler(Crawler):
     NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
     DOMAIN = "xhamster"
     FOLDER_DOMAIN = "xHamster"
+    _RATE_LIMIT = 4, 1
 
     def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(4, 1)
         self._seen_hosts: set[str] = set()
 
     def _disable_ai_title_translations(self, url: AbsoluteHttpURL) -> None:

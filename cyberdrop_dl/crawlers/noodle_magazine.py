@@ -4,8 +4,6 @@ import itertools
 import json
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -41,9 +39,7 @@ class NoodleMagazineCrawler(Crawler):
     DOMAIN: ClassVar[str] = "noodlemagazine"
     FOLDER_DOMAIN: ClassVar[str] = "NoodleMagazine"
     _DOWNLOAD_SLOTS: ClassVar[int | None] = 2
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 3)
+    _RATE_LIMIT = 1, 3
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "video" in scrape_item.url.parts:

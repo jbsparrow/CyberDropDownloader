@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.mixdrop import MixDropCrawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -35,9 +33,7 @@ class ArchiveBateCrawler(MixDropCrawler):
     FOLDER_DOMAIN: ClassVar[str] = "ArchiveBate"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR = _SELECTORS.NEXT_PAGE
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(4, 1)
+    _RATE_LIMIT = 4, 1
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "watch" in scrape_item.url.parts:

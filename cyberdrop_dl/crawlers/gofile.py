@@ -7,8 +7,6 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, cast
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import DownloadError, PasswordProtectedError, ScrapeError
@@ -87,13 +85,12 @@ class GoFileCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "gofile"
     FOLDER_DOMAIN: ClassVar[str] = "GoFile"
-    _RATE_LIMIT: ClassVar[tuple[float, float]] = 100, 60
+    _RATE_LIMIT: ClassVar[tuple[float, float]] = 4, 10
 
     def __post_init__(self) -> None:
         self.api_key = self.manager.config_manager.authentication_data.gofile.api_key
         self.website_token = self.manager.cache_manager.get("gofile_website_token")
         self.headers: dict[str, str] = {}
-        self.request_limiter = AsyncLimiter(4, 6)
         self._website_token_date = datetime.now(UTC) - timedelta(days=7)
 
     async def async_startup(self) -> None:

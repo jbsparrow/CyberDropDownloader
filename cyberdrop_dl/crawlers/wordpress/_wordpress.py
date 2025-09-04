@@ -13,7 +13,6 @@ import re
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, TypeVar, final
 
-from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 
@@ -79,14 +78,12 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {id} - {title}"
     WP_USE_REGEX: ClassVar = True
     SUPPORTS_THREAD_RECURSION: ClassVar = False
+    _RATE_LIMIT = 3, 1
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         assert cls.fetch is WordPressBaseCrawler.fetch
         assert cls.fetch_with_date_range is WordPressBaseCrawler.fetch_with_date_range
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 1)
 
     @final
     async def fetch(self, scrape_item: ScrapeItem) -> None:

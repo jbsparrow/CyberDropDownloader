@@ -5,8 +5,6 @@ import dataclasses
 import itertools
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.compat import IntEnum
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -64,6 +62,7 @@ class LeakedZoneCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "LeakedZone"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     IMAGES_CDN: ClassVar[AbsoluteHttpURL] = IMAGES_CDN
+    _RATE_LIMIT = 3, 10
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -73,9 +72,6 @@ class LeakedZoneCrawler(Crawler):
                 return await self.model(scrape_item)
             case _:
                 raise ValueError
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 10)
 
     @classmethod
     def get_encoded_video_url(cls, soup: BeautifulSoup) -> str:

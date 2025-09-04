@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -22,9 +20,7 @@ class FilesVcCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "files.vc"
     FOLDER_DOMAIN: ClassVar[str] = "FilesVC"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 1)
+    _RATE_LIMIT = 1, 1
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.path == "/d/dl" and scrape_item.url.query.get("hash"):

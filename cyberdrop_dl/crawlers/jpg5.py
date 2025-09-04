@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
 from ._chevereto import CheveretoCrawler
@@ -28,8 +26,7 @@ class JPG5Crawler(CheveretoCrawler):
         "jpg5.su",
     )
 
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 1)
+    _RATE_LIMIT = 1, 1
 
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:

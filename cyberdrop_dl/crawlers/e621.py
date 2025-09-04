@@ -3,8 +3,6 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl import __version__
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -28,10 +26,10 @@ class E621Crawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "e621.net"
     FOLDER_DOMAIN: ClassVar[str] = "E621"
+    _RATE_LIMIT = 2, 1
 
     def __post_init__(self) -> None:
         self.headers = {"User-Agent": f"CyberDrop-DL/{__version__} (by B05FDD249DF29ED3)"}
-        self.request_limiter = AsyncLimiter(2, 1)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.query.get("tags"):

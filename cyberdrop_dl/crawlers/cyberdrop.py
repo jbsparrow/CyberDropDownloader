@@ -3,8 +3,6 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -37,9 +35,7 @@ class CyberdropCrawler(Crawler):
     DOMAIN: ClassVar[str] = "cyberdrop"
     _RATE_LIMIT: ClassVar[tuple[float, float]] = 5, 1
     _DOWNLOAD_SLOTS: ClassVar[int | None] = 1
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 2)
+    _RATE_LIMIT = 1, 2
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "a" in scrape_item.url.parts:
