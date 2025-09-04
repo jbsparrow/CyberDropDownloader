@@ -57,8 +57,7 @@ class XXXBunkerCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         _check_video_is_available(soup)
         title = open_graph.title(soup)

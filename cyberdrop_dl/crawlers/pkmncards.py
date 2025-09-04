@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
 
-from bs4 import BeautifulSoup
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -17,7 +15,7 @@ from cyberdrop_dl.utils.dates import TimeStamp, to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup, Tag
+    from bs4 import Tag
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -151,8 +149,7 @@ class PkmncardsCrawler(Crawler):
 
     @error_handling_wrapper
     async def card(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         name = css.select_one_get_text(soup, _SELECTORS.CARD_NAME)
         number = css.select_one_get_text(soup, _SELECTORS.CARD_NUMBER)
@@ -177,8 +174,7 @@ class PkmncardsCrawler(Crawler):
     async def handle_simple_card(self, scrape_item: ScrapeItem, simple_card: SimpleCard) -> None:
         @error_handling_wrapper
         async def get_card_set(self, scrape_item: ScrapeItem) -> CardSet:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.request_soup(scrape_item.url)
             return create_set(soup)
 
         async with self.set_locks[simple_card.set_abbr]:

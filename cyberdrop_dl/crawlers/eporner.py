@@ -156,8 +156,7 @@ class EpornerCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         scrape_item.url = canonical_url
         link_str = css.select_one_get_attr(soup, _SELECTORS.PHOTO, "href")
@@ -172,8 +171,7 @@ class EpornerCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         soup_str = soup.text
         if "File has been removed due to copyright owner request" in soup_str:

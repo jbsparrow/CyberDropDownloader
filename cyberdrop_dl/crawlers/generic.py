@@ -16,8 +16,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
@@ -84,8 +82,7 @@ class GenericCrawler(Crawler):
         return content_type.lower()
 
     async def try_video_from_soup(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         try:
             title = css.select_one_get_text(soup, "title").rsplit(" - ", 1)[0].rsplit("|", 1)[0]

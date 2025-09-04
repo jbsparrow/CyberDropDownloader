@@ -66,8 +66,7 @@ class DirtyShipCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
         if not scrape_item.url.suffix == ".jpg":
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.request_soup(scrape_item.url)
             url = self.parse_url(
                 next(css.get_attr(a, "href") for a in soup.select(_SELECTORS.SINGLE_PHOTO) if "full" in a.get_text())
             )
@@ -122,8 +121,7 @@ class DirtyShipCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         title: str = css.select_one_get_text(soup, "title")
         title = title.split(" - DirtyShip")[0]

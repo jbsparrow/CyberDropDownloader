@@ -85,8 +85,7 @@ class NoodleMagazineCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item.url):
             return
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
 
         metadata_text = css.select_one(soup, METADATA_SELECTOR).get_text()
         metadata = json.loads(metadata_text.strip())

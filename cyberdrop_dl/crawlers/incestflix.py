@@ -8,8 +8,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -44,8 +42,7 @@ class IncestflixCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         title: str = css.select_one_get_text(soup, _SELECTORS.TITLE)
         link_str = css.select_one_get_attr(soup, _SELECTORS.VIDEO, "src")
         url = self.parse_url(link_str)

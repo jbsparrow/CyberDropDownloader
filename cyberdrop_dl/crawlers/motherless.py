@@ -144,8 +144,7 @@ class MotherlessCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         check_soup(soup)
         media_info = self.process_media_soup(scrape_item, soup)

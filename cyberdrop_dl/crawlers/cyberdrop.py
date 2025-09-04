@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
-from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -12,8 +11,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.cyberdrop.me/api/")
@@ -53,8 +50,7 @@ class CyberdropCrawler(Crawler):
         scrape_item.url = scrape_item.url.with_query("nojs")
         album_id = scrape_item.url.parts[2]
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         try:
             title: str = css.select_one_get_text(soup, _SELECTORS.ALBUM_TITLE)

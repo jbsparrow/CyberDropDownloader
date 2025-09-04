@@ -11,8 +11,6 @@ from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://pixeldrain.com/api/")
@@ -110,8 +108,7 @@ class PixelDrainCrawler(Crawler):
             scrape_item.add_children()
 
     async def filesystem(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         og_props = open_graph.parse(soup)
         filename = og_props.title

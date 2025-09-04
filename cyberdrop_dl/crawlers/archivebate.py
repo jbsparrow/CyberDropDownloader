@@ -11,8 +11,6 @@ from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.crawlers.crawler import SupportedDomains, SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -68,8 +66,7 @@ class ArchiveBateCrawler(MixDropCrawler):
             self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if "This video has been deleted" in soup.text:
             raise ScrapeError(410)
@@ -88,8 +85,7 @@ class ArchiveBateCrawler(MixDropCrawler):
         if await self.check_complete_from_referer(mixdrop_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, mixdrop_url)
+        soup = await self.request_soup(mixdrop_url)
 
         link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)

@@ -65,8 +65,7 @@ class ImageBamCrawler(Crawler):
     @error_handling_wrapper
     async def view(self, scrape_item: ScrapeItem) -> None:
         # view URLs can be either a gallery or a single image.
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         if soup.select_one(_SELECTORS.IS_GALLERY):
             return await self.gallery(scrape_item, soup)
         await self.image(scrape_item, soup)
@@ -74,8 +73,7 @@ class ImageBamCrawler(Crawler):
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem, soup: BeautifulSoup | None = None) -> None:
         if not soup:
-            async with self.request_limiter:
-                soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.request_soup(scrape_item.url)
 
         gallery_name = css.select_one_get_text(soup, _SELECTORS.GALLERY_TITLE)
         gallery_id = scrape_item.url.name
@@ -91,8 +89,7 @@ class ImageBamCrawler(Crawler):
         process_gallery_images(soup)
 
         while next_page := css.select_one_get_attr_or_none(soup, _SELECTORS.NEXT_PAGE, "href"):
-            async with self.request_limiter:
-                soup = await self.client.get_soup(self.DOMAIN, self.parse_url(next_page))
+            soup = await self.request_soup(self.parse_url(next_page))
             process_gallery_images(soup)
 
     @error_handling_wrapper
@@ -101,8 +98,7 @@ class ImageBamCrawler(Crawler):
             if await self.check_complete_from_referer(scrape_item):
                 return
 
-            async with self.request_limiter:
-                soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.request_soup(scrape_item.url)
 
         image_tag = css.select_one(soup, _SELECTORS.IMAGE)
         if not scrape_item.album_id and (gallery_info := soup.select_one(_SELECTORS.GALLERY_INFO)):

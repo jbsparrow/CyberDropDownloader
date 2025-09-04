@@ -50,8 +50,7 @@ class OneManagerCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def process_path(self, scrape_item: ScrapeItem) -> None:
         try:
-            async with self.request_limiter:
-                soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.request_soup(scrape_item.url)
         except InvalidContentTypeError:  # This is a file, not html
             scrape_item.parent_title = scrape_item.parent_title.rsplit("/", 1)[0]
             link = scrape_item.url

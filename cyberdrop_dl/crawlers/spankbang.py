@@ -117,8 +117,7 @@ class SpankBangCrawler(Crawler):
             if await self.check_complete_from_referer(canonical_url):
                 return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
 
         was_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
         if was_removed or "This video is no longer available" in soup.text:

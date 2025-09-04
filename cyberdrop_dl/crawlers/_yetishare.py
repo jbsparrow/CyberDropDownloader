@@ -72,8 +72,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, folder_id: str, is_shared: bool = False) -> None:
         # Make request to update cookies. Access to folders is saved in cookies
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if soup.select_one(Selector.LOGIN_FORM):
             raise ScrapeError(410, "Folder has been deleted")
@@ -133,9 +132,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self.request_soup(scrape_item.url)
         if soup.select_one(Selector.PASSWORD_PROTECTED):
             soup = await self._unlock_password_protected_file(scrape_item, file_id)
 
@@ -182,13 +179,9 @@ class YetiShareCrawler(Crawler, is_abc=True):
     ) -> BeautifulSoup:
         async def ajax_api_request() -> BeautifulSoup:
             ajax_url = self.FILE_API_URL if is_file else self.FOLDERS_API_URL
-            async with self.request_limiter:
-                json_resp: dict[str, str] = await self.client.post_data(
-                    self.DOMAIN,
-                    ajax_url,
-                    data=data,
-                    headers={"X-Requested-With": "XMLHttpRequest"},
-                )
+            json_resp: dict[str, str] = await self.request_json(
+                ajax_url, data=data, headers={"X-Requested-With": "XMLHttpRequest"}
+            )
 
             return BeautifulSoup(json_resp["html"].replace("\\", ""), "html.parser")
 
@@ -207,13 +200,15 @@ class YetiShareCrawler(Crawler, is_abc=True):
             raise PasswordProtectedError
 
         password_post_url = (self.PRIMARY_URL / file_id).with_query("pt=")
-        async with self.request_limiter:
-            resp_bytes = await self.client.post_data_raw(
-                self.DOMAIN,
-                password_post_url,
-                data={"filePassword": password, "submitme": 1},
-            )
-        soup = BeautifulSoup(resp_bytes, "html.parser")
+
+        content = await self.request_text(
+            password_post_url,
+            data={
+                "filePassword": password,
+                "submitme": 1,
+            },
+        )
+        soup = BeautifulSoup(content, "html.parser")
 
         if soup.select_one(Selector.PASSWORD_PROTECTED):
             raise PasswordProtectedError("File password is invalid")
@@ -225,16 +220,14 @@ class YetiShareCrawler(Crawler, is_abc=True):
             raise PasswordProtectedError
 
         # Make a request with the password. Access to the file/folder will be stored in cookies
-        async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(
-                self.DOMAIN,
-                self.FOLDER_PASSWORD_API_URL,
-                data={
-                    "folderPassword": password,
-                    "folderId": node_id,
-                    "submitme": 1,
-                },
-            )
+        json_resp: dict[str, Any] = await self.request_json(
+            self.FOLDER_PASSWORD_API_URL,
+            data={
+                "folderPassword": password,
+                "folderId": node_id,
+                "submitme": 1,
+            },
+        )
         if not json_resp.get("success"):
             raise PasswordProtectedError(message="Incorrect password")
 

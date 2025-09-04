@@ -147,8 +147,7 @@ class AShemaleTubeCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item.url):
             return
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
         img_item = soup.select_one(_SELECTORS.IMAGE_ITEM)
         if not img_item:
             raise ScrapeError(404)
@@ -173,8 +172,7 @@ class AShemaleTubeCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
 
         if soup.select_one(_SELECTORS.LOGIN_REQUIRED):
             raise ScrapeError(401)

@@ -121,8 +121,7 @@ class GoogleDriveCrawler(Crawler):
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, folder_id: str) -> None:
         embeded_folder_url = (self.PRIMARY_URL / "embeddedfolderview").with_query(id=folder_id)
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, embeded_folder_url)
+        soup = await self.request_soup(embeded_folder_url)
 
         folder_name = css.select_one_get_text(soup, "title")
         title = self.create_title(folder_name, folder_id)

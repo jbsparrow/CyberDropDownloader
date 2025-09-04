@@ -84,8 +84,7 @@ class LeakedZoneCrawler(Crawler):
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         model_name: str = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME_FROM_PROFILE)
         scrape_item.setup_as_profile(self.create_title(model_name))
@@ -111,8 +110,7 @@ class LeakedZoneCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item.url):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         model_name = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME)
         scrape_item.setup_as_album(self.create_title(model_name))

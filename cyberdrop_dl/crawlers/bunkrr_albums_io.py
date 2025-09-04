@@ -46,8 +46,7 @@ class BunkrAlbumsIOCrawler(Crawler):
         page_url = scrape_item.url
         while True:
             current_page_number = int(page_url.query.get("page") or 1)
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url)
             next_page = soup.select(self.NEXT_PAGE_SELECTOR)
             yield soup
             if not next_page:

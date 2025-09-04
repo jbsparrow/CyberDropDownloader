@@ -15,6 +15,7 @@ from cyberdrop_dl.exceptions import InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.utilities import parse_url
 
 if TYPE_CHECKING:
+    from aiohttp.client_reqrep import ContentDisposition
     from curl_cffi.requests.models import Response as CurlResponse
 
     from cyberdrop_dl.clients.flaresolverr import FlareSolverrSolution
@@ -78,6 +79,18 @@ class AbstractResponse:
 
         content_type = (headers.get("Content-Type") or "").lower()
         return content_type, location
+
+    @property
+    def content_disposition(self) -> ContentDisposition:
+        assert isinstance(self._resp, CachedResponse | ClientResponse)
+        assert self._resp.content_disposition is not None
+        return self._resp.content_disposition
+
+    @property
+    def filename(self):
+        filename = self.content_disposition.filename
+        assert filename
+        return filename
 
     async def text(self, encoding: str | None = None) -> str:
         if self._text:

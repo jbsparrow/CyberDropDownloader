@@ -34,8 +34,7 @@ class ViprImCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         link_str: str = css.select_one_get_attr(soup, IMG_SELECTOR, "src")
         link = self.parse_url(link_str)

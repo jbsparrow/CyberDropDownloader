@@ -9,8 +9,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -52,8 +50,7 @@ class Rule34VaultCrawler(Crawler):
         for page in itertools.count(init_page):
             url = scrape_item.url.with_query(page=page)
             n_images = 0
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
+            soup = await self.request_soup(url)
 
             if not title:
                 if is_playlist:
@@ -78,8 +75,7 @@ class Rule34VaultCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if date_tag := soup.select_one(_SELECTORS.DATE):
             scrape_item.possible_datetime = self.parse_date(date_tag.text, "%b %d, %Y, %I:%M:%S %p")

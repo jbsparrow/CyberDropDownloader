@@ -47,9 +47,7 @@ class BeegComCrawler(Crawler):
             return
 
         scrape_item.url = canonical_url
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, JSON_URL / video_id)
-
+        json_resp: dict[str, Any] = await self.request_json(JSON_URL / video_id)
         facts: dict[str, Any] = min(json_resp["fc_facts"], key=lambda x: int(x["id"]))
         file: dict[str, Any] = json_resp["file"]
         title: str = next(data for data in file["data"] if data.get("cd_column") == "sf_name")["cd_value"]

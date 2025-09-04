@@ -84,8 +84,7 @@ class PorntrexCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         album_id = scrape_item.url.parts[2]
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if "This album is a private album" in soup.text:
             raise ScrapeError(401, "Private album")
@@ -108,8 +107,7 @@ class PorntrexCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         video = get_video_info(soup)
         link = self.parse_url(video.url)
@@ -122,8 +120,7 @@ class PorntrexCrawler(Crawler):
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if "models" in scrape_item.url.parts:
             title: str = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME).title()
@@ -161,8 +158,7 @@ class PorntrexCrawler(Crawler):
 
         elif "members" in scrape_item.url.parts:
             albums_url = scrape_item.url / "albums"
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, albums_url)
+            soup = await self.request_soup(albums_url)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUMS, new_title_part="albums"):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -200,8 +196,7 @@ class PorntrexCrawler(Crawler):
             if page > last_page:
                 break
             page_url = page_url.update_query({from_param_name: page})
-            async with self.request_limiter:
-                soup = await self.client.get_soup(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_OR_ALBUMS):
                 self.manager.task_group.create_task(self.run(new_scrape_item))

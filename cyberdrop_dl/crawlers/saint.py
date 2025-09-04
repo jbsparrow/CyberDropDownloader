@@ -51,8 +51,7 @@ class SaintCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         title_portion = css.select_one_get_text(soup, "title").rsplit(" - Saint Video Hosting")[0].strip()
         if not title_portion:
@@ -74,8 +73,7 @@ class SaintCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         try:
             link_str: str = css.select_one_get_attr(soup, _SELECTORS.EMBED_SRC, "src")
         except AssertionError:
@@ -88,8 +86,7 @@ class SaintCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         try:
             link_str: str = css.select_one_get_attr(soup, _SELECTORS.DOWNLOAD_BUTTON, "href")
         except (AttributeError, css.SelectorError):

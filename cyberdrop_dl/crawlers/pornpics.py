@@ -77,8 +77,7 @@ class PornPicsCrawler(Crawler):
         gallery_id = gallery_base.rsplit("-", 1)[-1]
         results = await self.get_album_results(gallery_id)
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         scrape_item.url = PRIMARY_URL / "galleries" / gallery_id  # canonical URL
         title = css.select_one_get_text(soup, "h1")

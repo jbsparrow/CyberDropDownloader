@@ -10,8 +10,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -43,8 +41,7 @@ class OmegaScansCrawler(Crawler):
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         series_id = None
         js_script = soup.select_one(JS_SELECTOR)
@@ -71,8 +68,7 @@ class OmegaScansCrawler(Crawler):
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if "This chapter is premium" in soup.get_text():
             raise ScrapeError(401, "This chapter is premium")
