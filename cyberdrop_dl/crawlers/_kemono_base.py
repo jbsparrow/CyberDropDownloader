@@ -530,7 +530,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def profile_w_no_api(self, scrape_item: ScrapeItem) -> None:
-        soup = await self.request_soup(scrape_item.url)
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         url_info = UserURL.parse(scrape_item.url)
         path = f"{url_info.service}/user/{url_info.user_id}"
@@ -540,7 +541,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         for offset in itertools.count(init_offset, MAX_OFFSET_PER_CALL):
             n_posts = 0
             api_url = api_url.with_query(o=offset)
-            soup = await self.request_soup(api_url)
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, api_url)
 
             for post in soup.select(POST_SELECTOR):
                 n_posts += 1
@@ -555,7 +557,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def post_w_no_api(self, scrape_item: ScrapeItem) -> None:
         url_info = UserPostURL.parse(scrape_item.url)
-        soup = await self.request_soup(scrape_item.url)
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         post = PartialUserPost.from_soup(soup)
         if not post.title or not post.user_name:
