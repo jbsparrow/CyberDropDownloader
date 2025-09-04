@@ -271,8 +271,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
                 post = DiscordPost.model_validate(post_data)
                 post_web_url = self.parse_url(post.web_path_qs)
-                new_scrape_item_for_post = scrape_item.create_child(post_web_url)
-                self.create_task(self._handle_discord_post_task(new_scrape_item_for_post, post))
+                new_scrape_item = scrape_item.create_child(post_web_url)
+                self.create_task(self._handle_discord_post_task(new_scrape_item, post))
                 scrape_item.add_children()
 
             if len(posts) < _DISCORD_CHANNEL_PAGE_SIZE:
@@ -372,16 +372,15 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             self.handle_external_links(new_scrape_item)
             scrape_item.add_children()
 
+    @error_handling_wrapper
     async def _get_usernames(self, api_url: AbsoluteHttpURL) -> None:
         try:
             json_resp: list[dict[str, Any]] = await self.__api_request(api_url)
             self._user_names = {User(u["service"], u.get("user_id") or u["id"]): u["name"] for u in json_resp}
-        except Exception:
-            pass
-
-        if not self._user_names:
-            self.log(f"Unable to get list of creators from {self.NAME}. Crawler has been disabled")
+        except Exception as e:
+            msg = f"Unable to get list of creators from {self.NAME}. Crawler has been disabled"
             self.disabled = True
+            raise ScrapeError(503, msg) from e
 
     """~~~~~~~~  PRIVATE METHODS, should never be overriden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -452,8 +451,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 raise ScrapeError(422)
 
             for post in (UserPost.model_validate(entry) for entry in posts):
-                link = self.parse_url(post.web_path_qs)
-                new_scrape_item = scrape_item.create_child(link)
+                post_web_url = self.parse_url(post.web_path_qs)
+                new_scrape_item = scrape_item.create_child(post_web_url)
                 self._handle_user_post(new_scrape_item, post)
                 scrape_item.add_children()
 
@@ -489,6 +488,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _POST_SELECTOR):
                 n_posts += 1
                 self.create_task(self.post_w_no_api_task(new_scrape_item))
+                scrape_item.add_children()
 
             if n_posts < _MAX_OFFSET_PER_CALL:
                 break
