@@ -321,7 +321,7 @@ def delete_empty_folders(manager: Manager):
 def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: Mapping[str, Any]) -> dict[str, Any]:
     """Remove all keys that are not fields in the dataclass"""
     fields_names = [f.name for f in dataclasses.fields(dataclass)]
-    return {name: info.get(name) for name in fields_names}
+    return {name: info[name] for name in fields_names if name in info}
 
 
 def get_text_between(original_text: str, start: str, end: str) -> str:
