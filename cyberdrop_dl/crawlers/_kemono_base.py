@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     _P = ParamSpec("_P")
 
 
-_MAX_OFFSET_PER_CALL = 50
+_DEFAULT_PAGE_SIZE = 50
 _DISCORD_CHANNEL_PAGE_SIZE = 150
 _POST_SELECTOR = "article.post-card a"
 _find_http_urls = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))").finditer
@@ -144,12 +144,12 @@ class PartialUserPost(NamedTuple):
 
 
 def fallback_if_no_api(
-    func: Callable[Concatenate[KemonoBaseCrawler, _P], Coroutine[None, None, Any]],
-) -> Callable[Concatenate[KemonoBaseCrawler, _P], Coroutine[None, None, Any]]:
+    func: Callable[Concatenate[KemonoBaseCrawler, _P], Coroutine[None, None, None]],
+) -> Callable[Concatenate[KemonoBaseCrawler, _P], Coroutine[None, None, None]]:
     """Calls a fallback method is the current instance does not define an API"""
 
     @functools.wraps(func)
-    async def wrapper(self: KemonoBaseCrawler, *args: _P.args, **kwargs: _P.kwargs) -> Any:
+    async def wrapper(self: KemonoBaseCrawler, *args: _P.args, **kwargs: _P.kwargs) -> None:
         if getattr(self, "API_ENTRYPOINT", None):
             return await func(self, *args, **kwargs)
 
@@ -319,7 +319,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             # Some patreon URLs have another URL as the filename:
             # ex: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
             filename, ext = self.get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
+        await self.handle_file(link, scrape_item, link.name, ext, custom_filename=filename)
 
     # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -367,7 +367,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         if not post.content:
             return
 
-        for link in self.__parse_yarl_urls(post):
+        for link in self.__parse_content_urls(post):
             new_scrape_item = scrape_item.create_child(link)
             self.handle_external_links(new_scrape_item)
             scrape_item.add_children()
@@ -384,7 +384,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     """~~~~~~~~  PRIVATE METHODS, should never be overriden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def __parse_yarl_urls(self, post: Post) -> Generator[AbsoluteHttpURL]:
+    def __parse_content_urls(self, post: Post) -> Generator[AbsoluteHttpURL]:
         seen: set[str] = set()
         for match in _find_http_urls(post.content):
             if (link := match.group().replace(".md.", ".")) not in seen:
@@ -456,12 +456,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 self._handle_user_post(new_scrape_item, post)
                 scrape_item.add_children()
 
-            if len(posts) < _MAX_OFFSET_PER_CALL:
+            if len(posts) < _DEFAULT_PAGE_SIZE:
                 break
 
     async def _pager(self, url: AbsoluteHttpURL, step_size: int | None = None) -> AsyncGenerator[Any]:
         """Yields JSON responses from API calls, or soup for web page calls, with configurable increments."""
-        current_step_size = step_size or _MAX_OFFSET_PER_CALL
+        current_step_size = step_size or _DEFAULT_PAGE_SIZE
         init_offset = int(url.query.get("o") or 0)
 
         request = self.__api_request if "api" in url.parts else self.request_soup
@@ -489,7 +489,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 n_posts += 1
                 self.create_task(self.post_w_no_api_task(new_scrape_item))
 
-            if n_posts < _MAX_OFFSET_PER_CALL:
+            if n_posts < _DEFAULT_PAGE_SIZE:
                 break
 
     @error_handling_wrapper
