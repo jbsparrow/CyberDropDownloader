@@ -488,7 +488,6 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _POST_SELECTOR):
                 n_posts += 1
                 self.create_task(self.post_w_no_api_task(new_scrape_item))
-                scrape_item.add_children()
 
             if n_posts < _MAX_OFFSET_PER_CALL:
                 break
