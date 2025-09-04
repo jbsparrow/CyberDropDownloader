@@ -42,15 +42,13 @@ class E621Crawler(Crawler):
             return await self.pool(scrape_item)
         raise ValueError
 
-    async def paginator(self, scrape_item: ScrapeItem) -> AsyncGenerator[list[dict[str, Any]]]:
+    async def _pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[list[dict[str, Any]]]:
         """Generator for album pages."""
         initial_page = int(scrape_item.url.query.get("page", 1))
         url = PRIMARY_URL / "posts.json"
         for page in itertools.count(initial_page):
             url = url.with_query(tags=scrape_item.url.query["tags"], page=page)
-            async with self.request_limiter:
-                json_resp: dict = await self.client.get_json(self.DOMAIN, url, self.headers)
-
+            json_resp: dict[str, Any] = await self.request_json(url, headers=self.headers)
             posts: list[dict] = json_resp.get("posts", [])
             if not posts:
                 break
@@ -63,7 +61,7 @@ class E621Crawler(Crawler):
         title = self.create_title(tags.replace("+", " "))
         scrape_item.setup_as_album(title)
 
-        async for posts in self.paginator(scrape_item):
+        async for posts in self._pager(scrape_item):
             for post in posts:
                 try:
                     file_url = post["file"]["url"]
@@ -81,9 +79,7 @@ class E621Crawler(Crawler):
         """Fetches posts from an e621 pool."""
         pool_id = scrape_item.url.name
         url = PRIMARY_URL / f"pools/{pool_id}.json"
-        async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.DOMAIN, url, self.headers)
-
+        json_resp: dict[str, Any] = await self.request_json(url, headers=self.headers)
         posts = json_resp.get("post_ids", [])
         title: str = json_resp.get("name", "Unknown Pool").replace("_", " ")
         scrape_item.setup_as_album(title)
@@ -99,11 +95,9 @@ class E621Crawler(Crawler):
         """Fetches a single post by extracting the ID from the URL."""
         post_id = scrape_item.url.name
         url = PRIMARY_URL / f"posts/{post_id}.json"
-        async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.DOMAIN, url, self.headers)
-
+        json_resp: dict[str, Any] = await self.request_json(url, headers=self.headers)
         try:
-            file_url = json_resp["post"]["file"]["url"]
+            file_url: str = json_resp["post"]["file"]["url"]
         except KeyError:
             raise ScrapeError(422) from None
 

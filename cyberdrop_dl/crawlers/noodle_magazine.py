@@ -5,7 +5,6 @@ import json
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
-from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -14,8 +13,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -63,8 +60,7 @@ class NoodleMagazineCrawler(Crawler):
         for page in itertools.count(1, init_page):
             n_videos = 0
             page_url = scrape_item.url.with_query(p=page)
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url, impersonate=True)
 
             if not title:
                 search_string: str = css.select_one_get_text(soup, SEARCH_STRING_SELECTOR)

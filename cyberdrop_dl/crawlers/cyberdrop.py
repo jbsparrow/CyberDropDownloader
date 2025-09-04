@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+import asyncio
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from aiolimiter import AsyncLimiter
 
@@ -68,32 +69,28 @@ class CyberdropCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        scrape_item.url = await self.get_stream_link(scrape_item.url)
+        scrape_item.url = await self._get_stream_link(scrape_item.url)
         if await self.check_complete_from_referer(scrape_item):
             return
 
         file_id = scrape_item.url.name
-        async with self.request_limiter:
-            api_url = API_ENTRYPOINT / "file" / "info" / file_id
-            json_resp = await self.client.get_json(self.DOMAIN, api_url)
+        file_info: tuple[dict[str, Any], dict[str, Any]] = await asyncio.gather(
+            self.request_json(API_ENTRYPOINT / "file" / "info" / file_id),
+            self.request_json(API_ENTRYPOINT / "file" / "auth" / file_id),
+        )
 
-        filename, ext = self.get_filename_and_ext(json_resp["name"])
-
-        async with self.request_limiter:
-            api_url = API_ENTRYPOINT / "file" / "auth" / file_id
-            json_resp = await self.client.get_json(self.DOMAIN, api_url)
-
-        link = self.parse_url(json_resp["url"])
+        filename, ext = self.get_filename_and_ext(file_info[0]["name"])
+        link = self.parse_url(file_info[1]["url"])
         await self.handle_file(link, scrape_item, filename, ext)
 
-    async def get_stream_link(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        """Gets the stream link for a given URL.
-
-        NOTE: This makes a request to get the final URL (if necessary). Calling function must use `@error_handling_wrapper`"""
+    async def _get_stream_link(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        """Gets the stream link for a given URL."""
 
         if any(part in url.parts for part in ("a", "f")):
             return url
+
         if url.host.count(".") > 1 or "e" in url.parts:
             return PRIMARY_URL / "f" / url.name
-        response, _ = await self.client._get_response_and_soup(self.DOMAIN, url)
-        return AbsoluteHttpURL(response.url)
+
+        async with self.request(url) as resp:
+            return resp.url

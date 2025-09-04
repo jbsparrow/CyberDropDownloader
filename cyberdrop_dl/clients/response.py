@@ -92,6 +92,15 @@ class AbstractResponse:
         assert filename
         return filename
 
+    @property
+    def ok(self) -> bool:
+        """Returns ``True`` if ``status`` is less than ``400``, ``False`` if not.
+
+        This is **not** a check for ``200 OK`` but a check that the response
+        status is under 400.
+        """
+        return 400 > self.status
+
     async def text(self, encoding: str | None = None) -> str:
         if self._text:
             return self._text

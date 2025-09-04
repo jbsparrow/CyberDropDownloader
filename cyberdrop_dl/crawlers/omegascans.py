@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -52,15 +52,14 @@ class OmegaScansCrawler(Crawler):
         scrape_item.setup_as_album("", album_id=series_id)
         # TODO: Add title
         # title: str = ""
-        for page in itertools.count(1):
-            api_url = API_ENTRYPOINT.with_query(page=page, perPage=30, series_id=series_id)
-            async with self.request_limiter:
-                json_resp = await self.client.get_json(self.DOMAIN, api_url)
+        api_url = API_ENTRYPOINT.with_query(series_id=series_id, perPage=30)
 
+        for page in itertools.count(1):
+            json_resp: dict[str, Any] = await self.request_json(api_url.update_query(page=page))
             for chapter in json_resp["data"]:
                 chapter_url = scrape_item.url / chapter["chapter_slug"]
                 new_scrape_item = scrape_item.create_child(chapter_url)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
 
             if json_resp["meta"]["current_page"] == json_resp["meta"]["last_page"]:

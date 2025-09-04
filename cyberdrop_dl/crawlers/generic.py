@@ -16,6 +16,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
+    from bs4 import BeautifulSoup
+
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
@@ -61,9 +63,10 @@ class GenericCrawler(Crawler):
     @error_handling_wrapper
     @log_unsupported_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        content_type = await self.get_content_type(scrape_item.url)
-        if "html" in content_type:
-            return await self.try_video_from_soup(scrape_item)
+        async with self.request(scrape_item.url) as resp:
+            content_type = resp.content_type
+            if "html" in content_type:
+                return await self.try_video_from_soup(scrape_item, await resp.soup())
 
         filename, ext = guess_filename_and_ext(scrape_item.url, content_type)
         if not ext:
@@ -73,17 +76,7 @@ class GenericCrawler(Crawler):
         filename, _ = self.get_filename_and_ext(fullname.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
-    async def get_content_type(self, url: AbsoluteHttpURL) -> str:
-        async with self.request_limiter:
-            headers = await self.client.get_head(self.DOMAIN, url)
-        content_type: str = headers.get("Content-Type", "")
-        if not content_type:
-            raise ScrapeError(422)
-        return content_type.lower()
-
-    async def try_video_from_soup(self, scrape_item: ScrapeItem) -> None:
-        soup = await self.request_soup(scrape_item.url)
-
+    async def try_video_from_soup(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
         try:
             title = css.select_one_get_text(soup, "title").rsplit(" - ", 1)[0].rsplit("|", 1)[0]
             link_str: str = css.select_one_get_attr(soup, VIDEO_SELECTOR, "src")

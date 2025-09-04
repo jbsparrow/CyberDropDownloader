@@ -80,14 +80,11 @@ class NHentaiCrawler(Crawler):
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         gallery_id = scrape_item.url.name
         api_url = self.PRIMARY_URL / "api/gallery" / gallery_id
-
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.request_json_cffi(self.DOMAIN, api_url)
+        json_resp: dict[str, Any] = await self.request_json(api_url, impersonate=True)
 
         titles: dict[str, str] = json_resp["title"]
         title: str = titles.get("english") or titles.get("japanese") or titles["pretty"]
-        title = self.create_title(title, gallery_id)
-        scrape_item.setup_as_album(title, album_id=gallery_id)
+        scrape_item.setup_as_album(self.create_title(title, gallery_id), album_id=gallery_id)
         scrape_item.possible_datetime = json_resp["upload_date"]
 
         padding = max(3, len(str(json_resp["num_pages"])))

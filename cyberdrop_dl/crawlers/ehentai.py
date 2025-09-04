@@ -51,18 +51,18 @@ class EHentaiCrawler(Crawler):
                 await self.set_no_warnings(scrape_item)
 
         title: str = ""
+        gallery_id = scrape_item.url.parts[2]
         scrape_item.url = scrape_item.url.with_query(None)
         async for soup in self.web_pager(scrape_item.url):
             if not title:
                 title = self.create_title(css.select_one_get_text(soup, _SELECTORS.TITLE))
                 date_str: str = css.select_one_get_text(soup, _SELECTORS.DATE)
-                gallery_id = scrape_item.url.parts[2]
                 title = self.create_title(title, gallery_id)
                 scrape_item.setup_as_album(title, album_id=gallery_id)
                 scrape_item.possible_datetime = self.parse_date(date_str)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM_IMAGES):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -70,7 +70,6 @@ class EHentaiCrawler(Crawler):
             return
 
         soup = await self.request_soup(scrape_item.url)
-
         link_str: str = css.select_one_get_attr(soup, _SELECTORS.IMAGE, "src")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
@@ -81,6 +80,5 @@ class EHentaiCrawler(Crawler):
     async def set_no_warnings(self, scrape_item: ScrapeItem) -> None:
         """Sets the no warnings cookie."""
         url = scrape_item.url.update_query(nw="session")
-        async with self.request_limiter:
-            await self.client.get_soup(self.DOMAIN, url)
-        self._warnings_set = True
+        async with self.request(url):
+            self._warnings_set = True

@@ -33,7 +33,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -190,14 +190,11 @@ class GoogleDriveCrawler(Crawler):
         # Use POST request to bypass "file is too large to scan. Would you still like to download this file" warning
         method = "GET" if export_url.host == _DOCS_URL.host else "POST"
 
-        # TODO: This request bypasses the config limiter. Use the new request method when PR #1251 is merged
-        async with self.request_limiter, self.client._session.request(method, export_url) as resp:
+        async with self.request(export_url, method=method) as resp:
             if not resp.ok or "html" in resp.content_type:
                 await self.client.client_manager.check_http_status(resp)
 
-        direct_url = cast("AbsoluteHttpURL", resp.url)
-        filename: str = resp.content_disposition.filename  # type: ignore[reportAssignmentType,reportOptionalMemberAccess]
-        return direct_url, filename
+        return resp.url, resp.filename
 
 
 def _get_proper_doc_format(doc: str, format: str | None) -> str:

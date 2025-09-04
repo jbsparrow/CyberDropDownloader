@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
-WT_REGEX = re.compile(r'appdata\.wt\s=\s"([^"]+)"')
+_FIND_WT = re.compile(r'appdata\.wt\s=\s"([^"]+)"').search
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.gofile.io")
 GLOBAL_JS_URL = AbsoluteHttpURL("https://gofile.io/dist/js/global.js")
 PRIMARY_URL = AbsoluteHttpURL("https://gofile.io")
@@ -117,8 +117,7 @@ class GoFileCrawler(Crawler):
             api_url = api_url.update_query(password=sha256_password)
 
         try:
-            async with self.request_limiter:
-                json_resp: ApiAlbumResponse = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
+            json_resp: ApiAlbumResponse = await self.request_json(api_url, headers=self.headers)
 
         except DownloadError as e:
             if e.status != http.HTTPStatus.UNAUTHORIZED:
@@ -126,8 +125,7 @@ class GoFileCrawler(Crawler):
             async with self.startup_lock:
                 await self.get_website_token(update=True)
             api_url = api_url.update_query(wt=self.website_token)
-            async with self.request_limiter:
-                json_resp = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
+            json_resp = await self.request_json(api_url, headers=self.headers)
 
         album = get_album_data(json_resp)
         if is_single_not_nested_file(scrape_item, album):
@@ -216,8 +214,7 @@ class GoFileCrawler(Crawler):
 
     async def _get_new_api_key(self) -> str:
         api_url = API_ENTRYPOINT / "accounts"
-        async with self.request_limiter:
-            json_resp = await self.client.post_data(self.DOMAIN, api_url, data={})
+        json_resp = await self.request_json(api_url, method="POST", data={})
         if json_resp["status"] != "ok":
             raise ScrapeError(401, "Couldn't generate GoFile API token", origin=api_url)
 
@@ -235,11 +232,11 @@ class GoFileCrawler(Crawler):
         await self._update_website_token()
 
     async def _update_website_token(self) -> None:
-        async with self.request_limiter:
-            text = await self.client.get_text(self.DOMAIN, GLOBAL_JS_URL)
-        match = WT_REGEX.search(str(text))
+        text = await self.request_text(GLOBAL_JS_URL)
+        match = _FIND_WT(text)
         if not match:
             raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=GLOBAL_JS_URL)
+
         self.website_token = match.group(1)
         self.manager.cache_manager.save("gofile_website_token", self.website_token)
         self._website_token_date = datetime.now(UTC)
