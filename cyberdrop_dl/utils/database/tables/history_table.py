@@ -68,7 +68,7 @@ class HistoryTable:
         query = "UPDATE OR IGNORE media SET domain = ? WHERE domain = 'no_crawler' AND referer LIKE ?"
         cursor = await self.db_conn.executemany(query, domains_to_update.items())
         query = "DELETE FROM media WHERE domain = 'no_crawler' AND referer LIKE ?"
-        await cursor.executemany(query, domains_to_update.values())
+        await cursor.executemany(query, [[x] for x in domains_to_update.values()])
         await self.db_conn.commit()
 
     async def run_updates(self) -> None:
