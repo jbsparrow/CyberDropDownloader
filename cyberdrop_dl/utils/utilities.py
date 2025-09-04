@@ -419,11 +419,6 @@ async def close_if_defined(obj: C) -> C:
     return constants.NOT_DEFINED
 
 
-def with_suffix_encoded(url: AnyURL, suffix: str) -> AnyURL:
-    name = Path(url.raw_name).with_suffix(suffix)
-    return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
-
-
 @lru_cache
 def get_system_information() -> str:
     def get_common_name() -> str:

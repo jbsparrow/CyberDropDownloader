@@ -18,13 +18,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPa
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
 from cyberdrop_dl.utils import css, open_graph
-from cyberdrop_dl.utils.utilities import (
-    error_handling_wrapper,
-    get_text_between,
-    parse_url,
-    with_suffix_encoded,
-    xor_decrypt,
-)
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, xor_decrypt
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -113,8 +107,7 @@ class AlbumItem:
     @property
     def src(self) -> AbsoluteHttpURL:
         src_str = self.thumbnail.replace("/thumbs/", "/")
-        src = parse_url(src_str, relative_to=PRIMARY_URL)
-        src = with_suffix_encoded(src, self.suffix).with_query(None)
+        src = parse_url(src_str, relative_to=PRIMARY_URL).with_suffix(self.suffix).with_query(None)
         if src.suffix.lower() not in FILE_FORMATS["Images"]:
             src = src.with_host(src.host.replace("i-", ""))
         return override_cdn(src)

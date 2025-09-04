@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, with_suffix_encoded
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -81,7 +81,7 @@ def thumbnail_to_img(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         return url
     if (new_ext := ".mp4") != url.suffix:
         new_ext = ".jpg"
-    url = with_suffix_encoded(url, new_ext)
+    url = url.with_suffix(new_ext)
     new_parts = [p for p in url.parts if p not in ("/", "thumb")]
     new_path = "/".join(new_parts)
     return url.with_path(new_path)
