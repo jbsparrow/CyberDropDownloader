@@ -6,7 +6,6 @@ import itertools
 import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
-from json import loads as json_loads
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, NamedTuple, NotRequired, ParamSpec
 
 from pydantic import AliasChoices, BeforeValidator, Field
@@ -464,32 +463,17 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         current_step_size = step_size or _MAX_OFFSET_PER_CALL
         init_offset = int(url.query.get("o") or 0)
 
-        request = self.__api_request if "api" in url.parts else self.__get_soup
+        request = self.__api_request if "api" in url.parts else self.request_soup
         for current_offset in itertools.count(init_offset, current_step_size):
             yield await request(url.update_query(o=current_offset))
-
-    async def __get_soup(self, url: AbsoluteHttpURL):
-        async with self.request_limiter:
-            return await self.client.get_soup(self.DOMAIN, url)
 
     async def __api_request(self, url: AbsoluteHttpURL) -> Any:
         """Get JSON from the API, with a custom Accept header."""
 
-        async with self.request_limiter:
-            response, soup_or_none = await self.client._get(
-                self.DOMAIN,
-                url,
-                headers={
-                    "Accept": "text/css",
-                },
-            )
-
-        if soup_or_none:
-            return json_loads(soup_or_none.text)
-
         # When using the 'text/css' header, the response is missing the charset header
         # and charset detection may return a random codec if the body has non english chars, so we force utf-8
-        return json_loads(await response.text(encoding="utf-8"))
+        async with self.request(url, headers={"Accept": "text/css"}) as resp:
+            return await resp.json(encoding="utf-8", content_type=False)
 
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -509,7 +493,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def post_w_no_api(self, scrape_item: ScrapeItem) -> None:
-        soup = await self.__get_soup(scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         service, _, user_id, _, post_id = scrape_item.url.parts[1:6]
         partial_post = PartialUserPost.from_soup(soup)
         if not partial_post.title or not partial_post.user_name:
