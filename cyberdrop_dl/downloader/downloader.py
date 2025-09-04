@@ -426,7 +426,12 @@ class Downloader:
             message = str(e)
             raise DownloadError(ui_message, message, retry=True) from e
 
-    async def write_download_error(self, media_item: MediaItem, error_log_msg: ErrorLogMessage, exc_info=None) -> None:
+    def write_download_error(
+        self,
+        media_item: MediaItem,
+        error_log_msg: ErrorLogMessage,
+        exc_info: Exception | None = None,
+    ) -> None:
         self.attempt_task_removal(media_item)
         full_message = f"{self.log_prefix} Failed: {media_item.url} ({error_log_msg.main_log_msg}) \n -> Referer: {media_item.referer}"
         log(full_message, 40, exc_info=exc_info)

@@ -16,7 +16,7 @@ from dataclasses import Field, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
-from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, Protocol, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, Protocol, TypeGuard, TypeVar, cast, overload
 
 import aiofiles
 import rich
@@ -39,7 +39,7 @@ from cyberdrop_dl.exceptions import (
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine, Iterable, Mapping
+    from collections.abc import Callable, Coroutine, Generator, Iterable, Mapping
 
     from rich.text import Text
 
@@ -67,59 +67,87 @@ class Dataclass(Protocol):
     __dataclass_fields__: ClassVar[dict]
 
 
+@contextlib.contextmanager
+def error_handling_context(self: Crawler | Downloader, item: ScrapeItem | MediaItem | URL) -> Generator[None]:
+    link: URL = item if isinstance(item, URL) else item.url
+    error_log_msg = origin = exc_info = None
+    link_to_show: URL | str = ""
+    is_segment: bool = getattr(item, "is_segment", False)
+    is_downloader: bool = bool(getattr(self, "log_prefix", False))
+    try:
+        yield
+    except TooManyCrawlerErrors:
+        return
+    except CDLBaseError as e:
+        error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
+        origin = e.origin
+        link_to_show: URL | str = getattr(e, "url", None) or link_to_show
+    except NotImplementedError as e:
+        error_log_msg = ErrorLogMessage("NotImplemented")
+        exc_info = e
+    except TimeoutError as e:
+        error_log_msg = ErrorLogMessage("Timeout", repr(e))
+    except ClientConnectorError as e:
+        ui_failure = "Client Connector Error"
+        suffix = "" if (link.host or "").startswith(e.host) else f" from {link}"
+        log_msg = f"{e}{suffix}. If you're using a VPN, try turning it off"
+        error_log_msg = ErrorLogMessage(ui_failure, log_msg)
+    except ValidationError as e:
+        exc_info = e
+        ui_failure = create_error_msg(422)
+        log_msg = str(e).partition("For further information")[0].strip()
+        error_log_msg = ErrorLogMessage(ui_failure, log_msg)
+    except Exception as e:
+        exc_info = e
+        error_log_msg = ErrorLogMessage.from_unknown_exc(e)
+
+    if error_log_msg is None or is_segment:
+        return
+
+    link_to_show = link_to_show or link
+    origin = origin or get_origin(item)
+    if is_downloader:
+        self, item = cast("Downloader", self), cast("MediaItem", item)
+        self.write_download_error(item, error_log_msg, exc_info)
+        return
+
+    log(f"Scrape Failed: {link_to_show} ({error_log_msg.main_log_msg})", 40, exc_info=exc_info)
+    self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
+    self.manager.progress_manager.scrape_stats_progress.add_failure(error_log_msg.ui_failure)
+
+
+@overload
 def error_handling_wrapper(
-    func: Callable[Concatenate[CrawerOrDownloader, Origin, P], R | Coroutine[Any, Any, R]],
-) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], Coroutine[Any, Any, R | None]]:
+    func: Callable[Concatenate[CrawerOrDownloader, Origin, P], R],
+) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], R]: ...
+
+
+@overload
+def error_handling_wrapper(
+    func: Callable[Concatenate[CrawerOrDownloader, Origin, P], Coroutine[None, None, R]],
+) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], Coroutine[None, None, R]]: ...
+
+
+def error_handling_wrapper(
+    func: Callable[Concatenate[CrawerOrDownloader, Origin, P], R | Coroutine[None, None, R]],
+) -> Callable[Concatenate[CrawerOrDownloader, Origin, P], R | Coroutine[None, None, R]]:
     """Wrapper handles errors for url scraping."""
 
+    if inspect.iscoroutinefunction(func):
+
+        @wraps(func)
+        async def async_wrapper(self: CrawerOrDownloader, item: Origin, *args: P.args, **kwargs: P.kwargs) -> R:
+            with error_handling_context(self, item):
+                return await func(self, item, *args, **kwargs)
+
+        return async_wrapper
+
     @wraps(func)
-    async def wrapper(self: CrawerOrDownloader, item: Origin, *args: P.args, **kwargs: P.kwargs) -> R | None:
-        link: URL = item if isinstance(item, URL) else item.url
-        origin = exc_info = None
-        link_to_show: URL | str = ""
-        try:
+    def wrapper(self: CrawerOrDownloader, item: Origin, *args: P.args, **kwargs: P.kwargs) -> R:
+        with error_handling_context(self, item):
             result = func(self, item, *args, **kwargs)
-            if inspect.isawaitable(result):
-                return await result
+            assert not inspect.isawaitable(result)
             return result
-        except TooManyCrawlerErrors:
-            return
-        except CDLBaseError as e:
-            error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
-            origin = e.origin
-            link_to_show: URL | str = getattr(e, "url", None) or link_to_show
-        except NotImplementedError as e:
-            error_log_msg = ErrorLogMessage("NotImplemented")
-            exc_info = e
-        except TimeoutError as e:
-            error_log_msg = ErrorLogMessage("Timeout", repr(e))
-        except ClientConnectorError as e:
-            ui_failure = "Client Connector Error"
-            suffix = "" if (link.host or "").startswith(e.host) else f" from {link}"
-            log_msg = f"{e}{suffix}. If you're using a VPN, try turning it off"
-            error_log_msg = ErrorLogMessage(ui_failure, log_msg)
-        except ValidationError as e:
-            exc_info = e
-            ui_failure = create_error_msg(422)
-            log_msg = str(e).partition("For further information")[0].strip()
-            error_log_msg = ErrorLogMessage(ui_failure, log_msg)
-        except Exception as e:
-            exc_info = e
-            error_log_msg = ErrorLogMessage.from_unknown_exc(e)
-
-        if (skip := getattr(item, "is_segment", None)) and skip is not None:
-            return
-
-        link_to_show = link_to_show or link
-        origin = origin or get_origin(item)
-        is_downloader = getattr(self, "log_prefix", False)
-        if is_downloader:
-            self.manager.task_group.create_task(self.write_download_error(item, error_log_msg, exc_info))  # type: ignore
-            return
-
-        log(f"Scrape Failed: {link_to_show} ({error_log_msg.main_log_msg})", 40, exc_info=exc_info)
-        self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
-        self.manager.progress_manager.scrape_stats_progress.add_failure(error_log_msg.ui_failure)
 
     return wrapper
 
