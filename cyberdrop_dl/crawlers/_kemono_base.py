@@ -6,7 +6,7 @@ import itertools
 import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, NamedTuple, NotRequired, ParamSpec
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Concatenate, Literal, NamedTuple, NotRequired, ParamSpec
 
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
@@ -143,13 +143,15 @@ class PartialUserPost(NamedTuple):
         return PartialUserPost(**params)
 
 
-def fallback_if_no_api(func: Callable[_P, Coroutine[None, None, Any]]) -> Callable[_P, Coroutine[None, None, Any]]:
+def fallback_if_no_api(
+    func: Callable[Concatenate[KemonoBaseCrawler, _P], Coroutine[None, None, Any]],
+) -> Callable[Concatenate[KemonoBaseCrawler, _P], Coroutine[None, None, Any]]:
     """Calls a fallback method is the current instance does not define an API"""
 
     @functools.wraps(func)
-    async def wrapper(self: KemonoBaseCrawler, *args, **kwargs) -> Any:
+    async def wrapper(self: KemonoBaseCrawler, *args: _P.args, **kwargs: _P.kwargs) -> Any:
         if getattr(self, "API_ENTRYPOINT", None):
-            return await func(self, *args, **kwargs)  # type: ignore[reportCallIssue]
+            return await func(self, *args, **kwargs)
 
         if fallback_func := getattr(self, f"{func.__name__}_w_no_api", None):
             return await fallback_func(*args, **kwargs)
@@ -160,7 +162,7 @@ def fallback_if_no_api(func: Callable[_P, Coroutine[None, None, Any]]) -> Callab
 
 
 class KemonoBaseCrawler(Crawler, is_abc=True):
-    SUPPORTED_PATHS: ClassVar[dict[str, str]] = {  # type: ignore[reportIncompatibleVariableOverride]
+    SUPPORTED_PATHS: ClassVar[dict[str, str]] = {
         "Model": "/<service>/user/<user_id>",
         "Favorites": "/favorites/<user_id>",
         "Search": "/search?q=...",
@@ -334,11 +336,11 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                         f"[{self.NAME}] {path} found with multiple "  #
                         f"different servers: {server = } {previous_server = } "
                     )
-                    self.log(msg)
+                    self.log(msg, 30)
                 continue
             self.__known_attachment_servers[path] = server
 
-    def _handle_user_post(self, scrape_item: ScrapeItem, post: UserPost):
+    def _handle_user_post(self, scrape_item: ScrapeItem, post: UserPost) -> None:
         user_name = self._user_names[post.user]
         title = self.create_title(user_name, post.user_id)
         scrape_item.setup_as_album(title, album_id=post.user_id)
@@ -347,7 +349,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         scrape_item.add_to_parent_title(post_title)
         self.__handle_post(scrape_item, post)
 
-    async def _handle_discord_post(self, scrape_item: ScrapeItem, post: DiscordPost):
+    async def _handle_discord_post(self, scrape_item: ScrapeItem, post: DiscordPost) -> None:
         server = await self.__get_discord_server(post.server_id)
         title = self.create_title(f"{server.name} [discord]", server.id)
         channel_name = next(c.name for c in server.channels if c.id == post.channel_id)
