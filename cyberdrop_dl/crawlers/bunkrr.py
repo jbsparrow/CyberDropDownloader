@@ -18,13 +18,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPa
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
 from cyberdrop_dl.utils import css, open_graph
-from cyberdrop_dl.utils.utilities import (
-    error_handling_wrapper,
-    get_text_between,
-    parse_url,
-    with_suffix_encoded,
-    xor_decrypt,
-)
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, xor_decrypt
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -113,8 +107,7 @@ class AlbumItem:
     @property
     def src(self) -> AbsoluteHttpURL:
         src_str = self.thumbnail.replace("/thumbs/", "/")
-        src = parse_url(src_str, relative_to=PRIMARY_URL)
-        src = with_suffix_encoded(src, self.suffix).with_query(None)
+        src = parse_url(src_str, relative_to=PRIMARY_URL).with_suffix(self.suffix).with_query(None)
         if src.suffix.lower() not in FILE_FORMATS["Images"]:
             src = src.with_host(src.host.replace("i-", ""))
         return override_cdn(src)
@@ -224,9 +217,9 @@ class BunkrrCrawler(Crawler):
         link: AbsoluteHttpURL | None = None
         soup: BeautifulSoup | None = None
         if is_stream_redirect(scrape_item.url):
-            response, soup = await self.client._get_response_and_soup(self.DOMAIN, scrape_item.url)
-            scrape_item.url = AbsoluteHttpURL(response.url)
-            del response
+            async with self.request(scrape_item.url) as resp:
+                soup = await resp.soup()
+                scrape_item.url = resp.url
 
         database_url = scrape_item.url.with_host(self.DATABASE_PRIMARY_HOST)
         if await self.check_complete_from_referer(database_url):
@@ -267,9 +260,7 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def reinforced_file(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self.request_soup(scrape_item.url)
         title: str = css.select_one_get_text(soup, "h1")
         link: AbsoluteHttpURL | None = await self.get_download_url_from_api(scrape_item.url)
         if not link:
@@ -328,9 +319,7 @@ class BunkrrCrawler(Crawler):
                 api_url = STREAMING_API_ENTRYPOINT.with_host(self.known_good_host)
 
         data = json.dumps(data_dict)
-        async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=data, headers=headers)
-
+        json_resp: dict[str, Any] = await self.request_json(api_url, "POST", data=data, headers=headers)
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
         link = self.parse_url(link_str)
@@ -362,14 +351,10 @@ class BunkrrCrawler(Crawler):
 
         If we don't know a valid host but the response was successful, register the host as a valid host"""
 
-        async def get_soup(url: AbsoluteHttpURL) -> BeautifulSoup:
-            async with self.request_limiter:
-                return await self.client.get_soup(self.DOMAIN, url)
-
         async def get_soup_no_error(url: AbsoluteHttpURL) -> BeautifulSoup | None:
             global known_bad_hosts
             try:
-                soup: BeautifulSoup = await get_soup(url)
+                soup = await self.request_soup(url)
             except (ClientConnectorError, DDOSGuardError):
                 known_bad_hosts.add(url.host)
                 if not HOST_OPTIONS - known_bad_hosts:
@@ -380,10 +365,10 @@ class BunkrrCrawler(Crawler):
                 return soup
 
         if not is_root_domain(url):
-            return await get_soup(url)
+            return await self.request_soup(url)
 
         elif self.known_good_host:
-            return await get_soup(url.with_host(self.known_good_host))
+            return await self.request_soup(url.with_host(self.known_good_host))
 
         async with self.switch_host_locks[url.host]:
             if url.host not in known_bad_hosts:
@@ -399,7 +384,7 @@ class BunkrrCrawler(Crawler):
                         return soup
 
         # everything failed, do the request with the original URL to throw an exception
-        return await get_soup(url)
+        return await self.request_soup(url)
 
 
 def get_part_next_to(url: AbsoluteHttpURL, part: str) -> str:
