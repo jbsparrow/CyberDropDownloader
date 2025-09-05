@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import itertools
-import math
 import re
 from collections import defaultdict
 from dataclasses import dataclass
@@ -15,7 +14,7 @@ from aiohttp import ClientConnectorError
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
+from cyberdrop_dl.exceptions import DDOSGuardError, ScrapeError
 from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, xor_decrypt
 
@@ -62,6 +61,7 @@ CDN_POSSIBILITIES = re.compile(r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:re
 DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://apidl.bunkr.ru/api/_001_v2")
 STREAMING_API_ENTRYPOINT = AbsoluteHttpURL("https://bunkr.site/api/vs")
 PRIMARY_URL = AbsoluteHttpURL("https://bunkr.site")
+REINFORCED_URL_BASE = AbsoluteHttpURL("https://get.bunkr.su")
 
 
 class Selectors:
@@ -131,7 +131,6 @@ class BunkrrCrawler(Crawler):
     _DOWNLOAD_SLOTS: ClassVar[int | None] = 3
 
     def __post_init__(self) -> None:
-        self.known_good_host: str = ""
         self.switch_host_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.known_good_url: AbsoluteHttpURL | None = None
 
@@ -189,24 +188,18 @@ class BunkrrCrawler(Crawler):
     @error_handling_wrapper
     async def _process_album_item(self, scrape_item: ScrapeItem, item: AlbumItem, results: dict) -> None:
         link = item.src
-        if link.suffix.lower() not in VIDEO_AND_IMAGE_EXTS or "no-image" in link.name or self.deep_scrape(link):
+        if link.suffix.lower() not in VIDEO_AND_IMAGE_EXTS or "no-image" in link.name or self.deep_scrape:
             self.create_task(self.run(scrape_item))
             return
 
         if self.check_album_results(link, results):
             return
+
         if not link.query.get("n"):
             link = link.update_query(n=item.name)
 
-        custom_filename, ext = self.get_filename_and_ext(link.query["n"], assume_ext=".mp4")
-
-        try:
-            filename, ext = self.get_filename_and_ext(link.name)
-        except NoExtensionError:
-            # custom_filename did not raise an exception, so we ignore here as well
-            filename, ext = self.get_filename_and_ext(str(Path(link.name).with_suffix(ext)))
-
-        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+        filename, ext = self.get_filename_and_ext(link.query["n"], assume_ext=".mp4")
+        await self.handle_file(link, scrape_item, link.name, ext, custom_filename=filename)
 
     _process_album_item_task = auto_task_id(_process_album_item)
 
@@ -229,10 +222,9 @@ class BunkrrCrawler(Crawler):
         image_container = soup.select_one(_SELECTORS.IMAGE_PREVIEW)
         download_link_container = soup.select_one(_SELECTORS.DOWNLOAD_BUTTON)
 
-        # Try image first to not make any aditional request
+        # Try image first to not make any additional request
         if image_container:
-            link_str: str = css.get_attr(image_container, "src")
-            link = self.parse_url(link_str)
+            link = self.parse_url(css.get_attr(image_container, "src"))
 
         # Try to get downloadd URL from streaming API. Should work for most files, even none video files
         if not link and "f" in scrape_item.url.parts:
@@ -241,17 +233,20 @@ class BunkrrCrawler(Crawler):
             slug_url = base / "f" / slug.encode().decode("unicode-escape")
             link = await self.get_download_url_from_api(slug_url)
 
-        # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
+        # Fallback for everything else, try to get the download URL.
+        # `handle_direct_link` will make the final request to the API
         if not link and download_link_container:
-            link_str: str = css.get_attr(download_link_container, "href")
-            link = self.parse_url(link_str)
+            link = self.parse_url(css.get_attr(download_link_container, "href"))
 
         # Everything failed, abort
         if not link:
             raise ScrapeError(422, "Could not find source")
 
-        if not scrape_item.possible_datetime and (date_str := soup.select_one(_SELECTORS.ITEM_DATE)):
-            scrape_item.possible_datetime = self.parse_date(date_str.text.strip())
+        if not scrape_item.possible_datetime:
+            scrape_item.possible_datetime = self.parse_date(
+                css.select_one_get_text(soup, _SELECTORS.ITEM_DATE),
+                "%H:%M:%S %d/%m/%Y",
+            )
 
         title = open_graph.title(soup)  # See: https://github.com/jbsparrow/CyberDropDownloader/issues/929
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
@@ -259,8 +254,8 @@ class BunkrrCrawler(Crawler):
     @error_handling_wrapper
     async def reinforced_file(self, scrape_item: ScrapeItem) -> None:
         soup = await self.request_soup(scrape_item.url)
-        title: str = css.select_one_get_text(soup, "h1")
-        link: AbsoluteHttpURL | None = await self.get_download_url_from_api(scrape_item.url)
+        title = css.select_one_get_text(soup, "h1")
+        link = await self.get_download_url_from_api(scrape_item.url)
         if not link:
             raise ScrapeError(422)
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
@@ -286,24 +281,17 @@ class BunkrrCrawler(Crawler):
         if not link.query.get("n"):
             link = link.update_query(n=fallback_filename)
 
-        # Bunkr is a special case.
-        # It should NOT use `create_custom_filename` since the custom file name is actually used to validate the ext
         custom_filename, ext = self.get_filename_and_ext(link.query["n"], assume_ext=".mp4")
-        try:
-            filename, ext = self.get_filename_and_ext(link.name)
-        except NoExtensionError:
-            # custom_filename did not raise an exception, so we ignore here as well
-            filename, ext = self.get_filename_and_ext(str(Path(link.name).with_suffix(ext)))
-
         if is_cdn(scrape_item.url) and not is_reinforced_link(scrape_item.url):
-            scrape_item.url = AbsoluteHttpURL("https://get.bunkr.su/")  # Using a CDN as referer gets a 403 response
+            # Using a CDN as referer gets a 403 response
+            scrape_item.url = REINFORCED_URL_BASE
 
-        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+        await self.handle_file(link, scrape_item, link.name, ext, custom_filename=custom_filename)
 
     async def get_download_url_from_api(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
         """Gets the download link for a given URL
 
-        1. Reinforced URL (get.bunkr.su/<file_id>). or
+        1. Reinforced URL (get.bunkr.su/file/<file_id>). or
         2. Streaming URL (bunkr.site/f/<file_slug>)"""
 
         api_url = DOWNLOAD_API_ENTRYPOINT
@@ -312,8 +300,8 @@ class BunkrrCrawler(Crawler):
         else:
             payload = {"slug": get_part_next_to(url, "f")}
             api_url = STREAMING_API_ENTRYPOINT
-            if self.known_good_host:
-                api_url = STREAMING_API_ENTRYPOINT.with_host(self.known_good_host)
+            if self.known_good_url:
+                api_url = STREAMING_API_ENTRYPOINT.with_host(self.known_good_url.host)
 
         json_resp: dict[str, Any] = await self.request_json(
             api_url,
@@ -326,9 +314,6 @@ class BunkrrCrawler(Crawler):
         link = self.parse_url(link_str)
         if link != PRIMARY_URL:  # We got an empty response
             return link
-
-    def deep_scrape(self, url: AbsoluteHttpURL) -> bool:
-        return any(part in url.host.split(".") for part in ("burger.",)) or self.manager.config_manager.deep_scrape
 
     async def handle_file(
         self,
@@ -356,8 +341,7 @@ class BunkrrCrawler(Crawler):
             if not HOST_OPTIONS - known_bad_hosts:
                 raise
         else:
-            if not self.known_good_host:
-                self.known_good_host = resp.url.host
+            if not self.known_good_url:
                 self.known_good_url = resp.url.origin()
             return soup
 
@@ -371,8 +355,8 @@ class BunkrrCrawler(Crawler):
         if not is_root_domain(url):
             return await self.request_soup(url)
 
-        if self.known_good_host:
-            return await self.request_soup(url.with_host(self.known_good_host))
+        if self.known_good_url:
+            return await self.request_soup(url.with_host(self.known_good_url.host))
 
         async with self.switch_host_locks[url.host]:
             if url.host not in known_bad_hosts:
@@ -421,7 +405,7 @@ def decrypt_api_response(api_response: ApiResponse) -> str:
     if not api_response.encrypted:
         return api_response.url
 
-    time_key = math.floor(api_response.timestamp / 3600)
+    time_key = int(api_response.timestamp / 3600)
     secret_key = f"SECRET_KEY_{time_key}"
     encrypted_url = base64.b64decode(api_response.url)
     return xor_decrypt(encrypted_url, secret_key.encode())
@@ -431,8 +415,8 @@ def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
     info_js = soup.select_one(_SELECTORS.JS_SLUG)
     if not info_js:
         return
-    return get_text_between(info_js.text, "jsSlug = '", "';")
+    return get_text_between(info_js.get_text(), "jsSlug = '", "';")
 
 
 def is_root_domain(url: AbsoluteHttpURL) -> bool:
-    return "bunkr" in url.host and url.host.count(".") == 1
+    return "bunkr" in url.host and url.host.removeprefix("www.").count(".") == 1
