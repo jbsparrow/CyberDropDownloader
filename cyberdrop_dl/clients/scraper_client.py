@@ -121,15 +121,14 @@ class ScraperClient:
     async def write_soup_to_disk(self, url: AbsoluteHttpURL, response: AbstractResponse, exc: Exception | None = None):
         """Writes html to a file."""
 
-        if not self._save_pages_html:
+        if not (
+            self._save_pages_html
+            and "html" in response.content_type
+            and response.consumed  # Do not consume the response if the crawler didn't
+        ):
             return
 
-        content: str = await response.text()
-        try:
-            content = cast("str", (await response.soup()).prettify(formatter="html"))
-        except Exception:
-            pass
-
+        content = cast("str", (await response.soup()).prettify(formatter="html"))
         now = datetime.now()
         log_date = now.strftime(constants.LOGS_DATETIME_FORMAT)
         url_str = str(url)

@@ -3,19 +3,22 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 from json import loads as json_loads
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Self
 
+import aiohttp.multipart
 from aiohttp import ClientResponse
+from aiohttp.client_reqrep import ContentDisposition
 from aiohttp_client_cache.response import CachedResponse
 from bs4 import BeautifulSoup
 from multidict import CIMultiDict, CIMultiDictProxy
+from propcache import under_cached_property
 
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.utilities import parse_url
 
 if TYPE_CHECKING:
-    from aiohttp.client_reqrep import ContentDisposition
     from curl_cffi.requests.models import Response as CurlResponse
 
     from cyberdrop_dl.clients.flaresolverr import FlareSolverrSolution
@@ -23,10 +26,12 @@ if TYPE_CHECKING:
 
 @dataclasses.dataclass(slots=True, weakref_slot=True)
 class AbstractResponse:
-    """Class to represent common methods and attributes between:
-    - `aiohttp.ClientResponse`
-    - `curl_cffi.Response`
-    - `FlareSolverrSolution`"""
+    """
+    Class to represent common methods and attributes between:
+        - `aiohttp.ClientResponse`
+        - `curl_cffi.Response`
+        - `FlareSolverrSolution`
+    """
 
     content_type: str
     status: int
@@ -36,6 +41,7 @@ class AbstractResponse:
 
     _resp: ClientResponse | CachedResponse | CurlResponse | None = None
     _text: str = ""
+    _cache: dict[str, Any] = dataclasses.field(init=False, default_factory=dict)
     _read_lock: asyncio.Lock = dataclasses.field(init=False, default_factory=asyncio.Lock)
 
     @classmethod
@@ -45,7 +51,8 @@ class AbstractResponse:
             headers = response.headers
         else:
             status = response.status_code
-            headers = CIMultiDictProxy(CIMultiDict({k: v or "" for k, v in response.headers.items()}))
+            multi_items = ((k, v) for k, v in response.headers.multi_items() if v is not None)
+            headers = CIMultiDictProxy(CIMultiDict(multi_items))
 
         url = AbsoluteHttpURL(response.url)
         content_type, location = cls.parse_headers(url, headers)
@@ -71,7 +78,7 @@ class AbstractResponse:
         )
 
     @staticmethod
-    def parse_headers(url: AbsoluteHttpURL, headers: CIMultiDictProxy[str]):
+    def parse_headers(url: AbsoluteHttpURL, headers: CIMultiDictProxy[str]) -> tuple[str, AbsoluteHttpURL | None]:
         if location := headers.get("location"):
             location = parse_url(location, url.origin(), trim=False)
         else:
@@ -80,26 +87,30 @@ class AbstractResponse:
         content_type = (headers.get("Content-Type") or "").lower()
         return content_type, location
 
-    @property
+    @under_cached_property
     def content_disposition(self) -> ContentDisposition:
-        assert isinstance(self._resp, CachedResponse | ClientResponse)
-        assert self._resp.content_disposition is not None
-        return self._resp.content_disposition
+        header = self.headers["Content-Disposition"]
+        disposition_type, params = aiohttp.multipart.parse_content_disposition(header)
+        params = MappingProxyType(params)
+        filename = aiohttp.multipart.content_disposition_filename(params)
+        return ContentDisposition(disposition_type, params, filename)
 
     @property
-    def filename(self):
-        filename = self.content_disposition.filename
-        assert filename
-        return filename
+    def filename(self) -> str:
+        assert self.content_disposition.filename
+        return self.content_disposition.filename
+
+    @property
+    def consumed(self) -> bool:
+        return bool(self._text)
 
     @property
     def ok(self) -> bool:
-        """Returns ``True`` if ``status`` is less than ``400``, ``False`` if not.
+        """Returns `True` if `status` is less than `400`, `False` if not.
 
-        This is **not** a check for ``200 OK`` but a check that the response
-        status is under 400.
+        This is **not** a check for ``200 OK``
         """
-        return 400 > self.status
+        return self.status < 400
 
     async def read(self) -> bytes:
         assert self._resp is not None
@@ -148,4 +159,4 @@ class AbstractResponse:
             raise InvalidContentTypeError(message=msg)
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} [{self.status}] ({self.url!r})>"
+        return f"<{self.__class__.__name__} [{self.status}] ({self.url})>"
