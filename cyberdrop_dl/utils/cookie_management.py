@@ -164,7 +164,7 @@ async def read_netscape_files(cookie_files: list[Path]) -> AsyncIterable[tuple[s
                 log(f"Cookies for {simplified_domain} are expired", 30)
 
             domains_seen.add(simplified_domain)
-            simple_cookie = _make_simple_cookie(cookie, now)
+            simple_cookie = make_simple_cookie(cookie, now)
             yield cookie.domain, simple_cookie
 
 
@@ -180,7 +180,7 @@ async def _read_netscape_file(file: Path) -> MozillaCookieJar | None:
     return await asyncio.to_thread(read)
 
 
-def _make_simple_cookie(cookie: Cookie, now: float) -> SimpleCookie:
+def make_simple_cookie(cookie: Cookie, now: float) -> SimpleCookie:
     simple_cookie = SimpleCookie()
     assert cookie.value is not None
     simple_cookie[cookie.name] = cookie.value
