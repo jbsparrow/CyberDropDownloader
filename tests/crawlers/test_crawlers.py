@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import importlib.util
 import re
 from pathlib import Path
@@ -34,15 +35,26 @@ class Result(TypedDict):
     download_folder: NotRequired[str]
 
 
+@dataclasses.dataclass(slots=True)
+class Config:
+    skip: str | bool = False
+    total: int | None = None
+
+
+_default_config = Config()
+
+
 class CrawlerTestCase(NamedTuple):
     domain: str
     input_url: str
     results: list[Result]
+    # TODO: depreated total, move to config
     total: int | None = None
+    config: Config = _default_config
 
 
 _TEST_CASE_ADAPTER = TypeAdapter(CrawlerTestCase)
-_TEST_DATA: dict[str, list[tuple[str, list[Result]]]] = {}
+_TEST_DATA: dict[str, list[tuple[str, list[Result], int, Config]]] = {}
 
 
 def _load_test_cases(path: Path) -> None:
@@ -79,7 +91,9 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 @pytest.mark.crawler_test_case
 async def test_crawler(running_manager: Manager, crawler_test_case: CrawlerTestCase) -> None:
     # Check that this is a valid test case with pydantic
-    test_case = _TEST_CASE_ADAPTER.validate_python(crawler_test_case, strict=True)
+    test_case = _TEST_CASE_ADAPTER.validate_python(crawler_test_case)
+    if skip := test_case.config.skip:
+        pytest.skip(skip) if isinstance(skip, str) else pytest.skip()
 
     with _crawler_mock() as func:
         async with ScrapeMapper(running_manager) as scrape_mapper:

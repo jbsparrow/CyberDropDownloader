@@ -1,21 +1,81 @@
 from __future__ import annotations
 
+import asyncio
+import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
+from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, type_adapter
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.utils import m3u8
 
-VIDEO_PARTS = "video", "photo", "v"
-API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
-PRIMARY_URL = AbsoluteHttpURL("https://tiktok.com/")
+_PRIMARY_URL = AbsoluteHttpURL("https://www.tiktok.com/")
+_API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
+_API_SUBMIT_TASK_URL = _API_URL / "video/task/submit"
+_API_TASK_RESULT_URL = _API_URL / "video/task/result"
+_API_USER_POST_URL = _API_URL / "user/posts"
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class Author:
+    id: str
+    unique_id: str
+    nickname: str
+
+    def __str__(self) -> str:
+        return f"@{self.unique_id}"
+
+
+@dataclasses.dataclass(slots=True)
+class Post:
+    id: str
+    title: str
+    play: str
+    create_time: int
+    size: int
+    author: Author
+    music_info: MusicInfo
+    is_src_quality: bool = False
+    images: list[str] = dataclasses.field(default_factory=list)
+    canonical_url: AbsoluteHttpURL = dataclasses.field(default_factory=AbsoluteHttpURL)
+
+    def __post_init__(self):
+        part = "photo" if self.images else "video"
+        self.canonical_url = _PRIMARY_URL / str(self.author) / part / self.id
+
+    @staticmethod
+    def from_dict(video: dict[str, Any]) -> Post:
+        video.update(
+            author=_parse_author(video["author"]),
+            music_info=_parse_music(video["music_info"]),
+        )
+        return _parse_post(video)
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class MusicInfo:
+    title: str
+    id: str
+    play: str
+    original: bool
+
+    @property
+    def canonical_url(self) -> AbsoluteHttpURL:
+        safe_title = self.title.replace(" ", "-").lower()
+        if "original-sound" in safe_title or "original-audio" in safe_title:
+            safe_title = "original-audio"
+        return _PRIMARY_URL / "music" / f"{safe_title}-{self.id}"
+
+
+_parse_author = type_adapter(Author)
+_parse_music = type_adapter(MusicInfo)
+_parse_post = type_adapter(Post, aliases={"id": "video_id", "play": "play_url"})
 
 
 class TikTokCrawler(Crawler):
@@ -24,142 +84,184 @@ class TikTokCrawler(Crawler):
         "Video": "/@<user>/video/<video_id>",
         "Photo": "/@<user>/photo/<photo_id>",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "tiktok"
     FOLDER_DOMAIN: ClassVar[str] = "TikTok"
+    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date:%Y-%m-%d} - {id}"
+
+    @property
+    def download_audios(self) -> bool:
+        return self.manager.parsed_args.cli_only_args.download_tiktok_audios
+
+    @property
+    def download_src_quality_videos(self) -> bool:
+        return self.manager.parsed_args.cli_only_args.download_tiktok_src_quality_videos
 
     def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 10)
+        self._headers: dict[str, Any] = {"X-Requested-With": "XMLHttpRequest"}
+
+    async def async_startup(self) -> None:
+        cookie_name = "sessionid"
+        if value := self.get_cookie_value(cookie_name):
+            self._headers["x-proxy-cookie"] = f"{cookie_name}={value}"
+            self.log(f"[{self.FOLDER_DOMAIN}] Found {cookie_name} cookies")
+        self.client.client_manager.cookies.clear_domain(self.PRIMARY_URL.host)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if any(p in scrape_item.url.parts for p in VIDEO_PARTS) or scrape_item.url.host.startswith("vm.tiktok"):
-            return await self.video(scrape_item)
-        if len(scrape_item.url.parts) > 1 and "@" in scrape_item.url.parts[1]:
-            return await self.profile(scrape_item)
-        raise ValueError
+        match scrape_item.url.parts[1:]:
+            case [_, "video" | "photo" | "v" as type_, media_id]:
+                media_id = media_id.removesuffix(".html")
+                if type_ != "photo" and self.download_src_quality_videos:
+                    return await self.src_quality_media(scrape_item, media_id)
+                return await self.media(scrape_item, media_id)
+            case [profile] if profile.startswith("@"):
+                return await self.profile(scrape_item, profile.removeprefix("@"))
+            case _:
+                raise ValueError
 
-    async def profile_post_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict[str, Any]]:
-        username = scrape_item.url.parts[1].removeprefix("@")
-        cursor = 0
-        title: str = ""
+    async def _api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
+        resp: dict[str, Any] = await self.request_json(api_url, headers=self._headers)
+
+        if (code := resp["code"]) != 0:
+            msg = resp["msg"]
+            if "Url parsing is failed" in msg:
+                raise ScrapeError(410)
+            raise ScrapeError(422, message=f"{code = }, {msg}")
+
+        return resp["data"]
+
+    async def _profile_post_pager(self, unique_id: str) -> AsyncGenerator[list[Post]]:
+        cursor: int = 0
+        api_url = _API_USER_POST_URL.with_query(unique_id=unique_id, count=50)
         while True:
-            posts_api_url = API_URL / "user" / "posts"
-            posts_api_url = posts_api_url.with_query(cursor=cursor, unique_id=username, count=50)
-            async with self.request_limiter:
-                json_data = await self.client.get_json(self.DOMAIN, posts_api_url)
-
-            if not title:
-                author_id = json_data["data"]["videos"][0]["author"]["id"]
-                title = self.create_title(username, author_id)
-                scrape_item.setup_as_profile(title)
-
-            yield json_data
-
-            if not json_data["data"]["hasMore"]:
+            resp = await self._api_request(api_url.update_query(cursor=cursor))
+            yield [Post.from_dict(post) for post in resp["videos"]]
+            if not resp["hasMore"]:
                 break
 
-            cursor = json_data["data"]["cursor"]
+            cursor = resp["cursor"]
 
     @error_handling_wrapper
-    async def handle_image_post(self, scrape_item: ScrapeItem, post: dict) -> None:
-        author_id = post["author"]["id"]
-        post_id = post["video_id"]
-        canonical_url = _canonical_url(author_id, post_id)
-        if await self.check_complete_from_referer(canonical_url):
-            return
-
-        title = post.get("title") or f"Post {post_id}"
-        scrape_item.setup_as_album(title, album_id=post_id)
-        scrape_item.possible_datetime = post["create_time"]
-        scrape_item.url = canonical_url
-        for url in post["images"]:
-            link = self.parse_url(url, trim=False)
-            filename, ext = self.get_filename_and_ext(link.name)
-            await self.handle_file(link, scrape_item, filename, ext)
-            scrape_item.add_children()
-        await self.handle_audio(scrape_item, post, False)
-
-    @error_handling_wrapper
-    async def profile(self, scrape_item: ScrapeItem) -> None:
-        async for json_data in self.profile_post_pager(scrape_item):
-            for item in json_data["data"]["videos"]:
-                author_id = item["author"]["id"]
-                post_id = item["video_id"]
-                canonical_url = _canonical_url(author_id, post_id)
-                if await self.check_complete_from_referer(canonical_url):
-                    continue
-
-                post_url = self.parse_url(item["play"], trim=False)
-                if item.get("images"):
-                    await self.handle_image_post(scrape_item, item)
-                    continue
-
-                if post_url.path.endswith("mp3"):
-                    continue
-
-                filename, ext = f"{item['video_id']}.mp4", "mp4"
-                new_scrape_item = scrape_item.create_child(canonical_url, possible_datetime=item["create_time"])
-                await self.handle_audio(new_scrape_item, item)
-                await self.handle_file(canonical_url, new_scrape_item, filename, ext, debrid_link=post_url)
+    async def profile(self, scrape_item: ScrapeItem, unique_id: str) -> None:
+        scrape_item.setup_as_profile("")
+        async for posts in self._profile_post_pager(unique_id):
+            for post in posts:
+                new_scrape_item = scrape_item.create_child(post.canonical_url)
+                if not post.images and self.download_src_quality_videos:
+                    self.create_task(self.src_quality_media(new_scrape_item, post.id, post))
+                else:
+                    self._handle_post(new_scrape_item, post)
                 scrape_item.add_children()
 
     @error_handling_wrapper
-    async def video(self, scrape_item: ScrapeItem) -> None:
-        video_data_url = API_URL.with_query(url=str(scrape_item.url))
-        async with self.request_limiter:
-            json_data = await self.client.get_json(self.DOMAIN, video_data_url)
+    async def src_quality_media(self, scrape_item: ScrapeItem, media_id: str, post: Post | None = None) -> None:
+        if await self.check_complete(scrape_item.url, scrape_item.url):
+            # The video was downloaded, but the audio may have not
+            if not self.download_audios:
+                return
 
-        author_id = json_data["data"]["author"]["id"]
-        video_id = json_data["data"]["video_id"] = json_data["data"]["id"]
-        canonical_url = _canonical_url(author_id, video_id)
-        if await self.check_complete_from_referer(canonical_url):
-            return
+            if post:
+                return self._handle_post(scrape_item, post)
+            return await self.media(scrape_item, media_id)
 
-        if scrape_item.album_id is None:
-            album_id = json_data["data"]["author"]["id"]
-            title = self.create_title(scrape_item.url.parts[1].removeprefix("@"), album_id)
-            scrape_item.setup_as_album(title, album_id=album_id)
+        submit_url = _API_SUBMIT_TASK_URL.with_query(url=media_id)
+        task_id: str = (await self._api_request(submit_url))["task_id"]
+        self.log(f"[{self.FOLDER_DOMAIN}] trying to download {media_id = } with {task_id = }")
+        json_data = await self._get_task_result(task_id)
+        post = Post.from_dict(json_data["detail"])
+        post.is_src_quality = True
+        self._handle_post(scrape_item, post)
 
-        if json_data["data"].get("images"):
-            return await self.handle_image_post(scrape_item, json_data["data"])
+    async def _get_task_result(self, task_id: str) -> dict[str, Any]:
+        result_url = _API_TASK_RESULT_URL.with_query(task_id=task_id)
+        delays = (0.5, 1.5, 4)
+        for delay in delays:
+            try:
+                await asyncio.sleep(delay)
+                return await self._api_request(result_url)
+            except ScrapeError:
+                pass
 
-        video_url = self.parse_url(json_data["data"]["play"], trim=False)
-        filename, ext = f"{video_id}.mp4", "mp4"
-        new_scrape_item = scrape_item.create_child(canonical_url, possible_datetime=json_data["data"]["create_time"])
-        await self.handle_audio(new_scrape_item, json_data["data"])
-        await self.handle_file(canonical_url, new_scrape_item, filename, ext, debrid_link=video_url)
-        scrape_item.add_children()
+        msg = (
+            f"[{self.FOLDER_DOMAIN}] Download {task_id = } was not ready "
+            f"after {len(delays)} attempts. Total wait time: {sum(delays)}"
+        )
+        raise ScrapeError(503, msg)
 
     @error_handling_wrapper
-    async def handle_audio(self, scrape_item: ScrapeItem, json_data: dict, new_folder: bool = True) -> None:
+    async def media(self, scrape_item: ScrapeItem, media_id: str) -> None:
+        api_url = _API_URL.with_query(url=media_id)
+        json_data = await self._api_request(api_url)
+        post = Post.from_dict(json_data)
+        self._handle_post(scrape_item, post)
+
+    def _handle_post(self, scrape_item: ScrapeItem, post: Post):
+        scrape_item.url = post.canonical_url
+        title = self.create_title(post.author.unique_id, post.id)
+        scrape_item.add_to_parent_title(title)
+        post_title = self.create_separate_post_title(post.title, post.id, post.create_time)
+        scrape_item.setup_as_album(post_title, album_id=post.id)
+        scrape_item.possible_datetime = post.create_time
+        self._handle_images(scrape_item, post)
+        self._handle_audio(scrape_item, post)
+        self._handle_video(scrape_item, post)
+
+    def _handle_images(self, scrape_item: ScrapeItem, post: Post) -> None:
+        for index, url in enumerate(post.images):
+            link = self.parse_url(url, trim=False)
+            img_url = post.canonical_url / str(index)
+            filename = self.create_custom_filename(f"{post.id}_img{str(index).zfill(3)}", link.suffix)
+            self.create_task(
+                self.handle_file(
+                    img_url,
+                    scrape_item,
+                    filename,
+                    link.suffix,
+                    debrid_link=link,
+                )
+            )
+            scrape_item.add_children()
+
+    def _handle_audio(self, scrape_item: ScrapeItem, post: Post) -> None:
         if not self.manager.parsed_args.cli_only_args.download_tiktok_audios:
             return
-        title = json_data["music_info"]["title"]
-        audio_id = json_data["music_info"]["id"]
-        canonical_audio_url = _canonical_audio_url(title, audio_id)
-        if await self.check_complete_from_referer(canonical_audio_url):
-            return
 
-        audio_url = self.parse_url(json_data["music_info"]["play"], trim=False)
-        filename = f"{json_data['music_info']['title']}.mp3"
-        filename, ext = self.get_filename_and_ext(filename)
-        new_scrape_item = scrape_item.create_child(
-            canonical_audio_url,
-            new_title_part="Audios" if new_folder else "",
-            possible_datetime=json_data["create_time"],
+        audio, ext = post.music_info, ".mp3"
+        audio_url = self.parse_url(audio.play, trim=False)
+        filename = self.create_custom_filename(audio.title, ext, file_id=audio.id)
+        self.create_task(
+            self.handle_file(
+                audio.canonical_url,
+                scrape_item,
+                audio.title + ext,
+                ext,
+                debrid_link=audio_url,
+                custom_filename=filename,
+            )
         )
-
-        await self.handle_file(canonical_audio_url, new_scrape_item, filename, ext, debrid_link=audio_url)
         scrape_item.add_children()
 
+    def _handle_video(self, scrape_item: ScrapeItem, post: Post) -> None:
+        if not (post.size or post.play) or post.images:
+            return
 
-def _canonical_url(author: str, post_id: str | None = None) -> AbsoluteHttpURL:
-    if post_id is None:
-        return PRIMARY_URL / f"@{author}"
-    return PRIMARY_URL / f"@{author}/video/{post_id}"
+        video_url = self.parse_url(post.play, trim=False)
+        ext = ".mp4"
+        custom_filename = f"{post.id}{'_original'}{ext}" if post.is_src_quality else None
+        self.create_task(
+            self.handle_file(
+                scrape_item.url,
+                scrape_item,
+                post.id + ext,
+                ext,
+                debrid_link=video_url,
+                custom_filename=custom_filename,
+            )
+        )
+        scrape_item.add_children()
 
+    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
+        if media_item.ext == ".mp3":
+            media_item.download_folder = media_item.download_folder / "Audios"
 
-def _canonical_audio_url(audio_title: str, audio_id: str) -> AbsoluteHttpURL:
-    if "original audio" in audio_title.lower():
-        return PRIMARY_URL / f"music/original-audio-{audio_id}"
-    return PRIMARY_URL / f"music/{audio_title.replace(' ', '-').lower()}-{audio_id}"
+        await super().handle_media_item(media_item, m3u8)
