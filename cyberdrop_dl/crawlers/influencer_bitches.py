@@ -38,8 +38,7 @@ class InfluencerBitchesCrawler(Crawler):
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         title_tag = soup.select_one(_SELECTORS.TITLE) or soup.select_one(_SELECTORS.ALTERNATIVE_TITLE)
         assert title_tag
         title: str = title_tag.get_text(strip=True).replace("leaks", "").strip()

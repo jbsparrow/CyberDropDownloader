@@ -477,7 +477,7 @@ class MegaApi:
         self.root_id: str = ""
         self.inbox_id: str = ""
         self.trashbin_id: str = ""
-        self.request_limiter = AsyncLimiter(100, 60)
+        self._limiter = AsyncLimiter(100, 60)
         self._files = {}
         self.shared_keys: SharedkeysDict
 
@@ -498,7 +498,7 @@ class MegaApi:
         else:
             data: list[AnyDict] = data_input
 
-        async with self.request_limiter, self.session.disabled():
+        async with self._limiter, self.session.disabled():
             response = await self.session.post(
                 self.entrypoint, params=params, json=data, timeout=self.timeout, headers=self.default_headers
             )
@@ -513,7 +513,7 @@ class MegaApi:
             log("[MegaNZ] Solving xhashcash login challenge, this could take a few seconds...")
             xhashcash_token = await generate_hashcash_token(xhashcash_challenge)
             headers = self.default_headers | {"X-Hashcash": xhashcash_token}
-            async with self.request_limiter, self.session.disabled():
+            async with self._limiter, self.session.disabled():
                 response = await self.session.post(
                     self.entrypoint, params=params, json=data, timeout=self.timeout, headers=headers
                 )

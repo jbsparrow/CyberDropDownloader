@@ -51,13 +51,11 @@ class MixDropCrawler(Crawler):
             return
 
         scrape_item.url = embed_url
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, video_url)
+        soup = await self.request_soup(video_url)
 
         title = css.select_one_get_text(soup, _SELECTOR.FILE_NAME)
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, embed_url)
+        soup = await self.request_soup(embed_url)
 
         link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)

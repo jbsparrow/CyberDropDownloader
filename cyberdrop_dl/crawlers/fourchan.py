@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict, cast
 
-from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -44,9 +43,7 @@ class FourChanCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "4chan"
     _DOWNLOAD_SLOTS: ClassVar[int | None] = 1
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 10)
+    _RATE_LIMIT = 3, 10
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "thread" in scrape_item.url.parts:
@@ -59,8 +56,7 @@ class FourChanCrawler(Crawler):
     async def thread(self, scrape_item: ScrapeItem) -> None:
         board, _, thread_id = scrape_item.url.parts[1:4]
         api_url = API_ENTRYPOINT / board / f"thread/{thread_id}.json"
-        async with self.request_limiter:
-            response: dict[str, list[Post]] = await self.client.get_json(self.DOMAIN, api_url, cache_disabled=True)
+        response: dict[str, list[Post]] = await self.request_json(api_url, cache_disabled=True)
         if not response:
             raise ScrapeError(404)
 
@@ -94,13 +90,11 @@ class FourChanCrawler(Crawler):
     async def board(self, scrape_item: ScrapeItem) -> None:
         board: str = scrape_item.url.parts[-1]
         api_url = API_ENTRYPOINT / board / "threads.json"
-        async with self.request_limiter:
-            threads: list[ThreadList] = await self.client.get_json(self.DOMAIN, api_url, cache_disabled=True)
-
+        threads: list[ThreadList] = await self.request_json(api_url, cache_disabled=True)
         scrape_item.setup_as_forum("")
         for page in threads:
             for thread in page["threads"]:
                 url = PRIMARY_URL / board / f"thread/{thread['no']}"
                 new_scrape_item = scrape_item.create_child(url)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()

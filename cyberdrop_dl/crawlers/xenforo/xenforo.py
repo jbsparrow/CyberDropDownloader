@@ -124,7 +124,13 @@ class XenforoCrawler(HTMLMessageBoardCrawler, is_abc=True):
                 attempt += 1
                 await asyncio.sleep(wait_time)
                 data = parse_login_form(text) | credentials
-                _ = await self.client._post_data(self.DOMAIN, login_url / "login", data=data, cache_disabled=True)
+                async with self.request(
+                    login_url / "login",
+                    method="POST",
+                    data=data,
+                    cache_disabled=True,
+                ):
+                    pass
                 await asyncio.sleep(wait_time)
                 text, logged_in = await self.check_login_with_request(login_url)
                 if logged_in:
@@ -132,6 +138,7 @@ class XenforoCrawler(HTMLMessageBoardCrawler, is_abc=True):
                     return
             except TimeoutError:
                 continue
+
         msg = f"Failed to login on {self.FOLDER_DOMAIN} after {retries} attempts"
         raise LoginError(message=msg)
 

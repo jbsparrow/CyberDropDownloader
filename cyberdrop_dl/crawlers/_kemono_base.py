@@ -283,7 +283,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         for channel in server.channels:
             url = self.PRIMARY_URL / "discord/server" / server_id / channel.id
             new_scrape_item = scrape_item.create_child(url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
     async def discord_channel(self, scrape_item: ScrapeItem, channel_id: str) -> None:
@@ -383,7 +383,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 url = self.PRIMARY_URL / service / "user" / user_id
 
             new_scrape_item = scrape_item.create_child(url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
 
     # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

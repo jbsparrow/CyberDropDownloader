@@ -116,7 +116,7 @@ class EpornerCrawler(Crawler):
             url = canonical_url / part
             async for soup in self.web_pager(url):
                 for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem, from_profile: bool = False) -> None:
@@ -131,7 +131,7 @@ class EpornerCrawler(Crawler):
                 scrape_item.setup_as_album(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
@@ -156,8 +156,7 @@ class EpornerCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         scrape_item.url = canonical_url
         link_str = css.select_one_get_attr(soup, _SELECTORS.PHOTO, "href")
@@ -172,8 +171,7 @@ class EpornerCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         soup_str = soup.text
         if "File has been removed due to copyright owner request" in soup_str:

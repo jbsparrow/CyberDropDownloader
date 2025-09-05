@@ -71,9 +71,7 @@ class YandexDiskCrawler(Crawler):
             return
 
         async with self.request_context():
-            soup: BeautifulSoup = await self.client.get_soup(
-                self.DOMAIN, scrape_item.url, _DEFAULT_HEADERS, cache_disabled=True
-            )
+            soup = await self.request_soup(scrape_item.url, headers=_DEFAULT_HEADERS, cache_disabled=True)
 
         item_info = get_item_info(soup)
         assert is_single_item(item_info)
@@ -90,9 +88,7 @@ class YandexDiskCrawler(Crawler):
 
         scrape_item.url = canonical_url
         async with self.request_context():
-            soup: BeautifulSoup = await self.client.get_soup(
-                self.DOMAIN, scrape_item.url, _DEFAULT_HEADERS, cache_disabled=True
-            )
+            soup = await self.request_soup(scrape_item.url, headers=_DEFAULT_HEADERS, cache_disabled=True)
 
         item_info = get_item_info(soup)
         del soup
@@ -123,8 +119,7 @@ class YandexDiskCrawler(Crawler):
     @contextlib.asynccontextmanager
     async def request_context(self) -> AsyncGenerator[None]:
         try:
-            async with self.request_limiter:
-                yield
+            yield
         except DownloadError as e:
             if e.status in (400, 403):
                 raise DDOSGuardError from None
@@ -146,7 +141,12 @@ class YandexDiskCrawler(Crawler):
 
         api_url = DOWNLOAD_API_ENTRYPOINT.with_host(scrape_item.url.host)
         async with self.request_context():
-            json_resp: dict[str, Any] = await self.client.post_data(self.DOMAIN, api_url, headers, data=file.post_data)
+            json_resp: dict[str, Any] = await self.request_json(
+                api_url,
+                method="POST",
+                headers=headers,
+                data=file.post_data,
+            )
 
         new_sk = json_resp.get("new_sk")
         if new_sk:
@@ -155,9 +155,7 @@ class YandexDiskCrawler(Crawler):
 
         error = json_resp.get("error")
         if error:
-            # The error format is dynamic but they are short
-            # We can log them to the main file
-            raise ScrapeError(422, message=json.dumps(json_resp))
+            raise ScrapeError(422, message=json.dumps(json_resp)[:50])
 
         self.log_debug(json_resp)
         scrape_item.possible_datetime = file.modified

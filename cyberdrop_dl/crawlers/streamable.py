@@ -42,8 +42,7 @@ class StreamableCrawler(Crawler):
             return
 
         ajax_url = AJAX_ENTRYPOINT / video_id
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, ajax_url)
+        json_resp: dict[str, Any] = await self.request_json(ajax_url)
 
         status: int = json_resp["status"]
         if status != STATUS_OK:

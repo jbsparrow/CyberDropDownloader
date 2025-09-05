@@ -67,14 +67,10 @@ class GirlsReleasedCrawler(Crawler):
             case _:
                 raise ValueError
 
-    async def _api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
-        async with self.request_limiter:
-            return await self.client.get_json(self.DOMAIN, api_url)
-
     @error_handling_wrapper
     async def set(self, scrape_item: ScrapeItem, set_id: str) -> None:
         api_url = self.PRIMARY_URL / "api/0.1/set" / set_id
-        set_data = (await self._api_request(api_url))["set"]
+        set_data = (await self.request_json(api_url))["set"]
         self._handle_set(scrape_item, _parse_set(set_data))
 
     @error_handling_wrapper
@@ -85,7 +81,7 @@ class GirlsReleasedCrawler(Crawler):
 
         for page in itertools.count(0):
             api_url = base_api_url / str(page)
-            sets: list[dict[str, Any]] = (await self._api_request(api_url))["sets"]
+            sets: list[dict[str, Any]] = (await self.request_json(api_url))["sets"]
 
             for set_data in sets:
                 set_ = _parse_set(set_data)

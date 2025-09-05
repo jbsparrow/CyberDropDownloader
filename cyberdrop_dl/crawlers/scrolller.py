@@ -72,10 +72,14 @@ class ScrolllerCrawler(Crawler):
 
         while True:
             request_body["variables"]["iterator"] = iterator
-            data: dict[str, dict] = await self.client.post_data(
-                self.DOMAIN, API_ENTRYPOINT, data=json.dumps(request_body)
-            )
-            items: list[dict] = data["data"]["getSubreddit"]["children"]["items"] if data else []
+            data: dict[str, dict] = (
+                await self.request_json(
+                    API_ENTRYPOINT,
+                    method="POST",
+                    data=json.dumps(request_body),
+                )
+            )["data"]
+            items: list[dict] = data["getSubreddit"]["children"]["items"] if data else []
             if not items:
                 break
 
@@ -94,7 +98,7 @@ class ScrolllerCrawler(Crawler):
                 scrape_item.add_children()
 
             prev_iterator = iterator
-            iterator = data["data"]["getSubreddit"]["children"]["iterator"]
+            iterator = data["getSubreddit"]["children"]["iterator"]
 
             if iterator is None or iterator == prev_iterator or iterations > 0:
                 break
