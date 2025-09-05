@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import itertools
-import json
 import math
 import re
 from collections import defaultdict
@@ -134,11 +133,7 @@ class BunkrrCrawler(Crawler):
     def __post_init__(self) -> None:
         self.known_good_host: str = ""
         self.switch_host_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-
-    @property
-    def known_good_url(self) -> AbsoluteHttpURL | None:
-        if self.known_good_host:
-            return AbsoluteHttpURL(f"https://{self.known_good_host}")
+        self.known_good_url: AbsoluteHttpURL | None = None
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/<file_id>
@@ -155,7 +150,8 @@ class BunkrrCrawler(Crawler):
         album_id = scrape_item.url.parts[2]
         title: str = ""
         results = await self.get_album_results(album_id)
-
+        seen: set[str] = set()
+        stuck_in_a_loop_msg = f"Found duplicate URLs processing {scrape_item.url}. Aborting to prevent infinite loop"
         async for soup in self.web_pager(scrape_item.url):
             if not title:
                 title = css.page_title(soup, "bunkr")
@@ -164,10 +160,13 @@ class BunkrrCrawler(Crawler):
 
             for tag in soup.select(_SELECTORS.ALBUM_ITEM):
                 item = AlbumItem.from_tag(tag)
+                if item.path_qs in seen:
+                    self.log(stuck_in_a_loop_msg, 40, bug=True)
+                    return
+                seen.add(item.path_qs)
                 link = self.parse_url(item.path_qs, relative_to=scrape_item.url.origin())
-                new_scrape_item = scrape_item.create_child(
-                    link, possible_datetime=self.parse_date(item.date, "%H:%M:%S %d/%m/%Y")
-                )
+                new_scrape_item = scrape_item.create_child(link)
+                new_scrape_item.possible_datetime = self.parse_date(item.date, "%H:%M:%S %d/%m/%Y")
                 self.create_task(self._process_album_item_task(new_scrape_item, item, results))
                 scrape_item.add_children()
 
@@ -179,10 +178,9 @@ class BunkrrCrawler(Crawler):
         cffi: bool = False,
         **kwargs: Any,
     ) -> AsyncGenerator[BeautifulSoup]:
-        page_url = url
         init_page = int(url.query.get("page") or 1)
         for page in itertools.count(init_page):
-            soup = await self.get_soup_lenient(page_url.with_query(page=page))
+            soup = await self.request_soup_lenient(url.with_query(page=page))
             yield soup
             has_next_page = soup.select_one(_SELECTORS.NEXT_PAGE)
             if not has_next_page:
@@ -226,7 +224,7 @@ class BunkrrCrawler(Crawler):
             return
 
         if not soup:
-            soup = await self.get_soup_lenient(scrape_item.url)
+            soup = await self.request_soup_lenient(scrape_item.url)
 
         image_container = soup.select_one(_SELECTORS.IMAGE_PREVIEW)
         download_link_container = soup.select_one(_SELECTORS.DOWNLOAD_BUTTON)
@@ -309,17 +307,20 @@ class BunkrrCrawler(Crawler):
         2. Streaming URL (bunkr.site/f/<file_slug>)"""
 
         api_url = DOWNLOAD_API_ENTRYPOINT
-        headers = {"Referer": str(url), "Content-Type": "application/json"}
         if is_reinforced_link(url):
-            data_dict = {"id": get_part_next_to(url, "file")}
+            payload = {"id": get_part_next_to(url, "file")}
         else:
-            data_dict = {"slug": get_part_next_to(url, "f")}
+            payload = {"slug": get_part_next_to(url, "f")}
             api_url = STREAMING_API_ENTRYPOINT
             if self.known_good_host:
                 api_url = STREAMING_API_ENTRYPOINT.with_host(self.known_good_host)
 
-        data = json.dumps(data_dict)
-        json_resp: dict[str, Any] = await self.request_json(api_url, "POST", data=data, headers=headers)
+        json_resp: dict[str, Any] = await self.request_json(
+            api_url,
+            "POST",
+            json=payload,
+            headers={"Referer": str(url)},
+        )
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
         link = self.parse_url(link_str)
@@ -346,42 +347,44 @@ class BunkrrCrawler(Crawler):
             url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=debrid_link
         )
 
-    async def get_soup_lenient(self, url: AbsoluteHttpURL) -> BeautifulSoup:
-        """Overrides URL in host if we know a valid host.
+    async def _try_request_soup(self, url: AbsoluteHttpURL) -> BeautifulSoup | None:
+        try:
+            async with self.request(url) as resp:
+                soup = await resp.soup()
+        except (ClientConnectorError, DDOSGuardError):
+            known_bad_hosts.add(url.host)
+            if not HOST_OPTIONS - known_bad_hosts:
+                raise
+        else:
+            if not self.known_good_host:
+                self.known_good_host = resp.url.host
+                self.known_good_url = resp.url.origin()
+            return soup
 
-        If we don't know a valid host but the response was successful, register the host as a valid host"""
+    async def request_soup_lenient(self, url: AbsoluteHttpURL) -> BeautifulSoup:
+        """Request soup with re-trying logic to use multiple hosts.
 
-        async def get_soup_no_error(url: AbsoluteHttpURL) -> BeautifulSoup | None:
-            global known_bad_hosts
-            try:
-                soup = await self.request_soup(url)
-            except (ClientConnectorError, DDOSGuardError):
-                known_bad_hosts.add(url.host)
-                if not HOST_OPTIONS - known_bad_hosts:
-                    raise
-            else:
-                if not self.known_good_host:
-                    self.known_good_host = url.host
-                return soup
+        We retry with a new host until we find one that's not DNS blocked nor DDoS-Guard protected
+
+        If we find one, keep a reference to it and use it for all future requests"""
 
         if not is_root_domain(url):
             return await self.request_soup(url)
 
-        elif self.known_good_host:
+        if self.known_good_host:
             return await self.request_soup(url.with_host(self.known_good_host))
 
         async with self.switch_host_locks[url.host]:
             if url.host not in known_bad_hosts:
-                soup = await get_soup_no_error(url)
-                if soup:
+                if soup := await self._try_request_soup(url):
                     return soup
 
         for host in HOST_OPTIONS - known_bad_hosts:
             async with self.switch_host_locks[host]:
-                if host not in known_bad_hosts:
-                    soup = await get_soup_no_error(url.with_host(host))
-                    if soup:
-                        return soup
+                if host in known_bad_hosts:
+                    continue
+                if soup := await self._try_request_soup(url.with_host(host)):
+                    return soup
 
         # everything failed, do the request with the original URL to throw an exception
         return await self.request_soup(url)
