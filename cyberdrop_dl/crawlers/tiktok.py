@@ -99,8 +99,11 @@ class TikTokCrawler(Crawler):
         self.headers: dict[str, Any] = {"X-Requested-With": "XMLHttpRequest"}
 
     async def async_startup(self) -> None:
-        if session_id := self.get_cookie_value("sessionid"):
-            self.headers["x-proxy-cookie"] = f"sessionid={session_id}"
+        name = "sessionid"
+        if session_id := self.get_cookie_value(name):
+            self.headers["x-proxy-cookie"] = f"{name}={session_id}"
+            self.log(f"[{self.FOLDER_DOMAIN}] Found {name} cookies.")
+        self.client.client_manager.cookies.clear_domain(self.PRIMARY_URL.host)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -115,8 +118,7 @@ class TikTokCrawler(Crawler):
                 raise ValueError
 
     async def _api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
-        async with self.request_limiter:
-            resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
+        resp: dict[str, Any] = await self.request_json(api_url, headers=self.headers)
 
         if (code := resp["code"]) != 0:
             raise ScrapeError(422, f"{code = }, {resp['msg']}")
@@ -125,9 +127,9 @@ class TikTokCrawler(Crawler):
 
     async def _profile_post_pager(self, unique_id: str) -> AsyncGenerator[list[Post]]:
         cursor: int = 0
-        posts_api_url = _API_USER_POST_URL.with_query(unique_id=unique_id, count=50)
+        api_url = _API_USER_POST_URL.with_query(unique_id=unique_id, count=50)
         while True:
-            resp = await self._api_request(posts_api_url.update_query(cursor=cursor))
+            resp = await self._api_request(api_url.update_query(cursor=cursor))
             yield [Post.from_dict(post) for post in resp["videos"]]
             if not resp["hasMore"]:
                 break
