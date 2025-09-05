@@ -68,7 +68,7 @@ class NoodleMagazineCrawler(Crawler):
                 if new_scrape_item.url not in seen_urls:
                     seen_urls.add(new_scrape_item.url)
                     n_videos += 1
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    self.create_task(self.run(new_scrape_item))
 
             if n_videos < 24:
                 break

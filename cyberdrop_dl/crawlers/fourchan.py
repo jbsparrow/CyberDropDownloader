@@ -96,5 +96,5 @@ class FourChanCrawler(Crawler):
             for thread in page["threads"]:
                 url = PRIMARY_URL / board / f"thread/{thread['no']}"
                 new_scrape_item = scrape_item.create_child(url)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()

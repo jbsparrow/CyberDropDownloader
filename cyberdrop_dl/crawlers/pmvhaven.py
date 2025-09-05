@@ -88,7 +88,7 @@ class PMVHavenCrawler(Crawler):
             playlist_id = playlist["_id"]
             link = PRIMARY_URL / "playlist" / playlist_id
             new_scrape_item = scrape_item.create_child(link, new_title_part="Playlists")
-            self.manager.task_group.create_task(self.playlist(new_scrape_item, add_suffix=False))
+            self.create_task(self.playlist(new_scrape_item, add_suffix=False))
             scrape_item.add_children()
 
     @error_handling_wrapper

@@ -85,7 +85,7 @@ class E621Crawler(Crawler):
         for post_id in posts:
             url = PRIMARY_URL / f"posts/{post_id}"
             new_scrape_item = scrape_item.create_child(url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
     @error_handling_wrapper

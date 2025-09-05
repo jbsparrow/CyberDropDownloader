@@ -58,7 +58,7 @@ class EfuktCrawler(Crawler):
                 scrape_item.setup_as_album(self.create_title(f"{title} [series]"))
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO_THUMBS):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def video_image_or_gif(self, scrape_item: ScrapeItem) -> None:

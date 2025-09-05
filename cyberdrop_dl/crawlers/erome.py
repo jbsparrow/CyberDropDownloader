@@ -46,7 +46,7 @@ class EromeCrawler(Crawler):
                 scrape_item.setup_as_profile(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:

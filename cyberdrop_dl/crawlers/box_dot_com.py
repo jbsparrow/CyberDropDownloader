@@ -94,7 +94,7 @@ class BoxDotComCrawler(Crawler):
             _, file_id = file_key.rsplit("f_", 1)
             canonical_url = get_canonical_url(shared_name, file_id)
             scrape_item.url = canonical_url
-            self.manager.task_group.create_task(self.run(scrape_item))
+            self.create_task(self.run(scrape_item))
             return
 
         shared_folder = SharedFolder(**shared_folder_data)

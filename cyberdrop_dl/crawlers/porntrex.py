@@ -144,7 +144,7 @@ class PorntrexCrawler(Crawler):
         last_page: int = int(last_page_tag[-1].get_text(strip=True)) if last_page_tag else 1
 
         for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_OR_ALBUMS):
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
 
         await self.proccess_additional_pages(scrape_item, last_page)
 
@@ -157,7 +157,7 @@ class PorntrexCrawler(Crawler):
             soup = await self.request_soup(albums_url)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUMS, new_title_part="albums"):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     async def proccess_additional_pages(self, scrape_item: ScrapeItem, last_page: int, **kwargs: str) -> None:
         block_id: str = "list_videos_common_videos_list_norm"
@@ -195,7 +195,7 @@ class PorntrexCrawler(Crawler):
             soup = await self.request_soup(page_url)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_OR_ALBUMS):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
 
 def get_video_info(soup: BeautifulSoup) -> Video:

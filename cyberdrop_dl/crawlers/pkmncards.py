@@ -144,7 +144,7 @@ class PkmncardsCrawler(Crawler):
                 download_url = self.parse_url(link_str)
                 simple_card = create_simple_card(title, download_url)
                 new_scrape_item = scrape_item.create_child(card_page_url)
-                self.manager.task_group.create_task(self.handle_simple_card(new_scrape_item, simple_card))
+                self.create_task(self.handle_simple_card(new_scrape_item, simple_card))
                 scrape_item.add_children()
 
     @error_handling_wrapper

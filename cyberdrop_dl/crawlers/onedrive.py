@@ -194,7 +194,7 @@ class OneDriveCrawler(Crawler):
         for access_details in subfolders:
             api_url = create_api_url(access_details)
             new_scrape_item = scrape_item.create_child(api_url)
-            self.manager.task_group.create_task(self.process_access_details(new_scrape_item, access_details))
+            self.create_task(self.process_access_details(new_scrape_item, access_details))
             scrape_item.add_children()
 
     @error_handling_wrapper

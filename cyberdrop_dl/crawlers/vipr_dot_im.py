@@ -43,7 +43,7 @@ class ViprImCrawler(Crawler):
 
     async def thumbnail(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = self.get_canonical_url(scrape_item.url)
-        self.manager.task_group.create_task(self.run(scrape_item))
+        self.create_task(self.run(scrape_item))
 
     def get_canonical_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         return PRIMARY_URL / get_image_id(url)

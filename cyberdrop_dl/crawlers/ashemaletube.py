@@ -104,7 +104,7 @@ class AShemaleTubeCrawler(Crawler):
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.GALLERY_ALBUM):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -128,7 +128,7 @@ class AShemaleTubeCrawler(Crawler):
                 else:
                     scrape_item.setup_as_album(collection_title)
             for _, new_scrape_item in self.iter_children(scrape_item, soup, MEDIA_SELECTOR_MAP[collection_type]):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     def create_collection_title(self, soup: BeautifulSoup, collection_type: CollectionType) -> str:
         title_elem = soup.select_one(TITLE_SELECTOR_MAP[collection_type])

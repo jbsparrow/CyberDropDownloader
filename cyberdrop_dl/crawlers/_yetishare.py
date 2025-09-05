@@ -162,7 +162,8 @@ class YetiShareCrawler(Crawler, is_abc=True):
         link = self.parse_url(raw_link).with_query(download_token=token)
 
         scrape_item.possible_datetime = self.parse_date(
-            css.select_one_get_text(soup, Selector.FILE_UPLOAD_DATE), "%d/%m/%Y %H:%M:%S"
+            css.select_one_get_text(soup, Selector.FILE_UPLOAD_DATE),
+            "%d/%m/%Y %H:%M:%S",
         )
 
         filename = css.select_one_get_text(soup, Selector.FILE_NAME)
@@ -177,7 +178,10 @@ class YetiShareCrawler(Crawler, is_abc=True):
         async def ajax_api_request() -> BeautifulSoup:
             ajax_url = self.FILE_API_URL if is_file else self.FOLDERS_API_URL
             json_resp: dict[str, str] = await self.request_json(
-                ajax_url, method="POST", data=data, headers={"X-Requested-With": "XMLHttpRequest"}
+                ajax_url,
+                method="POST",
+                data=data,
+                headers={"X-Requested-With": "XMLHttpRequest"},
             )
 
             return BeautifulSoup(json_resp["html"].replace("\\", ""), "html.parser")

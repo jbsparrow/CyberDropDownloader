@@ -289,7 +289,7 @@ class MessageBoardCrawler(Crawler, is_abc=True):
         if self.is_attachment(link):
             return await self.handle_internal_link(scrape_item, link)
         if self.PRIMARY_URL.host == link.host:
-            self.manager.task_group.create_task(self.run(scrape_item.create_child(link)))
+            self.create_task(self.run(scrape_item.create_child(link)))
             return
         new_scrape_item = scrape_item.create_child(link)
         self.handle_external_links(new_scrape_item)
@@ -445,7 +445,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
                     possible_datetime=current_post.timestamp,
                     add_parent=post_url,
                 )
-                self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
+                self.create_task(self.post(new_scrape_item, current_post))
                 try:
                     scrape_item.add_children()
                 except MaxChildrenError:

@@ -45,7 +45,7 @@ class NudoStarTVCrawler(Crawler):
                 raise ScrapeError(404)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, CONTENT_SELECTOR):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:

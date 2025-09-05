@@ -51,7 +51,7 @@ class Rule34XXXCrawler(Crawler):
                 scrape_item.setup_as_album(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.CONTENT):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:

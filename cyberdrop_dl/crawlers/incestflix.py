@@ -58,4 +58,4 @@ class IncestflixCrawler(Crawler):
                 scrape_item.setup_as_album(title)
                 title_created = True
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO_THUMBS):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))

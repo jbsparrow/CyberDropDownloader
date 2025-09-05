@@ -185,7 +185,7 @@ class GoFileCrawler(Crawler):
 
         for url in subfolders:
             subfolder = scrape_item.create_child(url)
-            self.manager.task_group.create_task(self.run(subfolder))
+            self.create_task(self.run(subfolder))
 
         tasks = []
         for url in unavailable:

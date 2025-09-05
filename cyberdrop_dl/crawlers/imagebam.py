@@ -49,7 +49,7 @@ class ImageBamCrawler(Crawler):
             # this is to update the URL in the UI
             # TODO: Add URL convertion methods as a pre_check step, before assigning them a task_id
             # Several crawlers do something like this
-            self.manager.task_group.create_task(self.run(scrape_item))
+            self.create_task(self.run(scrape_item))
             return
 
         match scrape_item.url.parts[1:]:
@@ -84,7 +84,7 @@ class ImageBamCrawler(Crawler):
         def process_gallery_images(soup: BeautifulSoup) -> None:
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.THUMBNAILS):
                 if not self.check_album_results(new_scrape_item.url, results):
-                    self.manager.task_group.create_task(self.image(new_scrape_item))
+                    self.create_task(self.image(new_scrape_item))
 
         process_gallery_images(soup)
 

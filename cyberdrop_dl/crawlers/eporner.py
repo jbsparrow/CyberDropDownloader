@@ -116,7 +116,7 @@ class EpornerCrawler(Crawler):
             url = canonical_url / part
             async for soup in self.web_pager(url):
                 for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem, from_profile: bool = False) -> None:
@@ -131,7 +131,7 @@ class EpornerCrawler(Crawler):
                 scrape_item.setup_as_album(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:

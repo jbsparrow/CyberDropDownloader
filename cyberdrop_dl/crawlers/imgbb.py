@@ -56,12 +56,12 @@ class ImgBBCrawler(Crawler):
                 first_page = self.parse_url(first_page_str)
 
             for _, sub_album in self.iter_children(scrape_item, soup, ALBUM_PAGE_SELECTOR):
-                self.manager.task_group.create_task(self.run(sub_album))
+                self.create_task(self.run(sub_album))
 
         assert first_page
         async for soup in self.web_pager(first_page):
             for _, image in self.iter_children(scrape_item, soup, IMAGE_PAGE_SELECTOR):
-                self.manager.task_group.create_task(self.run(image))
+                self.create_task(self.run(image))
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:

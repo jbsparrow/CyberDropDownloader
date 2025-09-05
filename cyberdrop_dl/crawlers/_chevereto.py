@@ -149,7 +149,9 @@ class CheveretoCrawler(Crawler, is_generic=True):
             raise PasswordProtectedError
 
         soup = await self.request_soup(
-            _sort_by_new(scrape_item.url / ""), method="POST", data={"content-password": password}
+            _sort_by_new(scrape_item.url / ""),
+            method="POST",
+            data={"content-password": password},
         )
 
         if _is_password_protected(soup):

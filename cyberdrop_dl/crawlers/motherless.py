@@ -83,13 +83,13 @@ class MotherlessCrawler(Crawler):
             async for soup in self.web_pager(images_url):
                 check_soup(soup)
                 for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR, new_title_part="Images"):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    self.create_task(self.run(new_scrape_item))
 
         if is_homepage or "videos" in scrape_item.url.parts:
             async for soup in self.web_pager(videos_url):
                 check_soup(soup)
                 for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR, new_title_part="Videos"):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
@@ -130,7 +130,7 @@ class MotherlessCrawler(Crawler):
                 scrape_item.setup_as_album(title, album_id=collection_id)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR, new_title_part=name):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:

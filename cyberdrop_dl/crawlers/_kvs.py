@@ -113,7 +113,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         url = scrape_item.url / video_category if video_category else scrape_item.url
         async for soup in self.web_pager(url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -140,7 +140,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         title = self.create_title(f"{title} [album]", album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
         for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM_PICTURES, results=results):
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def picture(self, scrape_item: ScrapeItem) -> None:

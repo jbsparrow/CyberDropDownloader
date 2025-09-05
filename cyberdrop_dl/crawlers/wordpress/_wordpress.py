@@ -315,7 +315,7 @@ class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
                         f"Skipping post {new_scrape_item.url} as it is out of date range. Post date: {date_from_path}"
                     )
                     continue
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
 
 def _match_date_from_path(url_parts: tuple[str, ...]) -> datetime.datetime | None:

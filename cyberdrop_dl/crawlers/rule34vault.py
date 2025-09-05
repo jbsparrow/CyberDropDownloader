@@ -64,7 +64,7 @@ class Rule34VaultCrawler(Crawler):
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.CONTENT):
                 n_images += 1
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
             if n_images < 30:
                 break
