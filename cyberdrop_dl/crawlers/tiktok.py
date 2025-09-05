@@ -4,8 +4,6 @@ import asyncio
 import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.exceptions import ScrapeError
@@ -17,14 +15,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.utils import m3u8
 
-
+_PRIMARY_URL = AbsoluteHttpURL("https://www.tiktok.com/")
 _API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
 _API_SUBMIT_TASK_URL = _API_URL / "video/task/submit"
 _API_TASK_RESULT_URL = _API_URL / "video/task/result"
 _API_USER_POST_URL = _API_URL / "user/posts"
-
-
-_PRIMARY_URL = AbsoluteHttpURL("https://www.tiktok.com/")
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -33,7 +28,7 @@ class Author:
     unique_id: str
     nickname: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"@{self.unique_id}"
 
 
@@ -103,14 +98,13 @@ class TikTokCrawler(Crawler):
         return self.manager.parsed_args.cli_only_args.download_tiktok_src_quality_videos
 
     def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 10)
-        self.headers: dict[str, Any] = {"X-Requested-With": "XMLHttpRequest"}
+        self._headers: dict[str, Any] = {"X-Requested-With": "XMLHttpRequest"}
 
     async def async_startup(self) -> None:
-        name = "sessionid"
-        if session_id := self.get_cookie_value(name):
-            self.headers["x-proxy-cookie"] = f"{name}={session_id}"
-            self.log(f"[{self.FOLDER_DOMAIN}] Found {name} cookies.")
+        cookie_name = "sessionid"
+        if value := self.get_cookie_value(cookie_name):
+            self._headers["x-proxy-cookie"] = f"{cookie_name}={value}"
+            self.log(f"[{self.FOLDER_DOMAIN}] Found {cookie_name} cookies")
         self.client.client_manager.cookies.clear_domain(self.PRIMARY_URL.host)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -126,10 +120,13 @@ class TikTokCrawler(Crawler):
                 raise ValueError
 
     async def _api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
-        resp: dict[str, Any] = await self.request_json(api_url, headers=self.headers)
+        resp: dict[str, Any] = await self.request_json(api_url, headers=self._headers)
 
         if (code := resp["code"]) != 0:
-            raise ScrapeError(422, f"{code = }, {resp['msg']}")
+            msg = resp["msg"]
+            if "Url parsing is failed" in msg:
+                raise ScrapeError(410)
+            raise ScrapeError(422, message=f"{code = }, {msg}")
 
         return resp["data"]
 
