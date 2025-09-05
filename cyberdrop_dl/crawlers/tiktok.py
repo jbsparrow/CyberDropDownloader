@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.utils import m3u8
 
-_DOWNLOAD_SRC_QUALITY_VIDEO = True
+
 _API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
 _API_SUBMIT_TASK_URL = _API_URL / "video/task/submit"
 _API_TASK_RESULT_URL = _API_URL / "video/task/result"
@@ -94,6 +94,14 @@ class TikTokCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "TikTok"
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date:%Y-%m-%d} - {id}"
 
+    @property
+    def download_audios(self) -> bool:
+        return self.manager.parsed_args.cli_only_args.download_tiktok_audios
+
+    @property
+    def download_src_quality_videos(self) -> bool:
+        return self.manager.parsed_args.cli_only_args.download_tiktok_src_quality_videos
+
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 10)
         self.headers: dict[str, Any] = {"X-Requested-With": "XMLHttpRequest"}
@@ -109,7 +117,7 @@ class TikTokCrawler(Crawler):
         match scrape_item.url.parts[1:]:
             case [_, "video" | "photo" | "v" as type_, media_id]:
                 media_id = media_id.removesuffix(".html")
-                if type_ != "photo" and _DOWNLOAD_SRC_QUALITY_VIDEO:
+                if type_ != "photo" and self.download_src_quality_videos:
                     return await self.src_quality_media(scrape_item, media_id)
                 return await self.media(scrape_item, media_id)
             case [profile] if profile.startswith("@"):
@@ -142,7 +150,7 @@ class TikTokCrawler(Crawler):
         async for posts in self._profile_post_pager(unique_id):
             for post in posts:
                 new_scrape_item = scrape_item.create_child(post.canonical_url)
-                if not post.images and _DOWNLOAD_SRC_QUALITY_VIDEO:
+                if not post.images and self.download_src_quality_videos:
                     self.create_task(self.src_quality_media(new_scrape_item, post.id, post))
                 else:
                     self._handle_post(new_scrape_item, post)
@@ -152,7 +160,7 @@ class TikTokCrawler(Crawler):
     async def src_quality_media(self, scrape_item: ScrapeItem, media_id: str, post: Post | None = None) -> None:
         if await self.check_complete(scrape_item.url, scrape_item.url):
             # The video was downloaded, but the audio may have not
-            if not self.manager.parsed_args.cli_only_args.download_tiktok_audios:
+            if not self.download_audios:
                 return
 
             if post:
