@@ -21,12 +21,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-from cyberdrop_dl.data_structures.supported_domains import (
-    SUPPORTED_FORUMS,
-    SUPPORTED_SITES_DOMAINS,
-    SUPPORTED_WEBSITES,
-)
-
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -77,6 +71,8 @@ def get_cookies_from_browsers(manager: Manager, *, browser: BROWSERS, domains: l
     :param domains: list of domains to filter cookies. If `None`, config `browser_cookies.sites` will be used
     :return: A set with all the domains that actually had cookies
     :raises BrowserCookieError: If there's any error while extracting cookies"""
+    from cyberdrop_dl.supported_domains import SUPPORTED_FORUMS, SUPPORTED_SITES_DOMAINS, SUPPORTED_WEBSITES
+
     if domains == []:
         msg = "No domains selected"
         raise ValueError(msg)
