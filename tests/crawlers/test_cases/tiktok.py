@@ -26,7 +26,7 @@ TEST_CASES = [
     (
         "https://www.tiktok.com/@ploense",
         [],
-        58,
+        2,
     ),
     (
         "https://www.tiktok.com/@ggwendollyn/photo/7545228111973977374",
@@ -87,5 +87,9 @@ TEST_CASES = [
                 "datetime": 1756760334,
             },
         ],
+        None,
+        {
+            "skip": "post was deleted",
+        },
     ),
 ]
