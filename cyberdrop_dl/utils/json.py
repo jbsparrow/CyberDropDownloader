@@ -194,10 +194,10 @@ class JSONWebToken:
     def _decode(cls, value: str, /) -> dict[str, Any]:
         return loads(base64.urlsafe_b64decode(f"{value}==="))
 
-    def is_expired(self, threshold: int = 600) -> bool:
-        """Checks if the token has expired/is about to expire.
+    def is_expired(self, threshold: int = 0) -> bool:
+        """Checks if the token has expired or is about to expire.
 
-        Default threshold is 600 seconds (10 minutes).
+        threshold is the time in seconds before the token's expiration to consider it as expired.
         """
         expires: int | None = self.payload.get("exp")
         if expires:
