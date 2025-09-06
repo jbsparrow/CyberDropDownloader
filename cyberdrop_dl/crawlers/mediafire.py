@@ -46,17 +46,22 @@ class MediaFireCrawler(Crawler):
     SKIP_PRE_CHECK = True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
+        if (
+            scrape_item.url.path == "/"
+            and (file_id := scrape_item.url.query_string)
+            and not ("&" in file_id or "=" in file_id)
+        ):
+            return await self.file(scrape_item, file_id)
+
         match scrape_item.url.parts[1:]:
             case ["folder", folder_key, *_]:
                 return await self.folder(scrape_item, folder_key)
             case ["file", file_id, *_]:
                 return await self.file(scrape_item, file_id)
-            case [""] if (file_id := scrape_item.url.query_string) and not ("&" in file_id or "=" in file_id):
-                return await self.file(scrape_item, file_id)
             case _:
                 raise ValueError
 
-    async def _api_request(self, path: str, **params) -> dict[str, Any]:
+    async def _api_request(self, path: str, **params: Any) -> dict[str, Any]:
         params["response_format"] = "json"
         api_url = (_API_URL / path).with_query(params)
         resp: dict[str, Any] = (await self.request_json(api_url))["response"]
@@ -157,7 +162,7 @@ def _extract_download_link(soup: BeautifulSoup) -> str:
         raise ScrapeError(422)
 
     if encoded_url := css.get_attr_or_none(link_tag, "data-scrambled-url"):
-        return base64.urlsafe_b64decode(encoded_url).decode()
+        return base64.b64decode(encoded_url).decode()
 
     url = css.get_attr(link_tag, "href")
     if is_blob_or_svg(url):
