@@ -91,7 +91,7 @@ class MediaFireCrawler(Crawler):
             yield content[content_type]
 
     async def _get_folder_info(self, folder_key: str) -> FolderInfo:
-        resp = (
+        resp: dict[str, Any] = (
             await self._api_request(
                 "folder/get_info.php",
                 recursive="yes",
@@ -111,21 +111,23 @@ class MediaFireCrawler(Crawler):
         title = self.create_title(folder.name, folder_key)
         scrape_item.setup_as_album(title, album_id=folder_key)
 
-        async for files in self._iter_folder_content(folder_key, "files"):
-            for file in files:
-                file_id: str = file["quickkey"]
-                link = self.PRIMARY_URL / "file" / file_id
-                new_scrape_item = scrape_item.create_child(link)
-                new_scrape_item.possible_datetime = self.parse_iso_date(file["created"])
-                self.create_task(self._file_task(new_scrape_item, file_id))
-                scrape_item.add_children()
+        if folder.has_files:
+            async for files in self._iter_folder_content(folder_key, "files"):
+                for file in files:
+                    file_id: str = file["quickkey"]
+                    link = self.PRIMARY_URL / "file" / file_id
+                    new_scrape_item = scrape_item.create_child(link)
+                    new_scrape_item.possible_datetime = self.parse_iso_date(file["created"])
+                    self.create_task(self._file_task(new_scrape_item, file_id))
+                    scrape_item.add_children()
 
-        async for folders in self._iter_folder_content(folder_key, "folders"):
-            for folder in folders:
-                link = self.PRIMARY_URL / "folder" / folder["folderkey"]
-                new_scrape_item = scrape_item.create_child(link)
-                self.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
+        if folder.has_folders:
+            async for folders in self._iter_folder_content(folder_key, "folders"):
+                for folder in folders:
+                    link = self.PRIMARY_URL / "folder" / folder["folderkey"]
+                    new_scrape_item = scrape_item.create_child(link)
+                    self.create_task(self.run(new_scrape_item))
+                    scrape_item.add_children()
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem, file_id: str) -> None:
@@ -157,7 +159,7 @@ def _extract_download_link(soup: BeautifulSoup) -> str:
     if encoded_url := css.get_attr_or_none(link_tag, "data-scrambled-url"):
         return base64.urlsafe_b64decode(encoded_url).decode()
 
-    url = css.get_attr(link_tag, "data-scrambled-url")
+    url = css.get_attr(link_tag, "href")
     if is_blob_or_svg(url):
         raise ScrapeError(422)
     return url
