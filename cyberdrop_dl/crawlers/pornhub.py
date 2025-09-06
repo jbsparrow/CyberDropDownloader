@@ -170,8 +170,7 @@ class PornHubCrawler(Crawler):
             await self.iter_profile_pages(scrape_item, profile.url / "photos/public", _SELECTORS.PROFILE_ALBUMS)
 
     async def _get_profile_title(self, url: AbsoluteHttpURL) -> str:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, url)
+        soup = await self.request_soup(url)
         return css.select_one_get_text(soup, _SELECTORS.PROFILE_NAME, decompose="span")
 
     @error_handling_wrapper
@@ -182,18 +181,12 @@ class PornHubCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem, album_id: str) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self.request_soup(scrape_item.url)
         album_name = css.select_one_get_text(soup, _SELECTORS.ALBUM_TITLE)
         scrape_item.setup_as_album(self.create_title(album_name, album_id), album_id=album_id)
 
         api_url = self.PRIMARY_URL / "api/v1/album" / album_id / "show_album_json"
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(
-                self.DOMAIN, api_url.with_query(token=TOKEN_SELECTOR(soup))
-            )
-
+        json_resp: dict[str, Any] = await self.request_json(api_url.with_query(token=TOKEN_SELECTOR(soup)))
         photos: dict[str, dict[str, Any]] = json_resp["photos"]
         results = await self.get_album_results(album_id)
         for id_, photo in photos.items():
@@ -208,9 +201,7 @@ class PornHubCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self.request_soup(scrape_item.url)
         link_str: str = css.select_one_get_attr(soup, _SELECTORS.PHOTO, "src")
         link = self.parse_url(link_str)
         album_tag = css.select_one(soup, _SELECTORS.ALBUM_FROM_PHOTO)
@@ -223,9 +214,7 @@ class PornHubCrawler(Crawler):
 
     @error_handling_wrapper
     async def gif(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self.request_soup(scrape_item.url)
         attributes = "data-mp4", "data-fallback", "data-webm"
         gif_tag = css.select_one(soup, _SELECTORS.GIF)
         link_str = next(value for attr in attributes if (value := css.get_attr_or_none(gif_tag, attr)))
@@ -249,9 +238,7 @@ class PornHubCrawler(Crawler):
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem, playlist_id: str) -> None:
         results = await self.get_album_results(playlist_id)
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self.request_soup(scrape_item.url)
         title: str = css.select_one_get_text(soup, _SELECTORS.PLAYLIST_TITLE)
         title = self.create_title(title, playlist_id)
         scrape_item.setup_as_album(f"{title} [playlist]", album_id=playlist_id)
@@ -266,9 +253,7 @@ class PornHubCrawler(Crawler):
         if await self.check_complete_from_referer(page_url):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, page_url, cache_disabled=True)
-
+        soup = await self.request_soup(page_url, cache_disabled=True)
         _check_video_is_available(soup)
         title = css.select_one_get_text(soup, _SELECTORS.TITLE)
         formats = [Format.new(media) for media in get_media_list(soup)]
@@ -311,10 +296,8 @@ class PornHubCrawler(Crawler):
             raise ScrapeError(422, message="Unable to get mp4 format")
 
         mp4_media_url = self.parse_url(mp4_format.url)
-        async with self.request_limiter:
-            # This returns an empty list when downloading multiple videos concurrently
-            mp4_media: list[Media] = await self.client.get_json(self.DOMAIN, mp4_media_url, cache_disabled=True)
-
+        # This returns an empty list when downloading multiple videos concurrently
+        mp4_media: list[Media] = await self.request_json(mp4_media_url, cache_disabled=True)
         return max((Format.new(media) for media in mp4_media), default=None)
 
 

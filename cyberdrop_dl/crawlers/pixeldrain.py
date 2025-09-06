@@ -25,6 +25,8 @@ class PixelDrainCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "pixeldrain"
     FOLDER_DOMAIN: ClassVar[str] = "PixelDrain"
+    _RATE_LIMIT: ClassVar[tuple[float, float]] = 10, 1
+    _DOWNLOAD_SLOTS: ClassVar[int | None] = 2
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "l" in scrape_item.url.parts:

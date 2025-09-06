@@ -86,7 +86,7 @@ class ScrapeMapper:
     async def __aenter__(self) -> Self:
         self.manager.scrape_mapper = self
         await self.manager.client_manager.load_cookie_files()
-        await self.manager.client_manager.scraper_session.__aenter__()
+        await self.manager.client_manager.__aenter__()
         self.manager.task_group = asyncio.TaskGroup()
         await self.manager.task_group.__aenter__()
         return self
@@ -98,7 +98,7 @@ class ScrapeMapper:
         exc_tb: TracebackType | None,
     ) -> None:
         await self.manager.task_group.__aexit__(exc_type, exc_val, exc_tb)
-        await self.manager.client_manager.scraper_session.__aexit__(exc_type, exc_val, exc_tb)
+        await self.manager.client_manager.__aexit__(exc_type, exc_val, exc_tb)
 
     async def run(self) -> None:
         """Starts the orchestra."""

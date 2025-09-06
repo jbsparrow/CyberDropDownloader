@@ -57,7 +57,7 @@ import math
 import random
 import string
 import struct
-from collections.abc import Coroutine, Sequence
+from collections.abc import Callable, Coroutine, Sequence
 from enum import IntEnum
 from http import HTTPStatus
 from pathlib import Path
@@ -78,8 +78,7 @@ from cyberdrop_dl.exceptions import CDLBaseError, DownloadError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterable, Generator, Mapping
-    from functools import partial
+    from collections.abc import Generator, Mapping
 
     from aiohttp_client_cache.session import CachedSession
     from yarl import URL
@@ -484,7 +483,7 @@ class MegaApi:
 
     @property
     def session(self) -> CachedSession:
-        return self.manager.client_manager.scraper_session._session
+        return self.manager.client_manager._session
 
     async def request(self, data_input: list[AnyDict] | AnyDict, add_params: AnyDict | None = None) -> Any:
         add_params = add_params or {}
@@ -624,7 +623,15 @@ class MegaApi:
         resp = await self.request({"a": "us", "user": user})
         self._process_login(resp, password_key)
 
-    def _process_node(self, file: Node, shared_keys: SharedkeysDict) -> Node:
+    def _process_node(self, file: Node) -> Node:
+        """
+        Processes a node and decrypts its metadata and attributes.
+
+        Special nodes (root folder, inbox, trash bin) are identified and saved internally for reference
+
+        This method is NOT thread safe. It modifies the internal state of the shared keys.
+        """
+        shared_keys: SharedkeysDict = self.shared_keys
         if file["t"] == NodeType.FILE or file["t"] == NodeType.FOLDER:
             file = cast("FileOrFolder", file)
             keys = dict(keypart.split(":", 1) for keypart in file["k"].split("/") if ":" in keypart)
@@ -637,18 +644,16 @@ class MegaApi:
             elif "su" in file and "sk" in file and ":" in file["k"]:
                 shared_key = decrypt_key(base64_to_a32(file["sk"]), self.master_key)
                 key = decrypt_key(base64_to_a32(keys[file["h"]]), shared_key)
-                if file["su"] not in shared_keys:
-                    shared_keys[file["su"]] = {}
-                shared_keys[file["su"]][file["h"]] = shared_key
+                shared_keys.setdefault(file["su"], {})[file["h"]] = shared_key
+
             # shared files
             elif file["u"] and file["u"] in shared_keys:
-                for hkey in shared_keys[file["u"]]:
-                    shared_key = shared_keys[file["u"]][hkey]
+                for hkey, shared_key in shared_keys[file["u"]].items():
                     if hkey in keys:
-                        key = keys[hkey]
-                        key = decrypt_key(base64_to_a32(key), shared_key)
+                        key = decrypt_key(base64_to_a32(keys[hkey]), shared_key)
                         break
-            if file["h"] and file["h"] in shared_keys.get("EXP", ()):
+
+            if file["h"] and file["h"] in shared_keys.get("EXP", {}):
                 shared_key = shared_keys["EXP"][file["h"]]
                 encrypted_key = str_to_a32(base64_url_decode(file["k"].split(":")[-1]))
                 key = decrypt_key(encrypted_key, shared_key)
@@ -705,52 +710,60 @@ class MegaApi:
     async def get_files(self) -> FilesMapping:
         if self._files:
             return self._files
-        files_dict: FilesMapping = {}
-        async for node in self._get_nodes():
-            if node["attributes"]:
-                file = cast("File", node)
-                files_dict[file["h"]] = file
-        self._files = files_dict
-        return files_dict
 
-    async def _get_nodes(self) -> AsyncIterable[Node]:
-        files: Folder = await self.request({"a": "f", "c": 1, "r": 1})
+        files = await self._get_nodes(lambda x: not bool(x.get("attributes")))
+        return cast("FilesMapping", files)
+
+    async def _get_nodes(self, predicate: Callable[[Node], bool] | None = None) -> dict[str, Node]:
+        folder: Folder = await self.request({"a": "f", "c": 1, "r": 1})
         shared_keys: SharedkeysDict = {}
-        self._init_shared_keys(files, shared_keys)
-        for index, node in enumerate(files["f"], 1):
-            yield self._process_node(node, shared_keys)
-            if index % 100 == 0:
-                await asyncio.sleep(0)
+        self._init_shared_keys(folder, shared_keys)
+        return await self._process_nodes(folder["f"], predicate=predicate)
 
-    async def _get_nodes_in_shared_folder(self, folder_id: str) -> AsyncIterable[Node]:
-        files: Folder = await self.request(
+    async def get_nodes_in_shared_folder(
+        self, folder_id: str, shared_key: str | None = None
+    ) -> dict[str, FileOrFolder]:
+        folder: Folder = await self.request(
             {"a": "f", "c": 1, "ca": 1, "r": 1},
             {"n": folder_id},
         )
-        for index, node in enumerate(files["f"], 1):
-            yield self._process_node(node, self.shared_keys)
-            if index % 100 == 0:
-                await asyncio.sleep(0)
 
-    async def get_nodes_public_folder(self, folder_id: str, share_key: str) -> dict[str, FileOrFolder]:
-        folder_key = base64_to_a32(share_key)
+        return cast("dict[str, FileOrFolder]", await self._process_nodes(folder["f"], shared_key))
 
-        async def prepare_nodes() -> AsyncIterable[FileOrFolder]:
-            async for node in self._get_nodes_in_shared_folder(folder_id):
-                node = cast("FileOrFolder", node)
-                encrypted_key = base64_to_a32(node["k"].split(":")[1])
-                full_key = decrypt_key(encrypted_key, folder_key)
-                crypto = get_decrypt_data(node["t"], full_key)
-                attrs = decrypt_attr(base64_url_decode(node["a"]), crypto.k)
-                node["attributes"] = cast("Attributes", attrs)
-                node["key_decrypted"] = full_key
-                node["k_decrypted"] = crypto.k
-                node["iv"] = crypto.iv
-                node["meta_mac"] = crypto.meta_mac
-                yield node
+    async def _process_nodes(
+        self,
+        nodes: Sequence[Node],
+        public_key: str | None = None,
+        predicate: Callable[[Node], bool] | None = None,
+    ) -> dict[str, Node]:
+        """
+        Processes multiple nodes at once, decrypting their metadata and attributes.
 
-        nodes = {node["h"]: node async for node in prepare_nodes()}
-        return nodes
+        If predicate is provided, only nodes for which `predicate(node)` returns `False` are included in the result.
+
+        This method is NOT thread safe. It modifies the internal state of the shared keys.
+        """
+        # User may already have access to this folder (the key is saved in their account)
+        folder_key = base64_to_a32(public_key) if public_key else None
+        self.shared_keys.setdefault("EXP", {})
+
+        async def process_nodes() -> dict[str, Node]:
+            results = {}
+            for index, node in enumerate(nodes):
+                node_id = node["h"]
+                if folder_key:
+                    self.shared_keys["EXP"][node_id] = folder_key
+                processed_node = self._process_node(node)
+                if predicate is None or not predicate(processed_node):
+                    results[node_id] = processed_node
+
+                # We can compute this on another thread, so we sleep to avoid blocking the event loop for too long.
+                if index % 500 == 0:
+                    await asyncio.sleep(0)
+
+            return results
+
+        return await process_nodes()
 
     def _build_file_system(self, nodes_map: Mapping[str, Node], root_ids: list[str]) -> dict[Path, Node]:
         """Builds a flattened dictionary representing a file system from a list of items.
@@ -795,14 +808,10 @@ class MegaDownloadClient(DownloadClient):
         super().__init__(manager, manager.client_manager)
         self.decrypt_mapping: dict[URL, DecryptData] = {}
 
-    async def _append_content(
-        self,
-        media_item: MediaItem,
-        content: aiohttp.StreamReader,
-        update_progress: partial,
-    ) -> None:
+    async def _append_content(self, media_item: MediaItem, content: aiohttp.StreamReader) -> None:
         """Appends content to a file."""
 
+        assert media_item.task_id is not None
         check_free_space = self.make_free_space_checker(media_item)
         check_download_speed = self.make_speed_checker(media_item)
         await check_free_space()
@@ -820,7 +829,7 @@ class MegaDownloadClient(DownloadClient):
                 chunk_size = len(chunk)
                 await self.client_manager.speed_limiter.acquire(chunk_size)
                 await f.write(chunk)
-                update_progress(chunk_size)
+                self.manager.progress_manager.file_progress.advance_file(media_item.task_id, chunk_size)
                 check_download_speed()
 
         self._post_download_check(media_item, content)
@@ -849,7 +858,7 @@ class MegaDownloader(Downloader):
     def startup(self) -> None:
         """Starts the downloader."""
         self.client = MegaDownloadClient(self.manager)  # type: ignore[reportIncompatibleVariableOverride]
-        self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
+        self._semaphore = asyncio.Semaphore(self.manager.client_manager.get_download_slots(self.domain))
 
     def register(self, url: URL, crypto: DecryptData) -> None:
         self.client.decrypt_mapping[url] = crypto
@@ -877,7 +886,7 @@ def _decrypt_chunks(
     Decrypts chunks of data received via `send()` and yields the decrypted chunks.
     It decrypts chunks indefinitely until a sentinel value (`None`) is sent.
 
-    NOTE: You MUST send `None` after decrypting every chunk to execute the mac check
+    NOTE: You MUST send `None` once after all chunks are processed to execute the MAC check.
 
     Args:
         iv (AnyArray):  Initialization vector (iv) as a list or tuple of two 32-bit unsigned integers.

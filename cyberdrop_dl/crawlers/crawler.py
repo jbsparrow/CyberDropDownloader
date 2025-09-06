@@ -18,7 +18,8 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
+from cyberdrop_dl.clients.scraper_client import ScraperClient
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem, copy_signature
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
@@ -54,7 +55,7 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
     from rich.progress import TaskID
 
-    from cyberdrop_dl.clients.scraper_client import ScraperClient
+    from cyberdrop_dl.clients.response import AbstractResponse
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -101,17 +102,41 @@ class Crawler(ABC):
     DOMAIN: ClassVar[str]
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
 
+    _RATE_LIMIT: ClassVar[tuple[float, float]] = 25, 1
+    _DOWNLOAD_SLOTS: ClassVar[int | None] = None
+
+    @copy_signature(ScraperClient._request)
+    @contextlib.asynccontextmanager
+    async def request(self, *args, **kwargs) -> AsyncGenerator[AbstractResponse]:
+        async with self.client._limiter(self.DOMAIN), self.client._request(*args, **kwargs) as resp:
+            yield resp
+
+    @copy_signature(ScraperClient._request)
+    async def request_json(self, *args, **kwargs) -> Any:
+        async with self.request(*args, **kwargs) as resp:
+            return await resp.json()
+
+    @copy_signature(ScraperClient._request)
+    async def request_soup(self, *args, **kwargs) -> BeautifulSoup:
+        async with self.request(*args, **kwargs) as resp:
+            return await resp.soup()
+
+    @copy_signature(ScraperClient._request)
+    async def request_text(self, *args, **kwargs) -> str:
+        async with self.request(*args, **kwargs) as resp:
+            return await resp.text()
+
     @final
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.downloader: Downloader = field(init=False)
         self.client: ScraperClient = field(init=False)
         self.startup_lock = asyncio.Lock()
-        self.request_limiter = AsyncLimiter(10, 1)
         self.ready: bool = False
         self.disabled: bool = False
         self.logged_in: bool = False
         self.scraped_items: set[str] = set()
+        self.RATE_LIMIT = AsyncLimiter(*self._RATE_LIMIT)
         self.waiting_items = 0
         self.log = log
         self.log_debug = log_debug
@@ -189,7 +214,10 @@ class Crawler(ABC):
         async with self.startup_lock:
             if self.ready:
                 return
-            self.client = self.manager.client_manager.scraper_session
+            self.client = self.manager.client_manager.scraper_client
+            self.manager.client_manager.rate_limits[self.DOMAIN] = self.RATE_LIMIT
+            if self._DOWNLOAD_SLOTS:
+                self.manager.client_manager.download_slots[self.DOMAIN] = self._DOWNLOAD_SLOTS
             self.downloader = self._init_downloader()
             await self.async_startup()
             self.ready = True
@@ -312,15 +340,20 @@ class Crawler(ABC):
 
         self.create_task(self.handle_media_item(media_item, m3u8))
 
-    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
+    @final
+    async def _download(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None) -> None:
         try:
-            return await self._handle_media_item(media_item, m3u8)
+            if m3u8:
+                await self.downloader.download_hls(media_item, m3u8)
+            else:
+                await self.downloader.run(media_item)
+
         finally:
             if self.manager.config_manager.settings_data.files.dump_json:
                 data = [media_item.as_jsonable_dict()]
                 await self.manager.log_manager.write_jsonl(data)
 
-    async def _handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
+    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int."
@@ -340,11 +373,7 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if not m3u8:
-            self.manager.task_group.create_task(self.downloader.run(media_item))
-            return
-
-        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8))
+        self.create_task(self._download(media_item, m3u8))
 
     @final
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
@@ -572,10 +601,8 @@ class Crawler(ABC):
             func = css.select_one_get_attr_or_none
             get_next_page = partial(func, selector=selector, attribute="href")
 
-        get_soup = self.client.get_soup_cffi if cffi else self.client.get_soup
         while True:
-            async with self.request_limiter:
-                soup = await get_soup(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url, impersonate=cffi or None)
             yield soup
             page_url_str = get_next_page(soup)
             if not page_url_str:
@@ -630,11 +657,8 @@ class Crawler(ABC):
         log(msg, bug=True)
 
     async def _get_redirect_url(self, url: AbsoluteHttpURL):
-        async with self.request_limiter:
-            head = await self.client.get_head(self.DOMAIN, url)
-        if location := head.get("location"):
-            return self.parse_url(location, url.origin())
-        return url
+        async with self.request(url, method="HEAD") as head:
+            return head.location or url
 
     @staticmethod
     def register_cache_filter(
@@ -667,9 +691,7 @@ class Crawler(ABC):
         return m3u8.RenditionGroup(await self._get_m3u8(url, headers))
 
     async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> m3u8.M3U8:
-        headers = headers or {}
-        async with self.request_limiter:
-            content = await self.client.get_text(self.DOMAIN, url, headers)
+        content = await self.request_text(url, headers=headers)
         return m3u8.M3U8(content, url.parent)
 
     def create_custom_filename(
