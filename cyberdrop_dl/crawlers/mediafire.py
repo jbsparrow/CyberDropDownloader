@@ -35,19 +35,24 @@ class FolderInfo(NamedTuple):
 
 class MediaFireCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "File": "/file/...",
-        "Folder": "/folder/...",
+        "File": (
+            "/file/<quick_key>",
+            "?<quick_key>",
+        ),
+        "Folder": "/folder/<folder_key>",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "mediafire"
-    _RATE_LIMIT = 5, 1
+    SKIP_PRE_CHECK = True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["folder", folder_key, *_]:
                 return await self.folder(scrape_item, folder_key)
-            case ["file", _, *_]:
-                return await self.file(scrape_item)
+            case ["file", file_id, *_]:
+                return await self.file(scrape_item, file_id)
+            case [""] if (file_id := scrape_item.url.query_string) and not ("&" in file_id or "=" in file_id):
+                return await self.file(scrape_item, file_id)
             case _:
                 raise ValueError
 
@@ -64,7 +69,7 @@ class MediaFireCrawler(Crawler):
         async def get_content(chunk: int) -> dict[str, Any]:
             return (
                 await self._api_request(
-                    "/folder/get_content.php",
+                    "folder/get_content.php",
                     folder_key=folder_key,
                     content_type=content_type,
                     chunk=chunk,
@@ -88,7 +93,7 @@ class MediaFireCrawler(Crawler):
     async def _get_folder_info(self, folder_key: str) -> FolderInfo:
         resp = (
             await self._api_request(
-                "/folder/get_info.php",
+                "folder/get_info.php",
                 recursive="yes",
                 details="yes",
                 folder_key=folder_key,
@@ -108,10 +113,11 @@ class MediaFireCrawler(Crawler):
 
         async for files in self._iter_folder_content(folder_key, "files"):
             for file in files:
-                link = self.PRIMARY_URL / "file" / file["quickkey"]
+                file_id: str = file["quickkey"]
+                link = self.PRIMARY_URL / "file" / file_id
                 new_scrape_item = scrape_item.create_child(link)
                 new_scrape_item.possible_datetime = self.parse_iso_date(file["created"])
-                self.create_task(self._file_task(new_scrape_item))
+                self.create_task(self._file_task(new_scrape_item, file_id))
                 scrape_item.add_children()
 
         async for folders in self._iter_folder_content(folder_key, "folders"):
@@ -122,8 +128,9 @@ class MediaFireCrawler(Crawler):
                 scrape_item.add_children()
 
     @error_handling_wrapper
-    async def file(self, scrape_item: ScrapeItem) -> None:
-        if await self.check_complete_from_referer(scrape_item):
+    async def file(self, scrape_item: ScrapeItem, file_id: str) -> None:
+        canonical_url = self.PRIMARY_URL / "file" / file_id
+        if await self.check_complete_from_referer(canonical_url):
             return
 
         soup = await self.request_soup(scrape_item.url, impersonate=True)
@@ -131,6 +138,8 @@ class MediaFireCrawler(Crawler):
             scrape_item.possible_datetime = self.parse_iso_date(
                 css.select_one_get_text(soup, Selector.DATE),
             )
+
+        scrape_item.url = canonical_url
         link = self.parse_url(_extract_download_link(soup))
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
