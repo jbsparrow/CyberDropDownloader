@@ -5,14 +5,13 @@ https://developers.cloudflare.com/stream/
 
 from __future__ import annotations
 
-import time
 import uuid
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils.json import is_jwt, jwt_decode
+from cyberdrop_dl.utils.json import JSONWebToken, is_jwt
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -22,7 +21,7 @@ _DEFAULT_VIDEO_CDN = AbsoluteHttpURL("https://watch.cloudflarestream.com")
 
 
 class CloudflareStreamCrawler(Crawler):
-    SUPPORTED_DOMAINS = "videodelivery.net", "cloudflarestream.com"
+    SUPPORTED_DOMAINS: SupportedDomains = "videodelivery.net", "cloudflarestream.com"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Public Video": (
             "/embed/___.js?video=<video_uid>",
@@ -38,9 +37,9 @@ class CloudflareStreamCrawler(Crawler):
         ),
     }
 
-    DOMAIN = "cloudflarestream"
-    FOLDER_DOMAIN = "CloudflareStream"
-    PRIMARY_URL = AbsoluteHttpURL("https://cloudflarestream.com")
+    DOMAIN: ClassVar[str] = "cloudflarestream"
+    FOLDER_DOMAIN: ClassVar[str] = "CloudflareStream"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://cloudflarestream.com")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -52,27 +51,25 @@ class CloudflareStreamCrawler(Crawler):
                 raise ValueError
 
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
-        is_expired: bool = False
-        token = None
         if is_jwt(video_id):
             # https://developers.cloudflare.com/stream/viewing-videos/securing-your-stream/
             token = video_id
-            payload = jwt_decode(token)
-            video_id = payload["sub"]
-            if expires := payload.get("exp"):
-                is_expired = time.time() > expires
+            jwt = JSONWebToken.decode(token)
+            video_id = jwt.payload["sub"]
+            if jwt.is_expired():
+                self.raise_e(scrape_item, ScrapeError(401, "Access token to the video has expired"))
+                return
+        else:
+            token = None
 
         _ = uuid.UUID(hex=video_id)  # raise ValueError if video_id is not a valid uuid
         scrape_item.url = _DEFAULT_VIDEO_CDN / video_id
-        return await self._video(scrape_item, video_id, token, is_expired)
+        return await self._video(scrape_item, video_id, token)
 
     @error_handling_wrapper
-    async def _video(self, scrape_item: ScrapeItem, video_id: str, token: str | None, is_expired: bool) -> None:
+    async def _video(self, scrape_item: ScrapeItem, video_id: str, token: str | None) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
-
-        if is_expired:
-            raise ScrapeError(401, "Access token to the video has expired")
 
         m3u8_url = self.PRIMARY_URL / (token or video_id) / "manifest/video.m3u8"
         m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_url)

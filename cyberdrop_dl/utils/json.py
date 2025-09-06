@@ -10,6 +10,7 @@ import json
 import json.decoder
 import json.scanner
 import re
+import time
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, Protocol, Self, TypeGuard, TypeVar
 
@@ -181,21 +182,35 @@ class JSONWebToken:
     headers: dict[str, str] = dataclasses.field(repr=False)
     payload: dict[str, Any] = dataclasses.field(repr=False)
     signature: str
+    _encoded_token: str
 
     @classmethod
-    def parse(cls, jwt: str) -> Self:
+    def decode(cls, jwt: str, /) -> Self:
         b64_headers, b64_payload, b64_signature = jwt.split(".")
         headers = cls._decode(b64_headers)
-        return cls(headers["alg"], headers, cls._decode(b64_payload), b64_signature)
+        return cls(headers["alg"], headers, cls._decode(b64_payload), b64_signature, jwt)
 
     @classmethod
-    def _decode(cls, value: str) -> dict[str, Any]:
+    def _decode(cls, value: str, /) -> dict[str, Any]:
         return loads(base64.urlsafe_b64decode(f"{value}==="))
 
+    def is_expired(self, threshold: int = 600) -> bool:
+        """Checks if the token has expired/is about to expire.
 
-def jwt_decode(jwt: str) -> dict[str, Any]:
-    return JSONWebToken.parse(jwt).payload
+        Default threshold is 600 seconds (10 minutes).
+        """
+        expires: int | None = self.payload.get("exp")
+        if expires:
+            return (expires - time.time()) < threshold
+        return False
+
+    def __str__(self) -> str:
+        return self._encoded_token
 
 
 def is_jwt(string: str) -> bool:
     return string.startswith("eyJ") and string.count(".") == 2
+
+
+def jwt_decode(jwt: str) -> dict[str, Any]:
+    return JSONWebToken.decode(jwt).payload
