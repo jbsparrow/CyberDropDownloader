@@ -85,15 +85,15 @@ class PCloudCrawler(Crawler):
             api_base = _US_API_URL
             canonical_url = _US_PUBLIC_URL
 
-        node = _parse_node_resp(
-            (await self._api_request((api_base / "showpublink").with_query(code=code)))["metadata"],
-        )
+        api_url = (api_base / "showpublink").with_query(code=code)
+        node = _parse_node_resp((await self._api_request(api_url))["metadata"])
         scrape_item.url = canonical_url.with_query(code=code)
-        if not node.isfolder:
-            return await self.file(scrape_item, cast("File", node))
+        if node.isfolder:
+            scrape_item.setup_as_album(self.create_title(node.name, node.id))
+            self._iter_nodes(scrape_item, node.contents)
+            return
 
-        scrape_item.setup_as_album(self.create_title(node.name, node.id))
-        self._iter_nodes(scrape_item, node.contents)
+        return await self.file(scrape_item, cast("File", node))
 
     def _iter_nodes(self, scrape_item: ScrapeItem, nodes: Sequence[Node], *parents: str) -> None:
         folders: list[Node] = []
