@@ -7,6 +7,7 @@ from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
 from pydantic import TypeAdapter
+from typing_extensions import TypedDict
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -34,7 +35,7 @@ class Node:
 
     folderid: int | None = None
     fileid: int | None = None
-    content: list[Node] = dataclasses.field(default_factory=list)
+    contents: list[Node] = dataclasses.field(default_factory=list)
 
     @property
     def _id(self) -> str:
@@ -50,7 +51,11 @@ class File(Node):
     isfolder: Literal[False]
 
 
-_parse_node = TypeAdapter(Node).validate_python
+class PublicLinkResponse(TypedDict):
+    metadata: Node
+
+
+_parse_public_link_resp = TypeAdapter(PublicLinkResponse).validate_json
 
 
 class PCloudCrawler(Crawler):
@@ -60,7 +65,7 @@ class PCloudCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.pcloud.com")
     DOMAIN: ClassVar[str] = "pcloud"
-    FOlDER_DOMAIN: ClassVar[str] = "pCloud"
+    FOLDER_DOMAIN: ClassVar[str] = "pCloud"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if code := scrape_item.url.query.get("code"):
@@ -77,13 +82,14 @@ class PCloudCrawler(Crawler):
             api_url = _US_API_URL / "showpublink"
             canonical_url = _US_PUBLIC_URL.with_query(code=code)
 
-        node = _parse_node((await self.request_json(api_url.with_query(code=code)))["metadata"])
+        resp_text = await self.request_text(api_url.with_query(code=code))
+        node = _parse_public_link_resp(resp_text)["metadata"]
         scrape_item.url = canonical_url
         if not node.isfolder:
             return await self.file(scrape_item, cast("File", node))
 
         scrape_item.setup_as_album(self.create_title(node.name, node.id))
-        self._iter_nodes(scrape_item, [node])
+        self._iter_nodes(scrape_item, node.contents)
 
     def _iter_nodes(self, scrape_item: ScrapeItem, nodes: Sequence[Node], *parents: str) -> None:
         folders: list[Node] = []
@@ -102,7 +108,7 @@ class PCloudCrawler(Crawler):
             scrape_item.add_children()
 
         for folder in folders:
-            self._iter_nodes(scrape_item, folder.content, *parents, folder.name)
+            self._iter_nodes(scrape_item, folder.contents, *parents, folder.name)
 
     async def file(self, scrape_item: ScrapeItem, file: File) -> None:
         # https://docs.pcloud.com/methods/public_links/getpublinkdownload.html
@@ -114,8 +120,8 @@ class PCloudCrawler(Crawler):
             fileid=file._id,
         )
         resp: dict[str, Any] = await self.request_json(api_url)
-        scrape_item.possible_datetime = to_timestamp(parsedate_to_datetime(file.modified))
         link = self.parse_url(f"https://{resp['hosts'][0]}{resp['path']}")
+        scrape_item.possible_datetime = to_timestamp(parsedate_to_datetime(file.modified))
         filename, ext = self.get_filename_and_ext(file.name)
         db_url = scrape_item.url.origin() / "file" / file._id
         await self.handle_file(db_url, scrape_item, file.name, ext, debrid_link=link, custom_filename=filename)
