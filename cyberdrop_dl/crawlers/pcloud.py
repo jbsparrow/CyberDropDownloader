@@ -64,13 +64,19 @@ _parse_node_resp = TypeAdapter(Node).validate_python
 class PCloudCrawler(Crawler):
     SUPPORTED_DOMAINS: SupportedDomains = "e.pc.cd", "pc.cd", "pcloud"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Public File or folder": "?code=<share_code>",
+        "Public File or folder": (
+            "?code=<share_code>",
+            "e.pc.cd/<short_code>",
+            "u.pc.cd/<short_code>",
+        ),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.pcloud.com")
     DOMAIN: ClassVar[str] = "pcloud"
     FOLDER_DOMAIN: ClassVar[str] = "pCloud"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
+        if "pc.cd" in scrape_item.url.host:
+            return await self.public_link(scrape_item, scrape_item.url.parts[1])
         if code := scrape_item.url.query.get("code"):
             return await self.public_link(scrape_item, code)
         raise ValueError

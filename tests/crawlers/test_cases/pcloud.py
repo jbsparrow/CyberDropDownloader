@@ -15,6 +15,20 @@ TEST_CASES = [
         ],
     ),
     (
+        "http://e.pc.cd/Ef3otalK",
+        [
+            {
+                "url": "https://e.pcloud.link/file/28325251938?code=Ef3otalK",
+                "debrid_url": "ANY",
+                "filename": "A3214_23 Video zur Anfrage.mp4",
+                "original_filename": "A3214_23 Video zur Anfrage.MP4",
+                "referer": "https://e.pcloud.link/publink/show?code=Ef3otalK",
+                "album_id": None,
+                "datetime": 1687163125,
+            }
+        ],
+    ),
+    (
         "https://e.pcloud.link/publink/show?code=XZwaxTZmBATjuuptQQrYgMAveYGTL4IjKVX",
         [
             {
