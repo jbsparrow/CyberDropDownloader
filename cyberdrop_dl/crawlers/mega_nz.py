@@ -7,7 +7,6 @@ It calls checks_complete_by_referer several times even if no request is going to
 
 from __future__ import annotations
 
-import itertools
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
@@ -171,16 +170,15 @@ class MegaNzCrawler(Crawler):
     ) -> None:
         folder_id, shared_key = scrape_item.url.name, scrape_item.url.fragment
 
-        def exclude_node(fs_entry: tuple[Path, mega.Node]):
-            node = fs_entry[1]
-            if node["t"] != mega.NodeType.FILE:
-                return True
-            if single_file_id and node["h"] != single_file_id:
-                return True
-            return False
+        def filter_files():
+            for path, node in filesystem.items():
+                if node["t"] != mega.NodeType.FILE:
+                    continue
+                if single_file_id and node["h"] != single_file_id:
+                    continue
+                yield path, cast("mega.File", node)
 
-        for path, node in itertools.filterfalse(exclude_node, filesystem.items()):
-            file = cast("mega.File", node)
+        for path, file in filter_files():
             file_id = file["h"]
             file_fragment = f"{shared_key}/file/{file_id}"
             canonical_url = scrape_item.url.with_fragment(file_fragment)
