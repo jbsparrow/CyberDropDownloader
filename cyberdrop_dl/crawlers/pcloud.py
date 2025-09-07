@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import dataclasses
-from email.utils import parsedate_to_datetime
+import email.utils
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
 from pydantic import TypeAdapter
-from typing_extensions import TypedDict
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -26,6 +26,12 @@ _UE_PUBLIC_URL = AbsoluteHttpURL("https://e.pcloud.link/publink/show")
 _US_PUBLIC_URL = AbsoluteHttpURL("https://u.pcloud.link/publink/show")
 
 
+# TODO: move to base crawler
+def parse_rfc_2822_date(date: str) -> int:
+    # https://docs.pcloud.com/structures/datetime.html
+    return to_timestamp(email.utils.parsedate_to_datetime(date))
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class Node:
     name: str
@@ -35,6 +41,7 @@ class Node:
 
     folderid: int | None = None
     fileid: int | None = None
+    contenttype: str = ""
     contents: list[Node] = dataclasses.field(default_factory=list)
 
     @property
@@ -51,11 +58,7 @@ class File(Node):
     isfolder: Literal[False]
 
 
-class PublicLinkResponse(TypedDict):
-    metadata: Node
-
-
-_parse_public_link_resp = TypeAdapter(PublicLinkResponse).validate_json
+_parse_node_resp = TypeAdapter(Node).validate_python
 
 
 class PCloudCrawler(Crawler):
@@ -82,8 +85,9 @@ class PCloudCrawler(Crawler):
             api_url = _US_API_URL / "showpublink"
             canonical_url = _US_PUBLIC_URL.with_query(code=code)
 
-        resp_text = await self.request_text(api_url.with_query(code=code))
-        node = _parse_public_link_resp(resp_text)["metadata"]
+        node = _parse_node_resp(
+            (await self._api_request(api_url.with_query(code=code)))["metadata"],
+        )
         scrape_item.url = canonical_url
         if not node.isfolder:
             return await self.file(scrape_item, cast("File", node))
@@ -113,17 +117,54 @@ class PCloudCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem, file: File) -> None:
         # https://docs.pcloud.com/methods/public_links/getpublinkdownload.html
 
+        link = await self._request_download_url(scrape_item, file)
+        scrape_item.possible_datetime = parse_rfc_2822_date(file.modified)
+        filename, ext = self.get_filename_and_ext(file.name)
+        # Adding the code as query just for logging messages. It will be discarded in the actual db
+        db_url = (scrape_item.url.origin() / "file" / file._id).with_query(code=scrape_item.url.query["code"])
+        await self.handle_file(db_url, scrape_item, file.name, ext, debrid_link=link, custom_filename=filename)
+
+    _file_task = auto_task_id(file)
+
+    async def _request_download_url(self, scrape_item: ScrapeItem, file: File) -> AbsoluteHttpURL:
+        path = "getmediatranscodepublink" if "video" in file.contenttype else "getpublinkdownload"
         base = _EU_API_URL if "e." in scrape_item.url.host else _US_API_URL
-        api_url = (base / "getpublinkdownload").with_query(
+        api_url = (base / path).with_query(
             code=scrape_item.url.query["code"],
             forcedownload=1,
             fileid=file._id,
         )
-        resp: dict[str, Any] = await self.request_json(api_url)
-        link = self.parse_url(f"https://{resp['hosts'][0]}{resp['path']}")
-        scrape_item.possible_datetime = to_timestamp(parsedate_to_datetime(file.modified))
-        filename, ext = self.get_filename_and_ext(file.name)
-        db_url = scrape_item.url.origin() / "file" / file._id
-        await self.handle_file(db_url, scrape_item, file.name, ext, debrid_link=link, custom_filename=filename)
+        resp: dict[str, Any] = await self._api_request(api_url)
+        if variants := resp.get("variants"):
+            resp = next(v for v in variants if v["transcodetype"] == "original")
 
-    _file_task = auto_task_id(file)
+        return self.parse_url(f"https://{resp['hosts'][0]}{resp['path']}")
+
+    async def _api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
+        resp: dict[str, Any] = await self.request_json(api_url)
+        if (code := resp["result"]) != 0:
+            http_code, msg = _ERROR_CODES.get(code, (422, None))
+            raise ScrapeError(http_code, msg)
+        return resp
+
+
+_ERROR_CODES = {
+    1000: (401, "Log in required"),
+    1004: (422, "No fileid or path provided"),
+    1005: (422, "Unknown content-type requested"),
+    1028: (422, "Please provide link 'code'"),
+    1029: (422, "Please provide 'fileid'"),
+    2000: (401, "Log in failed"),
+    2002: (422, "A component of parent directory does not exist"),
+    2003: (403, "Access denied. You do not have permissions to perform this operation"),
+    2009: (404, "File not found"),
+    2010: (422, "Invalid path"),
+    2011: (422, "Requested speed limit too low, see minspeed for minimum"),
+    4000: (429, "Too many login tries from this IP address"),
+    5002: (500, "Internal error, no servers available. Try again later"),
+    7001: (422, "Invalid link 'code'"),
+    7002: (410, "This link is deleted by the owner"),
+    7004: (410, "This link has expired"),
+    7005: (403, "This link has reached its traffic limit"),
+    7006: (403, "This link has reached maximum downloads"),
+}
