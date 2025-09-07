@@ -4,7 +4,6 @@ import asyncio
 import dataclasses
 import itertools
 import time
-from functools import partial
 from http.cookies import SimpleCookie
 from typing import TYPE_CHECKING, Any
 
@@ -76,7 +75,7 @@ class FlareSolverr:
         self.manager = manager
         self._session_id: str = ""
         self._session_lock, self._request_lock = asyncio.Lock(), asyncio.Lock()
-        self._next_request_id: Callable[[], int] = partial(next, itertools.count(1))
+        self._next_request_id: Callable[[], int] = itertools.count(1).__next__
         if manager.global_config.general.flaresolverr:
             self.url = manager.global_config.general.flaresolverr / "v1"
         else:
@@ -89,8 +88,6 @@ class FlareSolverr:
         await self._destroy_session()
 
     async def request(self, url: AbsoluteHttpURL, data: Any = None) -> FlareSolverrSolution:
-        # TODO: make this method return an abstract response
-
         invalid_response_error = DDOSGuardError("Invalid response from flaresolverr")
         try:
             if not self._session_id:
