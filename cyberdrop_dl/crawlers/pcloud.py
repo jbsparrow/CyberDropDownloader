@@ -79,16 +79,16 @@ class PCloudCrawler(Crawler):
     async def public_link(self, scrape_item: ScrapeItem, code: str) -> None:
         # https://docs.pcloud.com/methods/public_links/showpublink.html
         if "e." in scrape_item.url.host:
-            api_url = _EU_API_URL / "showpublink"
-            canonical_url = _UE_PUBLIC_URL.with_query(code=code)
+            api_base = _EU_API_URL
+            canonical_url = _UE_PUBLIC_URL
         else:
-            api_url = _US_API_URL / "showpublink"
-            canonical_url = _US_PUBLIC_URL.with_query(code=code)
+            api_base = _US_API_URL
+            canonical_url = _US_PUBLIC_URL
 
         node = _parse_node_resp(
-            (await self._api_request(api_url.with_query(code=code)))["metadata"],
+            (await self._api_request((api_base / "showpublink").with_query(code=code)))["metadata"],
         )
-        scrape_item.url = canonical_url
+        scrape_item.url = canonical_url.with_query(code=code)
         if not node.isfolder:
             return await self.file(scrape_item, cast("File", node))
 
