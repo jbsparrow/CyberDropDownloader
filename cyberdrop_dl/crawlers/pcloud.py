@@ -149,7 +149,7 @@ class PCloudCrawler(Crawler):
     async def _api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
         resp: dict[str, Any] = await self.request_json(api_url)
         if (code := resp["result"]) != 0:
-            http_code, msg = _ERROR_CODES.get(code, (422, None))
+            http_code, msg = _ERROR_CODES.get(code, (422, f"({code}) {resp['error']}"))
             raise ScrapeError(http_code, msg)
         return resp
 
