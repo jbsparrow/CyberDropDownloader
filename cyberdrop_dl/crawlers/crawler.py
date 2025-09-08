@@ -19,6 +19,7 @@ from yarl import URL
 
 from cyberdrop_dl import constants
 from cyberdrop_dl.clients.scraper_client import ScraperClient
+from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem, copy_signature
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
@@ -611,9 +612,9 @@ class Crawler(ABC):
 
     @error_handling_wrapper
     async def direct_file(self, scrape_item: ScrapeItem, url: URL | None = None, assume_ext: str | None = None) -> None:
-        """Download a direct link file. Filename will be extrcation for the url"""
+        """Download a direct link file. Filename will be the url slug"""
         link = url or scrape_item.url
-        filename, ext = self.get_filename_and_ext(link.name, assume_ext=assume_ext)
+        filename, ext = self.get_filename_and_ext(link.name or link.parent.name, assume_ext=assume_ext)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @final
@@ -703,7 +704,7 @@ class Crawler(ABC):
         file_id: str | None = None,
         video_codec: str | None = None,
         audio_codec: str | None = None,
-        resolution: m3u8.Resolution | str | int | None = None,
+        resolution: Resolution | str | int | None = None,
         hash_string: str | None = None,
         only_truncate_stem: bool = True,
     ) -> str:
@@ -719,19 +720,9 @@ class Crawler(ABC):
             extra_info.append(audio_codec)
 
         if _placeholder_config.include_resolution and resolution:
-            if isinstance(resolution, m3u8.Resolution):
-                resolution = resolution.name
-            if isinstance(resolution, str):
-                if (digits := resolution.casefold().removesuffix("p")).isdigit():
-                    extra_info.append(f"{digits}p")
-                else:
-                    resolution_ = next(
-                        (p for p in VALID_RESOLUTION_NAMES if resolution.casefold() == p.casefold()), None
-                    )
-                    assert resolution_, f"Invalid: {resolution = }"
-                    extra_info.append(resolution_)
-            else:
-                extra_info.append(f"{resolution}p")
+            if not isinstance(resolution, Resolution):
+                resolution = Resolution.parse(resolution)
+            extra_info.append(resolution.name)
 
         if _placeholder_config.include_hash and hash_string:
             assert any(hash_string.startswith(x) for x in HASH_PREFIXES), f"Invalid: {hash_string = }"
