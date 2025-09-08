@@ -55,14 +55,17 @@ class DropboxCrawler(Crawler):
                 return await self.follow_redirect(scrape_item)
             case ["scl", "fi", _, *_]:
                 return await self.file(scrape_item)
-            case ["scl", "fo", link_key, secure_hash, *_]:
+            case ["scl", "fo", link_key, secure_hash]:
                 return await self.folder(scrape_item, link_key, secure_hash)
+            case ["scl", "fo", link_key, secure_hash, _]:
+                return await self.file(scrape_item)
             case _:
                 raise ValueError
 
     @error_handling_wrapper
     async def follow_redirect(self, scrape_item: ScrapeItem) -> None:
-        scrape_item.url = await self._get_redirect_url(scrape_item.url)
+        async with self.request(scrape_item.url) as resp:
+            scrape_item.url = resp.url
         await self.fetch(scrape_item)
 
     @error_handling_wrapper
@@ -79,7 +82,7 @@ class DropboxCrawler(Crawler):
             self._file(scrape_item, resp.filename)
 
     def _file(self, scrape_item: ScrapeItem, filename: str) -> None:
-        scrape_item.url = view_url = scrape_item.url.update_query(dl=1)
+        scrape_item.url = view_url = scrape_item.url.update_query(dl=0)
         download_url = view_url.update_query(dl=1)
         custom_filename, ext = self.get_filename_and_ext(filename)
         self.create_task(
@@ -96,7 +99,8 @@ class DropboxCrawler(Crawler):
     async def _ensure_rlkey(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         if url.query.get("rlkey"):
             return url
-        url = await self._get_redirect_url(url)
+        async with self.request(url) as resp:
+            url = resp.url
         if url.query.get("rlkey"):
             return url
         raise ScrapeError(401)
