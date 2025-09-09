@@ -48,8 +48,6 @@ class DropboxCrawler(Crawler):
         await self._get_web_token(self.PRIMARY_URL)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """See https://www.dropboxforum.com/discussions/101001012/shared-link--scl-to-s/689070"""
-
         match scrape_item.url.parts[1:]:
             case ["s" | "sh", _, *_]:
                 return await self.follow_redirect(scrape_item)
@@ -82,7 +80,7 @@ class DropboxCrawler(Crawler):
             self._file(scrape_item, resp.filename)
 
     def _file(self, scrape_item: ScrapeItem, filename: str) -> None:
-        scrape_item.url = view_url = scrape_item.url.update_query(dl=0)
+        scrape_item.url = view_url = scrape_item.url.with_query(rlkey=scrape_item.url.query["rlkey"], dl=0)
         download_url = view_url.update_query(dl=1)
         custom_filename, ext = self.get_filename_and_ext(filename)
         self.create_task(
@@ -171,5 +169,6 @@ class DropboxCrawler(Crawler):
             token = self.get_cookie_value("t")
             if not token:
                 self.disabled = True
-                raise LoginError
+                msg = "Unable to get token from dropbox. Crawler has been disabled"
+                raise LoginError(msg)
             self._token = token
