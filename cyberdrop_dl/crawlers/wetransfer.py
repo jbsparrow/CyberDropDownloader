@@ -43,7 +43,7 @@ class WeTransferCrawler(Crawler):
         if await self.check_complete_from_referer(file_info.download_url):
             return
 
-        json_resp: dict[str, Any] = await self.request_json(file_info.download_url, methos="POST", json=file_info.json)
+        json_resp: dict[str, Any] = await self.request_json(file_info.download_url, method="POST", json=file_info.json)
         link_str: str | None = json_resp.get("direct_link")
         if not link_str:
             code, msg = parse_error(json_resp)
