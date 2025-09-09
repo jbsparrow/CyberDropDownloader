@@ -57,18 +57,13 @@ class DoodStreamCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            response, soup = await self.client._get_response_and_soup_cffi(self.DOMAIN, scrape_item.url)
+        async with self.request(scrape_item.url, impersonate=True) as resp:
+            actual_host = resp.url.host
+            soup = await resp.soup()
 
-        host = self.parse_url(response.url).host
-        assert host
-        del response
-
-        title: str = css.select_one_get_text(soup, "title")
-        title = title.split("- DoodStream")[0].strip()
-
-        file_id = get_file_id(soup)
-        debrid_link = await self.get_download_url(host, soup)
+        title = css.page_title(soup, "DoodStream")
+        file_id = _get_file_id(soup)
+        debrid_link = await self.get_download_url(actual_host, soup)
         filename, ext = self.get_filename_and_ext(f"{file_id}.mp4")
         custom_filename = self.create_custom_filename(title, ext, file_id=file_id)
         scrape_item.url = canonical_url
@@ -77,25 +72,23 @@ class DoodStreamCrawler(Crawler):
         )
 
     async def get_download_url(self, host: str, soup: BeautifulSoup) -> AbsoluteHttpURL:
-        md5_path = get_md5_path(soup)
+        md5_path = _get_md5_path(soup)
         api_url = API_MD5_ENTRYPOINT / md5_path
         token = api_url.name
-        async with self.request_limiter:
-            new_soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, api_url.with_host(host))
 
-        text = new_soup.get_text(strip=True)
+        text = await self.request_text(api_url.with_host(host), impersonate=True)
         random_padding = "".join(random.choice(TOKEN_CHARS) for _ in range(10))
         expire = int(datetime.now(UTC).timestamp() * 1000)
         download_url = self.parse_url(text + random_padding)
         return download_url.with_query(token=token, expiry=expire)
 
 
-def get_md5_path(soup: BeautifulSoup) -> str:
+def _get_md5_path(soup: BeautifulSoup) -> str:
     js_text = css.select_one_get_text(soup, _SELECTORS.MD5_JS)
     return get_text_between(js_text, "/pass_md5/", "'")
 
 
-def get_file_id(soup: BeautifulSoup) -> str:
+def _get_file_id(soup: BeautifulSoup) -> str:
     js_text = css.select_one_get_text(soup, _SELECTORS.FILE_ID_JS)
     _, file_id, _ = js_text.split("'file_id'")[-1].split("'", 2)
     return file_id

@@ -14,9 +14,6 @@ import re
 from re import Pattern
 from typing import TYPE_CHECKING, Any, ClassVar
 
-import aiohttp
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import RealDebridError
@@ -24,6 +21,7 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from cyberdrop_dl.clients.response import AbstractResponse
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://real-debrid.com")
@@ -74,12 +72,12 @@ class RealDebridCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "real-debrid"
     FOLDER_DOMAIN: ClassVar[str] = "RealDebrid"
+    _RATE_LIMIT = 250, 60
 
     def __post_init__(self) -> None:
         self._api_token = token = self.manager.auth_config.realdebrid.api_key
         self._supported_folder_url_regex: Pattern
         self._supported_url_regex: Pattern
-        self.request_limiter = AsyncLimiter(250, 60)
         self.disabled = not bool(token)
         self._headers = {"Authorization": f"Bearer {token}", "User-Agent": "CyberDrop-DL"}
 
@@ -103,11 +101,13 @@ class RealDebridCrawler(Crawler):
         if self.disabled:
             return
         try:
-            files_r, folders_r = await asyncio.gather(
-                self._api_request("hosts/regex"), self._api_request("hosts/regexFolder")
+            responses: tuple[list[str], list[str]] = await asyncio.gather(
+                self._api_request("hosts/regex"),
+                self._api_request("hosts/regexFolder"),
             )
-            file_regex: list[str] = [pattern[1:-1] for pattern in files_r]
-            folder_regex: list[str] = [pattern[1:-1] for pattern in folders_r]
+
+            file_regex = [pattern[1:-1] for pattern in responses[0]]
+            folder_regex = [pattern[1:-1] for pattern in responses[1]]
             self._supported_url_regex = re.compile("|".join(file_regex + folder_regex))
             self._supported_folder_url_regex = re.compile("|".join(folder_regex))
         except Exception as e:
@@ -159,12 +159,27 @@ class RealDebridCrawler(Crawler):
 
     async def _api_request(self, path: str, /, **data: Any) -> Any:
         method = "POST" if data else "GET"
-        data_ = data or None
-        async with self.request_limiter, self.client._session.disabled():
-            response = await self.client._session.request(
-                method, _API_ENTRYPOINT / path, headers=self._headers, data=data_
-            )
-        return await _handle_api_response(response)
+
+        async with self.request(
+            _API_ENTRYPOINT / path,
+            method=method,
+            headers=self._headers,
+            data=data or None,
+            cache_disabled=True,
+        ) as resp:
+            return await self._handle_api_response(resp)
+
+    async def _handle_api_response(self, response: AbstractResponse) -> Any:
+        if "json" in response.content_type:
+            json_resp: dict[str, Any] = await response.json()
+            if code := json_resp.get("error_code"):
+                code = 7 if code == 16 else code
+                msg = _ERROR_CODES.get(code, "Unknown error")
+                raise RealDebridError(response.url, code, msg) from None
+            else:
+                return json_resp
+
+        await self.client.client_manager.check_http_status(response)
 
 
 def _guess_folder(url: AbsoluteHttpURL) -> str:
@@ -235,22 +250,3 @@ def _flatten_url(original_url: AbsoluteHttpURL, host: str) -> AbsoluteHttpURL:
         flatten_url = flatten_url / "frag" / original_url.fragment
 
     return flatten_url
-
-
-async def _handle_api_response(response: aiohttp.ClientResponse) -> Any:
-    try:
-        json_resp: dict[str, Any] = await response.json()
-        try:
-            response.raise_for_status()
-        except aiohttp.ClientResponseError:
-            code = json_resp.get("error_code")
-            if not code:
-                raise
-            code = 7 if code == 16 else code
-            msg = _ERROR_CODES.get(code, "Unknown error")
-            raise RealDebridError(response.url, code, msg) from None
-        else:
-            return json_resp
-    except AttributeError:
-        response.raise_for_status()
-        return await response.text()

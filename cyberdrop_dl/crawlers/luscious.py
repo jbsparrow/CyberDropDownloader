@@ -39,7 +39,7 @@ class LusciousCrawler(Crawler):
             return await self.search(scrape_item)
         await self.album(scrape_item)
 
-    async def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> str:
+    def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> str:
         """Creates a graphql query."""
         assert operation in GRAPHQL_QUERIES
         query = scrape_item.url.query
@@ -71,16 +71,14 @@ class LusciousCrawler(Crawler):
         results = await self.get_album_results(album_id)
         title: str = ""
         query_name = "AlbumGet"
-        async with self.request_limiter:
-            query = await self.create_graphql_query(query_name, scrape_item)
-            json_resp = await self.make_post_request(query_name, query)
-
+        query = self.create_graphql_query(query_name, scrape_item)
+        json_resp = await self._api_request(query_name, query)
         title = self.create_title(json_resp["data"]["album"]["get"]["title"], album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
 
-        async for json_resp in self.paginator(scrape_item, is_album=True):
-            for item in json_resp["data"]["picture"]["list"]["items"]:
-                link = self.parse_url(item["url_to_original"])
+        async for albums in self._pager(scrape_item, is_album=True):
+            for album in albums:
+                link = self.parse_url(album["url_to_original"])
                 if not self.check_album_results(link, results):
                     filename, ext = self.get_filename_and_ext(link.name)
                     await self.handle_file(link, scrape_item, filename, ext)
@@ -94,28 +92,31 @@ class LusciousCrawler(Crawler):
         if not query:
             raise ScrapeError(400, "No search query provided")
 
-        async for json_data in self.paginator(scrape_item):
-            for item in json_data["data"]["album"]["list"]["items"]:
-                album_url = self.parse_url(item["url"])
+        async for results in self._pager(scrape_item):
+            for album in results:
+                album_url = self.parse_url(album["url"])
                 new_scrape_item = scrape_item.create_child(url=album_url)
                 await self.album(new_scrape_item)
 
-    async def paginator(self, scrape_item: ScrapeItem, is_album: bool = False) -> AsyncGenerator[dict]:
+    async def _pager(self, scrape_item: ScrapeItem, is_album: bool = False) -> AsyncGenerator[list[dict[str, Any]]]:
         """Generator for album pages."""
         initial_page = int(scrape_item.url.query.get("page", 1))
         query_name = "PictureListInsideAlbum" if is_album else "AlbumListWithPeek"
         data_name = "picture" if is_album else "album"
         for page in itertools.count(initial_page):
-            query: str = await self.create_graphql_query(query_name, scrape_item, page)
-            json_resp = await self.make_post_request(query_name, query)
-            yield json_resp
-            if not json_resp["data"][data_name]["list"]["info"]["has_next_page"]:
+            query = self.create_graphql_query(query_name, scrape_item, page)
+            results: dict[str, Any] = (await self._api_request(query_name, query))["data"][data_name]["list"]
+            yield results["items"]
+            if not results["info"]["has_next_page"]:
                 break
 
-    async def make_post_request(self, query_name: str, query: str) -> dict:
+    async def _api_request(self, query_name: str, query: str) -> dict[str, Any]:
         api_url = GRAPHQL_URL.with_query(operationName=query_name)
-        headers = {"Content-Type": "application/json"}
-        async with self.request_limiter:
-            json_resp = await self.client.post_data(self.DOMAIN, api_url, data=query, headers=headers)
+        json_resp = await self.request_json(
+            api_url,
+            method="POST",
+            data=query,
+            headers={"Content-Type": "application/json"},
+        )
         log_debug(json_resp)
         return json_resp

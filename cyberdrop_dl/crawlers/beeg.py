@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
@@ -32,14 +30,12 @@ class BeegComCrawler(Crawler):
     }
     DOMAIN: ClassVar[str] = "beeg.com"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    _RATE_LIMIT = 4, 1
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if video_id := get_video_id(scrape_item.url):
             return await self.video(scrape_item, video_id)
         raise ValueError
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(4, 1)
 
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
         canonical_url = PRIMARY_URL / video_id
@@ -47,9 +43,7 @@ class BeegComCrawler(Crawler):
             return
 
         scrape_item.url = canonical_url
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, JSON_URL / video_id)
-
+        json_resp: dict[str, Any] = await self.request_json(JSON_URL / video_id)
         facts: dict[str, Any] = min(json_resp["fc_facts"], key=lambda x: int(x["id"]))
         file: dict[str, Any] = json_resp["file"]
         title: str = next(data for data in file["data"] if data.get("cd_column") == "sf_name")["cd_value"]
