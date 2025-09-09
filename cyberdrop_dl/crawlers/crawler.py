@@ -270,14 +270,16 @@ class Crawler(ABC):
             try:
                 yield task_id
             except ValueError:
-                await self.raise_e(scrape_item, ScrapeError("Unknown URL path"))
+                self.raise_exc(scrape_item, ScrapeError("Unknown URL path"))
             except MaxChildrenError as e:
-                await self.raise_e(scrape_item, e)
+                self.raise_exc(scrape_item, e)
             finally:
                 pass
 
     @error_handling_wrapper
-    def raise_e(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception) -> None:
+    def raise_exc(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception | str) -> None:
+        if isinstance(exc, str):
+            exc = ScrapeError(exc)
         raise exc
 
     @final
@@ -427,7 +429,7 @@ class Crawler(ABC):
     def handle_external_links(self, scrape_item: ScrapeItem) -> None:
         """Maps external links to the scraper class."""
         scrape_item.reset()
-        self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
+        self.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -659,6 +661,24 @@ class Crawler(ABC):
     async def _get_redirect_url(self, url: AbsoluteHttpURL):
         async with self.request(url, method="HEAD") as head:
             return head.location or url
+
+    @final
+    @error_handling_wrapper
+    async def follow_redirect_w_get(self, scrape_item: ScrapeItem) -> None:
+        async with self.request(scrape_item.url) as resp:
+            if resp.url == scrape_item.url:
+                raise ScrapeError(422)
+            scrape_item.url = resp.url
+        self.create_task(self.run(scrape_item))
+
+    @final
+    @error_handling_wrapper
+    async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
+        location = await self._get_redirect_url(scrape_item.url)
+        if location == scrape_item.url:
+            raise ScrapeError(422)
+        scrape_item.url = location
+        self.create_task(self.run(scrape_item))
 
     @staticmethod
     def register_cache_filter(

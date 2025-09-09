@@ -132,9 +132,7 @@ class vBulletinCrawler(XenforoCrawler, is_abc=True):  # noqa: N801
             scrape_item.add_children()
 
     async def get_xml(self, url: AbsoluteHttpURL) -> ElementTree.Element[str]:
-        async with self.request_limiter:
-            text = await self.client.get_text(self.DOMAIN, url)
-        root_xml = ElementTree.XML(text)
+        root_xml = ElementTree.XML(await self.request_text(url))
         if error := root_xml.find("error"):
             details = error.attrib["details"]
             error_code = 403 if error.attrib["type"] == "permissions" and "unknown" not in details.casefold() else 422

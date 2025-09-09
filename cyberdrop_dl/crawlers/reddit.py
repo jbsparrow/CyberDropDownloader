@@ -4,7 +4,6 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict
 
 import asyncprawcore
-from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
@@ -52,11 +51,11 @@ class RedditCrawler(Crawler):
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{title}"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "reddit"
+    _RATE_LIMIT = 5, 1
 
     def __post_init__(self) -> None:
         self.reddit_personal_use_script = self.manager.config_manager.authentication_data.reddit.personal_use_script
         self.reddit_secret = self.manager.config_manager.authentication_data.reddit.secret
-        self.request_limiter = AsyncLimiter(5, 1)
         self.logged_in = False
 
     async def async_startup(self) -> None:
@@ -167,24 +166,16 @@ class RedditCrawler(Crawler):
         try:
             filename, ext = self.get_filename_and_ext(url.name)
         except NoExtensionError:
-            scrape_item.url = url = await self.get_final_location(url)
+            async with self.request(url) as resp:
+                if url == resp.url:
+                    raise
+                scrape_item.url = url = resp.url
             with asyncpraw_error_handle():
                 post = await self._reddit.submission(url=str(url))
 
             return await self.post(scrape_item, post)
 
         await self.handle_file(url, scrape_item, filename, ext)
-
-    async def get_final_location(self, url) -> AbsoluteHttpURL:
-        headers = await self.client.get_head(self.DOMAIN, url)
-        content_type = headers.get("Content-Type", "")
-        if any(s in content_type.lower() for s in ("html", "text")):
-            response, _ = await self.client._get_response_and_soup(self.DOMAIN, url)
-            return AbsoluteHttpURL(response.url)
-        location = headers.get("location")
-        if not location:
-            raise ScrapeError(422)
-        return self.parse_url(location)
 
     @error_handling_wrapper
     async def check_login(self, _) -> None:
