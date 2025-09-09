@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 _EU_API_URL = AbsoluteHttpURL("https://eapi.pcloud.com")
 _US_API_URL = AbsoluteHttpURL("https://api.pcloud.com")
-_UE_PUBLIC_URL = AbsoluteHttpURL("https://e.pcloud.link/publink/show")
+_EU_PUBLIC_URL = AbsoluteHttpURL("https://e.pcloud.link/publink/show")
 _US_PUBLIC_URL = AbsoluteHttpURL("https://u.pcloud.link/publink/show")
 
 
@@ -86,7 +86,7 @@ class PCloudCrawler(Crawler):
         # https://docs.pcloud.com/methods/public_links/showpublink.html
         if "e." in scrape_item.url.host:
             api_base = _EU_API_URL
-            canonical_url = _UE_PUBLIC_URL
+            canonical_url = _EU_PUBLIC_URL
         else:
             api_base = _US_API_URL
             canonical_url = _US_PUBLIC_URL
@@ -149,8 +149,8 @@ class PCloudCrawler(Crawler):
     async def _api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
         resp: dict[str, Any] = await self.request_json(api_url)
         if (code := resp["result"]) != 0:
-            http_code, msg = _ERROR_CODES.get(code, (422, f"({code}) {resp['error']}"))
-            raise ScrapeError(http_code, msg)
+            http_code, msg = _ERROR_CODES.get(code, (422, resp["error"]))
+            raise ScrapeError(http_code, f"({code}) {msg}")
         return resp
 
 
