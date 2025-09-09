@@ -4,6 +4,7 @@ import dataclasses
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
@@ -49,8 +50,8 @@ class Video:
 
 
 class VideoSource(NamedTuple):
-    codec: str  # av1 > h264
-    resolution: str
+    codec: str  # h264 > av1
+    resolution: Resolution
     size: str
     url: str
 
@@ -61,7 +62,7 @@ class VideoSource(NamedTuple):
         details = name.split("(", 1)[1].removesuffix(")").split(",")
         res, codec, size = [d.strip() for d in details]
         codec = codec.lower()
-        return cls(codec, res, size, link_str)
+        return cls(codec, Resolution.parse(res), size, link_str)
 
 
 class EpornerCrawler(Crawler):
@@ -201,11 +202,7 @@ def _get_available_sources(soup: BeautifulSoup) -> list[VideoSource]:
 
 def _get_best_src(soup: BeautifulSoup) -> VideoSource:
     formats = _get_available_sources(soup)
-    for res in RESOLUTIONS:
-        sorted_formats = sorted(f for f in formats if f.resolution == res and not f.url.endswith(".m3u8"))
-        if sorted_formats:
-            return sorted_formats[0]
-    raise ScrapeError(422, message="Unable to parse video formats")
+    return max(f for f in formats if f.url.endswith(".m3u8"))
 
 
 def _parse_video(soup: BeautifulSoup) -> Video:

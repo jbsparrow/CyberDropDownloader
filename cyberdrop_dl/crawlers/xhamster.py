@@ -7,6 +7,7 @@ import json
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, xor_decrypt
 
@@ -212,7 +213,7 @@ class XhamsterCrawler(Crawler):
 
 
 class Format(NamedTuple):
-    resolution: int
+    resolution: Resolution
     codec: str  #  h264 > av1
     url: AbsoluteHttpURL
 
@@ -272,7 +273,7 @@ def _parse_http_sources(initials: dict[str, Any]) -> Iterable[Format]:
                 continue
 
             seen_urls.add(url)
-            resolution = int(quality.removesuffix("p"))
+            resolution = Resolution.parse(quality)
             yield Format(resolution, codec, url)
 
 
@@ -295,12 +296,11 @@ def _parse_xplayer_sources(initials: dict[str, Any]) -> Iterable[Format]:
 
             seen_urls.add(url)
             if url.suffix == ".m3u8":
-                resolution = 0
+                res = 0
             else:
-                quality: str = format_dict.get("quality") or format_dict["label"]
-                resolution = int(quality.removesuffix("p"))
+                res = format_dict.get("quality") or format_dict["label"]
 
-            yield Format(resolution, codec, url)
+            yield Format(Resolution.parse(res), codec, url)
 
     hls_sources: dict[str, dict[str, str]] = xplayer_sources.get("hls", {})
     for codec, format_dict in hls_sources.items():

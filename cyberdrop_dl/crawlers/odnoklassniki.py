@@ -4,6 +4,7 @@ import re
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css, json
@@ -147,20 +148,22 @@ class OdnoklassnikiCrawler(Crawler):
         )
 
 
-def _get_best_src(metadata: dict[str, Any]) -> tuple[int, str]:
+def _get_best_src(metadata: dict[str, Any]) -> tuple[Resolution, str]:
     def parse():
         for video in metadata["videos"]:
             if not video["disallowed"]:
-                resolution = {
-                    "ultra": 2160,
-                    "quad": 1440,
-                    "full": 1080,
-                    "hd": 720,
-                    "sd": 480,
-                    "low": 360,
-                    "lowest": 240,
-                    "mobile": 144,
-                }[video["name"]]
+                resolution = Resolution.parse(
+                    {
+                        "ultra": 2160,
+                        "quad": 1440,
+                        "full": 1080,
+                        "hd": 720,
+                        "sd": 480,
+                        "low": 360,
+                        "lowest": 240,
+                        "mobile": 144,
+                    }[video["name"]]
+                )
                 yield resolution, video["url"]
 
     return max(parse())

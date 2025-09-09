@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 PRIMARY_URL = AbsoluteHttpURL("https://spankbang.com/")
 DEFAULT_QUALITY = "main"
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
-
 VIDEO_REMOVED_SELECTOR = "[id='video_removed'], [class*='video_removed']"
 VIDEOS_SELECTOR = "div.video-list > div.video-item > a"
 

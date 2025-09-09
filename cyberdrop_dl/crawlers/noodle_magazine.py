@@ -5,6 +5,7 @@ import json
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
@@ -21,12 +22,12 @@ VIDEOS_SELECTOR = "div#list_videos a.item_link"
 
 
 class Source(NamedTuple):
-    resolution: int
+    resolution: Resolution
     file: str
 
     @staticmethod
     def new(source_dict: dict[str, Any]) -> Source:
-        resolution = int(source_dict["label"])
+        resolution = Resolution.parse(source_dict["label"])
         return Source(resolution, source_dict["file"])
 
 
