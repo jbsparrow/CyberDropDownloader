@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, Literal, NamedTuple
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -43,9 +41,7 @@ class MotherlessCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "div.pagination_link > a[rel=next]"
     DOMAIN: ClassVar[str] = "motherless"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(2, 1)
+    _RATE_LIMIT = 2, 1
 
     async def fetch(self, scrape_item: ScrapeItem, collection_id: str = "") -> None:
         parts = scrape_item.url.parts
@@ -87,13 +83,13 @@ class MotherlessCrawler(Crawler):
             async for soup in self.web_pager(images_url):
                 check_soup(soup)
                 for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR, new_title_part="Images"):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    self.create_task(self.run(new_scrape_item))
 
         if is_homepage or "videos" in scrape_item.url.parts:
             async for soup in self.web_pager(videos_url):
                 check_soup(soup)
                 for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR, new_title_part="Videos"):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
@@ -134,7 +130,7 @@ class MotherlessCrawler(Crawler):
                 scrape_item.setup_as_album(title, album_id=collection_id)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR, new_title_part=name):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:
@@ -144,8 +140,7 @@ class MotherlessCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         check_soup(soup)
         media_info = self.process_media_soup(scrape_item, soup)

@@ -9,8 +9,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 DOWNLOAD_SELECTOR = "a[class*='download-button']"
@@ -32,8 +30,7 @@ class FileditchCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         link_str: str = css.select_one_get_attr(soup, DOWNLOAD_SELECTOR, "href")
         link = self.parse_url(link_str)
         if link.path == HOMEPAGE_CATCHALL_FILE:

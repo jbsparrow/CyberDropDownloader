@@ -149,7 +149,9 @@ class CheveretoCrawler(Crawler, is_generic=True):
             raise PasswordProtectedError
 
         soup = await self.request_soup(
-            _sort_by_new(scrape_item.url / ""), method="POST", data={"content-password": password}
+            _sort_by_new(scrape_item.url / ""),
+            method="POST",
+            data={"content-password": password},
         )
 
         if _is_password_protected(soup):
@@ -167,9 +169,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.request_soup(scrape_item.url)
-
+        soup = await self.request_soup(scrape_item.url)
         link_str = open_graph.get("video", soup) or open_graph.get("image", soup)
         if not link_str or "loading.svg" in link_str:
             link_str = Selector.MAIN_IMAGE(soup)
