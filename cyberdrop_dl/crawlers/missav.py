@@ -52,7 +52,7 @@ class MissAVCrawler(Crawler):
         m3u8_playlist_url = M3U8_SERVER / uuid / "playlist.m3u8"
         m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_playlist_url)
         ext = ".mp4"
-        filename = self.create_custom_filename(title, ext, resolution=info.resolution.name)
+        filename = self.create_custom_filename(title, ext, resolution=info.resolution)
         await self.handle_file(m3u8_playlist_url, scrape_item, filename, ext, m3u8=m3u8)
 
 
