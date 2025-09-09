@@ -18,7 +18,6 @@ dependencies = [
     "get-video-properties >=0.1.1",
     "inquirerpy >=0.3.4",
     "m3u8 >=6.0.0",
-    "mediafire >=0.6.1",
     "myjdapi >=1.1.10",
     "packaging >=25.0",
     "pillow >=11.3.0",
