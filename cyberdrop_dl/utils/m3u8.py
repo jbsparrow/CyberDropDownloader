@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 from functools import cached_property
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from m3u8 import M3U8 as _M3U8
 from m3u8 import Media, Playlist
@@ -112,13 +112,21 @@ class RenditionGroupDetails:
 
 
 class M3U8(_M3U8):
-    def __init__(self, content: str, base_uri: AbsoluteHttpURL | None = None) -> None:
+    def __init__(
+        self,
+        content: str,
+        base_uri: AbsoluteHttpURL | None = None,
+        media_type: Literal["video", "audio", "subtitles"] | None = None,
+    ) -> None:
         if base_uri and base_uri.suffix.casefold() == ".m3u8":
             base_uri = base_uri.parent
+        self.media_type: Literal["video", "audio", "subtitles"] | None = media_type
         super().__init__(content, base_uri=str(base_uri) if base_uri else None)
 
     def __repr__(self) -> str:
-        return f"M3U8(base_uri='{self.base_uri}',is_variant={self.is_variant})"
+        return (
+            f"{type(self)}(media_type={self.media_type!r}, base_uri={self.base_uri!r}, is_variant={self.is_variant!r})"
+        )
 
     @cached_property
     def total_duration(self) -> timedelta:

@@ -181,12 +181,14 @@ class Downloader:
         self.update_queued_files()
         task_id = self.manager.progress_manager.file_progress.add_task(domain=self.domain, filename=media_item.filename)
         media_item.set_task_id(task_id)
-        video, audio, subtitles = await self._process_m3u8_rendition_group(media_item, m3u8_group)
-        if not subtitles and not audio:
+        video, audio, subtitles = await self._download_rendition_group(media_item, m3u8_group)
+        if not audio:
             await asyncio.to_thread(video.rename, media_item.complete_file)
         else:
-            parts = [part for part in (video, audio, subtitles) if part]
-            ffmpeg_result = await ffmpeg.merge(parts, media_item.complete_file)
+            # TODO: add remux method to ffmpeg to create an mkv file instead of mp4
+            # Subtitles format may be incompatible with mp4 and they will be silently dropped by ffmpeg
+            # so we leave them as independent files for now
+            ffmpeg_result = await ffmpeg.merge((video, audio), media_item.complete_file)
 
             if not ffmpeg_result.success:
                 raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
@@ -195,19 +197,24 @@ class Downloader:
         await self.client.handle_media_item_completion(media_item, downloaded=True)
         await self.finalize_download(media_item, downloaded=True)
 
-    async def _process_m3u8_rendition_group(
+    async def _download_rendition_group(
         self, media_item: MediaItem, m3u8_group: RenditionGroup
     ) -> tuple[Path, Path | None, Path | None]:
-        results: list[Path | None] = []
-        for media_type, m3u8 in zip(("video", "audio", "subtitles"), m3u8_group, strict=True):
-            if not m3u8:
-                results.append(None)
-                continue
-
-            download_folder = media_item.complete_file.with_suffix(".cdl_hls") / media_type
+        async def download(m3u8: M3U8):
+            assert m3u8.media_type
+            download_folder = media_item.complete_file.with_suffix(".cdl_hls") / m3u8.media_type
             items, tasks = self._make_hls_tasks(media_item, m3u8, download_folder)
+            n_segmets = len(tasks)
+            if n_segmets > 1:
+                suffix = f".{m3u8.media_type}.ts"
+            else:
+                suffix = media_item.complete_file.suffix + items[0].url.suffix
+
+            output = media_item.complete_file.with_suffix(suffix)
+            if await asyncio.to_thread(output.is_file):
+                return output
+
             tasks_results = await asyncio.gather(*tasks)
-            n_segmets = len(tasks_results)
             n_successful = sum(1 for r in tasks_results if r)
 
             if n_successful != n_segmets:
@@ -215,22 +222,39 @@ class Downloader:
                 raise DownloadError("HLS Seg Error", msg, media_item)
 
             seg_paths = [item.complete_file for item in items if item.complete_file]
-            output = media_item.complete_file.with_suffix(f".{media_type}.ts")
-            ffmpeg_result = await ffmpeg.concat(seg_paths, output)
-            if not ffmpeg_result.success:
-                raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
-            results.append(output)
 
-        video, audio, subtitles = results
-        assert video
+            if n_segmets > 1:
+                ffmpeg_result = await ffmpeg.concat(seg_paths, output)
+                if not ffmpeg_result.success:
+                    raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
+            else:
+                await asyncio.to_thread(seg_paths[0].rename, output)
+            return output
+
+        audio = subtitles = None
+        if m3u8_group.subtitle:
+            try:
+                subtitles = await download(m3u8_group.subtitle)
+            except Exception as e:
+                log(f"Unable to download subtitles for {media_item.url}, Skipping. {e!r}", 40)
+            else:
+                log(
+                    f"Found subtitles for {media_item.url}, but CDL is currently unable to merge them. Subtitle were saved at {subtitles} ",
+                    30,
+                )
+
+        if m3u8_group.audio:
+            audio = await download(m3u8_group.audio)
+        video = await download(m3u8_group.video)
         return video, audio, subtitles
 
     def _make_hls_tasks(
         self, media_item: MediaItem, m3u8: M3U8, download_folder: Path
-    ) -> tuple[list[MediaItem], list[Coroutine]]:
+    ) -> tuple[list[MediaItem], list[Coroutine[None, None, bool]]]:
         seg_media_items: list[MediaItem] = []
         padding = max(5, len(str(len(m3u8.segments))))
-        semaphore_hls = asyncio.Semaphore(10)
+
+        semaphore_hls = asyncio.Semaphore(10 if m3u8.media_type == "video" else 50)
 
         def create_segments() -> Generator[HlsSegment]:
             for index, segment in enumerate(m3u8.segments, 1):
@@ -238,7 +262,7 @@ class Downloader:
                 name = f"{index:0{padding}d}.cdl_hsl"
                 yield HlsSegment(segment.title, name, parse_url(segment.absolute_uri))
 
-        def make_download_task(segment: HlsSegment) -> Coroutine:
+        def make_download_task(segment: HlsSegment) -> Coroutine[None, None, bool]:
             seg_media_item = MediaItem.from_item(
                 media_item,
                 segment.url,
@@ -254,6 +278,8 @@ class Downloader:
             seg_media_items.append(seg_media_item)
 
             async def run() -> bool:
+                # TODO: segments download should bypass the downloads slots limits.
+                # They count as a single download
                 async with semaphore_hls:
                     return await self.start_download(seg_media_item)
 
