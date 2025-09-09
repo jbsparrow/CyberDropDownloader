@@ -104,8 +104,6 @@ class DownloadClient:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
                 self.client_manager.check_content_length(resp.headers)
                 if skip:
-                    if media_item.is_segment:
-                        return True
                     self.manager.progress_manager.download_progress.add_skipped()
                     return False
                 if not proceed:
@@ -330,7 +328,7 @@ class DownloadClient:
             log = log_debug if media_item.is_segment else globals()["log"]
 
         while True:
-            if expected_size:
+            if expected_size and not media_item.is_segment:
                 file_size_check = self.check_filesize_limits(media_item)
                 if not file_size_check:
                     log(f"Download Skip {media_item.url} due to filesize restrictions", 10)
