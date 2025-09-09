@@ -89,7 +89,7 @@ class SpankBangCrawler(Crawler):
         title: str = ""
 
         for page in itertools.count(1):
-            soup = await self.request_json(page_url, impersonate=True)
+            soup = await self.request_soup(page_url, impersonate=True)
 
             # Get full playlist info + title from the soup
             playlist = PlaylistInfo.from_url(page_url, soup)
