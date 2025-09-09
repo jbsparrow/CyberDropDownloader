@@ -67,6 +67,7 @@ from .nudostartv import NudoStarTVCrawler
 from .odnoklassniki import OdnoklassnikiCrawler
 from .omegascans import OmegaScansCrawler
 from .onedrive import OneDriveCrawler
+from .pcloud import PCloudCrawler
 from .pimpandhost import PimpAndHostCrawler
 from .pixeldrain import PixelDrainCrawler
 from .pixhost import PixHostCrawler
