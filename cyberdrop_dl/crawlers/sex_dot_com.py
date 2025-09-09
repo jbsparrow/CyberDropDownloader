@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 
 PRIMARY_URL = AbsoluteHttpURL("https://sex.com")
 API_URL = AbsoluteHttpURL("https://iframe.sex.com/api/")
+_SHORTS_URL = AbsoluteHttpURL("https://sex.com/en/shorts")
 
 
 class SexDotComCrawler(Crawler):
@@ -30,18 +32,14 @@ class SexDotComCrawler(Crawler):
             return await self.profile(scrape_item)
         raise ValueError
 
-    async def shorts_profile_paginator(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict]:
+    async def shorts_profile_paginator(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict[str, Any]]:
         username = scrape_item.url.parts[3]
-        page = 1
-        while True:
-            posts_api_url = API_URL / "feed" / "listUserItems"
-            query = {"pageSize": 300, "pageNumber": page, "visibility": "public", "username": username}
-            posts_api_url = posts_api_url.with_query(query)
-            async with self.request_limiter:
-                json_data = await self.client.get_json(self.DOMAIN, posts_api_url)
+        api_url = (API_URL / "feed" / "listUserItems").with_query(pageSize=300, visibility="public", username=username)
+        for page in itertools.count(1):
+            json_data: dict[str, Any] = await self.request_json(api_url.with_query(pageNumber=page))
 
             if scrape_item.album_id is None:
-                user_id = json_data["page"]["items"][0]["media"]["user"]["userUid"]
+                user_id: str = json_data["page"]["items"][0]["media"]["user"]["userUid"]
                 title = self.create_title(username, user_id)
                 scrape_item.setup_as_profile(title, album_id=user_id)
 
@@ -49,32 +47,28 @@ class SexDotComCrawler(Crawler):
 
             if not json_data["page"]["pageInfo"]["hasNextPage"]:
                 break
-            page += 1
 
     async def get_media(self, scrape_item: ScrapeItem) -> dict[str, Any]:
         """Gets media from its relative URL."""
         relative_url = "/".join(scrape_item.url.parts[3:])
-        data_url = API_URL / "media" / "getMedia"
-        data_url = data_url.with_query(relativeUrl=relative_url)
-        async with self.request_limiter:
-            json_data = await self.client.get_json(self.DOMAIN, data_url)
-        return json_data["media"]
+        data_url = (API_URL / "media" / "getMedia").with_query(relativeUrl=relative_url)
+        return (await self.request_json(data_url))["media"]
 
     @error_handling_wrapper
     async def handle_media(self, scrape_item: ScrapeItem, item: dict[str, Any] | None) -> None:
         real_item = item or await self.get_media(scrape_item)
         relative_url = real_item["relativeUrl"]
-        canonical_url = AbsoluteHttpURL("https://sex.com/en/shorts") / relative_url
+        canonical_url = _SHORTS_URL / relative_url
         if await self.check_complete_from_referer(canonical_url):
             return
 
         fileType: str = real_item.get("fileType") or real_item["mediaType"]
         if fileType.startswith("image"):
-            media_url = AbsoluteHttpURL(real_item["fullPath"]).with_query(optimizer="image", width=1200)
+            media_url = self.parse_url(real_item["fullPath"]).with_query(optimizer="image", width=1200)
             filename, ext = f"{real_item['pictureUid']}.jpg", "jpg"
 
         elif fileType.startswith("video"):
-            media_url = AbsoluteHttpURL(real_item["sources"][0]["fullPath"])
+            media_url = self.parse_url(real_item["sources"][0]["fullPath"])
             filename, ext = self.get_filename_and_ext(media_url.name)
         else:
             return

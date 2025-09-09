@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
-from fractions import Fraction
 from functools import cached_property
 from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from m3u8 import M3U8 as _M3U8
 from m3u8 import Media, Playlist
 
+from cyberdrop_dl.data_structures.mediaprops import Codecs, Resolution
 from cyberdrop_dl.utils.utilities import parse_url
 
 if TYPE_CHECKING:
@@ -19,85 +18,6 @@ if TYPE_CHECKING:
     from m3u8.model import StreamInfo
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-
-
-RESOLUTION_REGEX = [
-    re.compile(regex)
-    for regex in [
-        r"(?P<width>\d+)x(?P<height>\d+)",  # ex: 1920x1080
-        r"(?P<height_p>\d+)p",  # ex: 1080p, 720p
-    ]
-]
-
-
-VIDEO_CODECS = "avc1", "avc2", "avc3", "avc4", "av1", "hevc", "hev1", "hev2", "hvc1", "hvc2", "vp8", "vp9", "vp10"
-AUDIO_CODECS = "ac-3", "ec-3", "mp3", "mp4a", "opus", "vorbis"
-
-
-class Codecs(NamedTuple):
-    video: str | None
-    audio: str | None
-
-    @staticmethod
-    def parse(codecs: str | None) -> Codecs:
-        if not codecs:
-            return Codecs(None, None)
-        video_codec = audio_codec = None
-
-        def codec_or_none(codec: str, lookup_array: Iterable[str]) -> str | None:
-            codec, *_ = codec.split(".")
-            clean_codec = codec[:-1].replace("0", "") + codec[-1]
-            return next((key for key in lookup_array if clean_codec.startswith(key)), None)
-
-        for codec in codecs.split(","):
-            if not video_codec and (found := codec_or_none(codec, VIDEO_CODECS)):
-                video_codec = found
-            elif not audio_codec and (found := codec_or_none(codec, AUDIO_CODECS)):
-                audio_codec = found
-            if video_codec and audio_codec:
-                break
-
-        assert video_codec
-        if "avc" in video_codec:
-            video_codec = "avc1"
-        elif "hev" in video_codec or "hvc" in video_codec:
-            video_codec = "hevc"
-        return Codecs(video_codec, audio_codec)
-
-
-class Resolution(NamedTuple):
-    width: int
-    height: int
-
-    @property
-    def name(self) -> str:
-        if 7600 < self.width < 8200:
-            return "8K"
-        if 3800 < self.width < 4100:
-            return "4K"
-        return f"{self.height}p"
-
-    @property
-    def aspect_ratio(self) -> Fraction:
-        return Fraction(self.width, self.height)
-
-
-RESOLUTIONS = [
-    Resolution(*resolution)  # Best to worst
-    for resolution in [
-        (7680, 4320),
-        (3840, 2160),
-        (2560, 1440),
-        (1920, 1080),
-        (1280, 720),
-        (640, 480),
-        (640, 360),
-        (480, 320),
-        (426, 240),
-        (320, 240),
-        (256, 144),
-    ]
-]
 
 
 class MediaType(StrEnum):
@@ -254,23 +174,7 @@ def get_resolution_from_url(url: AbsoluteHttpURL | str) -> Resolution:
     if isinstance(url, str):
         url = parse_url(url, trim=False)  # Raises Invalid URL error for relative URLs
 
-    for resolution in RESOLUTIONS:
-        if str(resolution.height) in url.parts:
-            return resolution
-
-    for pattern in RESOLUTION_REGEX:
-        if match := re.search(pattern, url.path):
-            try:
-                width = int(match.group("width"))
-                height = int(match.group("height"))
-                return Resolution(width, height)
-            except (IndexError, KeyError):
-                height_ = match.groupdict().get("height_p")
-                if not height_:
-                    continue
-
-                height = int(height_)
-                width = round(height * 16 / 9)  # Assume 16:9 aspect ratio
-                return Resolution(width, height)
-
-    raise RuntimeError("Unable to parse resolution")
+    try:
+        return Resolution.parse(url)
+    except ValueError:
+        raise RuntimeError(f"Unable to parse resolution from {url}") from None

@@ -13,7 +13,6 @@ import re
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, TypeVar, final
 
-from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 
@@ -79,14 +78,12 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {id} - {title}"
     WP_USE_REGEX: ClassVar = True
     SUPPORTS_THREAD_RECURSION: ClassVar = False
+    _RATE_LIMIT = 3, 1
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         assert cls.fetch is WordPressBaseCrawler.fetch
         assert cls.fetch_with_date_range is WordPressBaseCrawler.fetch_with_date_range
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 1)
 
     @final
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -233,8 +230,7 @@ class WordPressMediaCrawler(WordPressBaseCrawler, is_generic=True):
             await self.filter_post(scrape_item, post)
 
     async def __make_request(self, model_cls: type[_ModelT], api_url: AbsoluteHttpURL) -> _ModelT:
-        async with self.request_limiter:
-            json_text = await self.client.get_text(self.DOMAIN, api_url)
+        json_text = await self.request_text(api_url)
         return model_cls.model_validate_json(json_text)
 
     async def __handle_collection(
@@ -264,8 +260,7 @@ class WordPressMediaCrawler(WordPressBaseCrawler, is_generic=True):
 
 class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
     async def __make_request(self, api_url: AbsoluteHttpURL) -> BeautifulSoup:
-        async with self.request_limiter:
-            return await self.client.get_soup(self.DOMAIN, api_url)
+        return await self.request_soup(api_url)
 
     @error_handling_wrapper
     async def category_or_tag(
@@ -320,7 +315,7 @@ class WordPressHTMLCrawler(WordPressBaseCrawler, is_generic=True):
                         f"Skipping post {new_scrape_item.url} as it is out of date range. Post date: {date_from_path}"
                     )
                     continue
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
 
 def _match_date_from_path(url_parts: tuple[str, ...]) -> datetime.datetime | None:

@@ -52,7 +52,7 @@ TEST_CASES = [
             {
                 "url": "https://it.xvideos.com/video.uceupff0647/_",
                 "filename": "Beauty Gina Gerson Takes Monster Cock in Anal - Anal Orgasm [uceupff0647][1080p].mp4",
-                "referer": "https://it.xvideos.com/video.uceupff0647/beauty_gina_gerson_takes_monster_cock_in_anal_-_anal_orgasm",
+                "referer": "https://it.xvideos.com/video.uceupff0647/_",
             }
         ],
     ),

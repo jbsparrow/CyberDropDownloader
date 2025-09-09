@@ -19,8 +19,9 @@ from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continu
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
 from cyberdrop_dl.utils.cookie_management import clear_cookies
 from cyberdrop_dl.utils.sorting import Sorter
+from cyberdrop_dl.utils.text_editor import open_in_text_editor
 from cyberdrop_dl.utils.updates import check_latest_pypi
-from cyberdrop_dl.utils.utilities import clear_term, open_in_text_editor
+from cyberdrop_dl.utils.utilities import clear_term
 
 if TYPE_CHECKING:
     from collections.abc import Callable

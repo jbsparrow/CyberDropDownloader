@@ -41,15 +41,14 @@ class PixHostCrawler(Crawler):
         match scrape_item.url.parts[1:]:
             case ["gallery", gallery_id]:
                 return await self.gallery(scrape_item, gallery_id)
-            case ["show", _]:
+            case ["show", _, *_]:
                 return await self.image(scrape_item)
             case _:
                 raise ValueError
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem, album_id: str) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         title = css.select_one_get_text(soup, _SELECTORS.GALLERY_TITLE)
         title = self.create_title(title, album_id)
@@ -69,8 +68,7 @@ class PixHostCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         link_str = css.select_one_get_attr(soup, _SELECTORS.IMAGE, "src")
         link = self.parse_url(link_str)

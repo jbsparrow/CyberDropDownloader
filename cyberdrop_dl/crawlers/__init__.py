@@ -14,6 +14,7 @@ from .bunkrr_albums_io import BunkrAlbumsIOCrawler
 from .buzzheavier import BuzzHeavierCrawler
 from .camwhores_dot_tv import CamwhoresTVCrawler
 from .catbox import CatboxCrawler
+from .cloudflare_stream import CloudflareStreamCrawler
 from .coomer import CoomerCrawler
 from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
@@ -34,6 +35,7 @@ from .files_vc import FilesVcCrawler
 from .flugel_anime import FlugelAnimeCrawler
 from .fourchan import FourChanCrawler
 from .generic import GenericCrawler
+from .girlsreleased import GirlsReleasedCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
 from .hitomi_la import HitomiLaCrawler
@@ -65,6 +67,7 @@ from .nudostartv import NudoStarTVCrawler
 from .odnoklassniki import OdnoklassnikiCrawler
 from .omegascans import OmegaScansCrawler
 from .onedrive import OneDriveCrawler
+from .pcloud import PCloudCrawler
 from .pimpandhost import PimpAndHostCrawler
 from .pixeldrain import PixelDrainCrawler
 from .pixhost import PixHostCrawler
@@ -112,7 +115,7 @@ ALL_CRAWLERS: set[type[Crawler]] = {
     crawler for name, crawler in globals().items() if name.endswith("Crawler") and crawler is not Crawler
 }
 ALL_CRAWLERS.update(WP_CRAWLERS, GENERIC_CRAWLERS, FORUM_CRAWLERS)
-DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler}
+DEBUG_CRAWLERS = {GirlsReleasedCrawler, SimpCityCrawler, BunkrAlbumsIOCrawler}
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
     CRAWLERS = ALL_CRAWLERS
 else:

@@ -8,8 +8,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -48,15 +46,14 @@ class EromeCrawler(Crawler):
                 scrape_item.setup_as_profile(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         title_portion = css.select_one_get_text(soup, "title").rsplit(" - Porn")[0].strip()
         if not title_portion:

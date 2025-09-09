@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -33,9 +31,8 @@ class XXXBunkerCrawler(Crawler):
     DOMAIN: ClassVar[str] = "xxxbunker"
     FOLDER_DOMAIN: ClassVar[str] = "XXXBunker"
     NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 6)
+    _DOWNLOAD_SLOTS: ClassVar[int | None] = 2
+    _RATE_LIMIT = 1, 6
 
     async def async_startup(self) -> None:
         self.update_cookies({"ageconfirm": "True"})
@@ -56,16 +53,11 @@ class XXXBunkerCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self.request_soup(scrape_item.url)
         _check_video_is_available(soup)
         title = open_graph.title(soup)
         iframe_url = self.parse_url(css.select_one_get_attr(soup, Selector.VIDEO_IFRAME, "data-src"))
-
-        async with self.request_limiter:
-            iframe_soup = await self.client.get_soup(self.DOMAIN, iframe_url)
-
+        iframe_soup = await self.request_soup(iframe_url)
         src = self.parse_url(css.select_one_get_attr(iframe_soup, "source", "src"))
         video_id = iframe_url.name
         custom_filename = self.create_custom_filename(title, ".mp4", file_id=video_id)

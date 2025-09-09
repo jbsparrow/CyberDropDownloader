@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import dataclasses
 import datetime
 import enum
@@ -9,8 +10,9 @@ import json
 import json.decoder
 import json.scanner
 import re
+import time
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, Protocol, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, Protocol, Self, TypeGuard, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -171,3 +173,44 @@ def load_js_obj(string: str, /) -> Any:
         string = string.replace(old, new)
     string = re.sub(r"\s\b(?!http)(\w+)\s?:", r' "\1" : ', string)  # wrap keys without quotes with double quotes
     return _JS_DECODER.decode(string)
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class JSONWebToken:
+    # https://www.rfc-editor.org/rfc/rfc7519.html
+    alg: str
+    headers: dict[str, str] = dataclasses.field(repr=False)
+    payload: dict[str, Any] = dataclasses.field(repr=False)
+    signature: str
+    _encoded_token: str
+
+    @classmethod
+    def decode(cls, jwt: str, /) -> Self:
+        b64_headers, b64_payload, b64_signature = jwt.split(".")
+        headers = cls._decode(b64_headers)
+        return cls(headers["alg"], headers, cls._decode(b64_payload), b64_signature, jwt)
+
+    @classmethod
+    def _decode(cls, value: str, /) -> dict[str, Any]:
+        return loads(base64.urlsafe_b64decode(f"{value}==="))
+
+    def is_expired(self, threshold: int = 0) -> bool:
+        """Checks if the token has expired or is about to expire.
+
+        threshold is the time in seconds before the token's expiration to consider it as expired.
+        """
+        expires: int | None = self.payload.get("exp")
+        if expires:
+            return (expires - time.time()) < threshold
+        return False
+
+    def __str__(self) -> str:
+        return self._encoded_token
+
+
+def is_jwt(string: str) -> bool:
+    return string.startswith("eyJ") and string.count(".") == 2
+
+
+def jwt_decode(jwt: str) -> dict[str, Any]:
+    return JSONWebToken.decode(jwt).payload
