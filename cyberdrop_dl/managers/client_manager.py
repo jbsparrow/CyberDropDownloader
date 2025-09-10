@@ -80,7 +80,7 @@ class DownloadSpeedLimiter(AsyncLimiter):
     def __init__(self, speed_limit: int) -> None:
         self.chunk_size: int = 1024 * 1024 * 10  # 10MB
         if speed_limit:
-            self.chunk_size = min(self.chunk_size, self.max_rate)
+            self.chunk_size = min(self.chunk_size, speed_limit)
         super().__init__(speed_limit, 1)
 
     async def acquire(self, amount: float | None = None) -> None:

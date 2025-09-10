@@ -9,8 +9,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://www.tokyomotion.net")
@@ -82,8 +80,7 @@ class TokioMotionCrawler(Crawler):
             return
 
         video_id = scrape_item.url.parts[2]
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         src = soup.select_one(_SELECTORS.VIDEO_SRC)
         if not src:
@@ -104,8 +101,7 @@ class TokioMotionCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         img = soup.select_one(_SELECTORS.IMAGE)
         if not img:
@@ -205,8 +201,7 @@ class TokioMotionCrawler(Crawler):
             return "favorite"
         if "album" in scrape_item.url.parts and len(scrape_item.url.parts) > 3:
             return scrape_item.url.parts[3]
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         return css.select_one_get_text(soup, _SELECTORS.ALBUM_TITLE)
 
     def add_user_title(self, scrape_item: ScrapeItem) -> None:

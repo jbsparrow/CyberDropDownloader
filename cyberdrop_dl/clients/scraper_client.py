@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import time
 from datetime import datetime
 from json import dumps as json_dumps
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import TYPE_CHECKING, Any, cast
 import cyberdrop_dl.constants as constants
 from cyberdrop_dl.clients.response import AbstractResponse
 from cyberdrop_dl.exceptions import DDOSGuardError
+from cyberdrop_dl.utils.cookie_management import make_simple_cookie
 from cyberdrop_dl.utils.utilities import sanitize_filename
 
 if TYPE_CHECKING:
@@ -78,6 +80,19 @@ class ScraperClient:
             finally:
                 await self.write_soup_to_disk(url, resp, exc)
 
+    def __sync_session_cookies(self, url: AbsoluteHttpURL) -> None:
+        """
+        Apply to the cookies from the `curl` session into the `aiohttp` session, filtering them by the URL
+
+        This is mostly just to get the `cf_cleareance` cookie value into the `aiohttp` session
+
+        The reverse (sync `aiohttp` -> `curl`) is not needed at the moment, so it is skipped
+        """
+        now = time.time()
+        for cookie in self.client_manager._curl_session.cookies.jar:
+            simple_cookie = make_simple_cookie(cookie, now)
+            self.client_manager.cookies.update_cookies(simple_cookie, url)
+
     @contextlib.asynccontextmanager
     async def __request_context(
         self,
@@ -95,8 +110,7 @@ class ScraperClient:
             curl_resp = await self.client_manager._curl_session.request(method, str(url), stream=True, **request_params)
             try:
                 yield AbstractResponse.from_resp(curl_resp)
-                curl_cookies = self.client_manager._curl_session.cookies.get_dict(url.host)
-                self.client_manager.cookies.update_cookies(curl_cookies, url)
+                self.__sync_session_cookies(url)
             finally:
                 await curl_resp.aclose()
             return
@@ -121,15 +135,14 @@ class ScraperClient:
     async def write_soup_to_disk(self, url: AbsoluteHttpURL, response: AbstractResponse, exc: Exception | None = None):
         """Writes html to a file."""
 
-        if not self._save_pages_html:
+        if not (
+            self._save_pages_html
+            and "html" in response.content_type
+            and response.consumed  # Do not consume the response if the crawler didn't
+        ):
             return
 
-        content: str = await response.text()
-        try:
-            content = cast("str", (await response.soup()).prettify(formatter="html"))
-        except Exception:
-            pass
-
+        content = cast("str", (await response.soup()).prettify(formatter="html"))
         now = datetime.now()
         log_date = now.strftime(constants.LOGS_DATETIME_FORMAT)
         url_str = str(url)

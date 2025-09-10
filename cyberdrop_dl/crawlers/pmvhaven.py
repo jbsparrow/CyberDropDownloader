@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import itertools
 import json
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -74,17 +75,20 @@ class PMVHavenCrawler(Crawler):
 
         # Playlist
         # TODO: add pagination support for user playlists
-        add_headers = {"Content-Type": "text/plain;charset=UTF-8"}
-        add_data = json.dumps({"profile": username, "mode": "GetUser"})
-        async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=add_data, headers=add_headers)
+
+        json_resp: dict[str, Any] = await self.request_json(
+            api_url,
+            method="POST",
+            data=json.dumps({"profile": username, "mode": "GetUser"}),
+            headers={"Content-Type": "text/plain;charset=UTF-8"},
+        )
 
         user_info: dict[str, dict] = json_resp["data"]
         for playlist in user_info["playlists"]:
             playlist_id = playlist["_id"]
             link = PRIMARY_URL / "playlist" / playlist_id
             new_scrape_item = scrape_item.create_child(link, new_title_part="Playlists")
-            self.manager.task_group.create_task(self.playlist(new_scrape_item, add_suffix=False))
+            self.create_task(self.playlist(new_scrape_item, add_suffix=False))
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -151,11 +155,9 @@ class PMVHavenCrawler(Crawler):
         video_id: str = scrape_item.url.name.rsplit("_", 1)[-1]
         add_data = {"video": video_id, "mode": "InitVideo", "view": True}
         api_url = API_ENTRYPOINT / "videoInput"
-        async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=add_data)
-
-        videos = json_resp.get("video")
-        video_info: dict = videos[0] if videos else {}
+        json_resp: dict[str, Any] = await self.request_json(api_url, method="POST", data=add_data)
+        videos: list[dict[str, Any]] = json_resp.get("video", [])
+        video_info = videos[0] if videos else {}
         await self.process_video_info(scrape_item, video_info)
 
     async def _generic_search_pager(self, scrape_item: ScrapeItem, add_data: dict, name: str, type: str = "") -> None:
@@ -205,18 +207,21 @@ class PMVHavenCrawler(Crawler):
         is_profile = api_url.name == "profileInput"
         add_headers = {"Content-Type": "text/plain;charset=UTF-8"} if is_profile else None
 
-        while True:
+        for page in itertools.count(1):
             data = {"index": page} | add_data
             if is_profile:
                 data = json.dumps(data)
-            async with self.request_limiter:
-                json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=data, headers=add_headers)
 
+            json_resp: dict[str, Any] = await self.request_json(
+                api_url,
+                method="POST",
+                data=data,
+                headers=add_headers,
+            )
             has_videos = bool(json_resp[check_key])
             if not has_videos:
                 break
             yield json_resp
-            page += 1
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

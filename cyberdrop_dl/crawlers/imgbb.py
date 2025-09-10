@@ -8,8 +8,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://ibb.co")
@@ -58,20 +56,19 @@ class ImgBBCrawler(Crawler):
                 first_page = self.parse_url(first_page_str)
 
             for _, sub_album in self.iter_children(scrape_item, soup, ALBUM_PAGE_SELECTOR):
-                self.manager.task_group.create_task(self.run(sub_album))
+                self.create_task(self.run(sub_album))
 
         assert first_page
         async for soup in self.web_pager(first_page):
             for _, image in self.iter_children(scrape_item, soup, IMAGE_PAGE_SELECTOR):
-                self.manager.task_group.create_task(self.run(image))
+                self.create_task(self.run(image))
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         link_str: str = css.select_one_get_attr(soup, IMAGE_SELECTOR, "src")
         link = self.parse_url(link_str)

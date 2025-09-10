@@ -17,9 +17,7 @@ class F95ZoneCrawler(XenforoCrawler):
 
     @error_handling_wrapper
     async def resolve_confirmation_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
-        async with self.request_limiter:
-            json_resp = await self.client.post_data(self.DOMAIN, link, data=_confirmation_data)
-
+        json_resp = await self.request_json(link, method="POST", data=_confirmation_data)
         if json_resp["status"] == "ok":
             return self.parse_url(json_resp["msg"])
 
