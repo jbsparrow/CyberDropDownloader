@@ -120,18 +120,19 @@ class DropboxCrawler(Crawler):
                 view_url = self.parse_url(node.href)
                 new_scrape_item = scrape_item.create_child(view_url)
                 if node.is_dir:
-                    self.create_task(self._walk_folder(
-		                new_scrape_item,
-		                link_key,
-		                folder.secureHash,
-		                rlkey,
-		                f"{subpath}/{folder.filename}",)
+                    self.create_task(
+                        self._walk_folder(
+                            new_scrape_item,
+                            link_key,
+                            node.secureHash,
+                            rlkey,
+                            f"{subpath}/{node.filename}",
+                        )
+                    )
                     continue
-                
-                
+
                 self._file(new_scrape_item, node.filename)
                 scrape_item.add_children()
-            )
 
     async def _web_api_pager(
         self, link_key: str, secure_hash: str, rlkey: str, subpath: str = ""
