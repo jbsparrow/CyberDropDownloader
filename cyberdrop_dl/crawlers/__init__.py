@@ -57,6 +57,7 @@ from .leakedzone import LeakedZoneCrawler
 from .luscious import LusciousCrawler
 from .mediafire import MediaFireCrawler
 from .mega_nz import MegaNzCrawler
+from .megacloud import MegaCloudCrawler
 from .missav import MissAVCrawler
 from .mixdrop import MixDropCrawler
 from .motherless import MotherlessCrawler
