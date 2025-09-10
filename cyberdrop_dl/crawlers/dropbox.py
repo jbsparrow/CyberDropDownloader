@@ -34,7 +34,7 @@ class DropboxCrawler(Crawler):
         "File": (
             "/s/...",
             "/scl/fi/<link_key>?rlkey=...",
-            "/scl/fo/<link_key>/<token2>?preview=<filename>&rlkey=...",
+            "/scl/fo/<link_key>/<secure_hash>?preview=<filename>&rlkey=...",
         ),
         "Folder": (
             "/sh/...",
@@ -111,28 +111,26 @@ class DropboxCrawler(Crawler):
         rlkey: str,
         subpath: str = "",
     ) -> None:
-        folders: list[Node] = []
         async for resp in self._web_api_pager(link_key, secure_hash, rlkey, subpath):
             folder_name: str = resp["folder"]["filename"]
             scrape_item.add_to_parent_title(self.create_title(folder_name))
 
             for entry, token in zip(resp["entries"], resp["share_tokens"], strict=True):
                 node = _parse_node(token | entry)
-                if node.is_dir:
-                    folders.append(node)
-                    continue
                 view_url = self.parse_url(node.href)
                 new_scrape_item = scrape_item.create_child(view_url)
+                if node.is_dir:
+                    self.create_task(self._walk_folder(
+		                new_scrape_item,
+		                link_key,
+		                folder.secureHash,
+		                rlkey,
+		                f"{subpath}/{folder.filename}",)
+                    continue
+                
+                
                 self._file(new_scrape_item, node.filename)
                 scrape_item.add_children()
-
-        for folder in folders:
-            await self._walk_folder(
-                scrape_item,
-                link_key,
-                folder.secureHash,
-                rlkey,
-                f"{subpath}/{folder.filename}",
             )
 
     async def _web_api_pager(
