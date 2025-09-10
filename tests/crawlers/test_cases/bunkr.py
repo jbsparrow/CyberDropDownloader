@@ -31,4 +31,11 @@ TEST_CASES = [
         ],
         220,
     ),
+    (
+        # .org domain redirect to a different domain and discards query params
+        # This test is to make sure CDL does not get stuck in an infinite loop while doing album pagination
+        "https://bunkrrr.org/a/n12rHpzB",
+        [],
+        142,
+    ),
 ]

@@ -150,6 +150,12 @@ class Crawler(ABC):
 
     def __post_init__(self) -> None: ...  # noqa: B027
 
+    @final
+    @staticmethod
+    def _assert_fields_overrides(subclass: type[Crawler], *fields: str):
+        for field_name in fields:
+            assert getattr(subclass, field_name, None), f"Subclass {subclass.__name__} must override: {field_name}"
+
     def __init_subclass__(
         cls, is_abc: bool = False, is_generic: bool = False, generic_name: str = "", **kwargs
     ) -> None:
@@ -177,9 +183,7 @@ class Crawler(ABC):
             return
 
         if not (cls.IS_FALLBACK_GENERIC or cls.IS_REAL_DEBRID):
-            REQUIRED_FIELDS = "PRIMARY_URL", "DOMAIN", "SUPPORTED_PATHS"
-            for field_name in REQUIRED_FIELDS:
-                assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
+            Crawler._assert_fields_overrides(cls, "PRIMARY_URL", "DOMAIN", "SUPPORTED_PATHS")
 
         if cls.OLD_DOMAINS:
             cls.REPLACE_OLD_DOMAINS_REGEX = re.compile("|".join(cls.OLD_DOMAINS))
@@ -203,6 +207,10 @@ class Crawler(ABC):
     @property
     def allow_no_extension(self) -> bool:
         return not self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
+
+    @property
+    def deep_scrape(self) -> bool:
+        return self.manager.config_manager.deep_scrape
 
     def _init_downloader(self) -> Downloader:
         self.downloader = dl = Downloader(self.manager, self.DOMAIN)
