@@ -204,6 +204,10 @@ class Crawler(ABC):
     def allow_no_extension(self) -> bool:
         return not self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
 
+    @property
+    def deep_scrape(self) -> bool:
+        return self.manager.config_manager.deep_scrape
+
     def _init_downloader(self) -> Downloader:
         self.downloader = dl = Downloader(self.manager, self.DOMAIN)
         dl.startup()
