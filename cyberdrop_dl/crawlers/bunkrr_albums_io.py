@@ -37,17 +37,16 @@ class BunkrAlbumsIOCrawler(Crawler):
         search_query = scrape_item.url.query["search"]
         title = self.create_title(search_query)
         scrape_item.setup_as_profile(title)
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self._pager(scrape_item):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_SELECTOR):
                 self.handle_external_links(new_scrape_item)
 
-    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
+    async def _pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
         page_url = scrape_item.url
         while True:
             current_page_number = int(page_url.query.get("page") or 1)
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url)
             next_page = soup.select(self.NEXT_PAGE_SELECTOR)
             yield soup
             if not next_page:

@@ -1319,23 +1319,6 @@ files = [
 ]
 
 [[package]]
-name = "mediafire"
-version = "0.6.1"
-description = "Python MediaFire client library"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "mediafire-0.6.1-py2.py3-none-any.whl", hash = "sha256:2f237cc12cb7c10f8aa8efcced1de453512ebc97f603975e6e3a2a769bc93f5b"},
-    {file = "mediafire-0.6.1.tar.gz", hash = "sha256:a1adfeff43dfb611d560c920f6ec18a05b5197b2b15093b08591e45ce879353e"},
-]
-
-[package.dependencies]
-requests = "*"
-requests-toolbelt = "*"
-six = "*"
-
-[[package]]
 name = "multidict"
 version = "6.6.3"
 description = "multidict implementation"
@@ -2566,21 +2549,6 @@ requests = ">=2.0.0"
 rsa = ["oauthlib[signedtoken] (>=3.0.0)"]
 
 [[package]]
-name = "requests-toolbelt"
-version = "1.0.0"
-description = "A utility belt for advanced users of python-requests"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-groups = ["main"]
-files = [
-    {file = "requests-toolbelt-1.0.0.tar.gz", hash = "sha256:7681a0a3d047012b5bdc0ee37d7f8f07ebe76ab08caeccfc3921ce23c88d5bc6"},
-    {file = "requests_toolbelt-1.0.0-py2.py3-none-any.whl", hash = "sha256:cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06"},
-]
-
-[package.dependencies]
-requests = ">=2.0.1,<3.0.0"
-
-[[package]]
 name = "rich"
 version = "14.0.0"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
@@ -3157,4 +3125,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "99022bcab20cfecf4084a20f048a1849bb8c4e395a7e5acb1668c92f0fa176b8"
+content-hash = "ee7de78558c44af4fcfae7ec32353a6e4f5a3c6db8565041f61e7ad4b3d41e44"

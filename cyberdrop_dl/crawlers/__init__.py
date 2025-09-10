@@ -14,6 +14,7 @@ from .bunkrr_albums_io import BunkrAlbumsIOCrawler
 from .buzzheavier import BuzzHeavierCrawler
 from .camwhores_dot_tv import CamwhoresTVCrawler
 from .catbox import CatboxCrawler
+from .cloudflare_stream import CloudflareStreamCrawler
 from .coomer import CoomerCrawler
 from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
@@ -66,6 +67,7 @@ from .nudostartv import NudoStarTVCrawler
 from .odnoklassniki import OdnoklassnikiCrawler
 from .omegascans import OmegaScansCrawler
 from .onedrive import OneDriveCrawler
+from .pcloud import PCloudCrawler
 from .pimpandhost import PimpAndHostCrawler
 from .pixeldrain import PixelDrainCrawler
 from .pixhost import PixHostCrawler

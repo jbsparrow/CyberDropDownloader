@@ -40,7 +40,7 @@ class CamwhoresTVCrawler(KernelVideoSharingCrawler):
         return video._replace(title=open_graph.title(soup))
 
     def parse_url(
-        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool = False
+        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool | None = None
     ) -> AbsoluteHttpURL:
         return super().parse_url(link_str, relative_to, trim=False)
 
@@ -57,8 +57,7 @@ class CamwhoresTVCrawler(KernelVideoSharingCrawler):
     async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
         url = scrape_item.url / video_category if video_category else scrape_item.url
         await super().iter_videos(scrape_item, video_category)
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
+        soup = await self.request_soup(url)
 
         last_page = int(css.get_text(soup.select(LAST_PAGE_SELECTOR)[-1]))
         # TODO: Porntrex also uses KVS. Make the KVS crawler handle it by default

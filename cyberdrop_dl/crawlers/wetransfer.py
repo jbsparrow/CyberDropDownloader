@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -31,39 +31,26 @@ class WeTransferCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "download." in scrape_item.url.host:
             # We can download but db entry will not have a canonical URL
-            return await self.direct_link(scrape_item, scrape_item.url)
+            return await self.direct_file(scrape_item)
         await self.file(scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host == "we.tl":
-            scrape_item.url = await self.get_final_url(scrape_item)
+            scrape_item.url = await self._get_redirect_url(scrape_item.url)
 
         file_info = get_file_info(scrape_item.url)
         if await self.check_complete_from_referer(file_info.download_url):
             return
 
-        async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.DOMAIN, file_info.download_url, json=file_info.json)
-
+        json_resp: dict[str, Any] = await self.request_json(file_info.download_url, method="POST", json=file_info.json)
         link_str: str | None = json_resp.get("direct_link")
         if not link_str:
             code, msg = parse_error(json_resp)
             raise ScrapeError(code, message=msg)
 
         link = self.parse_url(link_str)
-        await self.direct_link(scrape_item, link)
-
-    @error_handling_wrapper
-    async def direct_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL) -> None:
-        filename, ext = self.get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
-
-    async def get_final_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:
-        async with self.request_limiter:
-            headers = await self.client.get_head(self.DOMAIN, scrape_item.url)
-
-        return self.parse_url(headers["location"])
+        await self.direct_file(scrape_item, link)
 
 
 @dataclass(frozen=True, order=True)

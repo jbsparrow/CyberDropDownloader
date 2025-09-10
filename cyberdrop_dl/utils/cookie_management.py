@@ -21,12 +21,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-from cyberdrop_dl.data_structures.supported_domains import (
-    SUPPORTED_FORUMS,
-    SUPPORTED_SITES_DOMAINS,
-    SUPPORTED_WEBSITES,
-)
-
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -77,6 +71,8 @@ def get_cookies_from_browsers(manager: Manager, *, browser: BROWSERS, domains: l
     :param domains: list of domains to filter cookies. If `None`, config `browser_cookies.sites` will be used
     :return: A set with all the domains that actually had cookies
     :raises BrowserCookieError: If there's any error while extracting cookies"""
+    from cyberdrop_dl.supported_domains import SUPPORTED_FORUMS, SUPPORTED_SITES_DOMAINS, SUPPORTED_WEBSITES
+
     if domains == []:
         msg = "No domains selected"
         raise ValueError(msg)
@@ -164,7 +160,7 @@ async def read_netscape_files(cookie_files: list[Path]) -> AsyncIterable[tuple[s
                 log(f"Cookies for {simplified_domain} are expired", 30)
 
             domains_seen.add(simplified_domain)
-            simple_cookie = _make_simple_cookie(cookie, now)
+            simple_cookie = make_simple_cookie(cookie, now)
             yield cookie.domain, simple_cookie
 
 
@@ -180,7 +176,7 @@ async def _read_netscape_file(file: Path) -> MozillaCookieJar | None:
     return await asyncio.to_thread(read)
 
 
-def _make_simple_cookie(cookie: Cookie, now: float) -> SimpleCookie:
+def make_simple_cookie(cookie: Cookie, now: float) -> SimpleCookie:
     simple_cookie = SimpleCookie()
     assert cookie.value is not None
     simple_cookie[cookie.name] = cookie.value

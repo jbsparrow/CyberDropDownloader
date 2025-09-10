@@ -11,7 +11,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, Literal, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
 
 import yarl
 from aiolimiter import AsyncLimiter
@@ -19,6 +19,7 @@ from yarl import URL
 
 from cyberdrop_dl import constants
 from cyberdrop_dl.clients.scraper_client import ScraperClient
+from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem, copy_signature
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
@@ -274,14 +275,16 @@ class Crawler(ABC):
             try:
                 yield task_id
             except ValueError:
-                await self.raise_e(scrape_item, ScrapeError("Unknown URL path"))
+                self.raise_exc(scrape_item, ScrapeError("Unknown URL path"))
             except MaxChildrenError as e:
-                await self.raise_e(scrape_item, e)
+                self.raise_exc(scrape_item, e)
             finally:
                 pass
 
     @error_handling_wrapper
-    def raise_e(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception) -> None:
+    def raise_exc(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception | str) -> None:
+        if isinstance(exc, str):
+            exc = ScrapeError(exc)
         raise exc
 
     @final
@@ -431,7 +434,7 @@ class Crawler(ABC):
     def handle_external_links(self, scrape_item: ScrapeItem) -> None:
         """Maps external links to the scraper class."""
         scrape_item.reset()
-        self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
+        self.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -615,9 +618,9 @@ class Crawler(ABC):
 
     @error_handling_wrapper
     async def direct_file(self, scrape_item: ScrapeItem, url: URL | None = None, assume_ext: str | None = None) -> None:
-        """Download a direct link file. Filename will be extrcation for the url"""
+        """Download a direct link file. Filename will be the url slug"""
         link = url or scrape_item.url
-        filename, ext = self.get_filename_and_ext(link.name, assume_ext=assume_ext)
+        filename, ext = self.get_filename_and_ext(link.name or link.parent.name, assume_ext=assume_ext)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @final
@@ -664,6 +667,24 @@ class Crawler(ABC):
         async with self.request(url, method="HEAD") as head:
             return head.location or url
 
+    @final
+    @error_handling_wrapper
+    async def follow_redirect_w_get(self, scrape_item: ScrapeItem) -> None:
+        async with self.request(scrape_item.url) as resp:
+            if resp.url == scrape_item.url:
+                raise ScrapeError(422)
+            scrape_item.url = resp.url
+        self.create_task(self.run(scrape_item))
+
+    @final
+    @error_handling_wrapper
+    async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
+        location = await self._get_redirect_url(scrape_item.url)
+        if location == scrape_item.url:
+            raise ScrapeError(422)
+        scrape_item.url = location
+        self.create_task(self.run(scrape_item))
+
     @staticmethod
     def register_cache_filter(
         url: URL, filter_fn: Callable[[AnyResponse], bool] | Callable[[AnyResponse], Awaitable[bool]]
@@ -683,20 +704,28 @@ class Crawler(ABC):
         m3u8_playlist = await self._get_m3u8(m3u8_playlist_url, headers)
         rendition_group_info = m3u8.get_best_group_from_playlist(m3u8_playlist, only=only, exclude=exclude)
         renditions_urls = rendition_group_info.urls
-        video = await self._get_m3u8(renditions_urls.video, headers)
-        audio = await self._get_m3u8(renditions_urls.audio, headers) if renditions_urls.audio else None
-        subtitle = await self._get_m3u8(renditions_urls.subtitle, headers) if renditions_urls.subtitle else None
+        video = await self._get_m3u8(renditions_urls.video, headers, "video")
+        audio = await self._get_m3u8(renditions_urls.audio, headers, "audio") if renditions_urls.audio else None
+        subtitle = (
+            await self._get_m3u8(renditions_urls.subtitle, headers, "subtitles") if renditions_urls.subtitle else None
+        )
         return m3u8.RenditionGroup(video, audio, subtitle), rendition_group_info
 
     async def get_m3u8_from_index_url(
         self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None
     ) -> m3u8.RenditionGroup:
         """Get m3u8 rendition group from an index that only has 1 rendition, a video (non variant m3u8)"""
-        return m3u8.RenditionGroup(await self._get_m3u8(url, headers))
+        return m3u8.RenditionGroup(await self._get_m3u8(url, headers, "video"))
 
-    async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> m3u8.M3U8:
+    async def _get_m3u8(
+        self,
+        url: AbsoluteHttpURL,
+        /,
+        headers: dict[str, str] | None = None,
+        media_type: Literal["video", "audio", "subtitles"] | None = None,
+    ) -> m3u8.M3U8:
         content = await self.request_text(url, headers=headers)
-        return m3u8.M3U8(content, url.parent)
+        return m3u8.M3U8(content, url.parent, media_type)
 
     def create_custom_filename(
         self,
@@ -707,7 +736,7 @@ class Crawler(ABC):
         file_id: str | None = None,
         video_codec: str | None = None,
         audio_codec: str | None = None,
-        resolution: m3u8.Resolution | str | int | None = None,
+        resolution: Resolution | str | int | None = None,
         hash_string: str | None = None,
         only_truncate_stem: bool = True,
     ) -> str:
@@ -723,19 +752,9 @@ class Crawler(ABC):
             extra_info.append(audio_codec)
 
         if _placeholder_config.include_resolution and resolution:
-            if isinstance(resolution, m3u8.Resolution):
-                resolution = resolution.name
-            if isinstance(resolution, str):
-                if (digits := resolution.casefold().removesuffix("p")).isdigit():
-                    extra_info.append(f"{digits}p")
-                else:
-                    resolution_ = next(
-                        (p for p in VALID_RESOLUTION_NAMES if resolution.casefold() == p.casefold()), None
-                    )
-                    assert resolution_, f"Invalid: {resolution = }"
-                    extra_info.append(resolution_)
-            else:
-                extra_info.append(f"{resolution}p")
+            if not isinstance(resolution, Resolution):
+                resolution = Resolution.parse(resolution)
+            extra_info.append(resolution.name)
 
         if _placeholder_config.include_hash and hash_string:
             assert any(hash_string.startswith(x) for x in HASH_PREFIXES), f"Invalid: {hash_string = }"
