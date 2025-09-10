@@ -181,7 +181,7 @@ class Downloader:
         self.update_queued_files()
         task_id = self.manager.progress_manager.file_progress.add_task(domain=self.domain, filename=media_item.filename)
         media_item.set_task_id(task_id)
-        video, audio, subtitles = await self._download_rendition_group(media_item, m3u8_group)
+        video, audio, _ = await self._download_rendition_group(media_item, m3u8_group)
         if not audio:
             await asyncio.to_thread(video.rename, media_item.complete_file)
         else:
