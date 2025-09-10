@@ -76,7 +76,6 @@ class CommandLineOnlyArgs(BaseModel):
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
     disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
     download: bool = Field(False, description="skips UI, start download immediatly")
-    download_dropbox_folders_as_zip: bool = Field(False, description="download Dropbox folder without api key as zip")
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     max_items_retry: int = Field(0, description="max number of links to retry")
     portrait: bool = Field(is_terminal_in_portrait(), description="show UI in a portrait layout")
