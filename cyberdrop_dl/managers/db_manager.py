@@ -30,18 +30,15 @@ class DBManager:
     async def startup(self) -> None:
         """Startup process for the DBManager."""
         self._db_conn = await aiosqlite.connect(self._db_path)
+        self._db_conn.row_factory = aiosqlite.Row
 
         self.ignore_history = self.manager.config_manager.settings_data.runtime_options.ignore_history
 
-        self.history_table = HistoryTable(self._db_conn)
-        self.hash_table = HashTable(self._db_conn)
-        self.temp_referer_table = TempRefererTable(self._db_conn)
-
-        self.history_table.ignore_history = self.ignore_history
-        self.temp_referer_table.ignore_history = self.ignore_history
+        self.history_table = HistoryTable(self)
+        self.hash_table = HashTable(self)
+        self.temp_referer_table = TempRefererTable(self)
 
         await self._pre_allocate()
-
         await self.history_table.startup()
         await self.hash_table.startup()
         await self.temp_referer_table.startup()
@@ -59,19 +56,17 @@ class DBManager:
 
     async def _pre_allocate(self) -> None:
         """We pre-allocate 100MB of space to the SQL file just in case the user runs out of disk space."""
-        create_pre_allocation_table = "CREATE TABLE IF NOT EXISTS t(x);"
-        drop_pre_allocation_table = "DROP TABLE t;"
 
-        fill_pre_allocation = "INSERT INTO t VALUES(zeroblob(100*1024*1024));"  # 100 mb
-        check_pre_allocation = "PRAGMA freelist_count;"
+        pre_allocate_script = (
+            "CREATE TABLE IF NOT EXISTS t(x);"
+            "INSERT INTO t VALUES(zeroblob(100*1024*1024));"  # 100 MB
+            "DROP TABLE t;"
+        )
 
-        result = await self._db_conn.execute(check_pre_allocation)
-        free_space = await result.fetchone()
+        free_pages_query = "PRAGMA freelist_count;"
+        cursor = await self._db_conn.execute(free_pages_query)
+        free_space = await cursor.fetchone()
 
         if free_space and free_space[0] <= 1024:
-            await self._db_conn.execute(create_pre_allocation_table)
-            await self._db_conn.commit()
-            await self._db_conn.execute(fill_pre_allocation)
-            await self._db_conn.commit()
-            await self._db_conn.execute(drop_pre_allocation_table)
+            await self._db_conn.executescript(pre_allocate_script)
             await self._db_conn.commit()
