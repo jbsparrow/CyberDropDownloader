@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
-from ._kemono_base import KemonoBaseCrawler, Post
+from .kemono import KemonoBaseCrawler, Post
 
 if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse

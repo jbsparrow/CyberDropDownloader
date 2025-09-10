@@ -4,7 +4,7 @@ from typing import ClassVar
 
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
-from ._kemono_base import KemonoBaseCrawler
+from .kemono import KemonoBaseCrawler
 
 
 class NekohouseCrawler(KemonoBaseCrawler):
