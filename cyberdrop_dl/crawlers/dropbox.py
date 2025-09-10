@@ -23,7 +23,7 @@ class Node:
     is_dir: bool
     href: str
     filename: str
-    secureHash: str  # noqa: N815
+    secureHash: str = ""  # noqa: N815
 
 
 _parse_node = type_adapter(Node)
@@ -63,7 +63,11 @@ class DropboxCrawler(Crawler):
     @error_handling_wrapper
     async def follow_redirect(self, scrape_item: ScrapeItem) -> None:
         async with self.request(scrape_item.url) as resp:
-            scrape_item.url = resp.url
+            if "s" in resp.url.parts or "sh" in resp.url.parts:
+                if "error_pages/no_access" in await resp.text():
+                    raise ScrapeError(401)
+                raise ScrapeError(422, "Infinite redirect")
+        scrape_item.url = resp.url
         await self.fetch(scrape_item)
 
     @error_handling_wrapper
@@ -76,7 +80,7 @@ class DropboxCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem):
         scrape_item.url = await self._ensure_rlkey(scrape_item.url)
-        async with self.request(scrape_item.url) as resp:
+        async with self.request(scrape_item.url.update_query(dl=1)) as resp:
             self._file(scrape_item, resp.filename)
 
     def _file(self, scrape_item: ScrapeItem, filename: str) -> None:
@@ -112,6 +116,8 @@ class DropboxCrawler(Crawler):
         subpath: str = "",
     ) -> None:
         async for resp in self._web_api_pager(link_key, secure_hash, rlkey, subpath):
+            if "folder" not in resp:
+                return await self.file(scrape_item)
             folder_name: str = resp["folder"]["filename"]
             scrape_item.add_to_parent_title(self.create_title(folder_name))
 

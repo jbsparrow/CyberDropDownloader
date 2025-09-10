@@ -2,19 +2,19 @@ DOMAIN = "dropbox"
 TEST_CASES = [
     (
         # folder with a single file inside
-        "https://www.dropbox.com/scl/fo/6rtuuvcnhe8e0oivnfqtx/AO-LDPRIE_wqGhz8ZyLPWY0?rlkey=zbjcf274goirtfak2prmizi5p&e=1&dl=0",
+        "https://www.dropbox.com/scl/fo/6rtuuvcnhe8e0oivnfqtx/AO-LDPRIE_wqGhz8ZyLPWY0?rlkey=zbjcf274goirtfak2prmizi5p&dl=0",
         [
             {
-                "url": "https://www.dropbox.com/scl/fo/6rtuuvcnhe8e0oivnfqtx/AO-LDPRIE_wqGhz8ZyLPWY0?rlkey=zbjcf274goirtfak2prmizi5p&e=1&dl=0",
-                "debrid_url": "https://www.dropbox.com/scl/fo/6rtuuvcnhe8e0oivnfqtx/AO-LDPRIE_wqGhz8ZyLPWY0?rlkey=zbjcf274goirtfak2prmizi5p&e=1&dl=1",
+                "url": "https://www.dropbox.com/scl/fo/6rtuuvcnhe8e0oivnfqtx/AAk0xkSvKleGaorbZfRJglA/Spherical-Cow-0.1.1.apk?rlkey=zbjcf274goirtfak2prmizi5p&dl=0",
+                "debrid_url": "https://www.dropbox.com/scl/fo/6rtuuvcnhe8e0oivnfqtx/AAk0xkSvKleGaorbZfRJglA/Spherical-Cow-0.1.1.apk?rlkey=zbjcf274goirtfak2prmizi5p&dl=1",
                 "filename": "Spherical-Cow-0.1.1.apk",
-                "referer": "https://www.dropbox.com/scl/fo/6rtuuvcnhe8e0oivnfqtx/AO-LDPRIE_wqGhz8ZyLPWY0?rlkey=zbjcf274goirtfak2prmizi5p&e=1&dl=0",
+                "referer": "https://www.dropbox.com/scl/fo/6rtuuvcnhe8e0oivnfqtx/AAk0xkSvKleGaorbZfRJglA/Spherical-Cow-0.1.1.apk?rlkey=zbjcf274goirtfak2prmizi5p&dl=0",
                 "album_id": None,
                 "datetime": None,
             }
         ],
     ),
-    ("https://www.dropbox.com/scl/fo/igg7i2bazu3g689tqf0i2/h?rlkey=kwqk2vzmiebn9esfgxsm25kaz&e=1&dl=0", [], 15),
+    ("https://www.dropbox.com/scl/fo/igg7i2bazu3g689tqf0i2/h?rlkey=kwqk2vzmiebn9esfgxsm25kaz&dl=0", [], 15),
     (
         # folder with subfolder
         "https://www.dropbox.com/scl/fo/vdsh28mtrlz2dhgazoi6z/AFej9CAhhoEQJo4YDhlbZ0I?dl=0&rlkey=0887klgp6506j3jdy54dnwa6c",
@@ -33,13 +33,13 @@ TEST_CASES = [
     ),
     (
         # zipfile. It has a folder URL but is a single file
-        "https://www.dropbox.com/sh/d4j7iqvmlc1lc1r/jC6LvcSKqT",
+        "https://www.dropbox.com/scl/fo/vyuocyiqz1j93d71bdz18/ALdJdvzyF0lkH94c8dhztuw/afrojack_presskit_2014.zip?rlkey=hx60uhd3u1cecajczl1x9zn1l&e=1&dl=0",
         [
             {
-                "url": "https://www.dropbox.com/scl/fo/vyuocyiqz1j93d71bdz18/ALdJdvzyF0lkH94c8dhztuw/afrojack_presskit_2014.zip?rlkey=hx60uhd3u1cecajczl1x9zn1l&e=4&dl=0",
-                "debrid_url": "https://www.dropbox.com/scl/fo/vyuocyiqz1j93d71bdz18/ALdJdvzyF0lkH94c8dhztuw/afrojack_presskit_2014.zip?rlkey=hx60uhd3u1cecajczl1x9zn1l&e=4&dl=1",
+                "url": "https://www.dropbox.com/scl/fo/vyuocyiqz1j93d71bdz18/ALdJdvzyF0lkH94c8dhztuw/afrojack_presskit_2014.zip?rlkey=hx60uhd3u1cecajczl1x9zn1l&dl=0",
+                "debrid_url": "https://www.dropbox.com/scl/fo/vyuocyiqz1j93d71bdz18/ALdJdvzyF0lkH94c8dhztuw/afrojack_presskit_2014.zip?rlkey=hx60uhd3u1cecajczl1x9zn1l&dl=1",
                 "filename": "afrojack_presskit_2014.zip",
-                "referer": "https://www.dropbox.com/scl/fo/vyuocyiqz1j93d71bdz18/ALdJdvzyF0lkH94c8dhztuw/afrojack_presskit_2014.zip?rlkey=hx60uhd3u1cecajczl1x9zn1l&e=4",
+                "referer": "https://www.dropbox.com/scl/fo/vyuocyiqz1j93d71bdz18/ALdJdvzyF0lkH94c8dhztuw/afrojack_presskit_2014.zip?rlkey=hx60uhd3u1cecajczl1x9zn1l&dl=0",
                 "album_id": None,
                 "datetime": None,
             }
