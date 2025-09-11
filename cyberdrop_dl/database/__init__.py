@@ -5,24 +5,18 @@ from typing import TYPE_CHECKING
 
 import aiosqlite
 
-from cyberdrop_dl.utils.database.tables.hash_table import HashTable
-from cyberdrop_dl.utils.database.tables.history_table import HistoryTable
-from cyberdrop_dl.utils.database.tables.temp_referer_table import TempRefererTable
+from .tables import HashTable, HistoryTable, TempRefererTable
+from .tables.history import get_db_path
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from cyberdrop_dl.managers.manager import Manager
 
-
-class DBManager:
-    def __init__(self, manager: Manager, db_path: Path) -> None:
-        self.manager = manager
+class Database:
+    def __init__(self, db_path: Path, ignore_history: bool) -> None:
         self._db_conn: aiosqlite.Connection = field(init=False)
         self._db_path: Path = db_path
-
-        self.ignore_history: bool = False
-
+        self.ignore_history = ignore_history
         self.history_table: HistoryTable = field(init=False)
         self.hash_table: HashTable = field(init=False)
         self.temp_referer_table: TempRefererTable = field(init=False)
@@ -31,9 +25,6 @@ class DBManager:
         """Startup process for the DBManager."""
         self._db_conn = await aiosqlite.connect(self._db_path)
         self._db_conn.row_factory = aiosqlite.Row
-
-        self.ignore_history = self.manager.config_manager.settings_data.runtime_options.ignore_history
-
         self.history_table = HistoryTable(self)
         self.hash_table = HashTable(self)
         self.temp_referer_table = TempRefererTable(self)
@@ -42,12 +33,6 @@ class DBManager:
         await self.history_table.startup()
         await self.hash_table.startup()
         await self.temp_referer_table.startup()
-        await self.run_fixes()
-
-    async def run_fixes(self):
-        if not self.manager.cache_manager.get("fixed_empty_download_filenames"):
-            await self.history_table.delete_invalid_rows()
-            self.manager.cache_manager.save("fixed_empty_download_filenames", True)
 
     async def close(self) -> None:
         """Close the DBManager."""
@@ -70,3 +55,6 @@ class DBManager:
         if free_space and free_space[0] <= 1024:
             await self._db_conn.executescript(pre_allocate_script)
             await self._db_conn.commit()
+
+
+__all__ = ["Database", "get_db_path"]
