@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DownloadError, NoExtensionError, ScrapeError
 from cyberdrop_dl.utils import css, open_graph
@@ -19,6 +19,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://pixeldrain.com")
 
 
 class PixelDrainCrawler(Crawler):
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "pd.cybar.xyz", "pixeldrain.com", "pixeldrain.net", "pixeldra.in"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/u/...", "Folder": "/l/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "pixeldrain"
@@ -92,7 +93,9 @@ class PixelDrainCrawler(Crawler):
 
             filename, ext = self.get_filename_and_ext(f"{filename}.{mime_type.split('/')[-1]}")
 
-        await self.handle_file(link, scrape_item, filename, ext)
+        debrid_link = scrape_item.url if scrape_item.url.host == "pd.cybar.xyz" else None
+
+        await self.handle_file(link, scrape_item, filename, ext, debrid_link=debrid_link)
 
     async def text(self, scrape_item: ScrapeItem) -> None:
         api_url = API_ENTRYPOINT / "file" / scrape_item.url.parts[-1]
