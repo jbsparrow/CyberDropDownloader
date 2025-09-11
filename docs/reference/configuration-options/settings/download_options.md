@@ -280,13 +280,13 @@ Consider CDL finds the following sub-threads while scraping an input URL:
 
 
 
-Restricts the max number nested folders CDL will create when `maximum_thread_depth` is greater that 0
+Restricts the max number of nested folders CDL will create when `maximum_thread_depth` is greater that 0
 
 Values:
 
-- `None`: Create as many nested folders aas required (AKA, the same number as  `maximum_thread_depth`)
-- `0`: Do not create subfolders, use a flat structutre for any nested thread.
-- `1+`: Create a max of  `n` folder
+- `None`: Create as many nested folders as required (AKA, the same number as  `maximum_thread_depth` allows)
+- `0`: Do not create subfolders, use a flat structure for any nested thread.
+- `1+`: Create a max of `n` folders
 
 
 ### Example
