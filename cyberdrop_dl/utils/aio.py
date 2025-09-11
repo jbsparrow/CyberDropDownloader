@@ -9,14 +9,14 @@ from stat import S_ISREG
 from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable
+    from collections.abc import Awaitable, Sequence
 
     _P = ParamSpec("_P")
     _T = TypeVar("_T")
     _R = TypeVar("_R")
 
 
-async def gather(*coros: Awaitable[_T], batch_size: int = 10) -> list[_T]:
+async def gather(coros: Sequence[Awaitable[_T]], batch_size: int = 10) -> list[_T]:
     """Like `asyncio.gather`, but creates tasks lazily to minimize event loop overhead.
 
     This function ensures there are never more than `batch_size` tasks created at any given time.

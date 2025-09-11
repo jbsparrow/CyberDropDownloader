@@ -209,7 +209,7 @@ class Downloader:
         async def download(m3u8: M3U8):
             assert m3u8.media_type
             download_folder = media_item.complete_file.with_suffix(".cdl_hls") / m3u8.media_type
-            tasks = self._make_hls_tasks(media_item, m3u8, download_folder)
+            coros = self._prepare_hls_downloads(media_item, m3u8, download_folder)
             n_segmets = len(m3u8.segments)
             if n_segmets > 1:
                 suffix = f".{m3u8.media_type}.ts"
@@ -221,7 +221,7 @@ class Downloader:
                 return output
 
             batch_size = 10 if m3u8.media_type == "video" else 50
-            tasks_results = await aio.gather(*tasks, batch_size=batch_size)
+            tasks_results = await aio.gather(coros, batch_size=batch_size)
             n_successful = sum(1 for result in tasks_results if result.downloaded)
 
             if n_successful != n_segmets:
@@ -255,9 +255,9 @@ class Downloader:
         video = await download(m3u8_group.video)
         return video, audio, subtitles
 
-    def _make_hls_tasks(
+    def _prepare_hls_downloads(
         self, media_item: MediaItem, m3u8: M3U8, download_folder: Path
-    ) -> Generator[Coroutine[None, None, SegmentDownloadResult]]:
+    ) -> list[Coroutine[None, None, SegmentDownloadResult]]:
         padding = max(5, len(str(len(m3u8.segments))))
 
         def create_segments() -> Generator[HlsSegment]:
@@ -287,7 +287,7 @@ class Downloader:
                 await self.start_download(seg_media_item),
             )
 
-        return (download_segment(segment) for segment in create_segments())
+        return [download_segment(segment) for segment in create_segments()]
 
     async def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
         if downloaded:
