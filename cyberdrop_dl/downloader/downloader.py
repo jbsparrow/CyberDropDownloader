@@ -69,7 +69,7 @@ R = TypeVar("R")
 
 
 class SegmentDownloadResult(NamedTuple):
-    path: Path
+    item: MediaItem
     downloaded: bool
 
 
@@ -228,7 +228,7 @@ class Downloader:
                 msg = f"Download of some segments failed. Successful: {n_successful:,}/{n_segmets:,} "
                 raise DownloadError("HLS Seg Error", msg, media_item)
 
-            seg_paths = [result.path for result in tasks_results]
+            seg_paths = [result.item.complete_file for result in tasks_results]
 
             if n_segmets > 1:
                 ffmpeg_result = await ffmpeg.concat(seg_paths, output)
@@ -283,7 +283,7 @@ class Downloader:
             )
 
             return SegmentDownloadResult(
-                seg_media_item.complete_file,
+                seg_media_item,
                 await self.start_download(seg_media_item),
             )
 
