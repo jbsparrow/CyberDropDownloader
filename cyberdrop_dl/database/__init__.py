@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import field
 from typing import TYPE_CHECKING
 
 import aiosqlite
@@ -14,12 +13,12 @@ if TYPE_CHECKING:
 
 class Database:
     def __init__(self, db_path: Path, ignore_history: bool) -> None:
-        self._db_conn: aiosqlite.Connection = field(init=False)
+        self._db_conn: aiosqlite.Connection
         self._db_path: Path = db_path
         self.ignore_history = ignore_history
-        self.history_table: HistoryTable = field(init=False)
-        self.hash_table: HashTable = field(init=False)
-        self.temp_referer_table: TempRefererTable = field(init=False)
+        self.history_table: HistoryTable
+        self.hash_table: HashTable
+        self.temp_referer_table: TempRefererTable
 
     async def startup(self) -> None:
         """Startup process for the DBManager."""
