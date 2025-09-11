@@ -25,9 +25,6 @@ async def gather(*coros: Awaitable[_T], batch_size: int = 10) -> list[_T]:
     are cancelled and any remaning task in the queue will be ignored.
     """
 
-    # TODO: Use this function for HLS downloads to prevent creating thousands of tasks
-    # for each segment (most of them wait forever becuase they use the same semaphore)
-
     semaphore = asyncio.BoundedSemaphore(batch_size)
     results: list[_T] = cast("list[_T]", [None] * len(coros))
 
