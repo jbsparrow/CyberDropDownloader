@@ -68,7 +68,8 @@ class PixelDrainCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        api_url = API_ENTRYPOINT / "file" / scrape_item.url.name / "info"
+        file_id = scrape_item.url.name
+        api_url = API_ENTRYPOINT / "file" / file_id / "info"
         try:
             json_resp: dict[str, Any] = await self.request_json(api_url)
         except DownloadError as e:
@@ -93,8 +94,11 @@ class PixelDrainCrawler(Crawler):
 
             filename, ext = self.get_filename_and_ext(f"{filename}.{mime_type.split('/')[-1]}")
 
-        debrid_link = scrape_item.url if scrape_item.url.host == "pd.cybar.xyz" else None
-
+        if scrape_item.url.host == "pd.cybar.xyz":
+            debrid_link = scrape_item.url
+            scrape_item.url = self.PRIMARY_URL / "u" / file_id
+        else:
+            debrid_link = None
         await self.handle_file(link, scrape_item, filename, ext, debrid_link=debrid_link)
 
     async def text(self, scrape_item: ScrapeItem) -> None:
