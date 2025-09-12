@@ -215,6 +215,11 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     def max_thread_depth(self) -> int:
         return self.manager.config_manager.settings_data.download_options.maximum_thread_depth
 
+    @final
+    @property
+    def max_thread_folder_depth(self):
+        return self.manager.config.download_options.maximum_thread_folder_depth
+
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in and self.login_required is True:
             return
@@ -270,6 +275,19 @@ class MessageBoardCrawler(Crawler, is_abc=True):
                 f"Origin:  {scrape_item.origin}\n"
             )
             raise MaxChildrenError(msg)
+
+        self.limit_nexted_thread_folders(scrape_item)
+
+    @final
+    def limit_nexted_thread_folders(self, scrape_item: ScrapeItem) -> None:
+        if self.max_thread_folder_depth is None:
+            return
+        n_parents = len(scrape_item.parent_threads)
+        if n_parents > self.max_thread_folder_depth:
+            scrape_item.parent_title = scrape_item.parent_title.rsplit("/", 1)[0]
+            if not self.separate_post_title:
+                return
+            scrape_item.parent_title = scrape_item.parent_title.rsplit("/", 1)[0]
 
     @final
     def stop_thread_recursion(self, scrape_item: ScrapeItem) -> bool:

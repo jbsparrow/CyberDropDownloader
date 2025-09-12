@@ -55,6 +55,7 @@ class DownloadOptions(BaseModel):
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
     maximum_thread_depth: NonNegativeInt = 0
+    maximum_thread_folder_depth: NonNegativeInt | None = None
 
     @field_validator("separate_posts_format", mode="after")
     @classmethod
