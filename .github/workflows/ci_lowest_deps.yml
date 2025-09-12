@@ -37,5 +37,8 @@ jobs:
       - name: Install CDL
         run: uv sync --resolution ${{ matrix.uv-resolution }}
 
+      - name: Install pytest
+        run: uv pip install pytest
+
       - name: Run tests
         run: uv run pytest tests/
