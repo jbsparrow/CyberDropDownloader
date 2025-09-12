@@ -10,7 +10,7 @@ from datetime import datetime
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, NamedTuple, ParamSpec, TypeVar
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 
@@ -25,13 +25,17 @@ from cyberdrop_dl.exceptions import (
     RestrictedFiletypeError,
     TooManyCrawlerErrors,
 )
-from cyberdrop_dl.utils import ffmpeg
+
+from cyberdrop_dl.utils import aio, ffmpeg
+from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none, parse_url
 
 # Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
 WIN_EPOCH_OFFSET = 116444736e9
 MAC_OS_SET_FILE = None
+_VIDEO_HLS_BATCH_SIZE = 10
+_AUDIO_HLS_BATCH_SIZE = 50
 
 
 # Try to import win32con for Windows constants, fallback to hardcoded values if unavailable
@@ -66,6 +70,12 @@ if TYPE_CHECKING:
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+class SegmentDownloadResult(NamedTuple):
+    item: MediaItem
+    downloaded: bool
+
 
 KNOWN_BAD_URLS = {
     "https://i.imgur.com/removed.png": 404,
@@ -181,7 +191,7 @@ class Downloader:
         self.update_queued_files()
         task_id = self.manager.progress_manager.file_progress.add_task(domain=self.domain, filename=media_item.filename)
         media_item.set_task_id(task_id)
-        video, audio, _ = await self._download_rendition_group(media_item, m3u8_group)
+        video, audio, _subs = await self._download_rendition_group(media_item, m3u8_group)
         if not audio:
             await asyncio.to_thread(video.rename, media_item.complete_file)
         else:
@@ -203,25 +213,26 @@ class Downloader:
         async def download(m3u8: M3U8):
             assert m3u8.media_type
             download_folder = media_item.complete_file.with_suffix(".cdl_hls") / m3u8.media_type
-            items, tasks = self._make_hls_tasks(media_item, m3u8, download_folder)
-            n_segmets = len(tasks)
+            coros = self._prepare_hls_downloads(media_item, m3u8, download_folder)
+            n_segmets = len(m3u8.segments)
             if n_segmets > 1:
                 suffix = f".{m3u8.media_type}.ts"
             else:
-                suffix = media_item.complete_file.suffix + items[0].url.suffix
+                suffix = media_item.complete_file.suffix + Path(m3u8.segments[0].absolute_uri).suffix
 
             output = media_item.complete_file.with_suffix(suffix)
             if await asyncio.to_thread(output.is_file):
                 return output
 
-            tasks_results = await asyncio.gather(*tasks)
-            n_successful = sum(1 for r in tasks_results if r)
+            batch_size = _VIDEO_HLS_BATCH_SIZE if m3u8.media_type == "video" else _AUDIO_HLS_BATCH_SIZE
+            tasks_results = await aio.gather(coros, batch_size=batch_size)
+            n_successful = sum(1 for result in tasks_results if result.downloaded)
 
             if n_successful != n_segmets:
                 msg = f"Download of some segments failed. Successful: {n_successful:,}/{n_segmets:,} "
                 raise DownloadError("HLS Seg Error", msg, media_item)
 
-            seg_paths = [item.complete_file for item in items if item.complete_file]
+            seg_paths = [result.item.complete_file for result in tasks_results]
 
             if n_segmets > 1:
                 ffmpeg_result = await ffmpeg.concat(seg_paths, output)
@@ -248,13 +259,10 @@ class Downloader:
         video = await download(m3u8_group.video)
         return video, audio, subtitles
 
-    def _make_hls_tasks(
+    def _prepare_hls_downloads(
         self, media_item: MediaItem, m3u8: M3U8, download_folder: Path
-    ) -> tuple[list[MediaItem], list[Coroutine[None, None, bool]]]:
-        seg_media_items: list[MediaItem] = []
+    ) -> list[Coroutine[None, None, SegmentDownloadResult]]:
         padding = max(5, len(str(len(m3u8.segments))))
-
-        semaphore_hls = asyncio.Semaphore(10 if m3u8.media_type == "video" else 50)
 
         def create_segments() -> Generator[HlsSegment]:
             for index, segment in enumerate(m3u8.segments, 1):
@@ -262,7 +270,9 @@ class Downloader:
                 name = f"{index:0{padding}d}.cdl_hsl"
                 yield HlsSegment(segment.title, name, parse_url(segment.absolute_uri))
 
-        def make_download_task(segment: HlsSegment) -> Coroutine[None, None, bool]:
+        async def download_segment(segment: HlsSegment):
+            # TODO: segments download should bypass the downloads slots limits.
+            # They count as a single download
             seg_media_item = MediaItem.from_item(
                 media_item,
                 segment.url,
@@ -275,17 +285,13 @@ class Downloader:
                 # reference=media_item,
                 # skip_hashing=True,
             )
-            seg_media_items.append(seg_media_item)
 
-            async def run() -> bool:
-                # TODO: segments download should bypass the downloads slots limits.
-                # They count as a single download
-                async with semaphore_hls:
-                    return await self.start_download(seg_media_item)
+            return SegmentDownloadResult(
+                seg_media_item,
+                await self.start_download(seg_media_item),
+            )
 
-            return run()
-
-        return seg_media_items, [make_download_task(segment) for segment in create_segments()]
+        return [download_segment(segment) for segment in create_segments()]
 
     async def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
         if downloaded:
