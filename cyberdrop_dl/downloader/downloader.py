@@ -25,9 +25,7 @@ from cyberdrop_dl.exceptions import (
     RestrictedFiletypeError,
     TooManyCrawlerErrors,
 )
-
 from cyberdrop_dl.utils import aio, ffmpeg
-from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none, parse_url
 
