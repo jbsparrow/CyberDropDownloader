@@ -158,7 +158,6 @@ class DropboxCrawler(Crawler):
                 method="POST",
                 data=payload,
                 headers={
-                    
                     "Origin": str(self.PRIMARY_URL),
                 },
             )
