@@ -66,7 +66,7 @@ class MegaCloudCrawler(Crawler):
         m3u8_url = video.sources[0]
         m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_url, headers=_HEADERS)
         filename, ext = self.get_filename_and_ext(video.id + ".mp4")
-        filename = self.create_custom_filename(
+        custom_filename = self.create_custom_filename(
             video.title or video.id, ext, file_id=video.id, resolution=info.resolution
         )
         self.create_task(
@@ -76,10 +76,10 @@ class MegaCloudCrawler(Crawler):
                 filename,
                 ext,
                 m3u8=m3u8,
-                custom_filename=filename,
+                custom_filename=custom_filename,
             )
         )
-        video_stem = filename.removesuffix(ext)
+        video_stem = custom_filename.removesuffix(ext)
         for sub in video.subtitles:
             sub_name, ext = self.get_filename_and_ext(f"{video_stem}.{sub.suffix}")
             self.create_task(
