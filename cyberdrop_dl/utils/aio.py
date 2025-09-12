@@ -9,14 +9,14 @@ from stat import S_ISREG
 from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable
+    from collections.abc import Awaitable, Sequence
 
     _P = ParamSpec("_P")
     _T = TypeVar("_T")
     _R = TypeVar("_R")
 
 
-async def gather(*coros: Awaitable[_T], batch_size: int = 10) -> list[_T]:
+async def gather(coros: Sequence[Awaitable[_T]], batch_size: int = 10) -> list[_T]:
     """Like `asyncio.gather`, but creates tasks lazily to minimize event loop overhead.
 
     This function ensures there are never more than `batch_size` tasks created at any given time.
@@ -24,9 +24,6 @@ async def gather(*coros: Awaitable[_T], batch_size: int = 10) -> list[_T]:
     If any exception is raised within a task, all currently running tasks
     are cancelled and any remaning task in the queue will be ignored.
     """
-
-    # TODO: Use this function for HLS downloads to prevent creating thousands of tasks
-    # for each segment (most of them wait forever becuase they use the same semaphore)
 
     semaphore = asyncio.BoundedSemaphore(batch_size)
     results: list[_T] = cast("list[_T]", [None] * len(coros))
