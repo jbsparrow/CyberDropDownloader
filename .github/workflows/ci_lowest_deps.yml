@@ -35,7 +35,7 @@ jobs:
         run: uv venv
 
       - name: Install CDL
-        run: uv pip install cyberdrop-dl-patched>=7.5 --resolution ${{ matrix.uv-resolution }}
+        run: uv tool install cyberdrop-dl-patched>=7.5.0 --resolution ${{ matrix.uv-resolution }}
 
       - name: Run tests
         run: uv run pytest tests/
