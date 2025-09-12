@@ -71,6 +71,8 @@ class DownloadClient:
                 "Referer": "https://m.ok.ru/",
                 "Origin": "https://m.ok.ru",
             }
+        elif domain == "megacloud":
+            download_headers["Referer"] = "https://megacloud.blog/"
         return download_headers
 
     async def _download(self, domain: str, media_item: MediaItem) -> bool:

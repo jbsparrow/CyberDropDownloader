@@ -3,18 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash
 from cyberdrop_dl.utils.logger import log
+
+from .definitions import create_files, create_hash
 
 if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
 
-    from cyberdrop_dl.managers.db_manager import DBManager
+    from cyberdrop_dl.database import Database
 
 
 class HashTable:
-    def __init__(self, database: DBManager) -> None:
+    def __init__(self, database: Database) -> None:
         self._database = database
 
     @property

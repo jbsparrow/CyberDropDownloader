@@ -21,11 +21,11 @@ from cyberdrop_dl import constants
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem, copy_signature
+from cyberdrop_dl.database import get_db_path
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import css, m3u8
-from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.strings import safe_format
@@ -364,20 +364,27 @@ class Crawler(ABC):
                 data = [media_item.as_jsonable_dict()]
                 await self.manager.log_manager.write_jsonl(data)
 
+    async def check_complete(self, url: AbsoluteHttpURL, referer: AbsoluteHttpURL) -> bool:
+        """Checks if this URL has been download before.
+
+        This method is called automatically on a created media item,
+        but Crawler code can use it to skip unnecessary requests"""
+        check_complete = await self.manager.db_manager.history_table.check_complete(self.DOMAIN, url, referer)
+        if check_complete:
+            log(f"Skipping {url} as it has already been downloaded", 10)
+            self.manager.progress_manager.download_progress.add_previously_completed()
+        return check_complete
+
     async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int."
             log(msg, bug=True)
 
-        check_complete = await self.manager.db_manager.history_table.check_complete(
-            self.DOMAIN, media_item.url, media_item.referer
-        )
+        check_complete = await self.check_complete(media_item.url, media_item.referer)
         if check_complete:
             if media_item.album_id:
                 await self.manager.db_manager.history_table.set_album_id(self.DOMAIN, media_item)
-            log(f"Skipping {media_item.url} as it has already been downloaded", 10)
-            self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
         if await self.check_skip_by_config(media_item):
@@ -745,7 +752,8 @@ class Crawler(ABC):
         only_truncate_stem: bool = True,
     ) -> str:
         calling_args = {name: value for name, value in locals().items() if value is not None and name not in ("self",)}
-        stem = sanitize_filename(Path(name).as_posix().replace("/", "-"))  # remove OS separators (if any)
+        # remove OS separators (if any)
+        stem = sanitize_filename(Path(name).as_posix().replace("/", "-")).strip()
         extra_info: list[str] = []
 
         if _placeholder_config.include_file_id and file_id:

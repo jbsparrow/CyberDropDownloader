@@ -500,7 +500,7 @@ def type_adapter(func: Callable[..., _R], aliases: dict[str, str] | None = None)
                 if original not in kwargs:
                     kwargs[original] = kwargs.get(alias)
 
-        return func(**{k: v for k, v in kwargs.items() if k in param_names and v is not None})
+        return func(**{name: value for name in param_names if (value := kwargs.get(name)) is not None})
 
     return call
 

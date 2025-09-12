@@ -3,8 +3,9 @@ from __future__ import annotations
 from sqlite3 import IntegrityError, Row
 from typing import TYPE_CHECKING, cast
 
-from cyberdrop_dl.utils.database.table_definitions import create_fixed_history, create_history
 from cyberdrop_dl.utils.utilities import log
+
+from .definitions import create_fixed_history, create_history
 
 if TYPE_CHECKING:
     import datetime
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.data_structures.url_objects import MediaItem
-    from cyberdrop_dl.managers.db_manager import DBManager
+    from cyberdrop_dl.database import Database
 
 
 def get_db_path(url: URL, domain: str = "") -> str:
@@ -36,7 +37,7 @@ def get_db_path(url: URL, domain: str = "") -> str:
 
 
 class HistoryTable:
-    def __init__(self, database: DBManager) -> None:
+    def __init__(self, database: Database) -> None:
         self._database = database
 
     @property
