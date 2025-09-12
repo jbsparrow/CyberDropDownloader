@@ -111,6 +111,21 @@ Folder downloads from Dropbox are disabled by default because they will be downl
 
 Download TikTok audios from posts and save them as separate files
 
+### `download-tiktok-src-quality-videos`
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Download TikTok videos in source quality.
+
+{% hint style="warning" %}
+Enabling this option will make downloads several orders of magnitude slower.
+
+When it is set to `False` (the default) CDL can download 50 videos with a single request.
+When it is set to `True` , CDL needs to make at least 3 requests _per_ video to download them.
+{% endhint %}
+
 ### `max-items-retry`
 
 | Type             | Default |
