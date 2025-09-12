@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import codecs
 import dataclasses
 import itertools
 import json
@@ -9,6 +10,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, xor_decrypt
 
 if TYPE_CHECKING:
@@ -28,9 +30,23 @@ class Selector:
     NEXT_PAGE = "a[data-page='next']"
 
 
-def _parse_url(url: str) -> AbsoluteHttpURL:
-    if url.startswith("eG9y"):
-        url = xor_decrypt(base64.b64decode(url)[4:], _DECRYPTION_KEY)
+def _decrypt_url(b64_url: str) -> str | None:
+    if b64_url.startswith("http") or b64_url.startswith("/"):
+        return b64_url
+    try:
+        decoded_url = base64.b64decode(b64_url)
+        if decoded_url.startswith(b"xor"):
+            return xor_decrypt(decoded_url[4:], _DECRYPTION_KEY)
+        if decoded_url.startswith(b"rot13_"):
+            return codecs.decode(decoded_url[6:].decode(), "rot_13")
+    except Exception:
+        return
+
+
+def _parse_url(b64_url: str) -> AbsoluteHttpURL:
+    url = _decrypt_url(b64_url)
+    if not url:
+        raise ScrapeError(422, f"Unknown encrypted URL: {b64_url}")
     return parse_url(url, relative_to=_PRIMARY_URL)
 
 
