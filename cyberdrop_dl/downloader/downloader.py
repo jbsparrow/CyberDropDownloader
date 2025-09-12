@@ -16,6 +16,7 @@ from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 
 from cyberdrop_dl.constants import CustomHTTPStatus
 from cyberdrop_dl.data_structures.url_objects import HlsSegment, MediaItem
+from cyberdrop_dl.database import get_db_path
 from cyberdrop_dl.exceptions import (
     DownloadError,
     DurationError,
@@ -25,7 +26,6 @@ from cyberdrop_dl.exceptions import (
     TooManyCrawlerErrors,
 )
 from cyberdrop_dl.utils import aio, ffmpeg
-from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none, parse_url
 

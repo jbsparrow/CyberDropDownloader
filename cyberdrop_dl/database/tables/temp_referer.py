@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.utils.database.table_definitions import create_temp_referer
+from .definitions import create_temp_referer
 
 if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-    from cyberdrop_dl.managers.db_manager import DBManager
+    from cyberdrop_dl.database import Database
 
 
 class TempRefererTable:
-    def __init__(self, database: DBManager) -> None:
+    def __init__(self, database: Database) -> None:
         self._database = database
 
     @property

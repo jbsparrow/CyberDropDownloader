@@ -9,7 +9,7 @@ from shutil import copy2
 import arrow
 from rich.console import Console
 
-from cyberdrop_dl.utils.database.table_definitions import create_files, create_temp_hash
+from .tables.definitions import create_files, create_temp_hash
 
 console = Console()
 
