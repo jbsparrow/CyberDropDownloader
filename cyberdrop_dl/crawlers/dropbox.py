@@ -78,7 +78,7 @@ class DropboxCrawler(Crawler):
         await self._walk_folder(scrape_item, link_key, secure_hash, rlkey)
 
     @error_handling_wrapper
-    async def file(self, scrape_item: ScrapeItem):
+    async def file(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = await self._ensure_rlkey(scrape_item.url)
         async with self.request(scrape_item.url.update_query(dl=1)) as resp:
             self._file(scrape_item, resp.filename)
@@ -158,7 +158,7 @@ class DropboxCrawler(Crawler):
                 method="POST",
                 data=payload,
                 headers={
-                    "X-Requested-With": "X-Requested-With",
+                    
                     "Origin": str(self.PRIMARY_URL),
                 },
             )
