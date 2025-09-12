@@ -35,11 +35,11 @@ def _decrypt_url(b64_url: str) -> str | None:
         return b64_url
     try:
         decoded_url = base64.b64decode(b64_url)
-        if decoded_url.startswith(b"xor"):
+        if decoded_url.startswith(b"xor_"):
             return xor_decrypt(decoded_url[4:], _DECRYPTION_KEY)
         if decoded_url.startswith(b"rot13_"):
             return codecs.decode(decoded_url[6:].decode(), "rot_13")
-    except Exception:
+    except ValueError:
         return
 
 
