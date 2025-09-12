@@ -32,6 +32,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_non
 # Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
 WIN_EPOCH_OFFSET = 116444736e9
 MAC_OS_SET_FILE = None
+_VIDEO_HLS_BATCH_SIZE = 10
+_AUDIO_HLS_BATCH_SIZE = 50
 
 
 # Try to import win32con for Windows constants, fallback to hardcoded values if unavailable
@@ -220,7 +222,7 @@ class Downloader:
             if await asyncio.to_thread(output.is_file):
                 return output
 
-            batch_size = 10 if m3u8.media_type == "video" else 50
+            batch_size = _VIDEO_HLS_BATCH_SIZE if m3u8.media_type == "video" else _AUDIO_HLS_BATCH_SIZE
             tasks_results = await aio.gather(coros, batch_size=batch_size)
             n_successful = sum(1 for result in tasks_results if result.downloaded)
 
