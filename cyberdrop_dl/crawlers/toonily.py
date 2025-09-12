@@ -37,8 +37,7 @@ class ToonilyCrawler(Crawler):
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         title_tag = css.select_one(soup, Selector.SERIES_TITLE)
         css.decompose(title_tag, "*")
@@ -49,8 +48,7 @@ class ToonilyCrawler(Crawler):
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         series_name, chapter_title = css.select_one_get_text(soup, Selector.CHAPTER_TITLE).split(" - ", 1)
         if scrape_item.type != FILE_HOST_PROFILE:

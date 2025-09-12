@@ -7,8 +7,6 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from curl_cffi.requests.models import Response as CurlResponse
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://send.now/")
@@ -29,22 +27,35 @@ class SendNowCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         file_id = scrape_item.url.name
-        data = {"op": "download2", "id": file_id, "rand": "", "referer": "", "method_free": "", "method_premium": ""}
-        params = {"allow_redirects": False, "stream": True}
 
-        async with self.request_limiter:
-            response: CurlResponse = await self.client.post_data_cffi(
-                self.DOMAIN, scrape_item.url, data=data, request_params=params
-            )
+        async with self.request(
+            scrape_item.url,
+            method="POST",
+            impersonate=True,
+            data={
+                "op": "download2",
+                "id": file_id,
+                "rand": "",
+                "referer": "",
+                "method_free": "",
+                "method_premium": "",
+            },
+            request_params={"allow_redirects": False, "stream": True},
+        ) as resp:
+            debrid_link = resp.location
 
-        debrid_link = self.parse_url(response.headers.get("location"))
+        assert debrid_link
         filename, ext = self.get_filename_and_ext(debrid_link.name, assume_ext=".zip")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=debrid_link)
 
-    async def get_cookies(self, scrape_item: ScrapeItem) -> None:
+    async def _get_cookies(self, scrape_item: ScrapeItem) -> None:
+        if self.got_cookies:
+            return
         async with self.startup_lock:
-            if not self.got_cookies:
-                async with self.request_limiter:
-                    await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
-                cookies = self.manager.client_manager.cookies.filter_cookies(PRIMARY_URL)
-                self.got_cookies = bool(cookies)
+            if self.got_cookies:
+                return
+
+            async with self.request(scrape_item.url, impersonate=True):
+                pass
+            cookies = self.manager.client_manager.cookies.filter_cookies(PRIMARY_URL)
+            self.got_cookies = bool(cookies)

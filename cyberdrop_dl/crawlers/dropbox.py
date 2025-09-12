@@ -46,7 +46,7 @@ class DropboxCrawler(Crawler):
         preview_filename = scrape_item.url.query.get("preview")
         match scrape_item.url.parts[1:]:
             case ["s" | "sh", _, *_]:
-                return await self.follow_redirect(scrape_item)
+                return await self.follow_redirect_w_head(scrape_item)
             case ["scl", "fo", token1, token2]:
                 url = PRIMARY_URL / "scl/fo" / token1 / token2
                 if preview_filename:
@@ -78,31 +78,14 @@ class DropboxCrawler(Crawler):
             raise ScrapeError(422, message="Folders download is not enabled")
 
         scrape_item.url = item.view_url
-        filename = item.filename or await self.get_content_disposition_name(item.download_url)
-        if not filename:
-            raise ScrapeError(422)
+        if item.filename:
+            filename = item.filename
+        else:
+            async with self.request(item.download_url) as resp:
+                filename = resp.filename
+
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(item.url, scrape_item, filename, ext, debrid_link=item.download_url)
-
-    @error_handling_wrapper
-    async def follow_redirect(self, scrape_item: ScrapeItem) -> None:
-        scrape_item.url = await self.get_redict_url(scrape_item.url)
-        await self.fetch(scrape_item)
-
-    async def get_content_disposition_name(self, url: AbsoluteHttpURL) -> str | None:
-        url = await self.get_redict_url(url)
-        async with self.request_limiter:
-            response = await self.client._get_head(self.DOMAIN, url)
-        if response.content_disposition:
-            return response.content_disposition.filename
-
-    async def get_redict_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        async with self.request_limiter:
-            headers = await self.client.get_head(self.DOMAIN, url)
-        location = headers.get("location")
-        if not location:
-            raise ScrapeError(400)
-        return self.parse_url(location)
 
 
 @dataclass(frozen=True, slots=True)

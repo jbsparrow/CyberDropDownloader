@@ -11,19 +11,21 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, Literal, NamedTuple, ParamSpec, TypeAlias, TypeVar, final
 
 import yarl
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
+from cyberdrop_dl.clients.scraper_client import ScraperClient
+from cyberdrop_dl.data_structures.mediaprops import Resolution
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem, copy_signature
+from cyberdrop_dl.database import get_db_path
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import css, m3u8
-from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.strings import safe_format
@@ -54,7 +56,7 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
     from rich.progress import TaskID
 
-    from cyberdrop_dl.clients.scraper_client import ScraperClient
+    from cyberdrop_dl.clients.response import AbstractResponse
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -104,24 +106,26 @@ class Crawler(ABC):
     _RATE_LIMIT: ClassVar[tuple[float, float]] = 25, 1
     _DOWNLOAD_SLOTS: ClassVar[int | None] = None
 
-    if TYPE_CHECKING:
-        request = ScraperClient._request
-        request_json = ScraperClient._request_json
-        request_soup = ScraperClient._request_soup
+    @copy_signature(ScraperClient._request)
+    @contextlib.asynccontextmanager
+    async def request(self, *args, **kwargs) -> AsyncGenerator[AbstractResponse]:
+        async with self.client._limiter(self.DOMAIN), self.client._request(*args, **kwargs) as resp:
+            yield resp
 
-    else:
+    @copy_signature(ScraperClient._request)
+    async def request_json(self, *args, **kwargs) -> Any:
+        async with self.request(*args, **kwargs) as resp:
+            return await resp.json()
 
-        async def request(self, *args, **kwargs):
-            async with self.client._limiter(self.DOMAIN):
-                return await self.client._request(*args, **kwargs)
+    @copy_signature(ScraperClient._request)
+    async def request_soup(self, *args, **kwargs) -> BeautifulSoup:
+        async with self.request(*args, **kwargs) as resp:
+            return await resp.soup()
 
-        async def request_json(self, *args, **kwargs):
-            async with self.client._limiter(self.DOMAIN):
-                return await self.client._request_json(*args, **kwargs)
-
-        async def request_soup(self, *args, **kwargs):
-            async with self.client._limiter(self.DOMAIN):
-                return await self.client._request_soup(*args, **kwargs)
+    @copy_signature(ScraperClient._request)
+    async def request_text(self, *args, **kwargs) -> str:
+        async with self.request(*args, **kwargs) as resp:
+            return await resp.text()
 
     @final
     def __init__(self, manager: Manager) -> None:
@@ -145,6 +149,12 @@ class Crawler(ABC):
         return self.manager.task_group.create_task(coro)
 
     def __post_init__(self) -> None: ...  # noqa: B027
+
+    @final
+    @staticmethod
+    def _assert_fields_overrides(subclass: type[Crawler], *fields: str):
+        for field_name in fields:
+            assert getattr(subclass, field_name, None), f"Subclass {subclass.__name__} must override: {field_name}"
 
     def __init_subclass__(
         cls, is_abc: bool = False, is_generic: bool = False, generic_name: str = "", **kwargs
@@ -173,9 +183,7 @@ class Crawler(ABC):
             return
 
         if not (cls.IS_FALLBACK_GENERIC or cls.IS_REAL_DEBRID):
-            REQUIRED_FIELDS = "PRIMARY_URL", "DOMAIN", "SUPPORTED_PATHS"
-            for field_name in REQUIRED_FIELDS:
-                assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
+            Crawler._assert_fields_overrides(cls, "PRIMARY_URL", "DOMAIN", "SUPPORTED_PATHS")
 
         if cls.OLD_DOMAINS:
             cls.REPLACE_OLD_DOMAINS_REGEX = re.compile("|".join(cls.OLD_DOMAINS))
@@ -199,6 +207,10 @@ class Crawler(ABC):
     @property
     def allow_no_extension(self) -> bool:
         return not self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
+
+    @property
+    def deep_scrape(self) -> bool:
+        return self.manager.config_manager.deep_scrape
 
     def _init_downloader(self) -> Downloader:
         self.downloader = dl = Downloader(self.manager, self.DOMAIN)
@@ -267,14 +279,16 @@ class Crawler(ABC):
             try:
                 yield task_id
             except ValueError:
-                await self.raise_e(scrape_item, ScrapeError("Unknown URL path"))
+                self.raise_exc(scrape_item, ScrapeError("Unknown URL path"))
             except MaxChildrenError as e:
-                await self.raise_e(scrape_item, e)
+                self.raise_exc(scrape_item, e)
             finally:
                 pass
 
     @error_handling_wrapper
-    def raise_e(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception) -> None:
+    def raise_exc(self, scrape_item: ScrapeItem, exc: type[Exception] | Exception | str) -> None:
+        if isinstance(exc, str):
+            exc = ScrapeError(exc)
         raise exc
 
     @final
@@ -350,20 +364,27 @@ class Crawler(ABC):
                 data = [media_item.as_jsonable_dict()]
                 await self.manager.log_manager.write_jsonl(data)
 
+    async def check_complete(self, url: AbsoluteHttpURL, referer: AbsoluteHttpURL) -> bool:
+        """Checks if this URL has been download before.
+
+        This method is called automatically on a created media item,
+        but Crawler code can use it to skip unnecessary requests"""
+        check_complete = await self.manager.db_manager.history_table.check_complete(self.DOMAIN, url, referer)
+        if check_complete:
+            log(f"Skipping {url} as it has already been downloaded", 10)
+            self.manager.progress_manager.download_progress.add_previously_completed()
+        return check_complete
+
     async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.RenditionGroup | None = None) -> None:
         await self.manager.states.RUNNING.wait()
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int."
             log(msg, bug=True)
 
-        check_complete = await self.manager.db_manager.history_table.check_complete(
-            self.DOMAIN, media_item.url, media_item.referer
-        )
+        check_complete = await self.check_complete(media_item.url, media_item.referer)
         if check_complete:
             if media_item.album_id:
                 await self.manager.db_manager.history_table.set_album_id(self.DOMAIN, media_item)
-            log(f"Skipping {media_item.url} as it has already been downloaded", 10)
-            self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
         if await self.check_skip_by_config(media_item):
@@ -424,7 +445,7 @@ class Crawler(ABC):
     def handle_external_links(self, scrape_item: ScrapeItem) -> None:
         """Maps external links to the scraper class."""
         scrape_item.reset()
-        self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
+        self.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -608,9 +629,9 @@ class Crawler(ABC):
 
     @error_handling_wrapper
     async def direct_file(self, scrape_item: ScrapeItem, url: URL | None = None, assume_ext: str | None = None) -> None:
-        """Download a direct link file. Filename will be extrcation for the url"""
+        """Download a direct link file. Filename will be the url slug"""
         link = url or scrape_item.url
-        filename, ext = self.get_filename_and_ext(link.name, assume_ext=assume_ext)
+        filename, ext = self.get_filename_and_ext(link.name or link.parent.name, assume_ext=assume_ext)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @final
@@ -654,8 +675,26 @@ class Crawler(ABC):
         log(msg, bug=True)
 
     async def _get_redirect_url(self, url: AbsoluteHttpURL):
-        head = await self.request(url, method="HEAD")
-        return head.location or url
+        async with self.request(url, method="HEAD") as head:
+            return head.location or url
+
+    @final
+    @error_handling_wrapper
+    async def follow_redirect_w_get(self, scrape_item: ScrapeItem) -> None:
+        async with self.request(scrape_item.url) as resp:
+            if resp.url == scrape_item.url:
+                raise ScrapeError(422)
+            scrape_item.url = resp.url
+        self.create_task(self.run(scrape_item))
+
+    @final
+    @error_handling_wrapper
+    async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
+        location = await self._get_redirect_url(scrape_item.url)
+        if location == scrape_item.url:
+            raise ScrapeError(422)
+        scrape_item.url = location
+        self.create_task(self.run(scrape_item))
 
     @staticmethod
     def register_cache_filter(
@@ -676,20 +715,28 @@ class Crawler(ABC):
         m3u8_playlist = await self._get_m3u8(m3u8_playlist_url, headers)
         rendition_group_info = m3u8.get_best_group_from_playlist(m3u8_playlist, only=only, exclude=exclude)
         renditions_urls = rendition_group_info.urls
-        video = await self._get_m3u8(renditions_urls.video, headers)
-        audio = await self._get_m3u8(renditions_urls.audio, headers) if renditions_urls.audio else None
-        subtitle = await self._get_m3u8(renditions_urls.subtitle, headers) if renditions_urls.subtitle else None
+        video = await self._get_m3u8(renditions_urls.video, headers, "video")
+        audio = await self._get_m3u8(renditions_urls.audio, headers, "audio") if renditions_urls.audio else None
+        subtitle = (
+            await self._get_m3u8(renditions_urls.subtitle, headers, "subtitles") if renditions_urls.subtitle else None
+        )
         return m3u8.RenditionGroup(video, audio, subtitle), rendition_group_info
 
     async def get_m3u8_from_index_url(
         self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None
     ) -> m3u8.RenditionGroup:
         """Get m3u8 rendition group from an index that only has 1 rendition, a video (non variant m3u8)"""
-        return m3u8.RenditionGroup(await self._get_m3u8(url, headers))
+        return m3u8.RenditionGroup(await self._get_m3u8(url, headers, "video"))
 
-    async def _get_m3u8(self, url: AbsoluteHttpURL, /, headers: dict[str, str] | None = None) -> m3u8.M3U8:
-        content = await (await self.request(url, headers=headers)).text()
-        return m3u8.M3U8(content, url.parent)
+    async def _get_m3u8(
+        self,
+        url: AbsoluteHttpURL,
+        /,
+        headers: dict[str, str] | None = None,
+        media_type: Literal["video", "audio", "subtitles"] | None = None,
+    ) -> m3u8.M3U8:
+        content = await self.request_text(url, headers=headers)
+        return m3u8.M3U8(content, url.parent, media_type)
 
     def create_custom_filename(
         self,
@@ -700,12 +747,13 @@ class Crawler(ABC):
         file_id: str | None = None,
         video_codec: str | None = None,
         audio_codec: str | None = None,
-        resolution: m3u8.Resolution | str | int | None = None,
+        resolution: Resolution | str | int | None = None,
         hash_string: str | None = None,
         only_truncate_stem: bool = True,
     ) -> str:
         calling_args = {name: value for name, value in locals().items() if value is not None and name not in ("self",)}
-        stem = sanitize_filename(Path(name).as_posix().replace("/", "-"))  # remove OS separators (if any)
+        # remove OS separators (if any)
+        stem = sanitize_filename(Path(name).as_posix().replace("/", "-")).strip()
         extra_info: list[str] = []
 
         if _placeholder_config.include_file_id and file_id:
@@ -716,19 +764,9 @@ class Crawler(ABC):
             extra_info.append(audio_codec)
 
         if _placeholder_config.include_resolution and resolution:
-            if isinstance(resolution, m3u8.Resolution):
-                resolution = resolution.name
-            if isinstance(resolution, str):
-                if (digits := resolution.casefold().removesuffix("p")).isdigit():
-                    extra_info.append(f"{digits}p")
-                else:
-                    resolution_ = next(
-                        (p for p in VALID_RESOLUTION_NAMES if resolution.casefold() == p.casefold()), None
-                    )
-                    assert resolution_, f"Invalid: {resolution = }"
-                    extra_info.append(resolution_)
-            else:
-                extra_info.append(f"{resolution}p")
+            if not isinstance(resolution, Resolution):
+                resolution = Resolution.parse(resolution)
+            extra_info.append(resolution.name)
 
         if _placeholder_config.include_hash and hash_string:
             assert any(hash_string.startswith(x) for x in HASH_PREFIXES), f"Invalid: {hash_string = }"

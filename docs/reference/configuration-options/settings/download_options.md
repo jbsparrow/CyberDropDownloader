@@ -199,7 +199,7 @@ Setting it to `{default}` will use the default format, which is different for ea
 | `Discourse`                           | `{date} - {id} - {title}`          |
 | `Reddit`                              | `{title}`                          |
 | `WordPress`                           | `{date:%Y-%m-%d} - {id} - {title}` |
-| `eFukt`                               | `{date:%Y-%m-%d} {title}`         |
+| `eFukt`                               | `{date:%Y-%m-%d} {title}`          |
 
 A date without a `format_spec` defaults to ISO 8601 format
 
@@ -271,3 +271,72 @@ Consider CDL finds the following sub-threads while scraping an input URL:
 - With `maximum_thread_depth` = 0, CDL will only download files in `thread_01`, all the other threads will be ignored
 - With `maximum_thread_depth` = 1, CDL will only download files in `thread_01` to `thread_08`. All threads from `thread_09` to `thread_12` will be ignored
 - With `maximum_thread_depth` >= 2, CDL will download files from all the threads in this case
+
+## `maximum_thread_folder_depth`
+
+| Type                       | Default |
+| -------------------------- | ------- |
+| `NonNegativeInt` or `None` | `None`  |
+
+
+
+Restricts the max number of nested folders CDL will create when `maximum_thread_depth` is greater that 0
+
+Values:
+
+- `None`: Create as many nested folders as required (AKA, the same number as  `maximum_thread_depth` allows)
+- `0`: Do not create subfolders, use a flat structure for any nested thread.
+- `1+`: Create a max of `n` folders
+
+
+### Example
+
+- With `maximum_thread_folder_depth` = None:
+
+```bash
+└── thread_01
+    ├── thread_02
+    ├── thread_03
+    │   ├── thread_09
+    │   ├── thread_10
+    │   └── thread_11
+    ├── thread_04
+    ├── thread_05
+    ├── thread_06
+    ├── thread_07
+    │   └── thread_12
+    └── thread_08
+```
+- With `maximum_thread_folder_depth` = 0:
+
+```bash
+├── thread_01
+├── thread_02
+├── thread_03
+├── thread_09
+├── thread_10
+├── thread_11
+├── thread_04
+├── thread_05
+├── thread_06
+├── thread_07
+├── thread_12
+└── thread_08
+```
+
+- With `maximum_thread_folder_depth` = 1:
+
+```bash
+└── thread_01
+    ├── thread_02
+    ├── thread_03
+    ├── thread_09
+    ├── thread_10
+    ├── thread_11
+    ├── thread_04
+    ├── thread_05
+    ├── thread_06
+    ├── thread_07
+    ├── thread_12
+    └── thread_08
+```

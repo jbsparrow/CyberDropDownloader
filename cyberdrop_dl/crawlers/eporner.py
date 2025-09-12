@@ -4,6 +4,7 @@ import dataclasses
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
@@ -49,8 +50,8 @@ class Video:
 
 
 class VideoSource(NamedTuple):
-    codec: str  # av1 > h264
-    resolution: str
+    codec: str  # h264 > av1
+    resolution: Resolution
     size: str
     url: str
 
@@ -61,7 +62,7 @@ class VideoSource(NamedTuple):
         details = name.split("(", 1)[1].removesuffix(")").split(",")
         res, codec, size = [d.strip() for d in details]
         codec = codec.lower()
-        return cls(codec, res, size, link_str)
+        return cls(codec, Resolution.parse(res), size, link_str)
 
 
 class EpornerCrawler(Crawler):
@@ -116,7 +117,7 @@ class EpornerCrawler(Crawler):
             url = canonical_url / part
             async for soup in self.web_pager(url):
                 for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem, from_profile: bool = False) -> None:
@@ -131,7 +132,7 @@ class EpornerCrawler(Crawler):
                 scrape_item.setup_as_album(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
@@ -156,8 +157,7 @@ class EpornerCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         scrape_item.url = canonical_url
         link_str = css.select_one_get_attr(soup, _SELECTORS.PHOTO, "href")
@@ -172,8 +172,7 @@ class EpornerCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         soup_str = soup.text
         if "File has been removed due to copyright owner request" in soup_str:
@@ -203,11 +202,7 @@ def _get_available_sources(soup: BeautifulSoup) -> list[VideoSource]:
 
 def _get_best_src(soup: BeautifulSoup) -> VideoSource:
     formats = _get_available_sources(soup)
-    for res in RESOLUTIONS:
-        sorted_formats = sorted(f for f in formats if f.resolution == res and not f.url.endswith(".m3u8"))
-        if sorted_formats:
-            return sorted_formats[0]
-    raise ScrapeError(422, message="Unable to parse video formats")
+    return max(f for f in formats if f.url.endswith(".m3u8"))
 
 
 def _parse_video(soup: BeautifulSoup) -> Video:

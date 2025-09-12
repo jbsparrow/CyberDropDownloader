@@ -9,8 +9,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 IMAGE_SELECTOR = "div[class=block-video] a img"
@@ -47,15 +45,14 @@ class NudoStarTVCrawler(Crawler):
                 raise ScrapeError(404)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, CONTENT_SELECTOR):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         link_str = css.select_one_get_attr(soup, IMAGE_SELECTOR, "src")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)

@@ -64,7 +64,7 @@ class ProgressManager:
         self.status_message_task_id: TaskID = field(init=False)
 
     @asynccontextmanager
-    async def show_status_msg(self, msg: str | None) -> AsyncGenerator:
+    async def show_status_msg(self, msg: str | None) -> AsyncGenerator[None]:
         try:
             self.status_message.update(self.status_message_task_id, description=msg, visible=bool(msg))
             yield

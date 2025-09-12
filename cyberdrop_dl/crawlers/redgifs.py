@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 # Primary URL needs `www.` to prevent redirect
 PRIMARY_URL = AbsoluteHttpURL("https://www.redgifs.com/")
-API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/v2")
 
 
 class Links(TypedDict, total=False):
@@ -53,7 +53,7 @@ class RedGifsCrawler(Crawler):
         self.headers = {}
 
     async def async_startup(self) -> None:
-        await self.get_auth_token(API_ENTRYPOINT / "v2/auth/temporary")
+        await self.get_auth_token(API_ENTRYPOINT / "auth/temporary")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -64,7 +64,7 @@ class RedGifsCrawler(Crawler):
 
         if self.is_self_subdomain(scrape_item.url) and len(scrape_item.url.parts) == 2:
             scrape_item.url = _canonical_url(scrape_item.url.name)
-            self.manager.task_group.create_task(self.run(scrape_item))
+            self.create_task(self.run(scrape_item))
             return
 
         raise ValueError
@@ -83,11 +83,8 @@ class RedGifsCrawler(Crawler):
     async def _user_profile_pager(self, user_id: str) -> AsyncIterable[list[Gif]]:
         total_pages: int | None = None
         for page in itertools.count(1):
-            async with self.request_limiter:
-                api_url = API_ENTRYPOINT / "v2/users" / user_id / "search"
-                api_url = api_url.with_query(order="new", page=page)
-                json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
-
+            api_url = (API_ENTRYPOINT / "users" / user_id / "search").with_query(order="new", page=page)
+            json_resp: dict[str, Any] = await self.request_json(api_url, headers=self.headers)
             gifs_in_current_page = [Gif.from_dict(gif) for gif in json_resp["gifs"]]
             yield gifs_in_current_page
 
@@ -107,10 +104,8 @@ class RedGifsCrawler(Crawler):
             return
 
         scrape_item.url = canonical_url
-        async with self.request_limiter:
-            api_url = API_ENTRYPOINT / "v2/gifs" / post_id
-            json_resp: dict[str, dict] = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
-
+        api_url = API_ENTRYPOINT / "gifs" / post_id
+        json_resp: dict[str, dict] = await self.request_json(api_url, headers=self.headers)
         gif = Gif.from_dict(json_resp["gif"])
         if gif.title:
             scrape_item.setup_as_album(self.create_title(gif.title))
@@ -123,8 +118,7 @@ class RedGifsCrawler(Crawler):
 
     @error_handling_wrapper
     async def get_auth_token(self, token_url: AbsoluteHttpURL) -> None:
-        async with self.request_limiter:
-            json_obj = await self.client.get_json(self.DOMAIN, token_url)
+        json_obj: dict[str, Any] = await self.request_json(token_url)
         token: str = json_obj["token"]
         self.headers = {"Authorization": f"Bearer {token}"}
 

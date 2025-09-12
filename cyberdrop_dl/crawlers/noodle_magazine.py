@@ -4,18 +4,14 @@ import itertools
 import json
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
-from aiolimiter import AsyncLimiter
-from bs4 import BeautifulSoup
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -26,12 +22,12 @@ VIDEOS_SELECTOR = "div#list_videos a.item_link"
 
 
 class Source(NamedTuple):
-    resolution: int
+    resolution: Resolution
     file: str
 
     @staticmethod
     def new(source_dict: dict[str, Any]) -> Source:
-        resolution = int(source_dict["label"])
+        resolution = Resolution.parse(source_dict["label"])
         return Source(resolution, source_dict["file"])
 
 
@@ -44,9 +40,7 @@ class NoodleMagazineCrawler(Crawler):
     DOMAIN: ClassVar[str] = "noodlemagazine"
     FOLDER_DOMAIN: ClassVar[str] = "NoodleMagazine"
     _DOWNLOAD_SLOTS: ClassVar[int | None] = 2
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 3)
+    _RATE_LIMIT = 1, 3
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "video" in scrape_item.url.parts:
@@ -63,8 +57,7 @@ class NoodleMagazineCrawler(Crawler):
         for page in itertools.count(1, init_page):
             n_videos = 0
             page_url = scrape_item.url.with_query(p=page)
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url, impersonate=True)
 
             if not title:
                 search_string: str = css.select_one_get_text(soup, SEARCH_STRING_SELECTOR)
@@ -76,7 +69,7 @@ class NoodleMagazineCrawler(Crawler):
                 if new_scrape_item.url not in seen_urls:
                     seen_urls.add(new_scrape_item.url)
                     n_videos += 1
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    self.create_task(self.run(new_scrape_item))
 
             if n_videos < 24:
                 break
@@ -85,8 +78,7 @@ class NoodleMagazineCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item.url):
             return
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
 
         metadata_text = css.select_one(soup, METADATA_SELECTOR).get_text()
         metadata = json.loads(metadata_text.strip())

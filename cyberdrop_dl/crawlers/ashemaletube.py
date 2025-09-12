@@ -4,8 +4,6 @@ import json
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -81,9 +79,7 @@ class AShemaleTubeCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "aShemaleTube"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 10)
+    _RATE_LIMIT = 3, 10
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
@@ -108,7 +104,7 @@ class AShemaleTubeCrawler(Crawler):
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.GALLERY_ALBUM):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -132,7 +128,7 @@ class AShemaleTubeCrawler(Crawler):
                 else:
                     scrape_item.setup_as_album(collection_title)
             for _, new_scrape_item in self.iter_children(scrape_item, soup, MEDIA_SELECTOR_MAP[collection_type]):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     def create_collection_title(self, soup: BeautifulSoup, collection_type: CollectionType) -> str:
         title_elem = soup.select_one(TITLE_SELECTOR_MAP[collection_type])
@@ -147,8 +143,7 @@ class AShemaleTubeCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item.url):
             return
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
         img_item = soup.select_one(_SELECTORS.IMAGE_ITEM)
         if not img_item:
             raise ScrapeError(404)
@@ -173,8 +168,7 @@ class AShemaleTubeCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
 
         if soup.select_one(_SELECTORS.LOGIN_REQUIRED):
             raise ScrapeError(401)

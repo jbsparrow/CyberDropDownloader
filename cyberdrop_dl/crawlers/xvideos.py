@@ -179,28 +179,35 @@ class XVideosCrawler(Crawler):
                 self.create_task(self.direct_file(scrape_item, src))
 
     async def _get_soup(self, url: AbsoluteHttpURL) -> BeautifulSoup:
-        async with self._domain_locks[url.host]:
-            if url.host not in self._seen_domains:
-                await self._disable_auto_translated_titles(url.origin())
-                self._seen_domains.add(url.host)
+        if url.host not in self._seen_domains:
+            async with self._domain_locks[url.host]:
+                if url.host not in self._seen_domains:
+                    await self._disable_auto_translated_titles(url.origin())
+                    self._seen_domains.add(url.host)
 
-        async with self.request_limiter:
-            return await self.client.get_soup(self.DOMAIN, url, self._headers)
+        return await self.request_soup(url, headers=self._headers)
 
     async def _disable_auto_translated_titles(self, origin: AbsoluteHttpURL) -> None:
-        async with self.request_limiter:
-            await self.client._get(self.DOMAIN, origin / "change-language/en", self._headers)
-            json_resp = await self.client.post_data(
-                self.DOMAIN, origin / "account/feature-disabled", self._headers, data={"featureid": "at"}
-            )
+        async with self.request(origin / "change-language/en", headers=self._headers):
+            pass
+
+        json_resp: dict[str, Any] = await self.request_json(
+            origin / "account/feature-disabled",
+            method="POST",
+            headers=self._headers,
+            data={"featureid": "at"},
+        )
         if json_resp["code"] != 0:
             self.disabled = True
             raise ScrapeError(json_resp["code"])
 
     async def _iter_api_pages(self, scrape_item: ScrapeItem, api_url: AbsoluteHttpURL, new_part: str) -> None:
         for page in itertools.count(0):
-            async with self.request_limiter:
-                json_resp: dict[str, Any] = await self.client.post_data(self.DOMAIN, api_url / str(page), self._headers)
+            json_resp: dict[str, Any] = await self.request_json(
+                api_url / str(page),
+                method="POST",
+                headers=self._headers,
+            )
 
             if json_resp["code"] != 0:
                 raise ScrapeError(json_resp["code"])

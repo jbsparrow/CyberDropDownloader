@@ -3,8 +3,6 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import LoginError
@@ -41,9 +39,7 @@ class NHentaiCrawler(Crawler):
     NEXT_PAGE_SELECTOR = "a.next"
     DOMAIN = "nhentai.net"
     FOLDER_DOMAIN = "nHentai"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(4, 1)
+    _RATE_LIMIT = 4, 1
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -80,14 +76,11 @@ class NHentaiCrawler(Crawler):
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         gallery_id = scrape_item.url.name
         api_url = self.PRIMARY_URL / "api/gallery" / gallery_id
-
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.request_json_cffi(self.DOMAIN, api_url)
+        json_resp: dict[str, Any] = await self.request_json(api_url, impersonate=True)
 
         titles: dict[str, str] = json_resp["title"]
         title: str = titles.get("english") or titles.get("japanese") or titles["pretty"]
-        title = self.create_title(title, gallery_id)
-        scrape_item.setup_as_album(title, album_id=gallery_id)
+        scrape_item.setup_as_album(self.create_title(title, gallery_id), album_id=gallery_id)
         scrape_item.possible_datetime = json_resp["upload_date"]
 
         padding = max(3, len(str(json_resp["num_pages"])))

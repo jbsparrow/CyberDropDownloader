@@ -5,11 +5,9 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, with_suffix_encoded
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -46,8 +44,7 @@ class HotPicCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         album_id = scrape_item.url.parts[2]
         title = self.create_title(css.select_one_get_text(soup, "title").rsplit(" - ")[0], scrape_item.album_id)
@@ -61,8 +58,7 @@ class HotPicCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         link_str = css.select_one_get_attr(soup, _SELECTORS.IMAGE_OR_VIDEO, "src")
         link = self.parse_url(link_str)
@@ -81,7 +77,7 @@ def thumbnail_to_img(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         return url
     if (new_ext := ".mp4") != url.suffix:
         new_ext = ".jpg"
-    url = with_suffix_encoded(url, new_ext)
+    url = url.with_suffix(new_ext)
     new_parts = [p for p in url.parts if p not in ("/", "thumb")]
     new_path = "/".join(new_parts)
     return url.with_path(new_path)

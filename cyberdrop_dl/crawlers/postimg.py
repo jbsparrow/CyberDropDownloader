@@ -9,8 +9,6 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://postimages.org/")
@@ -39,13 +37,15 @@ class PostImgCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         data = {"action": "list", "album": scrape_item.url.raw_name, "page": 0}
         title: str = ""
+        album_id = scrape_item.url.parts[2]
         for page in itertools.count(1):
-            data["page"] = page
-            async with self.request_limiter:
-                json_resp = await self.client.post_data(self.DOMAIN, API_ENTRYPOINT, data=data)
+            json_resp = await self.request_json(
+                API_ENTRYPOINT,
+                method="POST",
+                data=data | {"page": page},
+            )
 
             if not title:
-                album_id = scrape_item.url.parts[2]
                 title = self.create_title(scrape_item.url.name, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
 
@@ -64,8 +64,7 @@ class PostImgCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         link_str: str = css.select_one_get_attr(soup, DOWNLOAD_BUTTON_SELECTOR, "href")
         link = self.parse_url(link_str).with_query(None)

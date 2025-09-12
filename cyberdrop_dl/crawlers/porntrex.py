@@ -4,8 +4,6 @@ import itertools
 import re
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -63,9 +61,7 @@ class PorntrexCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
     DOMAIN: ClassVar[str] = "porntrex"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 10)
+    _RATE_LIMIT = 3, 10
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.name:  # The ending slash is necessary or we get a 404 error
@@ -84,8 +80,7 @@ class PorntrexCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         album_id = scrape_item.url.parts[2]
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if "This album is a private album" in soup.text:
             raise ScrapeError(401, "Private album")
@@ -108,8 +103,7 @@ class PorntrexCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         video = get_video_info(soup)
         link = self.parse_url(video.url)
@@ -122,8 +116,7 @@ class PorntrexCrawler(Crawler):
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if "models" in scrape_item.url.parts:
             title: str = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME).title()
@@ -151,7 +144,7 @@ class PorntrexCrawler(Crawler):
         last_page: int = int(last_page_tag[-1].get_text(strip=True)) if last_page_tag else 1
 
         for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_OR_ALBUMS):
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
 
         await self.proccess_additional_pages(scrape_item, last_page)
 
@@ -161,11 +154,10 @@ class PorntrexCrawler(Crawler):
 
         elif "members" in scrape_item.url.parts:
             albums_url = scrape_item.url / "albums"
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, albums_url)
+            soup = await self.request_soup(albums_url)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUMS, new_title_part="albums"):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     async def proccess_additional_pages(self, scrape_item: ScrapeItem, last_page: int, **kwargs: str) -> None:
         block_id: str = "list_videos_common_videos_list_norm"
@@ -200,11 +192,10 @@ class PorntrexCrawler(Crawler):
             if page > last_page:
                 break
             page_url = page_url.update_query({from_param_name: page})
-            async with self.request_limiter:
-                soup = await self.client.get_soup(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_OR_ALBUMS):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
 
 def get_video_info(soup: BeautifulSoup) -> Video:

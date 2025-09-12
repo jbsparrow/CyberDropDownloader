@@ -65,8 +65,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
 
     async def make_request(self, model_cls: type[_ModelT], path: str, params: dict[str, Any] | None = None) -> _ModelT:
         api_url = self.PRIMARY_URL.joinpath(path)
-        async with self.request_limiter:
-            json_text = await self.client.get_text(self.DOMAIN, api_url, request_params={"params": params})
+        json_text = await self.request_text(api_url, params=params)
         return model_cls.model_validate_json(json_text, by_alias=True, by_name=True)
 
     @error_handling_wrapper
@@ -87,13 +86,13 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
             await self.handle_link(scrape_item, self.parse_url(topic.image_url))
         await self.process_posts(scrape_item, topic)
 
-    async def forum(self, scrape_item: ScrapeItem) -> None:
+    async def forum(self, scrape_item: ScrapeItem, /) -> None:
         raise NotImplementedError
 
     def parse_thread(self, *args, **kwargs) -> None:
         raise NotImplementedError
 
-    async def thread(self, scrape_item: ScrapeItem, thread: Topic) -> None:
+    async def thread(self, scrape_item: ScrapeItem, /, thread: Topic) -> None:
         await self.topic(scrape_item, thread)
 
     @error_handling_wrapper
@@ -127,7 +126,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
                 if topic.init_post_number != 1 and self.scrape_single_forum_post:
                     return
 
-    async def post(self, scrape_item: ScrapeItem, post: AvailablePost) -> None:
+    async def post(self, scrape_item: ScrapeItem, /, post: AvailablePost) -> None:
         title = self.create_separate_post_title(post.title, str(post.id), post.created_at)
         scrape_item.setup_as_post(title)
         for link in self.extract_links(post):
@@ -149,7 +148,7 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
         return unique(iter_links())
 
     def parse_url(
-        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool = True
+        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool | None = None
     ) -> AbsoluteHttpURL:
         return _clean_url(super().parse_url(link_str, relative_to, trim=trim))
 

@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
@@ -60,9 +58,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
     }
 
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 10)
+    _RATE_LIMIT = 3, 10
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("categories", "tags")) or scrape_item.url.query.get("q"):
@@ -79,8 +75,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         title = ""
         if (search_query := scrape_item.url.query.get("q")) or scrape_item.url.parts[1] == "search":
             search_query = search_query or scrape_item.url.parts[2]
@@ -100,8 +95,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         user_name: str = css.select_one_get_text(soup, _SELECTORS.USER_NAME).split("'s Profile")[0].strip()
         title = f"{user_name} [user]"
@@ -119,16 +113,14 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         url = scrape_item.url / video_category if video_category else scrape_item.url
         async for soup in self.web_pager(url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
+        soup = await self.request_soup(scrape_item.url)
         video = self.get_video_info(soup)
         filename, ext = self.get_filename_and_ext(video.url.name)
         custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.res)
@@ -140,25 +132,22 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-
-        js_text: str = css.select_one_get_text(soup, _SELECTORS.ALBUM_ID)
-        album_id: str = get_text_between(js_text, "params['album_id'] =", ";").strip()
+        soup = await self.request_soup(scrape_item.url)
+        js_text = css.select_one_get_text(soup, _SELECTORS.ALBUM_ID)
+        album_id = get_text_between(js_text, "params['album_id'] =", ";").strip()
         results = await self.get_album_results(album_id)
-        title: str = css.select_one_get_text(soup, _SELECTORS.ALBUM_NAME)
+        title = css.select_one_get_text(soup, _SELECTORS.ALBUM_NAME)
         title = self.create_title(f"{title} [album]", album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
         for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM_PICTURES, results=results):
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def picture(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
         url = self.parse_url(css.select_one_get_attr(soup, _SELECTORS.PICTURE, "src"))
         filename, ext = self.get_filename_and_ext(url.name)
         await self.handle_file(url, scrape_item, filename, ext)

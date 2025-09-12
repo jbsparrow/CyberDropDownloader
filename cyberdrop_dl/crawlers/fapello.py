@@ -2,16 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -30,9 +26,7 @@ class FapelloCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = 'div[id="next_page"] a'
     DOMAIN: ClassVar[str] = "fapello"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(5, 1)
+    _RATE_LIMIT = 5, 1
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.name:
@@ -62,8 +56,7 @@ class FapelloCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         content = css.select_one(soup, POST_CONTENT_SELECTOR)
         for _, link in self.iter_tags(content, "img, source"):

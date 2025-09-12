@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -22,9 +20,7 @@ class FilesVcCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "files.vc"
     FOLDER_DOMAIN: ClassVar[str] = "FilesVC"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(1, 1)
+    _RATE_LIMIT = 1, 1
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.path == "/d/dl" and scrape_item.url.query.get("hash"):
@@ -39,8 +35,7 @@ class FilesVcCrawler(Crawler):
         hash = scrape_item.url.query["hash"]
         api_url = API_ENTRYPOINT.joinpath("info").with_query(hash=hash)
 
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url)
+        json_resp: dict[str, Any] = await self.request_json(api_url)
 
         filename, ext = self.get_filename_and_ext(json_resp["filename"], assume_ext=".zip")
         scrape_item.possible_datetime = self.parse_date(json_resp["upload_time"])

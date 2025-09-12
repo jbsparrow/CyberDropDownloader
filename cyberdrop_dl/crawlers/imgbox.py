@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
-
-if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
 
 PRIMARY_URL = AbsoluteHttpURL("https://imgbox.com")
 IMAGES_SELECTOR = "div#gallery-view-content img"
@@ -37,8 +34,7 @@ class ImgBoxCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if "The specified gallery could not be found" in soup.text:
             raise ScrapeError(404)
@@ -62,8 +58,7 @@ class ImgBoxCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         link_str: str = css.select_one_get_attr(soup, IMAGE_SELECTOR, "src")
         link = self.parse_url(link_str)
