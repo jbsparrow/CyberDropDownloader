@@ -193,7 +193,7 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
 
     apprise_obj = apprise.Apprise()
     for apprise_url in apprise_urls:
-        apprise_obj.add(apprise_url.url, tag=apprise_url.tags)
+        apprise_obj.add(apprise_url.url, tag=list(apprise_url.tags))
 
     main_log = manager.path_manager.main_log
     results = {}
