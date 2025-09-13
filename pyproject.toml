@@ -8,7 +8,6 @@ dependencies = [
     "aiolimiter >=1.2.1",
     "aiosqlite==0.17.0",
     "apprise >=1.9.4",
-    "arrow >=1.3.0",
     "asyncpraw >=7.8.1",
     "beautifulsoup4 ==4.13.4",  # TODO: Fix "replaced with REPLACEMENT CHARACTER" warnings for 4.13.5 [bug=2112242]
     "browser-cookie3 >=0.20.1",
