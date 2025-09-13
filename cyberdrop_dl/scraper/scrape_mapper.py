@@ -27,7 +27,7 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_trailing_slash
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Sequence
+    from collections.abc import AsyncGenerator, Generator, Sequence
     from types import TracebackType
 
     from cyberdrop_dl.config.global_model import GenericCrawlerInstances, GlobalSettings
@@ -149,19 +149,17 @@ class ScrapeMapper:
         current_group_name = ""
         async with aiofiles.open(input_file, encoding="utf8") as f:
             async for line in f:
-                assert isinstance(line, str)
-
                 if line.startswith(("---", "===")):  # New group begins here
                     current_group_name = line.replace("---", "").replace("===", "").strip()
 
                 if current_group_name:
                     self.groups.add(current_group_name)
-                    yield (current_group_name, regex_links(line))
+                    yield (current_group_name, list(regex_links(line)))
                     continue
 
                 block_quote = not block_quote if line == "#\n" else block_quote
                 if not block_quote:
-                    yield ("", regex_links(line))
+                    yield ("", list(regex_links(line)))
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
 
@@ -360,21 +358,23 @@ class ScrapeMapper:
             return crawler
 
 
-def regex_links(line: str) -> list[AbsoluteHttpURL]:
+def regex_links(line: str) -> Generator[AbsoluteHttpURL]:
     """Regex grab the links from the URLs.txt file.
 
     This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt.
     """
 
-    if line.lstrip().rstrip().startswith("#"):
-        return []
+    line = line.strip()
+    if line.startswith("#"):
+        return
 
-    yarl_links = []
-    all_links = [x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line)]
-    for link in all_links:
-        encoded = "%" in link
-        yarl_links.append(AbsoluteHttpURL(link, encoded=encoded))
-    return yarl_links
+    http_urls = (x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line))
+    for link in http_urls:
+        try:
+            encoded = "%" in link
+            yield AbsoluteHttpURL(link, encoded=encoded)
+        except Exception as e:
+            log(f"Unable to parse URL from input file: {link} {e:r}", 40)
 
 
 def create_item_from_entry(entry: Sequence) -> ScrapeItem:
