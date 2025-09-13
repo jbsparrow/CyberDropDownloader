@@ -33,7 +33,7 @@ class Selector:
     UNAUTHORIZED = "div.video-holder:contains('This video is a private video')"
     VIDEO_VARS = "script:contains('video_title:')"
     VIDEOS = "div#list_videos_common_videos_list_items a"
-    MODEL_NAME = "h1.model-name"
+    MODEL_NAME = "div.pb-model-title .model-name"
     ITEM = "a[href].pb-item-link"
     ALBUM_TAB = "a.pb-heading-h2[href*='/albums/models/']"
     ALBUM_TITLE = ".pb-view-album-title h1"
