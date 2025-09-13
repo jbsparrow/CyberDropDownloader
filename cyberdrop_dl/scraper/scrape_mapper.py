@@ -374,7 +374,7 @@ def regex_links(line: str) -> Generator[AbsoluteHttpURL]:
             encoded = "%" in link
             yield AbsoluteHttpURL(link, encoded=encoded)
         except Exception as e:
-            log(f"Unable to parse URL from input file: {link} {e:r}", 40)
+            log(f"Unable to parse URL from input file: {link} {e:!r}", 40)
 
 
 def create_item_from_entry(entry: Sequence) -> ScrapeItem:
