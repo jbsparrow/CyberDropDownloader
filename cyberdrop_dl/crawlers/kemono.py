@@ -85,6 +85,7 @@ class Post(AliasModel):
     attachments: list[File] = []  # noqa: RUF012
     published_or_added: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
     date: int | None = None
+    tags: list[str] = []  # noqa: RUF012
 
     # `Any` to skip validation, but these are `yarl.URL`. We generate them internally so no validation is needed
     soup_attachments: list[Any] = []  # noqa: RUF012
@@ -407,8 +408,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                         yield url
 
     def __handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
-        if "#ad" in post.content and self.ignore_ads:
-            return
+        if self.ignore_ads:
+            if "#ad" in post.content:
+                return
+            ci_tags = {tag.casefold() for tag in post.tags}
+            if "ad" in ci_tags or "ads" in ci_tags:
+                return
 
         for file in post.all_files:
             file_url = self.__make_file_url(file)
