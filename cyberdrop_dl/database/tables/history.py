@@ -285,8 +285,6 @@ class HistoryTable:
             yield cast("list[Row]", rows)
 
     async def get_all_bunkr_failed(self) -> AsyncGenerator[list[Row]]:
-        # TODO: Make this one a generator instead of combining both lists.
-        # These lists can be huge
         async for rows in self.get_all_bunkr_failed_via_hash():
             yield rows
         async for rows in self.get_all_bunkr_failed_via_size():
