@@ -9,6 +9,7 @@ from .definitions import create_fixed_history, create_history
 
 if TYPE_CHECKING:
     import datetime
+    from collections.abc import AsyncGenerator
 
     import aiosqlite
     from yarl import URL
@@ -16,6 +17,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.database import Database
+
+
+_FETCH_MANY_SIZE = 1000
 
 
 def get_db_path(url: URL, domain: str = "") -> str:
@@ -255,13 +259,14 @@ class HistoryTable:
         if row := await cursor.fetchone():
             return row[0]
 
-    async def get_failed_items(self) -> list[Row]:
+    async def get_failed_items(self) -> AsyncGenerator[list[Row]]:
         """Returns a list of failed items."""
         query = "SELECT referer, download_path,completed_at,created_at FROM media WHERE completed = 0"
         cursor = await self.db_conn.execute(query)
-        return cast("list[Row]", await cursor.fetchall())
+        while rows := await cursor.fetchmany(_FETCH_MANY_SIZE):
+            yield cast("list[Row]", rows)
 
-    async def get_all_items(self, after: datetime.date, before: datetime.date) -> list[Row]:
+    async def get_all_items(self, after: datetime.date, before: datetime.date) -> AsyncGenerator[list[Row]]:
         """Returns a list of all items."""
         query = """
         SELECT referer,download_path,completed_at,created_at
@@ -269,32 +274,35 @@ class HistoryTable:
         ORDER BY completed_at DESC;
         """
         cursor = await self.db_conn.execute(query, (after.isoformat(), before.isoformat()))
-        return cast("list[Row]", await cursor.fetchall())
+        while rows := await cursor.fetchmany(_FETCH_MANY_SIZE):
+            yield cast("list[Row]", rows)
 
-    async def get_unique_download_paths(self) -> list[Row]:
+    async def get_unique_download_paths(self) -> AsyncGenerator[list[Row]]:
         """Returns a list of unique download paths."""
         query = "SELECT DISTINCT download_path FROM media"
         cursor = await self.db_conn.execute(query)
-        return cast("list[Row]", await cursor.fetchall())
+        while rows := await cursor.fetchmany(_FETCH_MANY_SIZE):
+            yield cast("list[Row]", rows)
 
-    async def get_all_bunkr_failed(self) -> list[Row]:
+    async def get_all_bunkr_failed(self) -> AsyncGenerator[list[Row]]:
         # TODO: Make this one a generator instead of combining both lists.
         # These lists can be huge
-        hash_list = await self.get_all_bunkr_failed_via_hash()
-        size_list = await self.get_all_bunkr_failed_via_size()
-        return hash_list + size_list
+        async for rows in self.get_all_bunkr_failed_via_hash():
+            yield rows
+        async for rows in self.get_all_bunkr_failed_via_size():
+            yield rows
 
-    async def get_all_bunkr_failed_via_size(self) -> list:
+    async def get_all_bunkr_failed_via_size(self) -> AsyncGenerator[list[Row]]:
         query = "SELECT referer,download_path,completed_at,created_at from media WHERE file_size=322509;"
         try:
             cursor = await self.db_conn.execute(query)
-            return cast("list[Row]", await cursor.fetchall())
+            while rows := await cursor.fetchmany(_FETCH_MANY_SIZE):
+                yield cast("list[Row]", rows)
 
         except Exception as e:
             log(f"Error getting bunkr failed via size: {e}", 40, exc_info=e)
-            return []
 
-    async def get_all_bunkr_failed_via_hash(self) -> list:
+    async def get_all_bunkr_failed_via_hash(self) -> AsyncGenerator[list[Row]]:
         query = """
         SELECT m.referer,download_path,completed_at,created_at
         FROM hash h INNER JOIN media m ON h.download_filename= m.download_filename
@@ -303,10 +311,11 @@ class HistoryTable:
 
         try:
             cursor = await self.db_conn.execute(query)
-            return cast("list[Row]", await cursor.fetchall())
+            while rows := await cursor.fetchmany(_FETCH_MANY_SIZE):
+                yield cast("list[Row]", rows)
+
         except Exception as e:
             log(f"Error getting bunkr failed via hash: {e}", 40, exc_info=e)
-            return []
 
     async def fix_primary_keys(self) -> None:
         domain_column, *_ = await self._get_media_table_columns()
