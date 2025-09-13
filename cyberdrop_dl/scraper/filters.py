@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import datetime
 import inspect
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
-import arrow
 from yarl import URL
 
 import cyberdrop_dl.constants as constants
@@ -15,7 +15,6 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from datetime import date
 
     from aiohttp import ClientResponse
 
@@ -44,12 +43,13 @@ def is_valid_url(scrape_item: ScrapeItem) -> bool:
     return True
 
 
-def is_outside_date_range(scrape_item: ScrapeItem, before: date | None, after: date | None) -> bool:
+def is_outside_date_range(scrape_item: ScrapeItem, before: datetime.date | None, after: datetime.date | None) -> bool:
     skip = False
     item_date = scrape_item.completed_at or scrape_item.created_at
     if not item_date:
         return False
-    if (after and arrow.get(item_date).date() < after) or (before and arrow.get(item_date).date() > before):
+    date = datetime.datetime.fromtimestamp(item_date).date()
+    if (after and date < after) or (before and date > before):
         skip = True
 
     return skip
