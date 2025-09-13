@@ -11,6 +11,7 @@ import re
 import sys
 import unicodedata
 from collections.abc import Mapping
+from dataclasses import dataclass
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
@@ -47,7 +48,7 @@ from cyberdrop_dl.exceptions import (
 from cyberdrop_dl.utils.logger import log, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine, Generator, Iterable, Mapping
+    from collections.abc import Callable, Coroutine, Generator, Iterable, Iterator, Mapping
 
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, AnyURL, MediaItem, ScrapeItem
@@ -261,6 +262,13 @@ def remove_file_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
+@dataclass(slots=True)
+class StackFrame:
+    path: str
+    iterator: Iterator[os.DirEntry] | None
+    kept: bool
+
+
 def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -270,31 +278,66 @@ def purge_dir_tree(dirname: Path) -> None:
     if not dirname.is_dir():
         return
 
-    def get_size(path: Path):
+    def get_size(entry: os.DirEntry) -> int | None:
         try:
-            return path.stat().st_size
-        except (OSError, ValueError):
-            return
+            if entry.is_file(follow_symlinks=False):
+                return entry.stat(follow_symlinks=False).st_size
+        except (OSError, PermissionError):
+            pass
+        return None
 
-    # Use os.walk() to remove empty files and directories in a single pass
-    for dirpath, _dirnames, filenames in os.walk(dirname, topdown=False):
-        dir_path = Path(dirpath)
+    stack: list[StackFrame] = [StackFrame(str(dirname), None, False)]
 
-        # Remove empty files
-        has_non_empty_files = False
-        for file_name in filenames:
-            file_path = dir_path / file_name
-            if get_size(file_path) == 0:
-                file_path.unlink()
-            else:
-                has_non_empty_files = True
+    while stack:
+        frame = stack[-1]
 
-        # Remove empty directories
-        if not has_non_empty_files:
+        if frame.iterator is None:
             try:
-                dir_path.rmdir()
-            except OSError:
-                continue
+                frame.iterator = os.scandir(frame.path)
+            except (OSError, PermissionError):
+                frame.iterator = iter(())
+                frame.kept = True
+            continue
+
+        try:
+            entry = next(frame.iterator)
+        except StopIteration:
+            try:
+                frame.iterator.close()
+            except Exception:
+                pass
+
+            # Remove empty directories
+            if not frame.kept:
+                try:
+                    Path(frame.path).rmdir()
+                except OSError:
+                    pass
+
+            # Pop the frame and propagate kept status to parent
+            stack.pop()
+            if stack and frame.kept:
+                parent = stack[-1]
+                if not parent.kept:
+                    parent.kept = True
+            continue
+
+        try:
+            # Remove empty files
+            if entry.is_file(follow_symlinks=False):
+                if get_size(entry) == 0:
+                    try:
+                        Path(entry.path).unlink()
+                    except OSError:
+                        frame.kept = True
+                else:
+                    frame.kept = True
+            elif entry.is_dir(follow_symlinks=False):
+                stack.append(StackFrame(entry.path, None, False))
+            else:
+                frame.kept = True
+        except (OSError, PermissionError):
+            frame.kept = True
 
 
 def check_partials_and_empty_folders(manager: Manager):
