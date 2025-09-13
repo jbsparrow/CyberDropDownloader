@@ -159,7 +159,7 @@ class Crawler(ABC):
             self.client.client_manager._json_response_checks[host] = self._json_response_check
 
     @classmethod
-    def _json_response_check(cls, json: Any) -> None:
+    def _json_response_check(cls, json_resp: Any) -> None:
         """Custom check for JSON responses.
 
         This method is called automatically by the `client_manager` when a JSON response is received from `cls.DOMAIN`

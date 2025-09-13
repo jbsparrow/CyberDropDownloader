@@ -426,20 +426,6 @@ class ClientManager:
                 check(await response.json())
                 return
 
-        if not any(domain in response.url.host for domain in ("gofile", "imgur")):
-            return
-
-        json_resp: dict[str, Any] | None = await response.json()
-        if not json_resp:
-            return
-
-        json_status: str | int | None = json_resp.get("status")
-        if json_status and isinstance(json_status, str) and "notFound" in json_status:
-            raise ScrapeError(404)
-
-        if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
-            raise ScrapeError(json_status or response.status, data["error"])
-
     @staticmethod
     def check_content_length(headers: Mapping[str, Any]) -> None:
         content_length, content_type = headers.get("Content-Length"), headers.get("Content-Type")
