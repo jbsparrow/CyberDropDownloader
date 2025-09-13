@@ -151,6 +151,35 @@ class Crawler(ABC):
     def __post_init__(self) -> None: ...  # noqa: B027
 
     @final
+    def _register_response_checks(self) -> None:
+        if self._json_response_check is Crawler._json_response_check:
+            return
+
+        for host in (self.DOMAIN, self.PRIMARY_URL.host):
+            self.client.client_manager._json_response_checks[host] = self._json_response_check
+
+    @classmethod
+    def _json_response_check(cls, json: Any, /) -> None:
+        """Custom check for JSON responses.
+
+        This method is called automatically by the `client_manager` when a JSON response is received from `cls.DOMAIN`
+        and it was **NOT** successful (`4xx` or `5xx` HTTP code).
+
+        Override this method in subclasses to raise a custom `ScrapeError` instead of the default HTTP error
+
+        Example:
+            ```python
+            if isinstance(json, dict) and json.get("status") == "error":
+                raise ScrapeError(422, f"API error: {json['message']}")
+            ```
+
+        IMPORTANT:
+            Cases were the response **IS** successful (200, OK) but the JSON indicates an error
+            should be handled by the crawler itself
+        """
+        raise NotImplementedError
+
+    @final
     @staticmethod
     def _assert_fields_overrides(subclass: type[Crawler], *fields: str):
         for field_name in fields:
@@ -228,6 +257,7 @@ class Crawler(ABC):
             if self._DOWNLOAD_SLOTS:
                 self.manager.client_manager.download_slots[self.DOMAIN] = self._DOWNLOAD_SLOTS
             self.downloader = self._init_downloader()
+            self._register_response_checks()
             await self.async_startup()
             self.ready = True
 
