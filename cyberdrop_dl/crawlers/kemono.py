@@ -412,7 +412,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if "#ad" in post.content:
                 return
             ci_tags = {tag.casefold() for tag in post.tags}
-            if "ad" in ci_tags or "ads" in ci_tags:
+            if ci_tags.intersection({"ad", "#ad", "ads", "#ads"}):
                 return
 
         for file in post.all_files:
