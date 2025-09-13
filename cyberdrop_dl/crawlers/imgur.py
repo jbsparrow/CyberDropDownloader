@@ -31,6 +31,12 @@ class ImgurCrawler(Crawler):
         self.imgur_client_remaining = 12500
         self.headers = {"Authorization": f"Client-ID {self.imgur_client_id}"}
 
+    @classmethod
+    def _json_response_check(cls, json_resp: Any) -> None:
+        if not isinstance(json_resp, dict) or "data" not in json_resp:
+            return
+        raise ScrapeError(json_resp["status"], json_resp["data"]["error"])
+
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host == "i.imgur.com":
             return await self.handle_direct_link(scrape_item)
