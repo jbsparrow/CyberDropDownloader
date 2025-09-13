@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Self
 
 import aiofiles
-import arrow
 from yarl import URL
 
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
@@ -187,24 +186,23 @@ class ScrapeMapper:
 
     async def load_failed_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads failed links from database."""
-        entries = await self.manager.db_manager.history_table.get_failed_items()
-        for entry in entries:
-            yield create_item_from_entry(entry)
+        async for rows in self.manager.db_manager.history_table.get_failed_items():
+            for row in rows:
+                yield create_item_from_entry(row)
 
     async def load_all_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all links from database."""
-        after = self.manager.parsed_args.cli_only_args.completed_after or date.fromtimestamp(0)
+        after = self.manager.parsed_args.cli_only_args.completed_after or date.min
         before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
-        entries = await self.manager.db_manager.history_table.get_all_items(after, before)
-        for entry in entries:
-            yield create_item_from_entry(entry)
+        async for rows in self.manager.db_manager.history_table.get_all_items(after, before):
+            for row in rows:
+                yield create_item_from_entry(row)
 
     async def load_all_bunkr_failed_links_via_hash(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all bunkr links with maintenance hash."""
-        entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
-        entries = sorted(set(entries), reverse=True, key=lambda x: arrow.get(x[-1]))
-        for entry in entries:
-            yield create_item_from_entry(entry)
+        async for rows in self.manager.db_manager.history_table.get_all_bunkr_failed():
+            for row in rows:
+                yield create_item_from_entry(row)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
