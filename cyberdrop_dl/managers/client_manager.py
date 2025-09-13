@@ -413,7 +413,6 @@ class ClientManager:
         if "json" not in response.content_type:
             return
 
-
         if check := self._json_response_checks.get(response.url.host):
             check(await response.json())
             return
