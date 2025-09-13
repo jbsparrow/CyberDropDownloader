@@ -188,6 +188,14 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     def session_cookie(self) -> str:
         return ""
 
+    @property
+    def ignore_content(self) -> bool:
+        return self.manager.config.ignore_options.ignore_coomer_post_content
+
+    @property
+    def ignore_ads(self) -> bool:
+        return self.manager.config.ignore_options.ignore_coomer_ads
+
     async def async_startup(self) -> None:
         def check_kemono_page(response: AnyResponse) -> bool:
             if any(x in response.url.parts for x in self.SERVICES):
@@ -365,7 +373,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
         """Gets links out of content in post and sends them to a new crawler."""
-        if not post.content:
+        if not post.content or self.ignore_content:
             return
 
         for link in self.__parse_content_urls(post):
@@ -399,6 +407,9 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                         yield url
 
     def __handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
+        if "#ad" in post.content and self.ignore_ads:
+            return
+
         for file in post.all_files:
             file_url = self.__make_file_url(file)
             self.create_task(self.handle_direct_link(scrape_item, file_url))
@@ -454,7 +465,10 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             for post in (UserPost.model_validate(entry) for entry in posts):
                 post_web_url = self.parse_url(post.web_path_qs)
                 new_scrape_item = scrape_item.create_child(post_web_url)
-                self._handle_user_post(new_scrape_item, post)
+                if (self.ignore_content and not self.ignore_ads) or post.content:
+                    self._handle_user_post(new_scrape_item, post)
+                else:
+                    self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
 
             if len(posts) < _DEFAULT_PAGE_SIZE:
