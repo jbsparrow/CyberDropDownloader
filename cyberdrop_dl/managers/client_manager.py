@@ -413,8 +413,6 @@ class ClientManager:
         if "json" not in response.content_type:
             return
 
-        # TODO: Define these checks inside their actual crawlers
-        # and make them register them  on instantation
 
         if check := self._json_response_checks.get(response.url.host):
             check(await response.json())
