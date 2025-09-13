@@ -1,108 +1,178 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+import dataclasses
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.exceptions import LoginError, ScrapeError
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, type_adapter
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-ZIP_REFERENCE = (
-    "[--download-dropbox-folders-as-zip]"
-    "(https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#download-dropbox-folders-as-zip)"
-)
 
-PRIMARY_URL = AbsoluteHttpURL("https://www.dropbox.com/")
+_PRIMARY_URL = AbsoluteHttpURL("https://www.dropbox.com")
+_FOLDERS_API_ENDPOINT = _PRIMARY_URL / "list_shared_link_folder_entries"
+
+
+@dataclasses.dataclass(slots=True)
+class Node:
+    is_dir: bool
+    href: str
+    filename: str
+    secureHash: str = ""  # noqa: N815
+
+
+_parse_node = type_adapter(Node)
 
 
 class DropboxCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "File": (
-            "/scl/fi/<file_id>",
             "/s/...",
-            "/scl/fo/<token1>/<token2>?preview=<filename>",
+            "/scl/fi/<link_key>?rlkey=...",
+            "/scl/fo/<link_key>/<secure_hash>?preview=<filename>&rlkey=...",
         ),
         "Folder": (
-            "/scl/fo/<token1>/<token2>",
             "/sh/...",
+            "/scl/fo/<link_key>/<secure_hash>?rlkey=...",
         ),
-        "**NOTE**": f"Folders will be downloaded as a zip file. See: {ZIP_REFERENCE}",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "dropbox"
 
-    @property
-    def download_folders(self) -> bool:
-        return self.manager.parsed_args.cli_only_args.download_dropbox_folders_as_zip
+    async def async_startup(self) -> None:
+        await self._get_web_token(self.PRIMARY_URL)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """See https://www.dropboxforum.com/discussions/101001012/shared-link--scl-to-s/689070"""
-
-        rlkey = scrape_item.url.query.get("rlkey") or ""
-        preview_filename = scrape_item.url.query.get("preview")
         match scrape_item.url.parts[1:]:
             case ["s" | "sh", _, *_]:
-                return await self.follow_redirect_w_head(scrape_item)
-            case ["scl", "fo", token1, token2]:
-                url = PRIMARY_URL / "scl/fo" / token1 / token2
-                if preview_filename:
-                    url = url.with_query(preview=preview_filename)
-                folder_or_file = DropboxItem(None, rlkey, preview_filename, url)
-                return await self.folder_or_file(scrape_item, folder_or_file)
-            case ["scl", "fi", file_id, *file_name_part]:
-                url = PRIMARY_URL / "scl/fi" / file_id
-                if preview_filename:
-                    file_name = preview_filename
-                elif file_name_part:
-                    file_name = file_name_part[0]
-                else:
-                    file_name = None
-                file = DropboxItem(file_id, rlkey, file_name, url)
-                return await self.folder_or_file(scrape_item, file)
+                return await self.follow_redirect(scrape_item)
+            case ["scl", "fi", _, *_]:
+                return await self.file(scrape_item)
+            case ["scl", "fo", link_key, secure_hash]:
+                return await self.folder(scrape_item, link_key, secure_hash)
+            case ["scl", "fo", link_key, secure_hash, _]:
+                return await self.file(scrape_item)
             case _:
                 raise ValueError
 
     @error_handling_wrapper
-    async def folder_or_file(self, scrape_item: ScrapeItem, item: DropboxItem) -> None:
-        if await self.check_complete_from_referer(item.view_url):
-            return
+    async def follow_redirect(self, scrape_item: ScrapeItem) -> None:
+        async with self.request(scrape_item.url) as resp:
+            if "s" in resp.url.parts or "sh" in resp.url.parts:
+                if "error_pages/no_access" in await resp.text():
+                    raise ScrapeError(401)
+                raise ScrapeError(422, "Infinite redirect")
+        scrape_item.url = resp.url
+        await self.fetch(scrape_item)
 
-        if not item.rlkey:
-            raise ScrapeError(401)
+    @error_handling_wrapper
+    async def folder(self, scrape_item: ScrapeItem, link_key: str, secure_hash: str) -> None:
+        scrape_item.url = await self._ensure_rlkey(scrape_item.url)
+        rlkey = scrape_item.url.query["rlkey"]
+        scrape_item.setup_as_album("")
+        await self._walk_folder(scrape_item, link_key, secure_hash, rlkey)
 
-        if item.is_folder and not self.download_folders:
-            raise ScrapeError(422, message="Folders download is not enabled")
+    @error_handling_wrapper
+    async def file(self, scrape_item: ScrapeItem) -> None:
+        scrape_item.url = await self._ensure_rlkey(scrape_item.url)
+        async with self.request(scrape_item.url.update_query(dl=1)) as resp:
+            self._file(scrape_item, resp.filename)
 
-        scrape_item.url = item.view_url
-        if item.filename:
-            filename = item.filename
-        else:
-            async with self.request(item.download_url) as resp:
-                filename = resp.filename
+    def _file(self, scrape_item: ScrapeItem, filename: str) -> None:
+        scrape_item.url = view_url = scrape_item.url.with_query(rlkey=scrape_item.url.query["rlkey"], dl=0)
+        download_url = view_url.update_query(dl=1)
+        custom_filename, ext = self.get_filename_and_ext(filename)
+        self.create_task(
+            self.handle_file(
+                view_url,
+                scrape_item,
+                filename,
+                ext,
+                debrid_link=download_url,
+                custom_filename=custom_filename,
+            )
+        )
 
-        filename, ext = self.get_filename_and_ext(filename)
-        await self.handle_file(item.url, scrape_item, filename, ext, debrid_link=item.download_url)
+    async def _ensure_rlkey(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        if url.query.get("rlkey"):
+            return url
+        async with self.request(url) as resp:
+            url = resp.url
+        if url.query.get("rlkey"):
+            return url
+        raise ScrapeError(401)
 
+    async def _walk_folder(
+        self,
+        scrape_item: ScrapeItem,
+        link_key: str,
+        secure_hash: str,
+        rlkey: str,
+        subpath: str = "",
+    ) -> None:
+        async for resp in self._web_api_pager(link_key, secure_hash, rlkey, subpath):
+            if "folder" not in resp:
+                return await self.file(scrape_item)
+            folder_name: str = resp["folder"]["filename"]
+            scrape_item.add_to_parent_title(self.create_title(folder_name))
 
-@dataclass(frozen=True, slots=True)
-class DropboxItem:
-    id: str | None
-    rlkey: str
-    filename: str | None
-    url: AbsoluteHttpURL
+            for entry, token in zip(resp["entries"], resp["share_tokens"], strict=True):
+                node = _parse_node(token | entry)
+                view_url = self.parse_url(node.href)
+                new_scrape_item = scrape_item.create_child(view_url)
+                if node.is_dir:
+                    self.create_task(
+                        self._walk_folder(
+                            new_scrape_item,
+                            link_key,
+                            node.secureHash,
+                            rlkey,
+                            f"{subpath}/{node.filename}",
+                        )
+                    )
+                    continue
 
-    @property
-    def is_folder(self) -> bool:
-        return not bool(self.filename) and "fi" not in self.url.parts
+                self._file(new_scrape_item, node.filename)
+                scrape_item.add_children()
 
-    @property
-    def download_url(self) -> AbsoluteHttpURL:
-        return self.url.update_query(dl=1, rlkey=self.rlkey)
+    async def _web_api_pager(
+        self, link_key: str, secure_hash: str, rlkey: str, subpath: str = ""
+    ) -> AsyncGenerator[dict[str, Any]]:
+        payload = {
+            "is_xhr": "true",
+            "t": self._token,
+            "sub_path": subpath,
+            "link_key": link_key,
+            "secure_hash": secure_hash,
+            "rlkey": rlkey,
+            "link_type": "s",
+        }
+        while True:
+            resp: dict[str, Any] = await self.request_json(
+                _FOLDERS_API_ENDPOINT,
+                method="POST",
+                data=payload,
+                headers={
+                    "Origin": str(self.PRIMARY_URL),
+                },
+            )
 
-    @property
-    def view_url(self) -> AbsoluteHttpURL:
-        return self.url.with_query(rlkey=self.rlkey, e=1, dl=0)
+            yield resp
+            if not resp["has_more_entries"]:
+                break
+            payload["voucher"] = resp["next_request_voucher"]
+
+    @error_handling_wrapper
+    async def _get_web_token(self, *_):
+        async with self.request(self.PRIMARY_URL, method="HEAD", cache_disabled=True):
+            token = self.get_cookie_value("t")
+            if not token:
+                self.disabled = True
+                msg = "Unable to get token from dropbox. Crawler has been disabled"
+                raise LoginError(msg)
+            self._token = token

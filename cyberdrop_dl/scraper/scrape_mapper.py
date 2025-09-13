@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Self
 
 import aiofiles
-import arrow
 from yarl import URL
 
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
@@ -27,7 +26,7 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_trailing_slash
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Sequence
+    from collections.abc import AsyncGenerator, Generator, Sequence
     from types import TracebackType
 
     from cyberdrop_dl.config.global_model import GenericCrawlerInstances, GlobalSettings
@@ -149,19 +148,17 @@ class ScrapeMapper:
         current_group_name = ""
         async with aiofiles.open(input_file, encoding="utf8") as f:
             async for line in f:
-                assert isinstance(line, str)
-
                 if line.startswith(("---", "===")):  # New group begins here
                     current_group_name = line.replace("---", "").replace("===", "").strip()
 
                 if current_group_name:
                     self.groups.add(current_group_name)
-                    yield (current_group_name, regex_links(line))
+                    yield (current_group_name, list(regex_links(line)))
                     continue
 
                 block_quote = not block_quote if line == "#\n" else block_quote
                 if not block_quote:
-                    yield ("", regex_links(line))
+                    yield ("", list(regex_links(line)))
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
 
@@ -187,24 +184,23 @@ class ScrapeMapper:
 
     async def load_failed_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads failed links from database."""
-        entries = await self.manager.db_manager.history_table.get_failed_items()
-        for entry in entries:
-            yield create_item_from_entry(entry)
+        async for rows in self.manager.db_manager.history_table.get_failed_items():
+            for row in rows:
+                yield create_item_from_entry(row)
 
     async def load_all_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all links from database."""
-        after = self.manager.parsed_args.cli_only_args.completed_after or date.fromtimestamp(0)
+        after = self.manager.parsed_args.cli_only_args.completed_after or date.min
         before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
-        entries = await self.manager.db_manager.history_table.get_all_items(after, before)
-        for entry in entries:
-            yield create_item_from_entry(entry)
+        async for rows in self.manager.db_manager.history_table.get_all_items(after, before):
+            for row in rows:
+                yield create_item_from_entry(row)
 
     async def load_all_bunkr_failed_links_via_hash(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all bunkr links with maintenance hash."""
-        entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
-        entries = sorted(set(entries), reverse=True, key=lambda x: arrow.get(x[-1]))
-        for entry in entries:
-            yield create_item_from_entry(entry)
+        async for rows in self.manager.db_manager.history_table.get_all_bunkr_failed():
+            for row in rows:
+                yield create_item_from_entry(row)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -360,21 +356,23 @@ class ScrapeMapper:
             return crawler
 
 
-def regex_links(line: str) -> list[AbsoluteHttpURL]:
+def regex_links(line: str) -> Generator[AbsoluteHttpURL]:
     """Regex grab the links from the URLs.txt file.
 
     This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt.
     """
 
-    if line.lstrip().rstrip().startswith("#"):
-        return []
+    line = line.strip()
+    if line.startswith("#"):
+        return
 
-    yarl_links = []
-    all_links = [x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line)]
-    for link in all_links:
-        encoded = "%" in link
-        yarl_links.append(AbsoluteHttpURL(link, encoded=encoded))
-    return yarl_links
+    http_urls = (x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line))
+    for link in http_urls:
+        try:
+            encoded = "%" in link
+            yield AbsoluteHttpURL(link, encoded=encoded)
+        except Exception as e:
+            log(f"Unable to parse URL from input file: {link} {e:!r}", 40)
 
 
 def create_item_from_entry(entry: Sequence) -> ScrapeItem:
