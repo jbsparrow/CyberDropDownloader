@@ -204,7 +204,7 @@ class HashClient:
                 log(msg, 40)
 
         async with asyncio.TaskGroup() as tg:
-            for result in asyncio.as_completed(exists(item) for item in downloads):
+            for result in asyncio.as_completed([exists(item) for item in downloads]):
                 media_item = await result
                 if media_item is not None:
                     tg.create_task(try_hash(media_item))
