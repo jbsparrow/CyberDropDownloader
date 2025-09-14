@@ -26,10 +26,7 @@ class HashManager:
         self.hash_client = HashClient(manager)  # Initialize hash client in constructor
         self.manager = manager
 
-    async def startup(self) -> None:
-        await self.hash_client.startup()
-
-    async def hash_file(self, filename: Path | str, hash_type: str) -> str:
+    async def compute_hash(self, filename: Path | str, hash_type: str) -> str:
         file_path = Path.cwd() / filename
         async with aiofiles.open(file_path, "rb") as fp:
             CHUNK_SIZE = 1024 * 1024  # 1MB

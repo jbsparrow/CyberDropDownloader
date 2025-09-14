@@ -244,8 +244,7 @@ class HistoryTable:
         query = "SELECT EXISTS(SELECT 1 FROM media WHERE download_filename = ?)"
         cursor = await self.db_conn.execute(query, (filename,))
         row = await cursor.fetchone()
-        # TODO: this is a bug. It should check the first index
-        return row == 1
+        return bool(row and row[0] == 1)
 
     async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str | None:
         """Returns the downloaded filename from the database."""

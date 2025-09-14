@@ -28,7 +28,7 @@ class HashTable:
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
 
-    async def get_file_hash_exists(self, path: Path | str, hash_type: str) -> str | None:
+    async def get_hash_value(self, path: Path, hash_type: str) -> str | None:
         """gets the hash from a complete file path
 
         Args:
@@ -39,7 +39,6 @@ class HashTable:
         """
         query = "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL"
         try:
-            path = Path(path)
             if not path.is_absolute():
                 path = path.absolute()
             folder = str(path.parent)
@@ -53,32 +52,12 @@ class HashTable:
         except Exception as e:
             log(f"Error checking file: {e}", 40, exc_info=e)
 
-    async def get_files_with_hash_matches(
-        self, hash_value: str, size: int, hash_type: str | None = None
-    ) -> list[aiosqlite.Row]:
-        """Retrieves a list of (folder, filename) tuples based on a given hash.
-
-        Args:
-            hash_value: The hash value to search for.
-            size: file size
-
-        Returns:
-            A list of (folder, filename) tuples, or an empty list if no matches found.
-        """
-        if hash_type:
-            query = """
+    async def get_files_by_matching_hash(self, hash_value: str, size: int, hash_type: str) -> list[aiosqlite.Row]:
+        query = """
             SELECT files.folder, files.download_filename,files.date
             FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename
             WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;
-            """
-
-        else:
-            query = """
-            SELECT files.folder, files.download_filename FROM hash JOIN files
-            ON hash.folder = files.folder AND hash.download_filename = files.download_filename
-            WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;
-            """
-
+        """
         try:
             cursor = await self.db_conn.execute(query, (hash_value, size, hash_type))
             return cast("list[aiosqlite.Row]", await cursor.fetchall())

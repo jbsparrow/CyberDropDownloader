@@ -159,7 +159,6 @@ class Manager:
         transfer_v5_db_to_v6(self.path_manager.history_db)
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager(self)
-            await self.hash_manager.startup()
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
         if not isinstance(self.progress_manager, ProgressManager):
