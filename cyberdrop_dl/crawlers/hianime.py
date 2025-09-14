@@ -129,7 +129,7 @@ class HiAnimeCrawler(Crawler):
 
     @error_handling_wrapper
     async def _episode(self, scrape_item: ScrapeItem, episode: Episode) -> None:
-        canonical_url = scrape_item.url.with_query(ep=episode.id)
+        canonical_url = self.parse_url(episode.path_qs, scrape_item.url.origin())
         if await self.check_complete_from_referer(canonical_url):
             return
 
