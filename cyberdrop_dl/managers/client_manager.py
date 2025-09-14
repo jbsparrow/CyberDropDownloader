@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ssl
+import weakref
 from base64 import b64encode
 from collections import defaultdict
 from http import HTTPStatus
@@ -124,7 +125,7 @@ class FileLocksVault:
     """Is this necessary? No. But I want it."""
 
     def __init__(self) -> None:
-        self._locked_files: dict[str, asyncio.Lock] = {}
+        self._locked_files: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
 
     @contextlib.asynccontextmanager
     async def get_lock(self, filename: str) -> AsyncGenerator:
