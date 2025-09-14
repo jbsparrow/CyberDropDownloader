@@ -30,6 +30,7 @@ class MegaCloudSubtitle:
 @dataclasses.dataclass(slots=True)
 class MegaCloudVideo:
     id: str
+    embed_url: AbsoluteHttpURL
     sources: tuple[AbsoluteHttpURL, ...]
     subtitles: tuple[MegaCloudSubtitle, ...]
     title: str = ""
@@ -73,7 +74,7 @@ class MegaCloudCrawler(Crawler):
         )
         self.create_task(
             self.handle_file(
-                scrape_item.url,
+                video.embed_url,
                 scrape_item,
                 filename,
                 ext,
@@ -131,6 +132,7 @@ class MegaCloudCrawler(Crawler):
 
         return MegaCloudVideo(
             id=video_id,
+            embed_url=embed_url.with_query(None),
             sources=tuple(self.parse_url(x["file"]) for x in resp["sources"]),
             subtitles=tuple(parse_subs()),
         )

@@ -4,7 +4,7 @@ TEST_CASES = [
         "https://hianime.to/watch/mashin-eiyuuden-wataru-shichikon-no-ryuujinmaru-15111?ep=130673",
         [
             {
-                "url": "https://hianime.to/watch/mashin-eiyuuden-wataru-shichikon-no-ryuujinmaru-15111?ep=130673",
+                "url": "https://megacloud.blog/embed-2/v3/e-1/58KPQ2IyFUxF",
                 "filename": "E001 - Episode 1 [130673][1080p].mp4",
                 "original_filename": "130673.mp4",
                 "download_folder": "re:Mashin Eiyuuden Wataru- Shichikon no Ryuujinmaru",
