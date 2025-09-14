@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING
 
 from send2trash import send2trash
 
-from cyberdrop_dl.compat import StrEnum
-from cyberdrop_dl.data_structures.hash import Hashing
+from cyberdrop_dl.data_structures.hash import HashAlgo, Hashing
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils import aio
 from cyberdrop_dl.utils.logger import log
@@ -31,12 +30,6 @@ async def _hash_directory_scanner_helper(manager: Manager, path: Path) -> None:
     await manager.hash_manager.hash_client.hash_directory(path)
     manager.progress_manager.print_dedupe_stats()
     await manager.async_db_close()
-
-
-class HashAlgo(StrEnum):
-    xxh128 = "xxh128"
-    md5 = "md5"
-    sha256 = "sha256"
 
 
 class HashClient:

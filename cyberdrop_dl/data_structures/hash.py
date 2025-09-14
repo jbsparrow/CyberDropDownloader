@@ -12,3 +12,9 @@ class Hashing(StrEnum):
             return cls[str(value).upper()]
         except KeyError as e:
             raise e
+
+
+class HashAlgo(StrEnum):
+    xxh128 = "xxh128"
+    md5 = "md5"
+    sha256 = "sha256"

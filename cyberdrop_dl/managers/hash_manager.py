@@ -1,51 +1,50 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING
+import hashlib
+from typing import TYPE_CHECKING, Protocol, cast
 
 import aiofiles
 
 from cyberdrop_dl.clients.hash_client import HashClient
+from cyberdrop_dl.data_structures.hash import HashAlgo
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from cyberdrop_dl.managers.manager import Manager
+
 
 try:
     from xxhash import xxh128 as xxhasher
 except ImportError:
-    xxhasher = None
-from hashlib import md5 as md5hasher
-from hashlib import sha256 as sha256hasher
+    xxhasher = cast("type[_Hasher]", lambda: ImportError("xxhash module is not installed"))
 
-if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
+
+class _Hasher(Protocol):
+    def update(self, input: bytes, /) -> None: ...
+    def digest(self) -> bytes: ...
+    def hexdigest(self) -> str: ...
+
+
+_HASHERS: dict[HashAlgo, Callable[[], _Hasher]] = {
+    HashAlgo.md5: hashlib.md5,
+    HashAlgo.sha256: hashlib.sha256,
+    HashAlgo.xxh128: xxhasher,
+}
+
+_CHUNK_SIZE = 1024 * 1024  # 1MB
 
 
 class HashManager:
     def __init__(self, manager: Manager) -> None:
-        self.xx_hasher = xxhasher
-        self.md5_hasher = md5hasher
-        self.sha_256_hasher = sha256hasher
-        self.hash_client = HashClient(manager)  # Initialize hash client in constructor
+        self.hash_client = HashClient(manager)
         self.manager = manager
 
-    async def compute_hash(self, filename: Path | str, hash_type: str) -> str:
-        file_path = Path.cwd() / filename
+    async def compute_hash(self, file_path: Path, hash_type: HashAlgo) -> str:
+        current_hasher = _HASHERS[hash_type]()
         async with aiofiles.open(file_path, "rb") as fp:
-            CHUNK_SIZE = 1024 * 1024  # 1MB
-            filedata = await fp.read(CHUNK_SIZE)
-            current_hasher = self._get_hasher(hash_type)  # Use the initialized hasher
-            while filedata:
+            while filedata := await fp.read(_CHUNK_SIZE):
                 current_hasher.update(filedata)
-                filedata = await fp.read(CHUNK_SIZE)
-            return current_hasher.hexdigest()
 
-    def _get_hasher(self, hash_type: str):
-        if hash_type == "xx128" and not self.xx_hasher:
-            raise ImportError("xxhash module is not installed")
-        assert self.xx_hasher
-        if hash_type == "xxh128":
-            return self.xx_hasher()
-        elif hash_type == "md5":
-            return self.md5_hasher()
-        elif hash_type == "sha256":
-            return self.sha_256_hasher()
-        else:
-            raise ValueError("Invalid hash type")
+        return current_hasher.hexdigest()
