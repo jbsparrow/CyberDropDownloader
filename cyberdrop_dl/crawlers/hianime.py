@@ -107,8 +107,15 @@ class HiAnimeCrawler(Crawler):
             self._animes[anime_id] = anime = await self._request_anime_info(web_url, anime_id)
             return anime
 
+    async def request_json(self, url: AbsoluteHttpURL, **kwargs: Any) -> Any:
+        # Sometimes they return HTML in the content type headers, but it is JSON
+        headers = kwargs.pop("headers", {}) | {"Accept": "application/json"}
+        async with self.request(url, headers=headers, **kwargs) as resp:
+            return await resp.json(content_type=False)
+
     async def _request_anime_info(self, web_url: AbsoluteHttpURL, anime_id: int) -> Anime:
         episodes_url = web_url.origin() / "ajax/v2/episode/list/" / str(anime_id)
+
         anime_soup, episodes_resp = await asyncio.gather(
             self.request_soup(web_url),
             self.request_json(episodes_url),

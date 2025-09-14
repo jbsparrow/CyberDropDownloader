@@ -18,5 +18,5 @@ TEST_CASES = [
             },
         ],
     ),
-    ("https://hianime.to/mashin-eiyuuden-wataru-shichikon-no-ryuujinmaru-15111", [], 16),
+    ("https://hianime.to/mashin-eiyuuden-wataru-shichikon-no-ryuujinmaru-15111", [], 18),
 ]
