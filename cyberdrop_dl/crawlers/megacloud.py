@@ -35,7 +35,9 @@ class MegaCloudVideo:
     title: str = ""
 
 
-_find_v3_client_key = re.compile(r"([a-zA-Z0-9]{48})").search
+_find_v3_client_key = re.compile(
+    r'([a-zA-Z0-9]{48})|x: "([a-zA-Z0-9]{16})", y: "([a-zA-Z0-9]{16})", z: "([a-zA-Z0-9]{16})"};'
+).search
 
 
 class MegaCloudCrawler(Crawler):
@@ -95,7 +97,7 @@ class MegaCloudCrawler(Crawler):
     async def _get_client_key(self: Crawler, embed_url: AbsoluteHttpURL) -> str:
         content = await self.request_text(embed_url, headers=_HEADERS)
         if match := _find_v3_client_key(content):
-            return match.group()
+            return "".join(filter(None, match.groups()))
 
         raise ScrapeError(422, "Unable to extract client key")
 

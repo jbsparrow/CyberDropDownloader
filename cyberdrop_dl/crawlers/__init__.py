@@ -38,6 +38,7 @@ from .generic import GenericCrawler
 from .girlsreleased import GirlsReleasedCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
+from .hianime import HiAnimeCrawler
 from .hitomi_la import HitomiLaCrawler
 from .hotleak_vip import HotLeakVipCrawler
 from .hotpic import HotPicCrawler
