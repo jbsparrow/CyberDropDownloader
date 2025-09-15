@@ -21,15 +21,14 @@ if TYPE_CHECKING:
 
 
 def hash_directory_scanner(manager: Manager, path: Path) -> None:
-    asyncio.run(_hash_directory_scanner_helper(manager, path))
+    async def run() -> None:
+        await manager.async_db_hash_startup()
+        await manager.hash_manager.hash_client.hash_directory(path)
+        manager.progress_manager.print_dedupe_stats()
+        await manager.async_db_close()
+
+    asyncio.run(run())
     enter_to_continue()
-
-
-async def _hash_directory_scanner_helper(manager: Manager, path: Path) -> None:
-    await manager.async_db_hash_startup()
-    await manager.hash_manager.hash_client.hash_directory(path)
-    manager.progress_manager.print_dedupe_stats()
-    await manager.async_db_close()
 
 
 class HashClient:
@@ -73,45 +72,39 @@ class HashClient:
             return
 
         await self.manager.states.RUNNING.wait()
-        try:
-            assert media_item.original_filename
-            hash = await self._hash_file(media_item.complete_file, media_item.original_filename, media_item.referer)
-            await self._update_hashes_map(media_item, hash)
-
-        except Exception as e:
-            log(f"After hash processing failed: '{media_item.complete_file}' with error {e}", 40, exc_info=True)
+        assert media_item.original_filename
+        hash = await self._hash_file(media_item.complete_file, media_item.original_filename, media_item.referer)
+        await self._update_hashes_map(media_item, hash)
 
     async def _hash_file(
-        self, file: Path, original_filename: str | None = None, referer: URL | None = None
+        self,
+        file: Path,
+        original_filename: str | None = None,
+        referer: URL | None = None,
     ) -> str | None:
-        if file.suffix == ".part":
+        if file.suffix in (".part", ".cdl_hls"):
             return
 
         if not await aio.get_size(file):
             return
 
-        xxh128_value: str | None = None
-
-        async def get_hash(hash_type: HashAlgo) -> None:
-            nonlocal xxh128_value
+        async def get_hash(hash_type: HashAlgo) -> str | None:
             try:
-                result = await self._get_or_compute_hash(file, original_filename, referer, hash_type)
+                return await self._get_or_compute_hash(file, original_filename, referer, hash_type)
             except Exception as e:
                 log(f"Error hashing '{file}' : {e}", 40, exc_info=True)
-            else:
-                if hash_type is HashAlgo.xxh128:
-                    xxh128_value = result
 
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(get_hash(HashAlgo.xxh128))
+        other_hashes = []
+        if self.dupe_cleanup_options.add_md5_hash:
+            other_hashes.append(get_hash(HashAlgo.md5))
 
-            if self.dupe_cleanup_options.add_md5_hash:
-                tg.create_task(get_hash(HashAlgo.md5))
+        if self.dupe_cleanup_options.add_sha256_hash:
+            other_hashes.append(get_hash(HashAlgo.sha256))
 
-            if self.dupe_cleanup_options.add_sha256_hash:
-                tg.create_task(get_hash(HashAlgo.sha256))
+        if other_hashes:
+            await asyncio.gather(*other_hashes)
 
-        return xxh128_value
+        return await get_hash(HashAlgo.xxh128)
 
     async def _get_or_compute_hash(
         self,
@@ -135,11 +128,11 @@ class HashClient:
 
         if existing_hash_value:
             self.manager.progress_manager.hash_progress.add_prev_hash()
-            self.manager.task_group.create_task(update_db(existing_hash_value))
+            await update_db(existing_hash_value)
             return existing_hash_value
 
         hash_value = await self.manager.hash_manager.compute_hash(file, hash_type)
-        self.manager.task_group.create_task(update_db(hash_value))
+        await update_db(hash_value)
         self.manager.progress_manager.hash_progress.add_new_completed_hash()
         return hash_value
 
@@ -168,25 +161,31 @@ class HashClient:
     async def _final_dupe_cleanup(self) -> None:
         """cleanup files based on dedupe setting"""
         get_matches = self.manager.db_manager.hash_table.get_files_by_matching_hash
-        async with asyncio.TaskGroup() as tg:
-            for hash_value, size_dict in self._hashes_map.items():
-                for size in size_dict:
-                    db_matches = await get_matches(hash_value, size, HashAlgo.xxh128)
-                    for row in db_matches[1:]:
-                        file = Path(row["folder"], row["download_filename"])
-                        tg.create_task(self._delete_and_log(file, hash_value))
-
-    async def _delete_and_log(self, file: Path, hash: str) -> None:
         to_trash = self.dupe_cleanup_options.send_deleted_to_trash
         suffix = "Sent to trash " if to_trash else "Permanently deleted"
-        try:
-            deleted = await delete_file(file, to_trash)
-            if deleted:
-                log(f"Removed new download '{file}' with hash {hash} [{suffix}]", 10)
-                self.manager.progress_manager.hash_progress.add_removed_file()
 
-        except OSError as e:
-            log(f"Unable to remove '{file}' with hash {hash}: {e}", 40)
+        async def delete_and_log(file: Path, hash_value: str) -> None:
+            try:
+                deleted = await _delete_file(file, to_trash)
+                if deleted:
+                    msg = f"Removed new download '{file}' with hash {hash_value} [{suffix}]"
+                    log(msg, 10)
+                    self.manager.progress_manager.hash_progress.add_removed_file()
+
+            except OSError as e:
+                log(f"Unable to remove '{file}' with hash {hash_value}: {e}", 40)
+
+        async with asyncio.TaskGroup() as tg:
+
+            async def delete_dupes(hash_value: str, size: int) -> None:
+                db_matches = await get_matches(hash_value, size, HashAlgo.xxh128)
+                for row in db_matches[1:]:
+                    file = Path(row["folder"], row["download_filename"])
+                    tg.create_task(delete_and_log(file, hash_value))
+
+            for hash_value, size_dict in self._hashes_map.items():
+                for size in size_dict:
+                    tg.create_task(delete_dupes(hash_value, size))
 
     async def _sync_hashes_map(self) -> None:
         """Makes sures all downloaded files are in the internal hashes map"""
@@ -196,21 +195,14 @@ class HashClient:
             if await aio.get_size(item.complete_file):
                 return item
 
-        async def try_hash(item: MediaItem) -> None:
-            try:
-                await self._hash_item(item)
-            except Exception as e:
-                msg = f"Unable to hash file = {item.complete_file}: {e}"
-                log(msg, 40)
-
         async with asyncio.TaskGroup() as tg:
             for result in asyncio.as_completed([exists(item) for item in downloads]):
                 media_item = await result
                 if media_item is not None:
-                    tg.create_task(try_hash(media_item))
+                    tg.create_task(self._hash_item(media_item))
 
 
-async def delete_file(path: Path, to_trash: bool = True) -> bool:
+async def _delete_file(path: Path, to_trash: bool = True) -> bool:
     """Deletes a file and return `True` on success, `False` is the file was not found.
 
     Any other exception is propagated"""
