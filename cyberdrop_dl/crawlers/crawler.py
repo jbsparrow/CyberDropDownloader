@@ -7,7 +7,6 @@ import inspect
 import re
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import partial, wraps
 from pathlib import Path
@@ -49,7 +48,7 @@ _T_co = TypeVar("_T_co", covariant=True)
 
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator, Iterable
     from http.cookies import BaseCookie
 
     from aiohttp_client_cache.response import AnyResponse
@@ -61,7 +60,7 @@ if TYPE_CHECKING:
 
 
 OneOrTuple: TypeAlias = T | tuple[T, ...]
-SupportedPaths: TypeAlias = Mapping[str, OneOrTuple[str]]
+SupportedPaths: TypeAlias = dict[str, OneOrTuple[str]]
 SupportedDomains: TypeAlias = OneOrTuple[str]
 
 
@@ -201,6 +200,7 @@ class Crawler(ABC):
         cls.IS_FALLBACK_GENERIC = cls.NAME == "Generic"
         cls.IS_REAL_DEBRID = cls.NAME == "RealDebrid"
         cls.SUPPORTED_PATHS = _sort_supported_paths(cls.SUPPORTED_PATHS)
+        cls.IS_ABC = is_abc
 
         if cls.IS_GENERIC:
             cls.GENERIC_NAME = generic_name or cls.NAME
@@ -484,7 +484,7 @@ class Crawler(ABC):
     ) -> tuple[str, str]:
         """Wrapper around `utils.get_filename_and_ext`.
         Calls it as is.
-        If that fails, appedns `assume_ext` and tries again, but only if the user had exclude_files_with_no_extension = `False`
+        If that fails, appends `assume_ext` and tries again, but only if the user had exclude_files_with_no_extension = `False`
         """
         try:
             return get_filename_and_ext(filename, forum)
