@@ -62,8 +62,9 @@ When this is set to `true`, CDL will skip posts marked as `#ad` by models.
 
 Despite the name, this option affects all kemono based sites (Nekohouse, Kemono and Coomer)
 
-{% hint style="warning" %}
-This requires making x50 more requests when downloading an entire profile. Only enable this option if you actually need it
+{% hint style="info" %}
+This requires fetching all posts with the tag `#ad` first and them filter them out from the normal ones.
+This means at least 1 additional request per profile is needed, depending on how many ads the profile has.
 {% endhint %}
 
 ## `ignore_coomer_post_content`

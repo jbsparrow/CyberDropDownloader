@@ -245,7 +245,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         scrape_item.setup_as_profile("")
         if self.ignore_ads:
             user = scrape_item.url.parts[3]
-            self.log(f"[{self.FOLDER_DOMAIN}] filtering out all ad poss for {user}. This could take a while")
+            self.log(f"[{self.FOLDER_DOMAIN}] filtering out all ad posts for {user}. This could take a while")
             await self.__iter_user_posts(scrape_item, api_url.update_query(tag="ad"))
         await self.__iter_user_posts(scrape_item, api_url)
 
@@ -484,7 +484,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 for post in (UserPost.model_validate(entry) for entry in posts):
                     post_web_url = self.parse_url(post.web_path_qs)
                     new_scrape_item = scrape_item.create_child(post_web_url)
-                    if (self.ignore_content and not self.ignore_ads) or post.content:
+                    if self.ignore_content or post.content:
                         self._handle_user_post(new_scrape_item, post)
                     else:
                         self.create_task(self.run(new_scrape_item))
