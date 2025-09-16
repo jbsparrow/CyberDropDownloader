@@ -399,14 +399,14 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                         yield url
 
     def __handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
-        for file in post.all_files:
-            file_url = self.__make_file_url(file)
-            self.create_task(self.handle_direct_link(scrape_item, file_url))
-            scrape_item.add_children()
+        files = (self.__make_file_url(file) for file in post.all_files)
 
-        for file_url in post.soup_attachments:
-            self.create_task(self.handle_direct_link(scrape_item, file_url))
-            scrape_item.add_children()
+        seen: set[AbsoluteHttpURL] = set()
+        for url in itertools.chain(files, post.soup_attachments):
+            if url not in seen:
+                seen.add(url)
+                self.create_task(self.handle_direct_link(scrape_item, url))
+                scrape_item.add_children()
 
         self._handle_post_content(scrape_item, post)
 
