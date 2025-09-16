@@ -75,7 +75,7 @@ class RateLimiting(BaseModel):
     connection_timeout: PositiveFloat = 15
     read_timeout: PositiveFloat | None = 300
 
-    @field_validator("read_timeout")
+    @field_validator("read_timeout", mode="before")
     @classmethod
     def parse_timeouts(cls, value: object) -> object | None:
         return falsy_as_none(value)
