@@ -488,6 +488,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                     new_scrape_item = scrape_item.create_child(post_web_url)
                     if self.ignore_content or post.content:
                         self._handle_user_post(new_scrape_item, post)
+                    elif self.ignore_ads and self.__has_ads(post):
+                        continue
                     else:
                         self.create_task(self.run(new_scrape_item))
                     scrape_item.add_children()
