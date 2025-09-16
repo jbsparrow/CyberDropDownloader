@@ -5,7 +5,7 @@ import http
 import re
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NotRequired, TypedDict, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, AbsoluteHttpURL, ScrapeItem
@@ -92,6 +92,13 @@ class GoFileCrawler(Crawler):
         self.website_token = self.manager.cache_manager.get("gofile_website_token")
         self.headers: dict[str, str] = {}
         self._website_token_date = datetime.now(UTC) - timedelta(days=7)
+
+    @classmethod
+    def _json_response_check(cls, json_resp: Any) -> None:
+        if not isinstance(json_resp, dict):
+            return
+        if "notFound" in json_resp["status"]:
+            raise ScrapeError(404)
 
     async def async_startup(self) -> None:
         await self.get_account_token(API_ENTRYPOINT)

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import MediaFireError, ScrapeError
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, is_blob_or_svg
 
@@ -45,6 +45,16 @@ class MediaFireCrawler(Crawler):
     DOMAIN: ClassVar[str] = "mediafire"
     SKIP_PRE_CHECK = True
 
+    @classmethod
+    def _json_response_check(cls, json_resp: Any) -> None:
+        if not isinstance(json_resp, dict) or "response" not in json_resp:
+            return
+        resp: dict[str, Any] = json_resp["response"]
+        if resp["result"] != "Success":
+            code: int = resp["error"]
+            ui_failure = f"MediaFire Error ({code})"
+            raise ScrapeError(ui_failure, resp["message"])
+
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if (
             scrape_item.url.path == "/"
@@ -64,11 +74,7 @@ class MediaFireCrawler(Crawler):
     async def _api_request(self, path: str, **params: Any) -> dict[str, Any]:
         params["response_format"] = "json"
         api_url = (_API_URL / path).with_query(params)
-        resp: dict[str, Any] = (await self.request_json(api_url))["response"]
-        # TODO: register with client manager
-        if resp["result"] != "Success":
-            raise MediaFireError(resp["error"], resp["message"])
-        return resp
+        return (await self.request_json(api_url))["response"]
 
     async def _iter_folder_content(self, folder_key: str, content_type: str) -> AsyncGenerator[list[dict[str, Any]]]:
         async def get_content(chunk: int) -> dict[str, Any]:

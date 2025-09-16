@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ssl
+import weakref
 from base64 import b64encode
 from collections import defaultdict
 from http import HTTPStatus
@@ -39,7 +40,7 @@ _VALID_EXTENSIONS = (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Iterable, Mapping
+    from collections.abc import AsyncGenerator, Callable, Generator, Iterable, Mapping
     from http.cookies import BaseCookie
 
     from aiohttp_client_cache.response import CachedResponse
@@ -124,7 +125,7 @@ class FileLocksVault:
     """Is this necessary? No. But I want it."""
 
     def __init__(self) -> None:
-        self._locked_files: dict[str, asyncio.Lock] = {}
+        self._locked_files: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
 
     @contextlib.asynccontextmanager
     async def get_lock(self, filename: str) -> AsyncGenerator:
@@ -171,6 +172,7 @@ class ClientManager:
         self._session: CachedSession
         self._download_session: aiohttp.ClientSession
         self._curl_session: AsyncSession[CurlResponse]
+        self._json_response_checks: dict[str, Callable[[Any], None]] = {}
 
     def _startup(self) -> None:
         self._session = self.new_scrape_session()
@@ -367,9 +369,8 @@ class ClientManager:
             return self.rate_limits[domain]
         return self.rate_limits["other"]
 
-    @classmethod
     async def check_http_status(
-        cls,
+        self,
         response: ClientResponse | CachedResponse | CurlResponse | AbstractResponse,
         download: bool = False,
     ) -> BeautifulSoup | None:
@@ -390,37 +391,14 @@ class ClientManager:
         async def check_ddos_guard() -> BeautifulSoup | None:
             if "html" not in response.content_type:
                 return
-
-            # TODO: use the response text instead of the raw content to prevent double encoding detection
-
             try:
                 soup = BeautifulSoup(await response.text(), "html.parser")
             except UnicodeDecodeError:
                 return
             else:
-                if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
+                if self.check_ddos_guard(soup) or self.check_cloudflare(soup):
                     raise DDOSGuardError
                 return soup
-
-        async def check_json_status() -> None:
-            if "json" not in response.content_type:
-                return
-
-            # TODO: Define these checks inside their actual crawlers
-            # and make them register them  on instantation
-            if not any(domain in response.url.host for domain in ("gofile", "imgur")):
-                return
-
-            json_resp: dict[str, Any] | None = await response.json()
-            if not json_resp:
-                return
-
-            json_status: str | int | None = json_resp.get("status")
-            if json_status and isinstance(json_status, str) and "notFound" in json_status:
-                raise ScrapeError(404)
-
-            if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
-                raise ScrapeError(json_status or response.status, data["error"])
 
         check_etag()
         if HTTPStatus.OK <= response.status < HTTPStatus.BAD_REQUEST:
@@ -428,9 +406,23 @@ class ClientManager:
             # await check_ddos_guard()
             return
 
-        await check_json_status()
+        await self._check_json(response)
         await check_ddos_guard()
         raise DownloadError(status=response.status, message=message)
+
+    async def _check_json(self, response: AbstractResponse) -> None:
+        if "json" not in response.content_type:
+            return
+
+        if check := self._json_response_checks.get(response.url.host):
+            check(await response.json())
+            return
+
+        for domain, check in self._json_response_checks.items():
+            if domain in response.url.host:
+                self._json_response_checks[response.url.host] = check
+                check(await response.json())
+                return
 
     @staticmethod
     def check_content_length(headers: Mapping[str, Any]) -> None:
