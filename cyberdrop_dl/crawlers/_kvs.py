@@ -125,7 +125,7 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
             return
 
         soup = await self.request_soup(scrape_item.url)
-        video = self.extract_kvs_video(soup)
+        video = extract_kvs_video(self, soup)
         filename, ext = self.get_filename_and_ext(video.url.name)
         custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.resolution)
         date_str = css.select_one_get_text(soup, _SELECTORS.DATE).split(":", 1)[-1].strip()
@@ -156,18 +156,18 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         filename, ext = self.get_filename_and_ext(url.name)
         await self.handle_file(url, scrape_item, filename, ext)
 
-    @classmethod
-    def extract_kvs_video(cls, soup: BeautifulSoup) -> KVSVideo:
-        if soup.select_one(_SELECTORS.UNAUTHORIZED):
-            raise ScrapeError(401, "Private video")
 
-        script = css.select_one_get_text(soup, _SELECTORS.FLASHVARS)
-        video = _parse_video_vars(script)
-        if not video.title:
-            title = open_graph.get_title(soup) or css.page_title(soup)
-            assert title
-            video.title = css.sanitize_page_title(title, cls.DOMAIN)
-        return video
+def extract_kvs_video(cls: Crawler, soup: BeautifulSoup) -> KVSVideo:
+    if soup.select_one(_SELECTORS.UNAUTHORIZED):
+        raise ScrapeError(401, "Private video")
+
+    script = css.select_one_get_text(soup, _SELECTORS.FLASHVARS)
+    video = _parse_video_vars(script)
+    if not video.title:
+        title = open_graph.get_title(soup) or css.page_title(soup)
+        assert title
+        video.title = css.sanitize_page_title(title, cls.DOMAIN)
+    return video
 
 
 # URL de-obfuscation code for kvs, adapted from yt-dlp
