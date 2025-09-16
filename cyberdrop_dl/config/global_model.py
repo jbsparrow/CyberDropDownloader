@@ -86,7 +86,7 @@ class RateLimiting(BaseModel):
             self._curl_timeout = self.connection_timeout, self.read_timeout
         self._aiohttp_timeout = aiohttp.ClientTimeout(
             total=None,
-            connect=self.connection_timeout,
+            sock_connect=self.connection_timeout,
             sock_read=self.read_timeout,
         )
 
