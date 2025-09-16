@@ -184,6 +184,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self.__known_discord_servers: dict[str, DiscordServer] = {}
         self.__known_attachment_servers: dict[str, str] = {}
         self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self.__ad_posts: list[str] = []
 
     @property
     def session_cookie(self) -> str:
@@ -242,6 +243,10 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         path = (scrape_item.url / "posts").path
         api_url = self.__make_api_url_w_offset(scrape_item.url, path)
         scrape_item.setup_as_profile("")
+        if self.ignore_ads:
+            user = scrape_item.url.parts[3]
+            self.log(f"[{self.FOLDER_DOMAIN}] filtering out all ad poss for {user}. This could take a while")
+            await self.__iter_user_posts(scrape_item, api_url.update_query(tag="ad"))
         await self.__iter_user_posts(scrape_item, api_url)
 
     @fallback_if_no_api
@@ -409,8 +414,12 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     def __handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
         if self.ignore_ads:
+            if post.id in self.__ad_posts:
+                return
+
             if "#ad" in post.content:
                 return
+
             ci_tags = {tag.casefold() for tag in post.tags}
             if ci_tags.intersection({"ad", "#ad", "ads", "#ads"}):
                 return
@@ -455,6 +464,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             return server
 
     async def __iter_user_posts(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL) -> None:
+        filtering_ads = "ad" in url.query.get("tag", "")
         async for json_resp in self._pager(url):
             # From search results
             if isinstance(json_resp, dict):
@@ -467,14 +477,18 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             else:
                 raise ScrapeError(422)
 
-            for post in (UserPost.model_validate(entry) for entry in posts):
-                post_web_url = self.parse_url(post.web_path_qs)
-                new_scrape_item = scrape_item.create_child(post_web_url)
-                if (self.ignore_content and not self.ignore_ads) or post.content:
-                    self._handle_user_post(new_scrape_item, post)
-                else:
-                    self.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
+            if filtering_ads:
+                self.__ad_posts.extend(p["id"] for p in posts)
+
+            else:
+                for post in (UserPost.model_validate(entry) for entry in posts):
+                    post_web_url = self.parse_url(post.web_path_qs)
+                    new_scrape_item = scrape_item.create_child(post_web_url)
+                    if (self.ignore_content and not self.ignore_ads) or post.content:
+                        self._handle_user_post(new_scrape_item, post)
+                    else:
+                        self.create_task(self.run(new_scrape_item))
+                    scrape_item.add_children()
 
             if len(posts) < _DEFAULT_PAGE_SIZE:
                 break
