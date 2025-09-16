@@ -27,7 +27,7 @@ class General(BaseModel):
     # TODO: Move `ssl_context` to an advance config section
     ssl_context: Literal["truststore", "certifi", "truststore+certifi"] | None = "truststore+certifi"
     disable_crawlers: ListNonEmptyStr = []
-    enable_generic_crawler: bool = True
+    enable_generic_crawler: bool = False
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
     max_folder_name_length: PositiveInt = 60
