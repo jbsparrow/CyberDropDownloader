@@ -22,6 +22,69 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.0.0] - 2025-09-26
+
+### Added
+
+- Allow downloading google docs files with a custom format by using a `format` query param
+- Cloudflare stream support
+- pCloud support
+- MegaCloud support
+- PimpBunny support
+- HiAnime support
+- Support for subfolders (MediaFire)
+- Support for short URL formats (MediaFire)
+- Support for subfolders (Dropbox)
+- Support for alternative pixeldrain domains: `pixeldrain.net`, `pixeldra.in`
+- Support for `pd.cybar.xyz` URLs to bypass pixeldrain daily limit
+- The `--separate-post` and `--separate-post-format` options now work for tiktok posts
+- CDL can now download private TikTok posts when using cookies
+- New config option to download tiktok videos in original quality: `download_tiktok_src_quality_videos`
+- New `max_thread_folder_depth` config option:
+
+### Changed
+
+- The recommend python version is now python 3.12, to take advandage of eager tasks
+- Handle shared folders with single file as loose files (Yetishare)
+- The default rate limit was increased from 10req/s to 25req/s
+- Increase max concurrent bunkr downloads from 1 to 3
+- Parse full spec cookies from Flaresolverr responses
+- Increase concurrent audio fragments downloads from 10 to 50
+- CDL will no longer try to merge subtitles fot HLS downloads. They will be downloaded as separate files
+- Make requests with the same domain as the original input URL (saint2.su)
+- Tiktok downloads use a completly new logic to create filenames and folder structure.
+- Instead of downloading an  entire dropbox folder as a zip, CDL will now always iterate over each file and subfolder recursively
+- General performance improvents
+
+### Deprecated
+
+- Support for v6 (config, database and auto-migration) is deprecated and will be removed in a future version
+
+### Removed
+
+- `--download-dropbox-folders-as-zip` config option
+
+### Fixed
+
+- jsonl output file being missing some fields
+- CDL trying to download all HLS segments at once
+- Download retries always re-starting from zero
+- Global rate limiter being ignored while crawling
+- Crashing when using any value for `--download-speed-limit`
+- Handle encoded URLs (MediaFire)
+- Previously downloaded HLS fragments not being detected
+- HLS subtitle downloads always failing
+- Parsing of 1440p, 2K and 4K videos (Spankbang, Ashemaletube, KVS)
+- Possible infinite loop when using the bunkrr.org domain (Bunkr)
+- Crashing if a single error happens while crawling a Discord channel (Kemono)
+- Nekohouse crawler
+- Thumbnails being downloaded as is instead of full resolution (Coomer, Kemono, Nekohouse)
+- Handle new encryption (xhamster)
+- Videos being skipped if the audio was downloaded before (TikTok)
+- Do not crash if the `URL.txt` file has ipv6 URLs or invalid URLs
+
+
+
 ## [7.5.0] - 2025-09-02
 
 ### Added
