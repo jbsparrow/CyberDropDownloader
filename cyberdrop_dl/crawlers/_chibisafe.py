@@ -1,26 +1,26 @@
-"""Chibisafe (known as LoliSafe until v4.0.0)
+"""ChibiSafe (known as LoliSafe until v4.0.0)
 
 https://github.com/chibisafe/chibisafe
 https://chibisafe.moe/docs
 https://chibisafe.app/
 
-This is the file host framework used by bunkr, saint, cyberdrop but the modified the default design and routes
+This is the file host framework used by bunkr, saint, cyberdrop, etc
 """
 
 from __future__ import annotations
 
 import dataclasses
+import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.models import AliasModel
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, type_adapter
 
 if TYPE_CHECKING:
-    import datetime
-
     from cyberdrop_dl.crawlers.crawler import SupportedPaths
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -33,7 +33,7 @@ class File:
     original: str | None = None
 
 
-class Album(BaseModel):
+class Album(AliasModel):
     id: str = ""
     name: str = Field(validation_alias="title")
     files: list[File]
@@ -45,7 +45,7 @@ _parse_file = type_adapter(File)
 class ChibiSafeCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Album": "/a/<album_id>",
-        "File": "/a/<file_id>",
+        "File": "/<file_id>",
     }
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -71,7 +71,8 @@ class ChibiSafeCrawler(Crawler, is_abc=True):
         return await self._handle_album(scrape_item, album)
 
     async def _handle_album(self, scrape_item: ScrapeItem, album: Album) -> None:
-        scrape_item.setup_as_album(album.name, album_id=album.id)
+        title = self.create_title(album.name, album.id)
+        scrape_item.setup_as_album(title, album_id=album.id)
         results = await self.get_album_results(album.id)
 
         for file in album.files:

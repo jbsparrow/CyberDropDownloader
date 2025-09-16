@@ -16,9 +16,9 @@ if TYPE_CHECKING:
 
 class Selector:
     ALBUM_TITLE = "#title"
+    FILE = "#table .image-container"
     FILE_DATE = ".details .file-date"
     FILE_NAME = ".details .name"
-    FILE = "#table .image-container"
     FILE_URL = "a.image"
 
 
