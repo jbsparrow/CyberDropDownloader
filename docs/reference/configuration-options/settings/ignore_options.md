@@ -81,7 +81,6 @@ Despite the name, this option affects all kemono based sites (Nekohouse, Kemono 
 This requires making x50 more requests when downloading an entire profile. Only enable this option if you actually need it
 {% endhint %}
 
-
 ## `only_hosts`
 
 | Type                | Default | Additional Info                                                     |

@@ -412,17 +412,19 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                     if self.DOMAIN not in url.host:
                         yield url
 
+    def __has_ads(self, post: Post) -> bool:
+        if "#ad" in post.content or post.id in self.__ad_posts:
+            return True
+
+        ci_tags = {tag.casefold() for tag in post.tags}
+        if ci_tags.intersection({"ad", "#ad", "ads", "#ads"}):
+            return True
+
+        return False
+
     def __handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
-        if self.ignore_ads:
-            if post.id in self.__ad_posts:
-                return
-
-            if "#ad" in post.content:
-                return
-
-            ci_tags = {tag.casefold() for tag in post.tags}
-            if ci_tags.intersection({"ad", "#ad", "ads", "#ads"}):
-                return
+        if self.ignore_ads and self.__has_ads(post):
+            return
 
         files = (self.__make_file_url(file) for file in post.all_files)
 
