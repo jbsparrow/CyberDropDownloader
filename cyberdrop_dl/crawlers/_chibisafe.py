@@ -10,7 +10,6 @@ This is the file host framework used by bunkr, saint, cyberdrop but the modified
 from __future__ import annotations
 
 import dataclasses
-import datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import BaseModel, Field
@@ -20,20 +19,22 @@ from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, type_adapter
 
 if TYPE_CHECKING:
+    import datetime
+
     from cyberdrop_dl.crawlers.crawler import SupportedPaths
-    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
 @dataclasses.dataclass(slots=True)
 class File:
     name: str
     url: str
-    thumb: str
-    createdAt: datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)  # noqa: N815
+    createdAt: datetime.datetime | None = None  # noqa: N815
     original: str | None = None
 
 
 class Album(BaseModel):
+    id: str = ""
     name: str = Field(validation_alias="title")
     files: list[File]
 
@@ -46,7 +47,6 @@ class ChibiSafeCrawler(Crawler, is_abc=True):
         "Album": "/a/<album_id>",
         "File": "/a/<file_id>",
     }
-    API_ENTRYPOINT: ClassVar[AbsoluteHttpURL]
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -54,6 +54,8 @@ class ChibiSafeCrawler(Crawler, is_abc=True):
                 return await self.album(scrape_item, album_id)
             case [file_id]:
                 return await self.file(scrape_item, file_id)
+            case _:
+                raise ValueError
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem, file_id: str) -> None:
@@ -65,8 +67,12 @@ class ChibiSafeCrawler(Crawler, is_abc=True):
     async def album(self, scrape_item: ScrapeItem, album_id: str) -> None:
         content = await self.request_text(self.PRIMARY_URL / "api/album" / album_id)
         album = Album.model_validate_json(content, by_alias=True)
-        scrape_item.setup_as_album(album.name, album_id=album_id)
-        results = await self.get_album_results(album_id)
+        album.id = album_id
+        return await self._handle_album(scrape_item, album)
+
+    async def _handle_album(self, scrape_item: ScrapeItem, album: Album) -> None:
+        scrape_item.setup_as_album(album.name, album_id=album.id)
+        results = await self.get_album_results(album.id)
 
         for file in album.files:
             url = self.parse_url(file.url.removeprefix("null"))
@@ -78,7 +84,8 @@ class ChibiSafeCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     def _handle_file(self, scrape_item: ScrapeItem, file: File) -> None:
-        scrape_item.possible_datetime = to_timestamp(file.createdAt)
+        if scrape_item.possible_datetime is None and file.createdAt:
+            scrape_item.possible_datetime = to_timestamp(file.createdAt)
         name = file.original or file.name
         filename, ext = self.get_filename_and_ext(name)
         self.create_task(
