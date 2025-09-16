@@ -211,8 +211,8 @@ CLI-only options:
   --config-file CONFIG_FILE                                                     path to the CDL settings.yaml file to load
   --disable-cache                                                               Temporarily disable the requests cache
   --download                                                                    skips UI, start download immediatly
-  --download-dropbox-folders-as-zip                                             download Dropbox folder without api key as zip
   --download-tiktok-audios                                                      download TikTok audios
+  --download-tiktok-src-quality-videos                                          download TikTok videos in source quality
   --max-items-retry MAX_ITEMS_RETRY                                             max number of links to retry
   --portrait                                                                    show UI in a portrait layout
   --print-stats                                                                 Show stats report at the end of a run
@@ -242,6 +242,7 @@ download_options:
   --skip-download-mark-completed, --no-skip-download-mark-completed
   --skip-referer-seen-before, --no-skip-referer-seen-before
   --maximum-thread-depth MAXIMUM_THREAD_DEPTH
+  --maximum-thread-folder-depth MAXIMUM_THREAD_FOLDER_DEPTH
 
 dupe_cleanup_options:
   --add-md5-hash, --no-add-md5-hash
