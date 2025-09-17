@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
-from typing import TYPE_CHECKING, Any, ClassVar, Final
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures import AbsoluteHttpURL, Resolution
@@ -49,13 +49,18 @@ def _pagination_query(url: AbsoluteHttpURL) -> dict[str, Any]:
 class PimpBunnyCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Videos": "/videos/...",
+        "Models": "/onlyfans-models/<model_name>",
+        "Model Albums": "/albums/models/<model_name>",
+        "Album": "/albums/<album_name>",
+        "Category": "/categories/<category>",
+        "Tag": "/tags/<tag>",
     }
 
     DOMAIN: ClassVar[str] = "pimpbunny.com"
     FOLDER_DOMAIN: ClassVar[str] = "PimpBunny"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pimpbunny.com")
-    DEFAULT_TRIM_URLS: Final = False
-    NEXT_PAGE_SELECTOR: Final = ".pb-pagination-list .next a[href]"
+    DEFAULT_TRIM_URLS: ClassVar[bool] = False
+    NEXT_PAGE_SELECTOR: ClassVar[str] = ".pb-pagination-list .next a[href]"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
