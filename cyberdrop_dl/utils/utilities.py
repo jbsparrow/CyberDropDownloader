@@ -375,9 +375,11 @@ def parse_url(link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim
         raise InvalidURLError(str(e), url=link_str) from e
 
     if not new_url.absolute:
-        new_url = base.join(new_url)
+        if relative_to:
+            new_url = base.join(new_url)
     if not new_url.scheme:
-        new_url = new_url.with_scheme(base.scheme or "https")
+        scheme = relative_to.scheme if relative_to else "https"
+        new_url = new_url.with_scheme(scheme)
     assert is_absolute_http_url(new_url)
     if not trim:
         return new_url
