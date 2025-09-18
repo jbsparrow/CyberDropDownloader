@@ -1,20 +1,15 @@
 from __future__ import annotations
 
 import dataclasses
-import re
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from cyberdrop_dl.crawlers._kvs import extract_kvs_video
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures import AbsoluteHttpURL, Resolution
-from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import css, open_graph
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, filter_query, parse_url
+from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, filter_query
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -129,7 +124,7 @@ class PimpBunnyCrawler(Crawler):
             return
 
         soup = await self.request_soup(scrape_item.url)
-        video = self.extract_kvs_video(soup)
+        video = extract_kvs_video(self, soup)
         custom_filename = self.create_custom_filename(
             video.title, video.url.suffix, file_id=video.id, resolution=video.resolution
         )
@@ -155,77 +150,3 @@ class PimpBunnyCrawler(Crawler):
             for _, image in self.iter_tags(soup, Selector.ITEM):
                 self.create_task(self.direct_file(scrape_item, image))
                 scrape_item.add_children()
-
-    @classmethod
-    def extract_kvs_video(cls, soup: BeautifulSoup) -> KVSVideo:
-        if soup.select_one(Selector.UNAUTHORIZED):
-            raise ScrapeError(401, "Private video")
-
-        script = css.select_one_get_text(soup, Selector.VIDEO_VARS)
-        video = _parse_video_vars(script)
-        if not video.title:
-            title = open_graph.get_title(soup) or css.page_title(soup)
-            assert title
-            video.title = css.sanitize_page_title(title, cls.DOMAIN)
-        return video
-
-
-_HASH_LENGTH = 32
-_match_video_url_keys = re.compile(r"^video_(?:url|alt_url\d*)$").match
-_find_flashvars = re.compile(r"(\w+):\s*'([^']*)'").findall
-
-
-def _parse_video_vars(video_vars: str) -> KVSVideo:
-    flashvars: dict[str, str] = dict(_find_flashvars(video_vars))
-    url_keys = filter(_match_video_url_keys, flashvars.keys())
-    license_token = _get_license_token(flashvars["license_code"])
-
-    def get_formats():
-        for key in url_keys:
-            url_str = flashvars[key]
-            if "/get_file/" not in url_str:
-                continue
-            resolution = Resolution.parse(flashvars[f"{key}_text"])
-            url = _deobfuscate_url(url_str, license_token)
-            yield resolution, url
-
-    resolution, url = max(get_formats())
-    return KVSVideo(flashvars["video_id"], flashvars["video_title"], url, resolution)
-
-
-def _deobfuscate_url(video_url_str: str, license_token: Sequence[int]) -> AbsoluteHttpURL:
-    raw_url_str = video_url_str.removeprefix("function/0/")
-    url = parse_url(raw_url_str)
-    is_obfuscated = raw_url_str != video_url_str
-    if not is_obfuscated:
-        return url
-
-    hash, tail = url.parts[3][:_HASH_LENGTH], url.parts[3][_HASH_LENGTH:]
-    indices = list(range(_HASH_LENGTH))
-
-    # Swap indices of hash according to the destination calculated from the license token
-    accum = 0
-    for src in reversed(range(_HASH_LENGTH)):
-        accum += license_token[src]
-        dest = (src + accum) % _HASH_LENGTH
-        indices[src], indices[dest] = indices[dest], indices[src]
-
-    new_parts = list(url.parts)
-    new_parts[3] = "".join(hash[index] for index in indices) + tail
-    return url.with_path("/".join(new_parts[1:]), keep_query=True, keep_fragment=True)
-
-
-def _get_license_token(license_code: str) -> tuple[int, ...]:
-    license_code = license_code.removeprefix("$")
-    license_values = [int(char) for char in license_code]
-    modlicense = license_code.replace("0", "1")
-    middle = len(modlicense) // 2
-    fronthalf = int(modlicense[: middle + 1])
-    backhalf = int(modlicense[middle:])
-    modlicense = str(4 * abs(fronthalf - backhalf))[: middle + 1]
-
-    return tuple(
-        (license_values[index + offset] + current) % 10
-        for index, current in enumerate(map(int, modlicense))
-        for offset in range(4)
-    )
