@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.crawlers.crawler import SupportedPaths
 
 
-PRIMARY_URL = AbsoluteHttpURL("https://www.camwhores.tv")
 LAST_PAGE_SELECTOR = "div.pagination-holder li.page"
 
 
@@ -24,7 +23,7 @@ class CamwhoresTVCrawler(KernelVideoSharingCrawler):
         "Members": "/members/<member_id>",
     }
 
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.camwhores.tv")
     DOMAIN: ClassVar[str] = "camwhores.tv"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

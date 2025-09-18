@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import itertools
-import re
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers._kvs import extract_kvs_video
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -13,13 +12,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-
-
-class Video(NamedTuple):
-    id: str
-    title: str
-    url: str
-    res: str
 
 
 class Selectors:
@@ -38,7 +30,6 @@ class Selectors:
     VIDEOS_OR_ALBUMS = f"{VIDEOS}, {ALBUMS}"
 
 
-VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
 COLLECTION_PARTS = "tags", "categories", "models", "playlists", "search", "members"
 TITLE_TRASH = "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _SELECTORS = Selectors()
@@ -106,11 +97,12 @@ class PorntrexCrawler(Crawler):
 
         video = extract_kvs_video(self, soup)
         link = video.url
-        filename, ext = self.get_filename_and_ext(link.name)
         scrape_item.url = canonical_url
-        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.resolution)
+        custom_filename = self.create_custom_filename(
+            video.title, link.suffix, file_id=video.id, resolution=video.resolution
+        )
         await self.handle_file(
-            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
+            canonical_url, scrape_item, link.name, link.suffix, custom_filename=custom_filename, debrid_link=link
         )
 
     @error_handling_wrapper
