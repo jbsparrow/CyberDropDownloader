@@ -15,7 +15,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.models.validators import falsy_as_none
+from cyberdrop_dl.models.validators import falsy_as, falsy_as_none
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
@@ -76,6 +76,7 @@ class File(TypedDict):
 
 
 FileOrNone = Annotated[File | None, BeforeValidator(falsy_as_none)]
+Tags = Annotated[list[str], BeforeValidator(lambda x: falsy_as(x, []))]
 
 
 class Post(AliasModel):
@@ -85,7 +86,7 @@ class Post(AliasModel):
     attachments: list[File] = []  # noqa: RUF012
     published_or_added: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
     date: int | None = None
-    tags: list[str] = []  # noqa: RUF012
+    tags: Tags = []  # noqa: RUF012
 
     # `Any` to skip validation, but these are `yarl.URL`. We generate them internally so no validation is needed
     soup_attachments: list[Any] = []  # noqa: RUF012
