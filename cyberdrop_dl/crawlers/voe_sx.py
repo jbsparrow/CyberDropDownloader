@@ -10,8 +10,9 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import open_graph
+from cyberdrop_dl.utils import m3u8, open_graph
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
 
 if TYPE_CHECKING:
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-_ALLOW_HLS = False
 _find_js_redirect = re.compile(
     r'(?:window\.location\.href\s*=\s*["\'])([^"\']+)["\']|(?:window\.location\s*=\s*["\'])([^"\']+)["\']',
     re.IGNORECASE,
@@ -44,6 +44,12 @@ _ISO639_MAP = {
 }
 
 
+_HEADERS: dict[str, str] = {
+    "User-Agent":  # Force firefox on linux to get high res mp4 formats as "fallbacks"
+    "Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0"
+}
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class VoeSubtitle:
     label: str
@@ -57,6 +63,8 @@ class VoeVideo:
     id: str
     title: str
     url: AbsoluteHttpURL
+    resolution: Resolution | None
+    hls_url: AbsoluteHttpURL | None
     subtitles: tuple[VoeSubtitle, ...]
 
 
@@ -101,7 +109,7 @@ class VoeSxCrawler(Crawler):
         if await self.check_complete(embed_url, embed_url):
             return
 
-        async with self.request(embed_url) as resp:
+        async with self.request(embed_url, headers=_HEADERS) as resp:
             text = await resp.text()
             if match := _find_js_redirect(text):
                 scrape_item.url = self.parse_url(match.group(1), origin)
@@ -113,11 +121,26 @@ class VoeSxCrawler(Crawler):
         if not video.id:
             video.id = video_id
         scrape_item.url = embed_url
-        self._handle_video(scrape_item, video)
+        await self._video(scrape_item, video)
 
-    def _handle_video(self: Crawler, scrape_item: ScrapeItem, video: VoeVideo) -> None:
+    async def _video(self: Crawler, scrape_item: ScrapeItem, video: VoeVideo) -> None:
+        m3u8 = None
+        if video.resolution == (0, 0) and video.hls_url:
+            msg = f"Unable to extract high resolution MP4 formats for {scrape_item.url}. Falling back to HLS"
+            self.log(msg, 30)
+
+            m3u8 = await self.get_m3u8_from_index_url(video.hls_url, headers=_HEADERS)
+
+        VoeSxCrawler._handle_video(self, scrape_item, video, m3u8)
+
+    def _handle_video(
+        self: Crawler, scrape_item: ScrapeItem, video: VoeVideo, m3u8: m3u8.RenditionGroup | None
+    ) -> None:
         custom_filename = self.create_custom_filename(
-            video.title.removesuffix(video.url.suffix), video.url.suffix, file_id=video.id
+            video.title.removesuffix(video.url.suffix),
+            video.url.suffix,
+            file_id=video.id,
+            resolution=video.resolution,
         )
         self.create_task(
             self.handle_file(
@@ -127,6 +150,7 @@ class VoeSxCrawler(Crawler):
                 video.url.suffix,
                 custom_filename=custom_filename,
                 debrid_link=video.url,
+                m3u8=m3u8,
             )
         )
         video_stem = custom_filename.removesuffix(video.url.suffix)
@@ -154,21 +178,14 @@ def extract_voe_video(soup: BeautifulSoup, origin: AbsoluteHttpURL) -> VoeVideo:
     else:
         raise ScrapeError(422)
 
-    exts = (".mp4",)
-    if _ALLOW_HLS:
-        exts = *exts, ".m3u8"
-
-    def is_src(url: AbsoluteHttpURL) -> bool:
-        is_video = url.suffix in exts
-        is_bait = not url.query
-        return is_video and not is_bait
-
-    src = next(filter(is_src, _extract_urls(video_info, origin)))
+    res, src = max(_extract_mp4_urls(video_info, origin))
     return VoeVideo(
         id=video_info.get("file_code", ""),
         title=video_info.get("title") or open_graph.title(soup),
+        resolution=res,
         url=src,
         subtitles=tuple(_parse_subs(video_info, origin)),
+        hls_url=parse_url(url, origin) if (url := video_info.get("source")) else None,
     )
 
 
@@ -211,27 +228,16 @@ def _decrypt_json(encrypted_json: str) -> Any:
         return
 
 
-def _extract_urls(obj: object, origin: AbsoluteHttpURL) -> Generator[AbsoluteHttpURL]:
-    if not obj:
-        return
+def _extract_mp4_urls(
+    video_info: dict[str, Any], origin: AbsoluteHttpURL
+) -> Generator[tuple[Resolution, AbsoluteHttpURL]]:
+    for fallback in video_info.get("fallback", []):
+        if fallback["type"] == "mp4":
+            res = Resolution.parse(fallback["label"])
+            yield res, parse_url(fallback["file"], origin)
 
-    if isinstance(obj, list):
-        for item in obj:
-            yield from _extract_urls(item, origin)
-
-    elif isinstance(obj, dict):
-        if url := obj.get("direct_access_url"):
-            yield parse_url(url, origin)
-
-        if url := obj.get("source"):
-            yield parse_url(url, origin)
-
-        for key in ("mp4", "hls", "url", "file", "src"):
-            if (url := obj.get(key)) and isinstance(url, str):
-                yield parse_url(url, origin)
-
-        for value in obj.values():
-            yield from _extract_urls(value, origin)
+    if url := video_info.get("direct_access_url"):
+        yield Resolution.unknown(), parse_url(url, origin)
 
 
 def _parse_subs(video_info: dict[str, Any], origin: AbsoluteHttpURL) -> Generator[VoeSubtitle]:

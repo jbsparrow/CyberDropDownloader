@@ -101,6 +101,13 @@ class Resolution(NamedTuple):
         width = round(height * aspect_ratio)
         return Resolution(width, height)
 
+    @staticmethod
+    def unknown() -> Resolution:
+        return UNKNOWN_RESOLUTION
+
+
+UNKNOWN_RESOLUTION = Resolution.parse(0)
+
 
 COMMON_RESOLUTIONS: Final = tuple(
     Resolution(*resolution)  # Best to worst
