@@ -87,6 +87,7 @@ from .rule34vault import Rule34VaultCrawler
 from .rule34video import Rule34VideoCrawler
 from .rule34xxx import Rule34XXXCrawler
 from .rule34xyz import Rule34XYZCrawler
+from .safe_soul import SafeSoulCrawler
 from .saint import SaintCrawler
 from .scrolller import ScrolllerCrawler
 from .send_now import SendNowCrawler
