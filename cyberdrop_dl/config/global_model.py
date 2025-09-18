@@ -26,13 +26,13 @@ class General(BaseModel):
     # TODO: Move `ssl_context` to an advance config section
     ssl_context: Literal["truststore", "certifi", "truststore+certifi"] | None = "truststore+certifi"
     disable_crawlers: ListNonEmptyStr = []
-    enable_generic_crawler: bool = True
+    enable_generic_crawler: bool = False
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
     max_folder_name_length: PositiveInt = 60
     proxy: HttpURL | None = None
     required_free_space: ByteSizeSerilized = DEFAULT_REQUIRED_FREE_SPACE
-    user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
+    user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0"
 
     @field_validator("ssl_context", mode="before")
     @classmethod
@@ -62,13 +62,13 @@ class General(BaseModel):
 
 
 class RateLimiting(BaseModel):
-    download_attempts: PositiveInt = 5
-    download_delay: NonNegativeFloat = 0.5
+    download_attempts: PositiveInt = 2
+    download_delay: NonNegativeFloat = 0.0
     download_speed_limit: ByteSizeSerilized = ByteSize(0)
     file_host_cache_expire_after: timedelta = timedelta(days=7)
     forum_cache_expire_after: timedelta = timedelta(weeks=4)
     jitter: NonNegativeFloat = 0
-    max_simultaneous_downloads_per_domain: PositiveInt = 3
+    max_simultaneous_downloads_per_domain: PositiveInt = 5
     max_simultaneous_downloads: PositiveInt = 15
     rate_limit: PositiveInt = 50
 
@@ -106,7 +106,7 @@ class RateLimiting(BaseModel):
 
 
 class UIOptions(BaseModel):
-    downloading_item_limit: PositiveInt = 5
+    downloading_item_limit: PositiveInt = 10
     refresh_rate: PositiveInt = 10
     scraping_item_limit: PositiveInt = 5
     vi_mode: bool = False
