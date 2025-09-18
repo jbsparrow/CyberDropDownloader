@@ -133,8 +133,9 @@ class FileLocksVault:
         log_debug(f"Checking lock for '{filename}'", 20)
         if filename not in self._locked_files:
             log_debug(f"Lock for '{filename}' does not exists", 20)
+            lock = asyncio.Lock()
+            self._locked_files[filename] = lock
 
-        self._locked_files[filename] = self._locked_files.get(filename, asyncio.Lock())
         async with self._locked_files[filename]:
             log_debug(f"Lock for '{filename}' acquired", 20)
             yield
