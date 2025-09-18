@@ -274,7 +274,7 @@ class ClientManager:
             impersonate="chrome",
             verify=bool(self.ssl_context),
             proxy=proxy_or_none,
-            timeout=self.rate_limiting_options._timeout,
+            timeout=self.rate_limiting_options._curl_timeout,
             cookies={cookie.key: cookie.value for cookie in self.cookies},
         )
 
@@ -300,11 +300,11 @@ class ClientManager:
         self, cached: bool = False, trace_configs: list[aiohttp.TraceConfig] | None = None
     ) -> CachedSession | ClientSession:
         if cached:
-            timeout = self.rate_limiting_options._scrape_timeout
+            timeout = self.rate_limiting_options._aiohttp_timeout
             session_cls = CachedSession
             kwargs: dict[str, Any] = {"cache": self.manager.cache_manager.request_cache}
         else:
-            timeout = self.rate_limiting_options._download_timeout
+            timeout = self.rate_limiting_options._aiohttp_timeout
             session_cls = ClientSession
             kwargs = {}
         return session_cls(
