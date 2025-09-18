@@ -3,11 +3,10 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ssl
-import weakref
 from base64 import b64encode
 from collections import defaultdict
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any, Literal, Self, overload
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Literal, Self, overload
 
 import aiohttp
 import certifi
@@ -121,24 +120,43 @@ class CloudflareTurnstile:
     ALL_SELECTORS = ", ".join(SELECTORS)
 
 
+class RefCountedLock:
+    """ A lock with a counter that's managed by FileLocksVault. """
+
+    def __init__(self):
+        self.lock = asyncio.Lock()
+        self.ref_count = 0
+
 class FileLocksVault:
     """Is this necessary? No. But I want it."""
 
-    def __init__(self) -> None:
-        self._locked_files: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
+    def __init__(self):
+        self._locked_files: Dict[str, RefCountedLock] = {}
+        # Protects access to the _locked_files dict
+        self._dict_lock = asyncio.Lock()
 
     @contextlib.asynccontextmanager
-    async def get_lock(self, filename: str) -> AsyncGenerator:
+    async def get_lock(self, filename: str) -> AsyncGenerator[None, None]:
         """Get filelock for the provided filename. Creates one if none exists"""
-        log_debug(f"Checking lock for '{filename}'", 20)
-        if filename not in self._locked_files:
-            log_debug(f"Lock for '{filename}' does not exists", 20)
+        async with self._dict_lock:
+            if filename not in self._locked_files:
+                log_debug(f"Lock for '{filename}' does not exists", 20)
+                self._locked_files[filename] = RefCountedLock()
 
-        self._locked_files[filename] = self._locked_files.get(filename, asyncio.Lock())
-        async with self._locked_files[filename]:
+            ref_lock = self._locked_files[filename]
+            ref_lock.ref_count += 1
+
+        async with ref_lock.lock:
             log_debug(f"Lock for '{filename}' acquired", 20)
             yield
             log_debug(f"Lock for '{filename}' released", 20)
+
+        # Decrement the ref count
+        async with self._dict_lock:
+            ref_lock.ref_count -= 1
+            if ref_lock.ref_count == 0:
+                log_debug(f"Lock for '{filename}' garbage collected", 20)
+                del self._locked_files[filename]
 
 
 class ClientManager:
