@@ -102,6 +102,7 @@ from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
 from .vbulletin import VBULLETIN_CRAWLERS
 from .vipr_dot_im import ViprImCrawler
+from .voe_sx import VoeSxCrawler
 from .wetransfer import WeTransferCrawler
 from .wordpress import WP_CRAWLERS, WordPressHTMLCrawler, WordPressMediaCrawler
 from .xbunkr import XBunkrCrawler
