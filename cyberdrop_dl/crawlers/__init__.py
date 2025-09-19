@@ -47,6 +47,7 @@ from .imagebam import ImageBamCrawler
 from .imagepond import ImagePondCrawler
 from .imgbb import ImgBBCrawler
 from .imgbox import ImgBoxCrawler
+from .imglike import ImgLikeCrawler
 from .imgur import ImgurCrawler
 from .imx_to import ImxToCrawler
 from .incestflix import IncestflixCrawler
