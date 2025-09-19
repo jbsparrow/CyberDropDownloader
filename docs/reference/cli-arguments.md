@@ -278,6 +278,7 @@ ignore_options:
   --exclude-videos, --no-exclude-videos
   --filename-regex-filter FILENAME_REGEX_FILTER
   --ignore-coomer-ads, --no-ignore-coomer-ads
+  --ignore-coomer-post-content, --no-ignore-coomer-post-content
   --only-hosts [ONLY_HOSTS ...]
   --skip-hosts [SKIP_HOSTS ...]
   --exclude-files-with-no-extension, --no-exclude-files-with-no-extension
@@ -331,7 +332,6 @@ general:
   --user-agent USER_AGENT
 
 rate_limiting_options:
-  --connection-timeout CONNECTION_TIMEOUT
   --download-attempts DOWNLOAD_ATTEMPTS
   --download-delay DOWNLOAD_DELAY
   --download-speed-limit DOWNLOAD_SPEED_LIMIT
@@ -341,6 +341,7 @@ rate_limiting_options:
   --max-simultaneous-downloads-per-domain MAX_SIMULTANEOUS_DOWNLOADS_PER_DOMAIN
   --max-simultaneous-downloads MAX_SIMULTANEOUS_DOWNLOADS
   --rate-limit RATE_LIMIT
+  --connection-timeout CONNECTION_TIMEOUT
   --read-timeout READ_TIMEOUT
 
 ui_options:
