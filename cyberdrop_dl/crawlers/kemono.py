@@ -15,7 +15,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.models.validators import falsy_as_none
+from cyberdrop_dl.models.validators import falsy_as, falsy_as_none
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.dates import to_timestamp
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
@@ -76,6 +76,7 @@ class File(TypedDict):
 
 
 FileOrNone = Annotated[File | None, BeforeValidator(falsy_as_none)]
+Tags = Annotated[list[str], BeforeValidator(lambda x: falsy_as(x, []))]
 
 
 class Post(AliasModel):
@@ -85,6 +86,7 @@ class Post(AliasModel):
     attachments: list[File] = []  # noqa: RUF012
     published_or_added: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
     date: int | None = None
+    tags: Tags = []  # noqa: RUF012
 
     # `Any` to skip validation, but these are `yarl.URL`. We generate them internally so no validation is needed
     soup_attachments: list[Any] = []  # noqa: RUF012
@@ -183,10 +185,19 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self.__known_discord_servers: dict[str, DiscordServer] = {}
         self.__known_attachment_servers: dict[str, str] = {}
         self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self.__ad_posts: list[str] = []
 
     @property
     def session_cookie(self) -> str:
         return ""
+
+    @property
+    def ignore_content(self) -> bool:
+        return self.manager.config.ignore_options.ignore_coomer_post_content
+
+    @property
+    def ignore_ads(self) -> bool:
+        return self.manager.config.ignore_options.ignore_coomer_ads
 
     async def async_startup(self) -> None:
         def check_kemono_page(response: AnyResponse) -> bool:
@@ -233,6 +244,10 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         path = (scrape_item.url / "posts").path
         api_url = self.__make_api_url_w_offset(scrape_item.url, path)
         scrape_item.setup_as_profile("")
+        if self.ignore_ads:
+            user = scrape_item.url.parts[3]
+            self.log(f"[{self.FOLDER_DOMAIN}] filtering out all ad posts for {user}. This could take a while")
+            await self.__iter_user_posts(scrape_item, api_url.update_query(q="#ad"))
         await self.__iter_user_posts(scrape_item, api_url)
 
     @fallback_if_no_api
@@ -365,7 +380,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
         """Gets links out of content in post and sends them to a new crawler."""
-        if not post.content:
+        if not post.content or self.ignore_content:
             return
 
         for link in self.__parse_content_urls(post):
@@ -398,7 +413,23 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                     if self.DOMAIN not in url.host:
                         yield url
 
+    def __has_ads(self, post: Post) -> bool:
+        msg = f"[{self.FOLDER_DOMAIN}] skipping post #{post.id} (contains #advertisements)"
+        if "#ad" in post.content or post.id in self.__ad_posts:
+            self.log(msg)
+            return True
+
+        ci_tags = {tag.casefold() for tag in post.tags}
+        if ci_tags.intersection({"ad", "#ad", "ads", "#ads"}):
+            self.log(msg)
+            return True
+
+        return False
+
     def __handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
+        if self.ignore_ads and self.__has_ads(post):
+            return
+
         files = (self.__make_file_url(file) for file in post.all_files)
 
         seen: set[AbsoluteHttpURL] = set()
@@ -439,6 +470,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             return server
 
     async def __iter_user_posts(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL) -> None:
+        filtering_ads = url.query.get("q") == "#ad"
         async for json_resp in self._pager(url):
             # From search results
             if isinstance(json_resp, dict):
@@ -451,11 +483,20 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             else:
                 raise ScrapeError(422)
 
-            for post in (UserPost.model_validate(entry) for entry in posts):
-                post_web_url = self.parse_url(post.web_path_qs)
-                new_scrape_item = scrape_item.create_child(post_web_url)
-                self._handle_user_post(new_scrape_item, post)
-                scrape_item.add_children()
+            if filtering_ads:
+                self.__ad_posts.extend(p["id"] for p in posts)
+
+            else:
+                for post in (UserPost.model_validate(entry) for entry in posts):
+                    post_web_url = self.parse_url(post.web_path_qs)
+                    new_scrape_item = scrape_item.create_child(post_web_url)
+                    if self.ignore_content or post.content:
+                        self._handle_user_post(new_scrape_item, post)
+                    elif self.ignore_ads and self.__has_ads(post):
+                        continue
+                    else:
+                        self.create_task(self.run(new_scrape_item))
+                    scrape_item.add_children()
 
             if len(posts) < _DEFAULT_PAGE_SIZE:
                 break
