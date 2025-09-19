@@ -4,12 +4,10 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 
-from .kemono import KemonoBaseCrawler, Post
+from .kemono import KemonoBaseCrawler
 
 if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
-
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
 class CoomerCrawler(KemonoBaseCrawler):
@@ -32,10 +30,3 @@ class CoomerCrawler(KemonoBaseCrawler):
             return True
 
         self.register_cache_filter(self.PRIMARY_URL, check_coomer_page)
-
-    def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
-        """Handles the content of a post."""
-        if "#ad" in post.content and self.manager.config_manager.settings_data.ignore_options.ignore_coomer_ads:
-            return
-
-        return super()._handle_post_content(scrape_item, post)
