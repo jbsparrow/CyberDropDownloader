@@ -33,7 +33,8 @@ dependencies = [
     "yarl >=1.20.1"
 ]
 description = "Bulk downloader for multiple file hosts"
-license = {text = "GPL-3.0-only"}
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.11,<4"
 version = "7.5.0"
@@ -46,6 +47,24 @@ cyberdrop-dl-patched = "cyberdrop_dl.main:main"
 Changelog = "https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md"
 Documentation = "https://script-ware.gitbook.io/cyberdrop-dl/"
 Repository = "https://github.com/jbsparrow/CyberDropDownloader"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+    "py-markdown-table>=1.3.0",
+    "ruff>=0.13.1",
+    "tox>=4.28.0"
+]
+test = [
+    "pytest-asyncio>=1.2.0",
+    "pytest-cov>=7.0.0",
+    "pytest-mock",
+    "pytest>=8.4.1"
+]
 
 [tool.coverage.report]
 exclude_also = [
@@ -64,19 +83,7 @@ omit = [
 [tool.poetry]
 include = ["CHANGELOG.md"]
 packages = [{include = "cyberdrop_dl"}]
-requires-poetry = ">=2.1.3"
-
-[tool.poetry.group.dev.dependencies]
-pre-commit = ">=4.2.0"
-py-markdown-table = ">=1.3.0"
-ruff = ">=0.13.1"
-tox = ">=4.28.0"
-
-[tool.poetry.group.test.dependencies]
-pytest = ">=8.4.1"
-pytest-asyncio = ">=1.2.0"
-pytest-cov = ">=7.0.0"
-pytest-mock = "*"
+requires-poetry = ">=2.2.0"
 
 [tool.pytest.ini_options]
 addopts = ["-s"]
@@ -140,10 +147,6 @@ convention = "google"
 all = true
 ignore_case = true
 in_place = true
-sort_first = ["name", "project", "select", "tool"]
+sort_first = ["name", "project", "select"]
 spaces_before_inline_comment = 2
 spaces_indent_inline_array = 4
-
-[build-system]
-build-backend = "poetry.core.masonry.api"
-requires = ["poetry-core>=1.0.0"]
