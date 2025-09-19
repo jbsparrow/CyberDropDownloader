@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MegaCloud support
 - PimpBunny support
 - HiAnime support
+- Safe.Soul support
 - Support for subfolders (MediaFire)
 - Support for short URL formats (MediaFire)
 - Support for subfolders (Dropbox)
@@ -41,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CDL can now download private TikTok posts when using cookies
 - New config option to download tiktok videos in original quality: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#download-tiktok-src-quality-videos>
 - New `--max-thread-folder-depth` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#maximum_thread_folder_depth>
+- New `--ignore-coomer-post-content` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#ignore_coomer_post_content>
+- The `--ignore-coomer-ads` config option that affects all Kemono based crawlers (Coomer, Kemono & Nekohouse)
 
 ### Changed
 
@@ -49,10 +52,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The default rate limit was increased from 10req/s to 25req/s
 - Increase max concurrent bunkr downloads, from 1 to 3
 - Parse full spec cookies from Flaresolverr responses
-- CDL will no longer try to merge subtitles fot HLS downloads. They will be downloaded as separate files
+- CDL will no longer try to merge subtitles for HLS downloads. They will be downloaded as separate files
 - Make requests with the same domain as the original input URL (saint2.su)
 - Tiktok downloads use a new logic to create filenames and folder structure
 - Instead of downloading an entire dropbox folder as a zip, CDL will now always iterate over each file and subfolder recursively
+- `--read-timeout` now accepts `None` as value. This will make CDL keep the socket connection open indefinitely, even if the server is not sending data anymore
+- `--read-timeout` and `--connection-timeout` now accept fractions of a seconds as value (ex: `0.3`)
+- `--read-timeout` and `--connection-timeout` now affect all requests CDL will make (flaresolverr requests, scrape requests and download requests)
 - General performance improvements
 
 ### Deprecated
@@ -70,17 +76,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Download retries always re-starting from zero
 - Global rate limiter being ignored while crawling
 - Crashing when using any value for `--download-speed-limit`
-- Handle encoded URLs (MediaFire)
+- Handle b64 encoded URLs (MediaFire)
 - Previously downloaded HLS fragments not being detected
 - HLS subtitle downloads always failing
-- Parsing of 1440p, 2K, 4K and 8K videos (Spankbang, Ashemaletube, KVS)
+- Parsing of 1440p, 2K, 4K and 8K videos (KVS sites)
 - Possible infinite loop when using the bunkrr.org domain (Bunkr)
 - Crashing if a single error happens while crawling a Discord channel (Kemono)
 - Nekohouse crawler
 - Thumbnails being downloaded as is instead of full resolution (Coomer, Kemono, Nekohouse)
-- Handle new rot13 encryption (xhamster)
+- Handle new rot13 encryption (xHamster)
 - Videos being skipped if the audio was downloaded before (TikTok)
 - Do not crash if the `URL.txt` file has ipv6 URLs or invalid URLs
+- `ConnectionError` after the first attempt of a DNS lookup failed, without trying any DNS fallbacks
 
 ## [7.5.0] - 2025-09-02
 
