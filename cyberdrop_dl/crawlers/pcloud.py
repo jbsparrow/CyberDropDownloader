@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import dataclasses
-import email.utils
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
 from pydantic import TypeAdapter
@@ -11,7 +10,7 @@ from pydantic import TypeAdapter
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils.dates import to_timestamp
+from cyberdrop_dl.utils.dates import parse_http_date
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -24,12 +23,6 @@ _EU_API_URL = AbsoluteHttpURL("https://eapi.pcloud.com")
 _US_API_URL = AbsoluteHttpURL("https://api.pcloud.com")
 _EU_PUBLIC_URL = AbsoluteHttpURL("https://e.pcloud.link/publink/show")
 _US_PUBLIC_URL = AbsoluteHttpURL("https://u.pcloud.link/publink/show")
-
-
-# TODO: move to base crawler
-def parse_rfc_2822_date(date: str) -> int:
-    # https://docs.pcloud.com/structures/datetime.html
-    return to_timestamp(email.utils.parsedate_to_datetime(date))
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -124,7 +117,8 @@ class PCloudCrawler(Crawler):
         # https://docs.pcloud.com/methods/public_links/getpublinkdownload.html
 
         link = await self._request_download_url(scrape_item, file)
-        scrape_item.possible_datetime = parse_rfc_2822_date(file.modified)
+        # https://docs.pcloud.com/structures/datetime.html
+        scrape_item.possible_datetime = parse_http_date(file.modified)
         filename, ext = self.get_filename_and_ext(file.name)
         # Adding the code as query just for logging messages. It will be discarded in the actual db
         db_url = (scrape_item.url.origin() / "file" / file._id).with_query(code=scrape_item.url.query["code"])

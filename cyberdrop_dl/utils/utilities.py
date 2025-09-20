@@ -265,36 +265,44 @@ def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def purge_dir_tree(dirname: Path) -> None:
-    """Purges empty files and directories efficiently."""
-    if not dirname.is_dir():
+def get_size(path: os.DirEntry) -> int | None:
+    try:
+        return path.stat(follow_symlinks=False).st_size
+    except (OSError, ValueError):
         return
 
-    def get_size(path: Path):
-        try:
-            return path.stat().st_size
-        except (OSError, ValueError):
-            return
 
-    # Use os.walk() to remove empty files and directories in a single pass
-    for dirpath, _dirnames, filenames in os.walk(dirname, topdown=False):
-        dir_path = Path(dirpath)
+def purge_dir_tree(dirname: Path | str) -> bool:
+    """walks and removes in place"""
 
-        # Remove empty files
-        has_non_empty_files = False
-        for file_name in filenames:
-            file_path = dir_path / file_name
-            if get_size(file_path) == 0:
-                file_path.unlink()
+    has_non_empty_files = False
+    has_non_empty_subfolders = False
+
+    try:
+        for entry in os.scandir(dirname):
+            try:
+                is_dir = entry.is_dir(follow_symlinks=False)
+            except OSError:
+                is_dir = False
+            if is_dir:
+                deleted = purge_dir_tree(entry.path)
+                if not deleted:
+                    has_non_empty_subfolders = True
+            elif get_size(entry) == 0:
+                os.unlink(entry)  # noqa: PTH108
             else:
                 has_non_empty_files = True
 
-        # Remove empty directories
-        if not has_non_empty_files:
-            try:
-                dir_path.rmdir()
-            except OSError:
-                continue
+    except (OSError, PermissionError):
+        pass
+
+    if has_non_empty_files or has_non_empty_subfolders:
+        return False
+    try:
+        os.rmdir(dirname)  # noqa: PTH106
+        return True
+    except OSError:
+        return False
 
 
 def check_partials_and_empty_folders(manager: Manager):
