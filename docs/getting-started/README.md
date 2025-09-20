@@ -29,11 +29,9 @@ The second method is installing cyberdrop-dl direcly from pypi using `uv`, `pipx
 For instructions, see:
 
 {% content-ref url="cyberdrop-dl-install.md" %}
-[cyberdrop-dl-install.md](cyberdrop-dl-install.md)
 {% endcontent-ref %}
 
-{% content-ref url="cyberdrop-dl-install.md" %}
-[cyberdrop-dl-on-android.md](cyberdrop-dl-on-android.md)
+{% content-ref url="cyberdrop-dl-on-android.md" %}
 {% endcontent-ref %}
 
 ## What now?</a>

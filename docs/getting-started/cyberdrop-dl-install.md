@@ -51,14 +51,45 @@ You **MUST** put the values _inside_ the double quotes. Ex: `set "COMMANDLINE_AR
 
 ## Manual Install
 
-### Python Install
+### 1. Using `uv`
 
-You'll need to have python installed to use Cyberdrop-DL. If you are on Linux or mac, you probably already do
+The recommended way to install Cyberdrop-DL is using [`uv`](https://docs.astral.sh/uv).
+
+{% tabs %}
+
+{% endtab %}
+
+{% tab title="macOS / Linux" %}
+
+```shell
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+{% endtab %}
+
+{% tab title="Windows" %}
+
+```shell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+{% endtab %}
+{% endtabs %}
+
+Once you have `uv`, you can install Cyberdrop-DL using:
+
+```shell
+uv tool install cyberdrop-dl-patched
+```
+
+### 2. Manual Python Install
+
+If you do not want to or can't use `uv`, you will need to install a compatible python version manually.
 
 If you don't have python, you can find and download it from their official website: [https://www.python.org/downloads/](https://www.python.org/downloads/)
 
-{% hint style="warning" %}
-Cyberdrop-DL requires python 3.11, 3.12 or python 3.13
+{% hint style="info" %}
+Cyberdrop-DL requires python 3.11, 3.12 or python 3.13. The **RECOMMENED** version is 3.12+
 {% endhint %}
 
 {% hint style="warning" %}
@@ -70,19 +101,21 @@ pip uninstall cyberdrop-dl
 
 {% endhint %}
 
-You can install cyberdrop-dl direcly from pypi using `uv`, `pipx` or `pip`. In a command prompt/terminal window:
+Once you have python, you can install Cyberdrop-DL directly from pypi using `pipx` or `pip`. In a command prompt/terminal window:
 
 {% tabs %}
-
-{% tab title="uv" %}
-
-```shell
-uv install cyberdrop-dl-patched
-```
 
 {% endtab %}
 
 {% tab title="pipx" %}
+
+- Install `pipx` (if you don't have it already)
+
+```shell
+pip install pipx
+```
+
+- Install cdl
 
 ```shell
 pipx install cyberdrop-dl-patched
@@ -92,7 +125,7 @@ pipx install cyberdrop-dl-patched
 
 {% tab title="pip" %}
 {% hint style="warning" %}
-Using `pip` to install `cyberdrop-dl-patched` is discouraged as it may lead to dependency conflicts with global installs and an inconsistent environment. Consider using `uv` or `pipx`
+Using bare `pip` to install `cyberdrop-dl-patched` is discouraged as it may lead to dependency conflicts with global installs and an inconsistent environment. Consider using `uv` or `pipx`
 {% endhint %}
 
 ```shell
