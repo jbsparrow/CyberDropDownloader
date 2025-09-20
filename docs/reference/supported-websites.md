@@ -1,10 +1,9 @@
-<!-- markdownlint-disable MD033 MD034 MD041 -->
-
 ---
 
 description: These are the websites supported by Cyberdrop-DL
 icon: globe-pointer
 ---
+<!-- markdownlint-disable MD033 MD034 MD041 -->
 
 # Supported Websites
 
