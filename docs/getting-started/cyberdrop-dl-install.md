@@ -7,7 +7,11 @@ icon: download
 
 ## Using Start Scripts (From Release Page)
 
-This is the simplest method to get the program up and running. Pre-configured start files are provided that will automatically install, update, and launch the program for you.
+This is the simplest method to get the program up and running. Pre-configured start files are provided that will automatically install python, install cyberdrop-dl, update, and launch the program for you.
+
+{% hint style="warning" %}
+The start scripts only work on 64bits operating systems. If you are running a 32bit OS, you need to install direcly from pypi and may need to compile some dependencies
+{% endhint %}
 
 You can download them here: [https://github.com/jbsparrow/CyberDropDownloader/releases/latest](https://github.com/jbsparrow/CyberDropDownloader/releases/latest)
 
@@ -31,22 +35,16 @@ xcode-select --install
 
 <summary>Optional: Running Cyberdrop-DL Script with Custom Parameters</summary>
 
-You can open the start script from the zip in a text editor like notepad. At the top of the file, you will find 3 variables:
+You can open the start script from the zip in a text editor like notepad. At the top of the file, you will this line:
 
 ```shell
-set "PYTHON="
-set "VENV_DIR="
 set "COMMANDLINE_ARGS="
 ```
-
-`PYTHON`: Specify a custom path to the Python executable. This is useful if you have multiple Python versions installed and want to select a specific one
-
-`VENV_DIR`: Define the path where the Python virtual environment will be created
 
 `COMMANDLINE_ARGS`:  Provide any arguments to pass to Cyberdrop-Dl. For more information, refer to the [CLI Arguments section](../reference/cli-arguments.md)
 
 {% hint style="info" %}
-You **MUST** put the values _inside_ the double quotes. Ex: `set "PYTHON=C:\Program Files\Python311\python.exe"`
+You **MUST** put the values _inside_ the double quotes. Ex: `set "COMMANDLINE_ARGS=--disable-cache"`
 {% endhint %}
 
 </details>
@@ -62,14 +60,32 @@ pip uninstall cyberdrop-dl
 
 {% endhint %}
 
-In a command prompt/terminal window:
+You can install cyberdrop-dl direcly from pypi using `uv`, `pipx` or `pip`. In a command prompt/terminal window:
+
+{% tabs %}
+{% tab title="uv" %}
 
 ```shell
-pip install --upgrade cyberdrop-dl-patched
+uv install cyberdrop-dl-patched
 ```
 
-If you're on Mac/Linux, you may need to change it to be
+{% endtab %}
+
+{% tab title="pipx" %}
 
 ```shell
-pip3 install --upgrade cyberdrop-dl-patched
+pipx install cyberdrop-dl-patched
 ```
+
+{% endtab %}
+
+{% tab title="pip" %}
+{% hint style="warning" %}
+Using `pip` to install `cyberdrop-dl-patched` is discouraged as it may lead to dependency conflicts with global installs and an inconsistent environment. Consider using `uv` or `pipx`
+{% endhint %}
+
+```shell
+pip install cyberdrop-dl-patched
+```
+
+{% endtab %}
