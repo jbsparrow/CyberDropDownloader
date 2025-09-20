@@ -9,7 +9,7 @@ icon: download
 
 This is the simplest method to get the program up and running. Pre-configured start files are provided that will automatically install python, install cyberdrop-dl, update, and launch the program for you.
 
-{% hint style="warning" %}
+{% hint style="info" %}
 The start scripts only work on 64bits operating systems. If you are running a 32bit OS, you need to install direcly from pypi and may need to compile some dependencies
 {% endhint %}
 
@@ -73,6 +73,7 @@ pip uninstall cyberdrop-dl
 You can install cyberdrop-dl direcly from pypi using `uv`, `pipx` or `pip`. In a command prompt/terminal window:
 
 {% tabs %}
+
 {% tab title="uv" %}
 
 ```shell
@@ -99,3 +100,4 @@ pip install cyberdrop-dl-patched
 ```
 
 {% endtab %}
+{% endtabs %}
