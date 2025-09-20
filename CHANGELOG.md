@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New config option to download tiktok videos in original quality: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#download-tiktok-src-quality-videos>
 - New `--max-thread-folder-depth` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#maximum_thread_folder_depth>
 - New `--ignore-coomer-post-content` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#ignore_coomer_post_content>
-- The `--ignore-coomer-ads` config option that affects all Kemono based crawlers (Coomer, Kemono & Nekohouse)
+- The `--ignore-coomer-ads` config option now affects all Kemono based crawlers (Coomer, Kemono & Nekohouse)
 
 ### Changed
 
