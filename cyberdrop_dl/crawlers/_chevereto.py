@@ -66,7 +66,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
             return await self.direct_file(scrape_item)
 
         match scrape_item.url.parts[1:]:
-            case ["a" | "album", album_slug]:
+            case ["a" | "album" | "category", album_slug]:
                 return await self.album(scrape_item, _id(album_slug))
             case ["img" | "image" | "video" | "videos", _]:
                 return await self.media(scrape_item)
@@ -169,7 +169,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        soup = await self.request_soup(scrape_item.url)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
         link_str = open_graph.get("video", soup) or open_graph.get("image", soup)
         if not link_str or "loading.svg" in link_str:
             link_str = Selector.MAIN_IMAGE(soup)
