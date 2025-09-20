@@ -273,71 +273,44 @@ def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def purge_dir_tree(dirname: Path) -> None:
-    """Purges empty files and directories efficiently."""
-    if not dirname.is_dir():
+def get_size(path: os.DirEntry) -> int | None:
+    try:
+        return path.stat(follow_symlinks=False).st_size
+    except (OSError, ValueError):
         return
 
-    def get_size(entry: os.DirEntry) -> int | None:
-        try:
-            if entry.is_file(follow_symlinks=False):
-                return entry.stat(follow_symlinks=False).st_size
-        except (OSError, PermissionError):
-            pass
-        return None
 
-    stack: list[StackFrame] = [StackFrame(str(dirname), None, False)]
+def purge_dir_tree(dirname: Path | str) -> bool:
+    """walks and removes in place"""
 
-    while stack:
-        frame = stack[-1]
+    has_non_empty_files = False
+    has_non_empty_subfolders = False
 
-        if frame.iterator is None:
+    try:
+        for entry in os.scandir(dirname):
             try:
-                frame.iterator = os.scandir(frame.path)
-            except (OSError, PermissionError):
-                frame.iterator = iter(())
-                frame.kept = True
-            continue
-
-        try:
-            entry = next(frame.iterator)
-        except StopIteration:
-            try:
-                frame.iterator.close()
-            except Exception:
-                pass
-
-            # Remove empty directories
-            if not frame.kept:
-                try:
-                    Path(frame.path).rmdir()
-                except OSError:
-                    pass
-
-            # Pop the frame and propagate kept status to parent
-            stack.pop()
-            if stack and frame.kept:
-                parent = stack[-1]
-                if not parent.kept:
-                    parent.kept = True
-            continue
-
-        try:
-            # Remove empty files
-            if entry.is_file(follow_symlinks=False):
-                if get_size(entry) == 0:
-                    try:
-                        Path(entry.path).unlink()
-                    except OSError:
-                        frame.kept = True
-                else:
-                    frame.kept = True
-            elif entry.is_dir(follow_symlinks=False):
-                stack.append(StackFrame(entry.path, None, False))
+                is_dir = entry.is_dir(follow_symlinks=False)
+            except OSError:
+                is_dir = False
+            if is_dir:
+                deleted = purge_dir_tree(entry.path)
+                if not deleted:
+                    has_non_empty_subfolders = True
+            elif get_size(entry) == 0:
+                os.unlink(entry)  # noqa: PTH108
             else:
-                frame.kept = True
-        except (OSError, PermissionError):
-            frame.kept = True
+                has_non_empty_files = True
+
+    except (OSError, PermissionError):
+        pass
+
+    if has_non_empty_files or has_non_empty_subfolders:
+        return False
+    try:
+        os.rmdir(dirname)  # noqa: PTH106
+        return True
+    except OSError:
+        return False
 
 
 def check_partials_and_empty_folders(manager: Manager):
