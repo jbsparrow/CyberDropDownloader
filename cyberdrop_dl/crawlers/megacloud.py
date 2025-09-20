@@ -30,12 +30,15 @@ class MegaCloudSubtitle:
 @dataclasses.dataclass(slots=True)
 class MegaCloudVideo:
     id: str
+    embed_url: AbsoluteHttpURL
     sources: tuple[AbsoluteHttpURL, ...]
     subtitles: tuple[MegaCloudSubtitle, ...]
     title: str = ""
 
 
-_find_v3_client_key = re.compile(r"([a-zA-Z0-9]{48})").search
+_find_v3_client_key = re.compile(
+    r'([a-zA-Z0-9]{48})|x: "([a-zA-Z0-9]{16})", y: "([a-zA-Z0-9]{16})", z: "([a-zA-Z0-9]{16})"};'
+).search
 
 
 class MegaCloudCrawler(Crawler):
@@ -71,7 +74,7 @@ class MegaCloudCrawler(Crawler):
         )
         self.create_task(
             self.handle_file(
-                scrape_item.url,
+                video.embed_url,
                 scrape_item,
                 filename,
                 ext,
@@ -95,7 +98,7 @@ class MegaCloudCrawler(Crawler):
     async def _get_client_key(self: Crawler, embed_url: AbsoluteHttpURL) -> str:
         content = await self.request_text(embed_url, headers=_HEADERS)
         if match := _find_v3_client_key(content):
-            return match.group()
+            return "".join(filter(None, match.groups()))
 
         raise ScrapeError(422, "Unable to extract client key")
 
@@ -129,6 +132,7 @@ class MegaCloudCrawler(Crawler):
 
         return MegaCloudVideo(
             id=video_id,
+            embed_url=embed_url.with_query(None),
             sources=tuple(self.parse_url(x["file"]) for x in resp["sources"]),
             subtitles=tuple(parse_subs()),
         )

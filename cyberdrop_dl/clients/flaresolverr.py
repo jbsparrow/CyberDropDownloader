@@ -136,7 +136,7 @@ class FlareSolverr:
         if not self.url:
             raise DDOSGuardError("Found DDoS challenge, but FlareSolverr is not configured")
 
-        timeout = self.manager.global_config.rate_limiting_options._scrape_timeout
+        timeout = self.manager.global_config.rate_limiting_options._aiohttp_timeout
         if command is _Command.CREATE_SESSION:
             timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
 

@@ -2,31 +2,35 @@
 
 from __future__ import annotations
 
+import dataclasses
 import re
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.data_structures import AbsoluteHttpURL, Resolution
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
+from cyberdrop_dl.utils import css, open_graph
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from bs4 import BeautifulSoup
 
-    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
 
-class Video(NamedTuple):
+@dataclasses.dataclass(slots=True)
+class KVSVideo:
     id: str
-    res: str | None
+    title: str
     url: AbsoluteHttpURL
-    title: str = ""
+    resolution: Resolution
 
 
 class Selectors:
     UNAUTHORIZED = "div.video-holder:contains('This video is a private video')"
-    FLASHVARS = "script:contains('var flashvars')"
+    FLASHVARS = "script:contains('video_title:')"
     USER_NAME = "div.headline > h2"
     ALBUM_NAME = "div.headline > h1"
     ALBUM_PICTURES = "div.album-list > a"
@@ -121,9 +125,9 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
             return
 
         soup = await self.request_soup(scrape_item.url)
-        video = self.get_video_info(soup)
+        video = extract_kvs_video(self, soup)
         filename, ext = self.get_filename_and_ext(video.url.name)
-        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.res)
+        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.resolution)
         date_str = css.select_one_get_text(soup, _SELECTORS.DATE).split(":", 1)[-1].strip()
         scrape_item.possible_datetime = self.parse_date(date_str)
         await self.handle_file(
@@ -152,41 +156,48 @@ class KernelVideoSharingCrawler(Crawler, is_abc=True):
         filename, ext = self.get_filename_and_ext(url.name)
         await self.handle_file(url, scrape_item, filename, ext)
 
-    def get_video_info(self, soup: BeautifulSoup) -> Video:
-        if soup.select_one(_SELECTORS.UNAUTHORIZED):
-            raise ScrapeError(401)
-        video = parse_flash_vars(script.text) if (script := soup.select_one(_SELECTORS.FLASHVARS)) else None
-        if not video:
-            raise ScrapeError(404)
-        return video
+
+def extract_kvs_video(cls: Crawler, soup: BeautifulSoup) -> KVSVideo:
+    if soup.select_one(_SELECTORS.UNAUTHORIZED):
+        raise ScrapeError(401, "Private video")
+
+    script = css.select_one_get_text(soup, _SELECTORS.FLASHVARS)
+    video = _parse_video_vars(script)
+    if not video.title:
+        title = open_graph.get_title(soup) or css.page_title(soup)
+        assert title
+        video.title = css.sanitize_page_title(title, cls.DOMAIN)
+    return video
 
 
 # URL de-obfuscation code for kvs, adapted from yt-dlp
 # https://github.com/yt-dlp/yt-dlp/blob/e1847535e28788414a25546a45bebcada2f34558/yt_dlp/extractor/generic.py
 
 
-HASH_LENGTH = 32
-VIDEO_RESOLUTION_PATTERN = re.compile(r"video_url_text:\s*'([^']+)'")
-VIDEO_INFO_PATTTERN = re.compile(
-    r"video_id:\s*'(?P<video_id>[^']+)'[^}]*?"
-    r"video_title:\s*'(?P<video_title>[^']+)'[^}]*?"
-    r"license_code:\s*'(?P<license_code>[^']+)'[^}]*?"
-    r"video_url:\s*'(?P<video_url>[^']+)'[^}]*?"
-)
+_HASH_LENGTH = 32
+_match_video_url_keys = re.compile(r"^video_(?:url|alt_url\d*)$").match
+_find_flashvars = re.compile(r"(\w+):\s*'([^']*)'").findall
 
 
-def parse_flash_vars(flashvars: str) -> Video | None:
-    if match_id := VIDEO_INFO_PATTTERN.search(flashvars):
-        video_id, title, license_code, url_str = match_id.groups()
-        real_url = get_real_url(url_str, license_code)
-        if match_res := VIDEO_RESOLUTION_PATTERN.search(flashvars):
-            resolution = match_res.group(1)
-        else:
-            resolution = None
-        return Video(video_id, resolution, real_url, title)
+def _parse_video_vars(video_vars: str) -> KVSVideo:
+    flashvars: dict[str, str] = dict(_find_flashvars(video_vars))
+    url_keys = filter(_match_video_url_keys, flashvars.keys())
+    license_token = _get_license_token(flashvars["license_code"])
+
+    def get_formats():
+        for key in url_keys:
+            url_str = flashvars[key]
+            if "/get_file/" not in url_str:
+                continue
+            resolution = Resolution.parse(flashvars[f"{key}_text"])
+            url = _deobfuscate_url(url_str, license_token)
+            yield resolution, url
+
+    resolution, url = max(get_formats())
+    return KVSVideo(flashvars["video_id"], flashvars["video_title"], url, resolution)
 
 
-def get_license_token(license_code: str) -> list[int]:
+def _get_license_token(license_code: str) -> tuple[int, ...]:
     license_code = license_code.removeprefix("$")
     license_values = [int(char) for char in license_code]
     modlicense = license_code.replace("0", "1")
@@ -195,31 +206,30 @@ def get_license_token(license_code: str) -> list[int]:
     backhalf = int(modlicense[middle:])
     modlicense = str(4 * abs(fronthalf - backhalf))[: middle + 1]
 
-    return [
+    return tuple(
         (license_values[index + offset] + current) % 10
         for index, current in enumerate(map(int, modlicense))
         for offset in range(4)
-    ]
+    )
 
 
-def get_real_url(video_url_str: str, license_code: str) -> AbsoluteHttpURL:
-    if not video_url_str.startswith("function/0/"):
-        return AbsoluteHttpURL(video_url_str)  # not obfuscated
+def _deobfuscate_url(video_url_str: str, license_token: Sequence[int]) -> AbsoluteHttpURL:
+    raw_url_str = video_url_str.removeprefix("function/0/")
+    url = parse_url(raw_url_str)
+    is_obfuscated = raw_url_str != video_url_str
+    if not is_obfuscated:
+        return url
 
-    parsed_url = AbsoluteHttpURL(video_url_str.removeprefix("function/0/"))
-    license_token = get_license_token(license_code)
-    hash, tail = parsed_url.parts[3][:HASH_LENGTH], parsed_url.parts[3][HASH_LENGTH:]
-    indices = list(range(HASH_LENGTH))
+    hash, tail = url.parts[3][:_HASH_LENGTH], url.parts[3][_HASH_LENGTH:]
+    indices = list(range(_HASH_LENGTH))
 
     # Swap indices of hash according to the destination calculated from the license token
     accum = 0
-    for src in reversed(range(HASH_LENGTH)):
+    for src in reversed(range(_HASH_LENGTH)):
         accum += license_token[src]
-        dest = (src + accum) % HASH_LENGTH
+        dest = (src + accum) % _HASH_LENGTH
         indices[src], indices[dest] = indices[dest], indices[src]
 
-    new_parts = list(parsed_url.parts)
-    if not parsed_url.name:
-        _ = new_parts.pop()
+    new_parts = list(url.parts)
     new_parts[3] = "".join(hash[index] for index in indices) + tail
-    return parsed_url.with_path("/".join(new_parts[1:]), keep_query=True, keep_fragment=True)
+    return url.with_path("/".join(new_parts[1:]), keep_query=True, keep_fragment=True)

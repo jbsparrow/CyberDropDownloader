@@ -26,8 +26,10 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_trailing_slash
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Sequence
+    from collections.abc import AsyncGenerator, Generator
     from types import TracebackType
+
+    import aiosqlite
 
     from cyberdrop_dl.config.global_model import GenericCrawlerInstances, GlobalSettings
     from cyberdrop_dl.crawlers import Crawler
@@ -186,7 +188,7 @@ class ScrapeMapper:
         """Loads failed links from database."""
         async for rows in self.manager.db_manager.history_table.get_failed_items():
             for row in rows:
-                yield create_item_from_entry(row)
+                yield _create_item_from_row(row)
 
     async def load_all_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all links from database."""
@@ -194,13 +196,13 @@ class ScrapeMapper:
         before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
         async for rows in self.manager.db_manager.history_table.get_all_items(after, before):
             for row in rows:
-                yield create_item_from_entry(row)
+                yield _create_item_from_row(row)
 
     async def load_all_bunkr_failed_links_via_hash(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all bunkr links with maintenance hash."""
         async for rows in self.manager.db_manager.history_table.get_all_bunkr_failed():
             for row in rows:
-                yield create_item_from_entry(row)
+                yield _create_item_from_row(row)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -375,16 +377,12 @@ def regex_links(line: str) -> Generator[AbsoluteHttpURL]:
             log(f"Unable to parse URL from input file: {link} {e:!r}", 40)
 
 
-def create_item_from_entry(entry: Sequence) -> ScrapeItem:
-    url = AbsoluteHttpURL(entry[0])
-    retry_path = Path(entry[1])
-    item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
-    completed_at = entry[2]
-    created_at = entry[3]
-    if not isinstance(item.url, URL):
-        item.url = AbsoluteHttpURL(item.url)
-    item.completed_at = completed_at
-    item.created_at = created_at
+def _create_item_from_row(row: aiosqlite.Row) -> ScrapeItem:
+    referer: str = row["referer"]
+    url = AbsoluteHttpURL(referer, encoded="%" in referer)
+    item = ScrapeItem(url=url, retry_path=Path(row["download_path"]), part_of_album=True, retry=True)
+    item.completed_at = row["completed_at"]
+    item.created_at = row["created_at"]
     return item
 
 

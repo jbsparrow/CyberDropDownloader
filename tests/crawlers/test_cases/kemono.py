@@ -50,7 +50,7 @@ TEST_CASES = [
                 "datetime": 1602954002,
             }
         ],
-        212,
+        199,
     ),
     (
         "https://kemono.cr/posts?q=dandadan%20s2%20episode%208%20reaction",
@@ -60,6 +60,6 @@ TEST_CASES = [
                 "download_folder": r"re:dandadan s2 episode 8 reaction \[search\] \(Kemono\)",
             }
         ],
-        43,
+        41,
     ),
 ]

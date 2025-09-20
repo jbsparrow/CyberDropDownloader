@@ -160,6 +160,7 @@ class IgnoreOptions(BaseModel):
     exclude_videos: bool = False
     filename_regex_filter: NonEmptyStrOrNone = None
     ignore_coomer_ads: bool = False
+    ignore_coomer_post_content: bool = True
     only_hosts: ListNonEmptyStr = []
     skip_hosts: ListNonEmptyStr = []
     exclude_files_with_no_extension: bool = True
