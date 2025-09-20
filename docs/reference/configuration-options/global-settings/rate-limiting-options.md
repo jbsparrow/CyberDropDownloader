@@ -112,7 +112,7 @@ This is the maximum number of files that can be downloaded from a single domain 
 
 Some domains have internal limits set by the program, which can not be modified:
 
-- `bunkr`: 1
+- `bunkr`: 3
 - `cyberdrop`: 1
 - `cyberfile`: 1
 - `noodlemagazine`: 2
