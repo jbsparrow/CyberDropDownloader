@@ -14,7 +14,7 @@ Supported generic crawlers:
 
 - `wordpress_media`: This crawler should work on any [WordPress](https://wordpress.com/) site where content primarily consists of images or galleries. The images need to be hosted on the site itself. It requires sites to have a public WordPress REST API.
 
-- `wordpress_html`: This works on any WordPress site. It scrapes the actual HTML of the site, which means it works even on sites that have embedded third-party media like videos or links to hosting sites. It is always slower than `wordpress_media`.
+- `wordpress_html`: This works on any WordPress site. It scrapes the actual HTML of the site, which means it works on sites that have embedded third-party media like videos or links to hosting sites. It is always slower than `wordpress_media`.
 
 ## generic_crawlers_instances
 
