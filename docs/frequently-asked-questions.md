@@ -25,21 +25,11 @@ This is a bulk downloader for the supported sites. It supports resumable downloa
 <details>
 <summary>How do I update this?</summary>
 
-If you are using one of the provided start files, it should do so automatically, if it doesn't open up terminal or command prompt and do the following:
-
-```shell
-pip install --upgrade cyberdrop-dl-patched
-```
-
-if you are on macOS you may need to do the following:
-
-```shell
-pip3 install --upgrade cyberdrop-dl-patched
-```
+If you are using one of the provided start files, it should do so automatically. Keep in mind that they will only update to the newest version within the same major version. ex: if you are using v8 start scripts, they will update to the lastest v8 release. When v9 is out, you will need to download the new start scripts
 
 </details>
 <details>
-<summary> Why do i get DDoS-Guard Error downloading from <X> sites? </summary>
+<summary> Why do i get `DDoS-Guard` error downloading from `x` site? </summary>
 
 You may need to import cookies. Follow the instructions here: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839)
 
@@ -47,14 +37,16 @@ You may need to import cookies. Follow the instructions here: [How to extract co
 
 <details>
 
-<summary> Where is the downloader.log file? </summary>
+<summary> I'm trying to report a bug and they ask me for a logs file. Where is this file? </summary>
 
-If you are running using one of the new start scripts it'll be in `./AppData/configs/<config>/logs/`
+By default, it'll be in `./AppData/configs/<config>/logs/`
+
+The `AppData` folder is created inside the folder where you run cyberdrop-dl from
 
 </details>
 
 <details>
-<summary> What does SCRAPE_FAILURES and DOWNLOAD_FAILURES mean? </summary>
+<summary> What does `SCRAPE_FAILURES` and `DOWNLOAD_FAILURES` mean? </summary>
 
 Quite simply, almost all of them you see will be HTTP Status codes. Such as: 404 - Not Found (dead link)
 
@@ -69,7 +61,7 @@ Any "Unknown" error, is usually coding related, or it'll be something like the p
 <details>
 <summary> Why are all the files skipped? </summary>
 
-By default, the program tracks your download history and will skip any files you've previously downloaded to avoid duplicates. You can disable this behavior by using the `--ignore-history` CLI argument or setting `ignore_history` to `true` in the config
+The program tracks your download history and will skip any files you've previously downloaded to avoid duplicates. You can disable this behavior by using the `--ignore-history` CLI argument or setting `ignore_history` to `true` in the config
 
 </details>
 
@@ -85,18 +77,14 @@ This issue is likely related to the limitations of the traditional command promp
 
 This issue is caused by an improper installation of Python, specifically Python not being added to the system PATH.
 
-It is recommended to revisit the [Getting Started](getting-started/README.md) guide and follow the steps provided to reinstall Python correctly
+It is recommended to revisit the [Getting Started](getting-started/README.md) guide and follow the steps provided to reinstall or use one of the lastest start scripts
 
 </details>
 
 <details>
 <summary>  How do I scrape forum threads? </summary>
 
-You need to provide Cyberdrop-DL with your credentials or user cookies in order to scrape forums.
-
-You can do this in the UI by selecting `Manage Configs` -> `Edit Authentication Config`
-
-Then you can select whether you want to extract cookies from your browser automatically, or provide the details yourself.
+You may to import cookies to use as autentication for those sites. Follow the instructions here: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839)
 
 </details>
 
@@ -119,14 +107,16 @@ Go back to where you are running Cyberdrop-DL and delete the the `venv` folder i
 </details>
 
 <details>
-<summary> How do I go back to V5? </summary>
+<summary> A thread/site i follow has new posts but cyberdrop-dl its not detecting them/downloading them, why? </summary>
 
-In the start file change the `pip install --upgrade cyberdrop-dl...` line to `pip install cyberdrop-dl=<6.0`.
+cyberdrop-dl caches requests to made to sites to speed up re-runs and minimize load on those sites. By default, forums are cached for 30 days and any other site is cached for 7 days.
 
-You also need to run `pip uninstall cyberdrop-dl-patched` in order to remove any current version.
+You can run with `--disable-cache` to temporarily disable the cache (CLI only) or change the default values to 0.
 
-{% hint style="info" %}
-Version 5 will no longer receive updates. Version 6 is the only supported version moving forward.
-{% endhint %}
+See:
+
+[--forum-cache-expire-after](https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/rate-limiting-options#forum_cache_expire_after)
+
+[--file-host-cache-expire-after](https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/rate-limiting-options#file_host_cache_expire_after)
 
 </details>
