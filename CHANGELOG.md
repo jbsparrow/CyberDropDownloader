@@ -50,15 +50,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The recommended python version is now python 3.12+, to take advandage of eager tasks
 - Start scripts will automatically install a compatible python version using `uv`
-- Start sripts no longer support 32bits systems
+- Start scripts no longer support 32bit systems
 - Handle shared folders with single file as loose files (Yetishare)
 - Increase default rate limit, from 10req/s to 25req/s
 - Increase max concurrent bunkr downloads, from 1 to 3
 - Parse full spec cookies from Flaresolverr responses
 - CDL will no longer try to merge subtitles for HLS downloads. They will be downloaded as separate files
 - Make requests with the same domain as the original input URL (saint2.su)
-- Tiktok downloads use a new logic to create filenames and folder structure
-- Instead of downloading an entire dropbox folder as a zip, CDL will now always iterate over each file and subfolder recursively
+- Tiktok downloads use a new logic to create filenames and folders. Folder structure will be different from previous versions.
+- CDL will now iterate over each file and subfolder recursively, instead of downloading an entire folder as a zip (dropbox)
 - `--read-timeout` now accepts `None` as value. This will make CDL keep the socket connection open indefinitely, even if the server is not sending data anymore
 - `--read-timeout` and `--connection-timeout` now accept fractions of a seconds as value (ex: `0.3`)
 - `--read-timeout` and `--connection-timeout` now affect all requests CDL will make (flaresolverr requests, scrape requests and download requests)
