@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The recommended python version is now python 3.12+, to take advandage of eager tasks
-- Start scripts will automatically install a compatible python version using `uv`
+- Start scripts will automatically install a compatible python version
 - Start scripts no longer support 32bit systems
 - Handle shared folders with single file as loose files (Yetishare)
 - Increase default rate limit, from 10req/s to 25req/s
