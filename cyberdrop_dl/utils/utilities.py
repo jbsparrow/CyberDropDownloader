@@ -47,7 +47,7 @@ from cyberdrop_dl.exceptions import (
 from cyberdrop_dl.utils.logger import log, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine, Generator, Iterable, Iterator, Mapping
+    from collections.abc import Callable, Coroutine, Generator, Iterable, Mapping
 
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, AnyURL, MediaItem, ScrapeItem
