@@ -1,4 +1,5 @@
 import datetime
+import email.utils
 from functools import lru_cache
 from typing import Literal, NewType, TypeAlias, TypeVar
 
@@ -132,11 +133,21 @@ def get_parser(parser_kind: ParserKind | None = None, date_order: DateOrder | No
 def parse_aware_iso_datetime(value: str) -> datetime.datetime | None:
     try:
         parsed_date = datetime.datetime.fromisoformat(value)
-        if parsed_date.tzinfo is None:
-            parsed_date.replace(tzinfo=datetime.UTC)
-        return parsed_date
+        return ensure_tz(parsed_date)
     except Exception:
         return
+
+
+def ensure_tz(date_time: datetime.datetime) -> datetime.datetime:
+    if date_time.tzinfo is None:
+        return date_time.replace(tzinfo=datetime.UTC)
+    return date_time
+
+
+def parse_http_date(date: str) -> int:
+    """parse rfc 2822 or an "HTTP-date" format as defined by RFC 9110"""
+    date_time = email.utils.parsedate_to_datetime(date)
+    return to_timestamp(ensure_tz(date_time))
 
 
 if __name__ == "__main__":
