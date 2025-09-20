@@ -51,8 +51,18 @@ You **MUST** put the values _inside_ the double quotes. Ex: `set "COMMANDLINE_AR
 
 ## Manual Install
 
+### Python Install
+
+You'll need to have python installed to use Cyberdrop-DL. If you are on Linux or mac, you probably already do
+
+If you don't have python, you can find and download it from their official website: [https://www.python.org/downloads/](https://www.python.org/downloads/)
+
 {% hint style="warning" %}
-If you are using a version of Cyberdrop-DL from the previous repository, you **MUST** uninstall it before installing the patched version.
+Cyberdrop-DL requires python 3.11, 3.12 or python 3.13
+{% endhint %}
+
+{% hint style="warning" %}
+If you are using a version of Cyberdrop-DL from the previous repository (`cyberdrop-dl` instead of `cyberdrop-dl-patched`), you **MUST** uninstall it before installing the patched version.
 
 ```shell
 pip uninstall cyberdrop-dl
