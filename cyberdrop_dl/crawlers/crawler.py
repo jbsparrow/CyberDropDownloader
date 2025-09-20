@@ -793,7 +793,7 @@ class Crawler(ABC):
         if _placeholder_config.include_audio_codec and audio_codec:
             extra_info.append(audio_codec)
 
-        if _placeholder_config.include_resolution and resolution:
+        if _placeholder_config.include_resolution and resolution and resolution != (0, 0):
             if not isinstance(resolution, Resolution):
                 resolution = Resolution.parse(resolution)
             extra_info.append(resolution.name)
