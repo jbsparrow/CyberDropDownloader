@@ -24,8 +24,7 @@ You may need to adjust your config to make sure it's compatible with the newer v
 See: [Transition to V7](https://script-ware.gitbook.io/cyberdrop-dl/transition-to-v7)
 {% endhint %}
 
-
-## If you installed on your own using pip,
+## If you installed on your own using pip
 
 You can simply uninstall the old version and install the new one using the following commands:
 

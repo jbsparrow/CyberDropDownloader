@@ -1,7 +1,8 @@
 ---
 description: These are the options to define generic crawlers.
-
 ---
+
+# Generic Crawlers
 
 CDL has some "generic" crawlers disabled by default. Generic crawlers are designed to work on any site that uses a **specific** framework. Users can supply a list of sites to map to these crawlers, and CDL will then be able to download from them. The URL in the list should be the primary URL of the site. ex: `https://forums.docker.com/`
 
@@ -15,7 +16,7 @@ Suppported generic crawlers:
 
 - `wordpress_html`: This works on any WordPress site. It scrapes the actual HTML of the site, which means it works even on sites that have embedded third-party media like videos or links to hosting sites. It is always slower than `wordpress_media`.
 
-# generic_crawlers_instances
+## generic_crawlers_instances
 
 ## `chevereto`
 

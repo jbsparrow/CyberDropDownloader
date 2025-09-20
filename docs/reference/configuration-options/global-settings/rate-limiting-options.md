@@ -13,7 +13,6 @@ The number of seconds to wait while connecting to a website before timing out
 
 {% hint style="info" %} This value will also be used for Flaresolverr (if enabled) as the max number of seconds to solve a CAPTCHA challenge {% endhint %}
 
-
 ## `download_attempts`
 
 | Type          | Default |
@@ -36,7 +35,6 @@ Some domains have internal limits set by the program, which can not be modified:
 - `coomer`: 0.5,
 - `kemono`: 0.5,
 - `nhentai.net`: 1,
-
 
 ## `download_speed_limit`
 

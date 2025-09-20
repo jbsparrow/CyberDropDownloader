@@ -132,7 +132,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update API endpoints and parsing (Coomer, Kemono)
 - Files with mangled names if they had non english characters (Coomer, Kemono)
 
-
 ## [7.4.0] - 2025-08-21
 
 ### Added
@@ -167,7 +166,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--ui` options not working
 - Do not sort unjoined HSL files.
 
-
 ## [7.3.1] - 2025-08-02
 
 ### Changed
@@ -188,7 +186,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Download of videos that are not part of a playlist (spankbang)
 - Jdownloader connection
 - CDL always timing out when downloading any file that takes longer than 5 minutes
-
 
 ## [7.3.0] - 2025-07-21
 

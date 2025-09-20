@@ -22,7 +22,6 @@ This is a bulk downloader for the supported sites. It supports resumable downloa
 
 </details>
 
-
 <details>
 <summary>How do I update this?</summary>
 

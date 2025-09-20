@@ -74,16 +74,19 @@ For a lot of people, the `download_history.sqlite` file will be in the same fold
 If it's not there, you can find it here:
 
 Windows:
+
 ```shell
 C:\Users\<USER>\AppData\Local\Cyberdrop-DL\Cyberdrop-DL\download_history.sqlite
 ```
 
 macOS:
+
 ```shell
 /Library/Application Support/Cyberdrop-DL/Cyberdrop-DL/download_history.sqlite
 ```
 
 Linux:
+
 ```shell
 /home/<USER>/.local/share/Cyberdrop-DL/Cyberdrop-DL/download_history.sqlite
 ```

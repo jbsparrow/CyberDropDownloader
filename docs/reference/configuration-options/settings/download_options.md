@@ -253,7 +253,7 @@ This setting is hardcoded to `false` for Discourse sites
 
 Consider CDL finds the following sub-threads while scraping an input URL:
 
-```bash
+```shell
 └── thread_01
     ├── thread_02
     ├── thread_03
@@ -278,8 +278,6 @@ Consider CDL finds the following sub-threads while scraping an input URL:
 | -------------------------- | ------- |
 | `NonNegativeInt` or `None` | `None`  |
 
-
-
 Restricts the max number of nested folders CDL will create when `maximum_thread_depth` is greater that 0
 
 Values:
@@ -288,12 +286,11 @@ Values:
 - `0`: Do not create subfolders, use a flat structure for any nested thread.
 - `1+`: Create a max of `n` folders
 
-
 ### Example
 
 - With `maximum_thread_folder_depth` = None:
 
-```bash
+```shell
 └── thread_01
     ├── thread_02
     ├── thread_03
@@ -307,9 +304,10 @@ Values:
     │   └── thread_12
     └── thread_08
 ```
+
 - With `maximum_thread_folder_depth` = 0:
 
-```bash
+```shell
 ├── thread_01
 ├── thread_02
 ├── thread_03
@@ -326,7 +324,7 @@ Values:
 
 - With `maximum_thread_folder_depth` = 1:
 
-```bash
+```shell
 └── thread_01
     ├── thread_02
     ├── thread_03
