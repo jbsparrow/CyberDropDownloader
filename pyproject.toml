@@ -21,7 +21,6 @@ dependencies = [
     "myjdapi >=1.1.10",
     "packaging >=25.0",
     "pillow >=11.3.0",
-    "platformdirs >=4.3.6",
     "psutil >=7.1.0",
     "pycares >=4.10.0",
     "pydantic >=2.11.7",
