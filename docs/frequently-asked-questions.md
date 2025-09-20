@@ -40,6 +40,7 @@ You check [this page to learn about what each error code means](https://develope
 
 {% hint style="info" %}
 Any "Unknown" error, is usually coding related, or it'll be something like the program not being able to find a file extension for a file.
+You can report unknown error on the issue tracker: <https://github.com/jbsparrow/CyberDropDownloader/issues>
 {% endhint %}
 
 ## Why are all the files skipped?
@@ -50,7 +51,7 @@ The program tracks your download history and will skip any files you've previous
 
 This issue is likely related to the limitations of the traditional command prompt, which has remained largely unchanged over time. For Windows 10 users, it's recommended to install and use [Windows Terminal](https://aka.ms/terminal) to run Cyberdrop-DL. Windows Terminal is the default on Windows 11.
 
-## cyberdrop-dl is not a recognized internal command
+## `cyberdrop-dl` is not a recognized internal command
 
 This issue is caused by an improper installation of Python, specifically Python not being added to the system PATH.
 
@@ -58,7 +59,7 @@ It is recommended to revisit the [Getting Started](getting-started/README.md) gu
 
 ## How do I scrape forum threads?
 
-You may to import cookies to use as autentication for those sites. Follow the instructions here: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839)
+You need to import cookies to use as autentication for those sites. Follow the instructions here: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839)
 
 ## Why are the filenames the way they are?
 
@@ -70,11 +71,11 @@ This should only appear on macOS, so these instructions are for mac users.
 
 Go to your applications folder, find the python folder inside of it. Run the `Install Certificates` file in that folder.
 
-Go back to where you are running Cyberdrop-DL and delete the the `venv` folder if one exists (if not, don't worry). Then try running the program again.
+Go back to where you are running Cyberdrop-DL and delete the `venv` folder if one exists (if not, don't worry). Then try running the program again.
 
-## A thread/site i follow has new posts but cyberdrop-dl is not detecting them/downloading them, why?
+## A thread/site i follow has new posts but `cyberdrop-dl` is not detecting / downloading them, why?
 
-cyberdrop-dl caches requests to made to sites to speed up re-runs and minimize load on those sites. By default, forums are cached for 30 days and any other site is cached for 7 days.
+`cyberdrop-dl` caches requests to made to sites to speed up re-runs and minimize load on those sites. By default, forums are cached for 30 days and any other site is cached for 7 days.
 
 You can run with `--disable-cache` to temporarily disable the cache (CLI only) or change the default values to 0.
 

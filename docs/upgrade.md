@@ -44,7 +44,6 @@ If you are migrating from v5 and the migration fails, the database will be rolle
 Support for v5 and v6 (config, database and auto-migration) is deprecated and will be removed in v9
 {% endhint %}
 
-
 ## Import V4 config
 
 {% hint style="warning" %}
