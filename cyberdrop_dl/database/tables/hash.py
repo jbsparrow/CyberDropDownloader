@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from cyberdrop_dl.utils.logger import log
@@ -8,6 +7,8 @@ from cyberdrop_dl.utils.logger import log
 from .definitions import create_files, create_hash
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import aiosqlite
     from yarl import URL
 
@@ -28,7 +29,7 @@ class HashTable:
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
 
-    async def get_file_hash_exists(self, path: Path | str, hash_type: str) -> str | None:
+    async def get_hash_value(self, path: Path, hash_type: str) -> str | None:
         """gets the hash from a complete file path
 
         Args:
@@ -39,7 +40,6 @@ class HashTable:
         """
         query = "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL"
         try:
-            path = Path(path)
             if not path.is_absolute():
                 path = path.absolute()
             folder = str(path.parent)
@@ -53,32 +53,12 @@ class HashTable:
         except Exception as e:
             log(f"Error checking file: {e}", 40, exc_info=e)
 
-    async def get_files_with_hash_matches(
-        self, hash_value: str, size: int, hash_type: str | None = None
-    ) -> list[aiosqlite.Row]:
-        """Retrieves a list of (folder, filename) tuples based on a given hash.
-
-        Args:
-            hash_value: The hash value to search for.
-            size: file size
-
-        Returns:
-            A list of (folder, filename) tuples, or an empty list if no matches found.
-        """
-        if hash_type:
-            query = """
+    async def get_files_by_matching_hash(self, hash_value: str, size: int, hash_type: str) -> list[aiosqlite.Row]:
+        query = """
             SELECT files.folder, files.download_filename,files.date
             FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename
             WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;
-            """
-
-        else:
-            query = """
-            SELECT files.folder, files.download_filename FROM hash JOIN files
-            ON hash.folder = files.folder AND hash.download_filename = files.download_filename
-            WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;
-            """
-
+        """
         try:
             cursor = await self.db_conn.execute(query, (hash_value, size, hash_type))
             return cast("list[aiosqlite.Row]", await cursor.fetchall())
@@ -88,7 +68,7 @@ class HashTable:
             return []
 
     async def insert_or_update_hash_db(
-        self, hash_value: str, hash_type: str, file: Path | str, original_filename: str | None, referer: URL | None
+        self, hash_value: str, hash_type: str, file: Path, original_filename: str | None, referer: URL | None
     ) -> bool:
         """Inserts or updates a record in the specified SQLite database.
 
@@ -107,18 +87,17 @@ class HashTable:
         file_ = await self.insert_or_update_file(original_filename, referer, file)
         return file_ and hash
 
-    async def insert_or_update_hashes(self, hash_value: str, hash_type: str, file: Path | str) -> bool:
+    async def insert_or_update_hashes(self, hash_value: str, hash_type: str, file: Path) -> bool:
         query = """
         INSERT INTO hash (hash, hash_type, folder, download_filename)
         VALUES (?, ?, ?, ?) ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?;
         """
 
         try:
-            full_path = Path(file)
-            if not full_path.is_absolute():
-                full_path = full_path.absolute()
-            download_filename = full_path.name
-            folder = str(full_path.parent)
+            if not file.is_absolute():
+                file = file.absolute()
+            download_filename = file.name
+            folder = str(file.parent)
             await self.db_conn.execute(query, (hash_value, hash_type, folder, download_filename, hash_value))
             await self.db_conn.commit()
         except Exception as e:
@@ -126,9 +105,7 @@ class HashTable:
             return False
         return True
 
-    async def insert_or_update_file(
-        self, original_filename: str | None, referer: URL | str | None, file: Path | str
-    ) -> bool:
+    async def insert_or_update_file(self, original_filename: str | None, referer: URL | str | None, file: Path) -> bool:
         query = """
         INSERT INTO files (folder, original_filename, download_filename, file_size, referer, date)
         VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(download_filename, folder)
@@ -136,12 +113,11 @@ class HashTable:
         """
         referer_ = str(referer) if referer else None
         try:
-            full_path = Path(file)
-            if not full_path.is_absolute():
-                full_path = full_path.absolute()
-            download_filename = full_path.name
-            folder = str(full_path.parent)
-            stat = full_path.stat()
+            if not file.is_absolute():
+                file = file.absolute()
+            download_filename = file.name
+            folder = str(file.parent)
+            stat = file.stat()
             file_size = stat.st_size
             file_date = int(stat.st_mtime)
             await self.db_conn.execute(
