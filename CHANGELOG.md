@@ -66,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- Support for v6 (config, database and auto-migration) is deprecated and will be removed in a future version
+- Support for v5 and v6 (config, database and auto-migration) is deprecated and will be removed in a future version
 
 ### Removed
 
