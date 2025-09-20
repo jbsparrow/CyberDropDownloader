@@ -11,7 +11,6 @@ import re
 import sys
 import unicodedata
 from collections.abc import Mapping
-from dataclasses import dataclass
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
@@ -262,11 +261,6 @@ def remove_file_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-@dataclass(slots=True)
-class StackFrame:
-    path: str
-    iterator: Iterator[os.DirEntry] | None
-    kept: bool
 
 
 def clear_term():
