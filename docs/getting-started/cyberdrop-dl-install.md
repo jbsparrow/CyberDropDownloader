@@ -57,8 +57,6 @@ The recommended way to install Cyberdrop-DL is using [`uv`](https://docs.astral.
 
 {% tabs %}
 
-{% endtab %}
-
 {% tab title="macOS / Linux" %}
 
 ```shell

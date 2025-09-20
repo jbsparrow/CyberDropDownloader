@@ -16,10 +16,6 @@ layout:
 
 # Getting Started
 
-{% hint style="warning" %}
-Cyberdrop-DL requires python 3.11, 3.12 or python 3.13
-{% endhint %}
-
 ## Installing Cyberdrop-DL</a>
 
 There are two ways to install Cyberdrop-DL. The first is the easy method, where you simply download the start scripts. The start scrips will automatically install a compatible python version and then install Cyberdrop-DL.
