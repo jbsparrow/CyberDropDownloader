@@ -103,8 +103,6 @@ Once you have python, you can install Cyberdrop-DL directly from pypi using `pip
 
 {% tabs %}
 
-{% endtab %}
-
 {% tab title="pipx" %}
 
 - Install `pipx` (if you don't have it already)
