@@ -23,6 +23,7 @@ dependencies = [
     "pillow >=11.3.0",
     "psutil >=7.1.0",
     "pycares >=4.10.0",
+    "pycryptodome >=3.23.0",
     "pydantic >=2.11.7",
     "pyyaml >=6.0.2",
     "rich >=14.0.0",
