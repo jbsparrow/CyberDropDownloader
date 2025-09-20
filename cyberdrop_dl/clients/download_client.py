@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import calendar
 import contextlib
 import itertools
 import time
@@ -9,11 +8,11 @@ from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 import aiofiles
-from dateutil import parser
 
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
+from cyberdrop_dl.utils.dates import parse_http_date
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
@@ -468,8 +467,7 @@ def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
 
 def get_last_modified(headers: CIMultiDictProxy) -> int | None:
     if date_str := headers.get("Last-Modified"):
-        parsed_date = parser.parse(date_str)
-        return calendar.timegm(parsed_date.timetuple())
+        return parse_http_date(date_str)
 
 
 def is_html_or_text(content_type: str) -> bool:
