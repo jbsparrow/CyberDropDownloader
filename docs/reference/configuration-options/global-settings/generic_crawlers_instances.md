@@ -6,7 +6,7 @@ description: These are the options to define generic crawlers.
 
 CDL has some "generic" crawlers disabled by default. Generic crawlers are designed to work on any site that uses a **specific** framework. Users can supply a list of sites to map to these crawlers, and CDL will then be able to download from them. The URL in the list should be the primary URL of the site. ex: `https://forums.docker.com/`
 
-Suppported generic crawlers:
+Supported generic crawlers:
 
 - `chevereto`: This works on any site that uses [Chevereto](https://chevereto.com//).
 
