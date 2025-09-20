@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PimpBunny support
 - HiAnime support
 - Safe.Soul support
+- Voe.sx support
 - Support for subfolders (MediaFire)
 - Support for short URL formats (MediaFire)
 - Support for subfolders (Dropbox)
@@ -48,8 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The recommended python version is now python 3.12+, to take advandage of eager tasks
+- Start scripts will automatically install a compatible python version using `uv`
+- Start sripts no longer support 32bits systems
 - Handle shared folders with single file as loose files (Yetishare)
-- The default rate limit was increased from 10req/s to 25req/s
+- Increase default rate limit, from 10req/s to 25req/s
 - Increase max concurrent bunkr downloads, from 1 to 3
 - Parse full spec cookies from Flaresolverr responses
 - CDL will no longer try to merge subtitles for HLS downloads. They will be downloaded as separate files
