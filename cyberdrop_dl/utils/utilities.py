@@ -261,8 +261,6 @@ def remove_file_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-
-
 def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
