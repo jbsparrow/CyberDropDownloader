@@ -704,26 +704,17 @@ class Crawler(ABC):
 
         log(msg, bug=True)
 
-    async def _get_redirect_url(self, url: AbsoluteHttpURL):
-        async with self.request(url, method="HEAD") as head:
-            return head.location or url
+    async def _get_redirect_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        async with self.request(url) as resp:
+            return resp.url
 
     @final
     @error_handling_wrapper
-    async def follow_redirect_w_get(self, scrape_item: ScrapeItem) -> None:
-        async with self.request(scrape_item.url) as resp:
-            if resp.url == scrape_item.url:
-                raise ScrapeError(422)
-            scrape_item.url = resp.url
-        self.create_task(self.run(scrape_item))
-
-    @final
-    @error_handling_wrapper
-    async def follow_redirect_w_head(self, scrape_item: ScrapeItem) -> None:
-        location = await self._get_redirect_url(scrape_item.url)
-        if location == scrape_item.url:
-            raise ScrapeError(422)
-        scrape_item.url = location
+    async def follow_redirect(self, scrape_item: ScrapeItem) -> None:
+        redirect = await self._get_redirect_url(scrape_item.url)
+        if scrape_item.url == redirect:
+            raise ScrapeError(422, "Infinite redirect")
+        scrape_item.url = redirect
         self.create_task(self.run(scrape_item))
 
     @staticmethod
