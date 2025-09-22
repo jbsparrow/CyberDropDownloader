@@ -4,7 +4,7 @@ import base64
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, copy_signature
 from cyberdrop_dl.exceptions import PasswordProtectedError
 from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, xor_decrypt
@@ -165,12 +165,17 @@ class CheveretoCrawler(Crawler, is_generic=True):
         link = _thumbnail_to_src(url or scrape_item.url)
         await super().direct_file(scrape_item, link, assume_ext)
 
+    @copy_signature(Crawler.request_soup)
+    async def request_soup(self, url: AbsoluteHttpURL, *args, impersonate: bool = False, **kwargs) -> BeautifulSoup:
+        impersonate = impersonate or "image" in url.parts
+        return await super().request_soup(url, *args, impersonate=impersonate, **kwargs)
+
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        soup = await self.request_soup(scrape_item.url, impersonate=True)
+        soup = await self.request_soup(scrape_item.url)
         link_str = open_graph.get("video", soup) or open_graph.get("image", soup)
         if not link_str or "loading.svg" in link_str:
             link_str = Selector.MAIN_IMAGE(soup)
