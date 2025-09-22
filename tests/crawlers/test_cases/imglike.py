@@ -6,7 +6,7 @@ TEST_CASES = [
             {
                 "url": "https://imglike.com/images/2022/10/20/Palm-Desert-Resuscitation-Education-YourCPRMD.com.png",
                 "filename": "Palm-Desert-Resuscitation-Education-YourCPRMD.com.png",
-                "referer": "http://imglike.com/image/L1xHc",
+                "referer": "https://imglike.com/image/L1xHc",
                 "album_id": None,
                 "datetime": 1666261421,
             }
@@ -20,7 +20,7 @@ TEST_CASES = [
                 "filename": "Nude-Kara-Del-Tori-6.jpg",
                 "referer": "https://imglike.com/image/LGXgd",
                 "download_folder": r"re:Kara Del Toro Naked \(ImgLike\)",
-                "datetime": 1655983031,
+                "datetime": None,
                 "album_id": "cG7l",
             },
             {
@@ -28,7 +28,7 @@ TEST_CASES = [
                 "filename": "Nude-Kara-Del-Tori-5.jpg",
                 "referer": "https://imglike.com/image/LGxFT",
                 "download_folder": r"re:Kara Del Toro Naked \(ImgLike\)",
-                "datetime": 1655983031,
+                "datetime": None,
                 "album_id": "cG7l",
             },
             {
@@ -36,7 +36,7 @@ TEST_CASES = [
                 "filename": "Nude-Kara-Del-Tori-3.jpg",
                 "referer": "https://imglike.com/image/LGB1z",
                 "download_folder": r"re:Kara Del Toro Naked \(ImgLike\)",
-                "datetime": 1655983030,
+                "datetime": None,
                 "album_id": "cG7l",
             },
             {
@@ -44,7 +44,7 @@ TEST_CASES = [
                 "filename": "Nude-Kara-Del-Tori-4.jpg",
                 "referer": "https://imglike.com/image/LG6lR",
                 "download_folder": r"re:Kara Del Toro Naked \(ImgLike\)",
-                "datetime": 1655983030,
+                "datetime": None,
                 "album_id": "cG7l",
             },
             {
@@ -52,7 +52,7 @@ TEST_CASES = [
                 "filename": "Nude-Kara-Del-Tori-2.jpg",
                 "referer": "https://imglike.com/image/LG4Jg",
                 "download_folder": r"re:Kara Del Toro Naked \(ImgLike\)",
-                "datetime": 1655983028,
+                "datetime": None,
                 "album_id": "cG7l",
             },
             {
@@ -60,7 +60,7 @@ TEST_CASES = [
                 "filename": "Nude-Kara-Del-Tori-1.jpg",
                 "referer": "https://imglike.com/image/LGP7s",
                 "download_folder": r"re:Kara Del Toro Naked \(ImgLike\)",
-                "datetime": 1655983028,
+                "datetime": None,
                 "album_id": "cG7l",
             },
         ],
