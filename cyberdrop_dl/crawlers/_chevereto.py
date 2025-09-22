@@ -116,7 +116,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
                     await self._unlock_password_protected_album(scrape_item)
                     return await self.album(scrape_item, album_id)
 
-                title = self.create_title(open_graph.title(soup), album_id)
+                title = open_graph.get_title(soup) or open_graph.get("description", soup)
+                title = self.create_title(title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
             self._process_page(scrape_item, soup, results)
 

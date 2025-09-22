@@ -46,7 +46,7 @@ def get(name: str, /, soup: bs4.BeautifulSoup) -> str | None:
 
 
 def get_title(soup: bs4.BeautifulSoup) -> str | None:
-    return get("title", soup) or get("description", soup)
+    return get("title", soup)
 
 
 def title(soup: bs4.BeautifulSoup) -> str:
