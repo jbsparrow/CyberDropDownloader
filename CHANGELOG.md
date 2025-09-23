@@ -22,7 +22,7 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [8.0.0] - 2025-09-26
+## [8.0.0] - 2025-09-23
 
 ### Added
 
@@ -88,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nekohouse crawler
 - Thumbnails being downloaded as is instead of full resolution (Coomer, Kemono, Nekohouse)
 - Handle new rot13 encryption (xHamster)
+- Handle new hex encryption (xHamster)
 - Videos being skipped if the audio was downloaded before (TikTok)
 - Do not crash if the `URL.txt` file has ipv6 URLs or invalid URLs
 - `ConnectionError` after the first attempt of a DNS lookup failed, without trying any DNS fallbacks
