@@ -111,6 +111,21 @@ Folder downloads from Dropbox are disabled by default because they will be downl
 
 Download TikTok audios from posts and save them as separate files
 
+### `download-tiktok-src-quality-videos`
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Download TikTok videos in source quality.
+
+{% hint style="warning" %}
+Enabling this option will make downloads several orders of magnitude slower.
+
+When it is set to `False` (the default) CDL can download 50 videos with a single request.
+When it is set to `True` , CDL needs to make at least 3 requests _per_ video to download them.
+{% endhint %}
+
 ### `max-items-retry`
 
 | Type             | Default |
@@ -196,8 +211,8 @@ CLI-only options:
   --config-file CONFIG_FILE                                                     path to the CDL settings.yaml file to load
   --disable-cache                                                               Temporarily disable the requests cache
   --download                                                                    skips UI, start download immediatly
-  --download-dropbox-folders-as-zip                                             download Dropbox folder without api key as zip
   --download-tiktok-audios                                                      download TikTok audios
+  --download-tiktok-src-quality-videos                                          download TikTok videos in source quality
   --max-items-retry MAX_ITEMS_RETRY                                             max number of links to retry
   --portrait                                                                    show UI in a portrait layout
   --print-stats                                                                 Show stats report at the end of a run
@@ -227,6 +242,7 @@ download_options:
   --skip-download-mark-completed, --no-skip-download-mark-completed
   --skip-referer-seen-before, --no-skip-referer-seen-before
   --maximum-thread-depth MAXIMUM_THREAD_DEPTH
+  --maximum-thread-folder-depth MAXIMUM_THREAD_FOLDER_DEPTH
 
 dupe_cleanup_options:
   --add-md5-hash, --no-add-md5-hash
@@ -262,6 +278,7 @@ ignore_options:
   --exclude-videos, --no-exclude-videos
   --filename-regex-filter FILENAME_REGEX_FILTER
   --ignore-coomer-ads, --no-ignore-coomer-ads
+  --ignore-coomer-post-content, --no-ignore-coomer-post-content
   --only-hosts [ONLY_HOSTS ...]
   --skip-hosts [SKIP_HOSTS ...]
   --exclude-files-with-no-extension, --no-exclude-files-with-no-extension
@@ -315,7 +332,6 @@ general:
   --user-agent USER_AGENT
 
 rate_limiting_options:
-  --connection-timeout CONNECTION_TIMEOUT
   --download-attempts DOWNLOAD_ATTEMPTS
   --download-delay DOWNLOAD_DELAY
   --download-speed-limit DOWNLOAD_SPEED_LIMIT
@@ -325,6 +341,7 @@ rate_limiting_options:
   --max-simultaneous-downloads-per-domain MAX_SIMULTANEOUS_DOWNLOADS_PER_DOMAIN
   --max-simultaneous-downloads MAX_SIMULTANEOUS_DOWNLOADS
   --rate-limit RATE_LIMIT
+  --connection-timeout CONNECTION_TIMEOUT
   --read-timeout READ_TIMEOUT
 
 ui_options:

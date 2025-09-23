@@ -32,7 +32,7 @@ the issue may have been fixed already
 - **Suggest a Fix** - if you can't fix the bug yourself, perhaps you can point to what might be
   causing the problem (line of code or commit)
 
-You can open a new issue by providing the above information at https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose.
+You can open a new issue by providing the above information at <https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose>.
 
 ### Submitting a Pull Request (PR)
 
@@ -59,38 +59,38 @@ If everything is okay, your changes will be merged into the project.
 
 2. Clone the repo
 
-```shell
-git clone "https://github.com/jbsparrow/CyberDropDownloader"
-cd CyberDropDownloader
-```
+    ```shell
+    git clone "https://github.com/jbsparrow/CyberDropDownloader"
+    cd CyberDropDownloader
+    ```
 
-3. Install `pipx` (optional, but recommended): https://pipx.pypa.io/stable/installation/
+3. Install `pipx` (optional, but recommended): <https://pipx.pypa.io/stable/installation/>
 
 4. Install `poetry`, the project management package Cyberdrop-DL uses
 
-> If you installed `pipx`:
+    > If you installed `pipx`:
 
-```shell
-pipx install poetry
-```
+    ```shell
+    pipx install poetry
+    ```
 
-> With regular `pip`:
+    > With regular `pip`:
 
-```shell
-pip install poetry
-```
+    ```shell
+    pip install poetry
+    ```
 
 5. Install the project's dependencies
 
-```shell
-poetry install
-```
+    ```shell
+    poetry install
+    ```
 
 6. Install the pre-commit hooks:
 
-```shell
-poetry run pre-commit install
-```
+    ```shell
+    poetry run pre-commit install
+    ```
 
 ## Code Style
 

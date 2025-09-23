@@ -14,6 +14,7 @@ from .bunkrr_albums_io import BunkrAlbumsIOCrawler
 from .buzzheavier import BuzzHeavierCrawler
 from .camwhores_dot_tv import CamwhoresTVCrawler
 from .catbox import CatboxCrawler
+from .cloudflare_stream import CloudflareStreamCrawler
 from .coomer import CoomerCrawler
 from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
@@ -37,6 +38,7 @@ from .generic import GenericCrawler
 from .girlsreleased import GirlsReleasedCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
+from .hianime import HiAnimeCrawler
 from .hitomi_la import HitomiLaCrawler
 from .hotleak_vip import HotLeakVipCrawler
 from .hotpic import HotPicCrawler
@@ -56,6 +58,7 @@ from .leakedzone import LeakedZoneCrawler
 from .luscious import LusciousCrawler
 from .mediafire import MediaFireCrawler
 from .mega_nz import MegaNzCrawler
+from .megacloud import MegaCloudCrawler
 from .missav import MissAVCrawler
 from .mixdrop import MixDropCrawler
 from .motherless import MotherlessCrawler
@@ -66,6 +69,8 @@ from .nudostartv import NudoStarTVCrawler
 from .odnoklassniki import OdnoklassnikiCrawler
 from .omegascans import OmegaScansCrawler
 from .onedrive import OneDriveCrawler
+from .pcloud import PCloudCrawler
+from .pimp_bunny import PimpBunnyCrawler
 from .pimpandhost import PimpAndHostCrawler
 from .pixeldrain import PixelDrainCrawler
 from .pixhost import PixHostCrawler
@@ -82,6 +87,7 @@ from .rule34vault import Rule34VaultCrawler
 from .rule34video import Rule34VideoCrawler
 from .rule34xxx import Rule34XXXCrawler
 from .rule34xyz import Rule34XYZCrawler
+from .safe_soul import SafeSoulCrawler
 from .saint import SaintCrawler
 from .scrolller import ScrolllerCrawler
 from .send_now import SendNowCrawler
@@ -97,6 +103,7 @@ from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
 from .vbulletin import VBULLETIN_CRAWLERS
 from .vipr_dot_im import ViprImCrawler
+from .voe_sx import VoeSxCrawler
 from .wetransfer import WeTransferCrawler
 from .wordpress import WP_CRAWLERS, WordPressHTMLCrawler, WordPressMediaCrawler
 from .xbunkr import XBunkrCrawler

@@ -1,28 +1,17 @@
 from __future__ import annotations
 
 import itertools
-import re
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, ClassVar
 
-from aiolimiter import AsyncLimiter
-
+from cyberdrop_dl.crawlers._kvs import extract_kvs_video
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-
-
-class Video(NamedTuple):
-    id: str
-    title: str
-    url: str
-    res: str
 
 
 class Selectors:
@@ -41,7 +30,6 @@ class Selectors:
     VIDEOS_OR_ALBUMS = f"{VIDEOS}, {ALBUMS}"
 
 
-VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
 COLLECTION_PARTS = "tags", "categories", "models", "playlists", "search", "members"
 TITLE_TRASH = "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _SELECTORS = Selectors()
@@ -63,9 +51,7 @@ class PorntrexCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
     DOMAIN: ClassVar[str] = "porntrex"
-
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 10)
+    _RATE_LIMIT = 3, 10
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.name:  # The ending slash is necessary or we get a 404 error
@@ -84,8 +70,7 @@ class PorntrexCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         album_id = scrape_item.url.parts[2]
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if "This album is a private album" in soup.text:
             raise ScrapeError(401, "Private album")
@@ -108,22 +93,21 @@ class PorntrexCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
-        video = get_video_info(soup)
-        link = self.parse_url(video.url)
-        filename, ext = self.get_filename_and_ext(link.name)
+        video = extract_kvs_video(self, soup)
+        link = video.url
         scrape_item.url = canonical_url
-        custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=video.res)
+        custom_filename = self.create_custom_filename(
+            video.title, link.suffix, file_id=video.id, resolution=video.resolution
+        )
         await self.handle_file(
-            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
+            canonical_url, scrape_item, link.name, link.suffix, custom_filename=custom_filename, debrid_link=link
         )
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         if "models" in scrape_item.url.parts:
             title: str = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME).title()
@@ -151,7 +135,7 @@ class PorntrexCrawler(Crawler):
         last_page: int = int(last_page_tag[-1].get_text(strip=True)) if last_page_tag else 1
 
         for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_OR_ALBUMS):
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
 
         await self.proccess_additional_pages(scrape_item, last_page)
 
@@ -161,11 +145,10 @@ class PorntrexCrawler(Crawler):
 
         elif "members" in scrape_item.url.parts:
             albums_url = scrape_item.url / "albums"
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, albums_url)
+            soup = await self.request_soup(albums_url)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUMS, new_title_part="albums"):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                self.create_task(self.run(new_scrape_item))
 
     async def proccess_additional_pages(self, scrape_item: ScrapeItem, last_page: int, **kwargs: str) -> None:
         block_id: str = "list_videos_common_videos_list_norm"
@@ -200,44 +183,7 @@ class PorntrexCrawler(Crawler):
             if page > last_page:
                 break
             page_url = page_url.update_query({from_param_name: page})
-            async with self.request_limiter:
-                soup = await self.client.get_soup(self.DOMAIN, page_url)
+            soup = await self.request_soup(page_url)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_OR_ALBUMS):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
-
-
-def get_video_info(soup: BeautifulSoup) -> Video:
-    script = soup.select_one(_SELECTORS.VIDEO_JS)
-    if not script:
-        raise ScrapeError(404)
-
-    flashvars = get_text_between(script.text, "var flashvars =", "var player_obj =")
-
-    def extract_resolution(res_text):
-        match = re.search(r"(\d+)", res_text)
-        return int(match.group(1)) if match else 0
-
-    video_info: dict[str, str] = dict(VIDEO_INFO_FIELDS_PATTERN.findall(flashvars))
-    if video_info:
-        resolutions: list[tuple[str, str]] = []
-        if "video_url" in video_info and "video_url_text" in video_info:
-            resolutions.append((video_info["video_url_text"], video_info["video_url"]))
-
-        for key in video_info:
-            if (
-                key.startswith("video_alt_url")
-                and not key.endswith("_hd")
-                and not key.endswith("_4k")
-                and not key.endswith("_text")
-            ):
-                text_key = f"{key}_text"
-                if text_key in video_info:
-                    resolutions.append((video_info[text_key], video_info[key]))
-
-        if not resolutions:
-            resolutions.append((video_info["video_url"], ""))
-
-        best = max(resolutions, key=lambda x: extract_resolution(x[0]))
-        return Video(video_info["video_id"], video_info["video_title"], best[1].strip("/"), best[0].split()[0])
-    raise ScrapeError(404)
+                self.create_task(self.run(new_scrape_item))

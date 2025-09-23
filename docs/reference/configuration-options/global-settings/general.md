@@ -18,12 +18,12 @@ Crawlers names correspond to the column `site` in the [supported sites page](htt
 
 | Type   | Default |
 | ------ | ------- |
-| `bool` | `true`  |
+| `bool` | `false`  |
 
-CDl has a generic crawler that will try to download from unsupported sites. Setting this to `false` will disable it.
+CDl has a generic crawler that will try to download from unsupported sites. Setting this to `true` will enable it.
 
 {% hint style="info" %}
-CDL will still try to download from unsupported URLs if the last part of the URL has a known file extension. ex: `.jpg`
+CDL will always try to download from unsupported URLs if the last part of the URL has a known file extension. ex: `.jpg`
 {% endhint %}
 
 ## `flaresolverr`
@@ -105,7 +105,7 @@ Sensitive data may be exposed using an insecure connection. For your safety, is 
 
 | Type          | Default                                                                            |
 | ------------- | ---------------------------------------------------------------------------------- |
-| `NonEmptyStr` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0` |
+| `NonEmptyStr` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0` |
 
 The user agent is the signature of your browser. Some sites use it to identify if the requests come from a human or a robot.
 You can google "what is my user agent" to get yours.

@@ -34,8 +34,7 @@ class ViprImCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         link_str: str = css.select_one_get_attr(soup, IMG_SELECTOR, "src")
         link = self.parse_url(link_str)
@@ -44,7 +43,7 @@ class ViprImCrawler(Crawler):
 
     async def thumbnail(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = self.get_canonical_url(scrape_item.url)
-        self.manager.task_group.create_task(self.run(scrape_item))
+        self.create_task(self.run(scrape_item))
 
     def get_canonical_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         return PRIMARY_URL / get_image_id(url)

@@ -45,13 +45,12 @@ class OneManagerCrawler(Crawler, is_abc=True):
         await self.process_path(scrape_item)
 
     async def async_startup(self) -> None:
-        self.manager.download_manager.download_limits.update({self.DOMAIN: 2})
+        self.manager.client_manager.download_slots.update({self.DOMAIN: 2})
 
     @error_handling_wrapper
     async def process_path(self, scrape_item: ScrapeItem) -> None:
         try:
-            async with self.request_limiter:
-                soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+            soup = await self.request_soup(scrape_item.url)
         except InvalidContentTypeError:  # This is a file, not html
             scrape_item.parent_title = scrape_item.parent_title.rsplit("/", 1)[0]
             link = scrape_item.url
@@ -71,7 +70,7 @@ class OneManagerCrawler(Crawler, is_abc=True):
         for folder in css.iselect(table, _SELECTORS.FOLDER):
             link = scrape_item.url / css.select_one_get_attr(folder, _SELECTORS.FOLDER_LINK, "href")
             new_scrape_item = scrape_item.create_child(link, new_title_part=link.name)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
     @error_handling_wrapper

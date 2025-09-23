@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import base64
+import codecs
 import dataclasses
 import itertools
 import json
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url, xor_decrypt
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -29,9 +30,29 @@ class Selector:
     NEXT_PAGE = "a[data-page='next']"
 
 
-def _parse_url(url: str) -> AbsoluteHttpURL:
-    if url.startswith("eG9y"):
-        url = xor_decrypt(base64.b64decode(url)[4:], _DECRYPTION_KEY)
+def _decrypt_url(raw_url: str) -> str | None:
+    if raw_url.startswith("http") or raw_url.startswith("/"):
+        return raw_url
+    try:
+        if _is_hex(raw_url):
+            return _decode_hex_url(raw_url)
+    except ValueError:
+        pass
+
+    try:
+        decoded_url = base64.b64decode(raw_url)
+        if decoded_url.startswith(b"xor_"):
+            return xor_decrypt(decoded_url[4:], _DECRYPTION_KEY)
+        if decoded_url.startswith(b"rot13_"):
+            return codecs.decode(decoded_url[6:].decode(), "rot_13")
+    except ValueError:
+        pass
+
+
+def _parse_url(b64_url: str) -> AbsoluteHttpURL:
+    url = _decrypt_url(b64_url)
+    if not url:
+        raise ScrapeError(422, f"Unknown encrypted URL: {b64_url}")
     return parse_url(url, relative_to=_PRIMARY_URL)
 
 
@@ -53,9 +74,9 @@ class XhamsterCrawler(Crawler):
     NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
     DOMAIN = "xhamster"
     FOLDER_DOMAIN = "xHamster"
+    _RATE_LIMIT = 4, 1
 
     def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(4, 1)
         self._seen_hosts: set[str] = set()
 
     def _disable_ai_title_translations(self, url: AbsoluteHttpURL) -> None:
@@ -208,15 +229,13 @@ class XhamsterCrawler(Crawler):
 
     async def _get_window_initials(self, url: AbsoluteHttpURL) -> dict[str, Any]:
         self._disable_ai_title_translations(url)
-        async with self.request_limiter:
-            content = await self.client.get_text(self.DOMAIN, url)
-
+        content = await self.request_text(url)
         initials = get_text_between(content, "window.initials=", ";</script>")
         return json.loads(initials)
 
 
 class Format(NamedTuple):
-    resolution: int
+    resolution: Resolution
     codec: str  #  h264 > av1
     url: AbsoluteHttpURL
 
@@ -276,7 +295,7 @@ def _parse_http_sources(initials: dict[str, Any]) -> Iterable[Format]:
                 continue
 
             seen_urls.add(url)
-            resolution = int(quality.removesuffix("p"))
+            resolution = Resolution.parse(quality)
             yield Format(resolution, codec, url)
 
 
@@ -299,12 +318,11 @@ def _parse_xplayer_sources(initials: dict[str, Any]) -> Iterable[Format]:
 
             seen_urls.add(url)
             if url.suffix == ".m3u8":
-                resolution = 0
+                res = 0
             else:
-                quality: str = format_dict.get("quality") or format_dict["label"]
-                resolution = int(quality.removesuffix("p"))
+                res = format_dict.get("quality") or format_dict["label"]
 
-            yield Format(resolution, codec, url)
+            yield Format(Resolution.parse(res), codec, url)
 
     hls_sources: dict[str, dict[str, str]] = xplayer_sources.get("hls", {})
     for codec, format_dict in hls_sources.items():
@@ -314,3 +332,71 @@ def _parse_xplayer_sources(initials: dict[str, Any]) -> Iterable[Format]:
     for codec, formats_list in standard_sources.items():
         for format_dict in formats_list:
             yield from parse_format(format_dict, codec)
+
+
+def _ensure_signed_32int(int32: int) -> int:
+    unsigned_32_bit = int32 & 0xFFFFFFFF
+    if unsigned_32_bit >= 0x80000000:
+        return unsigned_32_bit - 0x100000000
+    return unsigned_32_bit
+
+
+def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
+    current_step = seed
+    if algo == 1:
+
+        def decode_next() -> int:
+            nonlocal current_step
+            current_step = _ensure_signed_32int(current_step * 1664525) + 1013904223
+            return current_step & 255
+
+        return decode_next
+
+    if algo == 2:
+
+        def decode_next() -> int:
+            nonlocal current_step
+
+            current_step = current_step & 0xFFFFFFFF
+            current_step ^= (current_step << 13) & 0xFFFFFFFF
+            current_step ^= (current_step >> 17) & 0xFFFFFFFF
+            current_step ^= (current_step << 5) & 0xFFFFFFFF
+            current_step = _ensure_signed_32int(current_step)
+
+            return current_step & 255
+
+        return decode_next
+
+    if algo == 3:
+
+        def decode_next() -> int:
+            nonlocal current_step
+            val = current_step = (current_step + 2654435769) & 0xFFFFFFFF
+            val ^= val >> 16
+            val = (val * 2246822519) & 0xFFFFFFFF
+            val ^= val >> 13
+            val = (val * 3266489917) & 0xFFFFFFFF
+            val ^= val >> 16
+
+            return val & 255
+
+        return decode_next
+
+    raise ValueError(f"Unknown crypto algo: {algo}")
+
+
+def _is_hex(hex_string: str) -> bool:
+    try:
+        int(hex_string, 16)
+        return True
+    except ValueError:
+        return False
+
+
+def _decode_hex_url(encrypted_url: str) -> str:
+    array = bytearray.fromhex(encrypted_url)
+    algo = array[0]
+    seed = _ensure_signed_32int(array[1] | (array[2] << 8) | (array[3] << 16) | (array[4] << 24))
+    decode_next = _make_decoder(algo, seed)
+    decoded_array = bytearray([(array[idx + 5] ^ decode_next()) & 255 for idx in range(len(array) - 5)])
+    return decoded_array.decode("utf-8")

@@ -5,8 +5,6 @@ import dataclasses
 import itertools
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from aiolimiter import AsyncLimiter
-
 from cyberdrop_dl.compat import IntEnum
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -64,6 +62,7 @@ class LeakedZoneCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "LeakedZone"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     IMAGES_CDN: ClassVar[AbsoluteHttpURL] = IMAGES_CDN
+    _RATE_LIMIT = 3, 10
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -74,9 +73,6 @@ class LeakedZoneCrawler(Crawler):
             case _:
                 raise ValueError
 
-    def __post_init__(self) -> None:
-        self.request_limiter = AsyncLimiter(3, 10)
-
     @classmethod
     def get_encoded_video_url(cls, soup: BeautifulSoup) -> str:
         js_text = css.select_one_get_text(soup, _SELECTORS.JW_PLAYER)
@@ -84,15 +80,15 @@ class LeakedZoneCrawler(Crawler):
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         model_name: str = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME_FROM_PROFILE)
         scrape_item.setup_as_profile(self.create_title(model_name))
         headers = {"X-Requested-With": "XMLHttpRequest"}
         for page in itertools.count(1):
-            async with self.request_limiter:
-                posts = await self.client.get_json(self.DOMAIN, scrape_item.url.with_query(page=page), headers=headers)
+            posts: list[dict[str, Any]] = await self.request_json(
+                scrape_item.url.with_query(page=page), headers=headers
+            )
             # We may be able to omit the last request by just checking the number of posts
             # Seens to always return 48 posts
             if not posts:
@@ -111,8 +107,7 @@ class LeakedZoneCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item.url):
             return
 
-        async with self.request_limiter:
-            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url)
 
         model_name = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME)
         scrape_item.setup_as_album(self.create_title(model_name))

@@ -35,8 +35,7 @@ class MissAVCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
 
         title, date_str = open_graph.title(soup), open_graph.get("video_release_date", soup)
         if dvd_code_tag := soup.select_one(DVD_CODE_SELECTOR):
@@ -53,7 +52,7 @@ class MissAVCrawler(Crawler):
         m3u8_playlist_url = M3U8_SERVER / uuid / "playlist.m3u8"
         m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_playlist_url)
         ext = ".mp4"
-        filename = self.create_custom_filename(title, ext, resolution=info.resolution.name)
+        filename = self.create_custom_filename(title, ext, resolution=info.resolution)
         await self.handle_file(m3u8_playlist_url, scrape_item, filename, ext, m3u8=m3u8)
 
 

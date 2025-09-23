@@ -8,13 +8,11 @@
 
 The path to the folder you want Cyberdrop-DL to download files to.
 
-
 ## `dump_json`
 
 | Type   | Default |
 | ------ | ------- |
 | `bool` | `False` |
-
 
 If enabled, CDL will created a [json lines](https://jsonlines.org/) files with the information about every file downloaded in the current run. The path to this file will be the same as `--main-log` but with the extension `.results.jsonl`
 
@@ -53,7 +51,6 @@ Each line in the file will contain the following details (this may change on fut
 The path to the text file containing the URLs you want to download. Each line should be a single URL.
 
 You can also use `html` code. Cyberdrop-DL will parse all the links on the HTML
-
 
 ## `save_pages_html`
 

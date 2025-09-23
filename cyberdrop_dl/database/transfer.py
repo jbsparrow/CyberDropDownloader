@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import contextlib
 import sqlite3
+import time
 from datetime import datetime
 from pathlib import Path
 from shutil import copy2
 
-import arrow
 from rich.console import Console
 
-from cyberdrop_dl.utils.database.table_definitions import create_files, create_temp_hash
+from .tables.definitions import create_files, create_temp_hash
 
 console = Console()
 
@@ -62,10 +62,10 @@ def transfer_v5_db_to_v6(db_path: Path) -> None:
             folder, download_filename, file_size, hash, original_filename, referer = row
 
             file_path = Path(folder, download_filename)
-            if file_path.exists():
+            try:
                 file_date = int(file_path.stat().st_mtime)
-            else:
-                file_date = int(arrow.now().float_timestamp)
+            except (OSError, ValueError):
+                file_date = int(time.time())
 
             data_to_insert_files.append((folder, download_filename, original_filename, file_size, referer, file_date))
             data_to_insert_hash.append((folder, download_filename, "md5", hash))
