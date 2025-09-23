@@ -32,7 +32,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install CDL
-        run: uv sync --resolution ${{ matrix.uv-resolution }}
+        run: uv sync --group test --resolution ${{ matrix.uv-resolution }}
 
       - name: Run tests
         run: uv run pytest -s
