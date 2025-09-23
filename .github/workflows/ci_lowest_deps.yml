@@ -35,7 +35,7 @@ jobs:
         run: uvx migrate-to-uv
 
       - name: Install CDL
-        run: uv sync --group test --resolution ${{ matrix.uv-resolution }}
+        run: uv sync --group test --resolution ${{ matrix.uv-resolution }} --no-install-package lz4
 
       - name: Run tests
-        run: uv run pytest -s
+        run: uv run pytest -s --no-sync
