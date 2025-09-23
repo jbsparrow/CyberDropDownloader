@@ -136,6 +136,6 @@ This is the maximum number of requests that can be made by the program per secon
 
 | Type                       | Default |
 | -------------------------- | ------- |
-| `PositiveFloat`  or `null` | `300.0`   |
+| `PositiveFloat` or `null` | `300.0` |
 
 The number of seconds to wait while reading data from a website before timing out. A `null` value will make CDL keep the socket connection open indefinitely, even if the server is not sending data anymore
