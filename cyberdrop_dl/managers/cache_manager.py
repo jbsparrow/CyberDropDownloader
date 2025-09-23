@@ -88,5 +88,8 @@ class CacheManager:
 
     async def close(self):
         if not isinstance(self.request_cache, Field):
-            await self.request_cache.close()
+            try:
+                await self.request_cache.close()
+            except Exception:
+                pass
         self.save("version", current_version)
