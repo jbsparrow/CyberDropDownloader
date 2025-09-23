@@ -341,11 +341,6 @@ def _ensure_signed_32int(int32: int) -> int:
     return unsigned_32_bit
 
 
-def _hex_string_to_bytearray(hex_string: str) -> bytearray:
-    length = len(hex_string)
-    return bytearray([int(hex_string[idx : idx + 2], 16) for idx in range(0, length, 2)])
-
-
 def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
     current_step = seed
     if algo == 1:
@@ -399,7 +394,7 @@ def _is_hex(hex_string: str) -> bool:
 
 
 def _decode_hex_url(encrypted_url: str) -> str:
-    array = _hex_string_to_bytearray(encrypted_url)
+    array = bytearray.fromhex(encrypted_url)
     algo = array[0]
     seed = _ensure_signed_32int(array[1] | (array[2] << 8) | (array[3] << 16) | (array[4] << 24))
     decode_next = _make_decoder(algo, seed)
