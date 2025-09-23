@@ -124,7 +124,7 @@ Some domains have internal limits set by the program, which can not be modified:
 
 | Type            | Default |
 | --------------- | ------- |
-| `PositiveFloat` | `50.0`    |
+| `PositiveFloat` | `50.0` |
 
 {% hint style="info" %}
 This setting specifies speed and it's interpreted as `<value> / second`. ex: `50` means `50 requests / second`
@@ -136,6 +136,6 @@ This is the maximum number of requests that can be made by the program per secon
 
 | Type                       | Default |
 | -------------------------- | ------- |
-| `PositiveFloat`  or `null` | `300.0`   |
+| `PositiveFloat` or `null` | `300.0` |
 
 The number of seconds to wait while reading data from a website before timing out. A `null` value will make CDL keep the socket connection open indefinitely, even if the server is not sending data anymore
