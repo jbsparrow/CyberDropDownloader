@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 from aiohttp_client_cache import CacheBackend, SQLiteBackend
 
 from cyberdrop_dl import __version__ as current_version
-from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
 from cyberdrop_dl.scraper.filters import cache_filter_fn
 from cyberdrop_dl.utils import yaml
 
@@ -41,6 +40,8 @@ class CacheManager:
         self._cache = yaml.load(self.cache_file)
 
     def load_request_cache(self) -> None:
+        from cyberdrop_dl.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
+
         rate_limiting_options = self.manager.config_manager.global_settings_data.rate_limiting_options
         urls_expire_after = {
             "*.simpcity.su": rate_limiting_options.file_host_cache_expire_after,
@@ -87,5 +88,8 @@ class CacheManager:
 
     async def close(self):
         if not isinstance(self.request_cache, Field):
-            await self.request_cache.close()
+            try:
+                await self.request_cache.close()
+            except Exception:
+                pass
         self.save("version", current_version)

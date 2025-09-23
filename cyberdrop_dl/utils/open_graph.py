@@ -29,8 +29,12 @@ class OpenGraph(dict[str, str | None]):
 def parse(soup: bs4.BeautifulSoup) -> OpenGraph:
     """Extracts Open Graph properties (og properties) from soup."""
     og_props = OpenGraph()
-    for meta in soup.select('meta[property^="og:"][content]'):
-        name = _value(meta, "property").replace("og:", "").replace(":", "_")
+    for meta in soup.select('meta[property^="og:"][content], meta[name^="og:"][content]'):
+        try:
+            name = _value(meta, "property")
+        except IndexError:
+            name = _value(meta, "name")
+        name = name.replace("og:", "").replace(":", "_")
         if value := _value(meta):
             og_props[name] = value
 
@@ -41,7 +45,7 @@ def parse(soup: bs4.BeautifulSoup) -> OpenGraph:
 
 
 def get(name: str, /, soup: bs4.BeautifulSoup) -> str | None:
-    if meta := soup.select_one(f'meta[property^="og:{name}"][content]'):
+    if meta := soup.select_one(f'meta[property^="og:{name}"][content], meta[name^="og:{name}"][content]'):
         return _value(meta)
 
 

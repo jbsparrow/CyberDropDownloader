@@ -9,11 +9,11 @@ from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 from pydantic import BaseModel
 
 from cyberdrop_dl import __version__, constants
+from cyberdrop_dl.database import Database
+from cyberdrop_dl.database.transfer import transfer_v5_db_to_v6
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
 from cyberdrop_dl.managers.config_manager import ConfigManager
-from cyberdrop_dl.managers.db_manager import DBManager
-from cyberdrop_dl.managers.download_manager import DownloadManager
 from cyberdrop_dl.managers.hash_manager import HashManager
 from cyberdrop_dl.managers.live_manager import LiveManager
 from cyberdrop_dl.managers.log_manager import LogManager
@@ -23,7 +23,6 @@ from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.utils import ffmpeg
 from cyberdrop_dl.utils.args import ParsedArgs, parse_args
 from cyberdrop_dl.utils.logger import QueuedLogger, log
-from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 from cyberdrop_dl.utils.utilities import close_if_defined, get_system_information
 
 if TYPE_CHECKING:
@@ -46,11 +45,10 @@ class Manager:
         self.hash_manager: HashManager = field(init=False)
 
         self.log_manager: LogManager = field(init=False)
-        self.db_manager: DBManager = field(init=False)
+        self.db_manager: Database = field(init=False)
         self.client_manager: ClientManager = field(init=False)
         self.storage_manager: StorageManager = field(init=False)
 
-        self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
 
@@ -146,17 +144,17 @@ class Manager:
         elif self.states.RUNNING.is_set():
             await self.storage_manager.reset()  # Reset total downloaded data if running multiple configs
 
-        if not isinstance(self.download_manager, DownloadManager):
-            self.download_manager = DownloadManager(self)
-
         await self.async_db_hash_startup()
 
         constants.MAX_NAME_LENGTHS["FILE"] = self.config_manager.global_settings_data.general.max_file_name_length
         constants.MAX_NAME_LENGTHS["FOLDER"] = self.config_manager.global_settings_data.general.max_folder_name_length
 
     async def async_db_hash_startup(self) -> None:
-        if not isinstance(self.db_manager, DBManager):
-            self.db_manager = DBManager(self, self.path_manager.history_db)
+        if not isinstance(self.db_manager, Database):
+            self.db_manager = Database(
+                self.path_manager.history_db,
+                self.config.runtime_options.ignore_history,
+            )
             await self.db_manager.startup()
         transfer_v5_db_to_v6(self.path_manager.history_db)
         if not isinstance(self.hash_manager, HashManager):

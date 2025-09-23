@@ -9,7 +9,6 @@ from pydantic import BaseModel, ByteSize, NonNegativeInt, PositiveInt, field_ser
 from cyberdrop_dl import constants
 from cyberdrop_dl.constants import BROWSERS, DEFAULT_APP_STORAGE, DEFAULT_DOWNLOAD_STORAGE
 from cyberdrop_dl.data_structures.hash import Hashing
-from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_SITES_DOMAINS
 from cyberdrop_dl.models import HttpAppriseURL
 from cyberdrop_dl.models.types import (
     ByteSizeSerilized,
@@ -22,6 +21,7 @@ from cyberdrop_dl.models.types import (
     PathOrNone,
 )
 from cyberdrop_dl.models.validators import falsy_as, to_timedelta
+from cyberdrop_dl.supported_domains import SUPPORTED_SITES_DOMAINS
 from cyberdrop_dl.utils.strings import validate_format_string
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
@@ -55,6 +55,7 @@ class DownloadOptions(BaseModel):
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
     maximum_thread_depth: NonNegativeInt = 0
+    maximum_thread_folder_depth: NonNegativeInt | None = None
 
     @field_validator("separate_posts_format", mode="after")
     @classmethod
@@ -159,6 +160,7 @@ class IgnoreOptions(BaseModel):
     exclude_videos: bool = False
     filename_regex_filter: NonEmptyStrOrNone = None
     ignore_coomer_ads: bool = False
+    ignore_coomer_post_content: bool = True
     only_hosts: ListNonEmptyStr = []
     skip_hosts: ListNonEmptyStr = []
     exclude_files_with_no_extension: bool = True

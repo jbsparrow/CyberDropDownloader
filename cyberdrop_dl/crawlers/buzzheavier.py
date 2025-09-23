@@ -27,12 +27,16 @@ class BuzzHeavierCrawler(Crawler):
             return
 
         url = scrape_item.url / "download"
-        headers = {"HX-Current-URL": str(scrape_item.url), "HX-Request": "true"}
-        async with self.request_limiter:
-            response = await self.client._get_head(self.DOMAIN, url, headers=headers)
+        async with self.request(
+            url,
+            method="HEAD",
+            headers={
+                "HX-Current-URL": str(scrape_item.url),
+                "HX-Request": "true",
+            },
+        ) as resp:
+            filename: str = resp.filename
 
-        assert response.content_disposition
-        assert response.content_disposition.filename
-        link = self.parse_url(response.headers["hx-redirect"])
-        filename, ext = self.get_filename_and_ext(response.content_disposition.filename, assume_ext=".zip")
+        link = self.parse_url(resp.headers["hx-redirect"])
+        filename, ext = self.get_filename_and_ext(filename, assume_ext=".zip")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=link)
