@@ -124,7 +124,7 @@ Some domains have internal limits set by the program, which can not be modified:
 
 | Type            | Default |
 | --------------- | ------- |
-| `PositiveFloat` | `50.0`    |
+| `PositiveFloat` | `50.0` |
 
 {% hint style="info" %}
 This setting specifies speed and it's interpreted as `<value> / second`. ex: `50` means `50 requests / second`
