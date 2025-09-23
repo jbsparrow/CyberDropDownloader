@@ -243,7 +243,7 @@ class MessageBoardCrawler(Crawler, is_abc=True):
                 return await self.thread(scrape_item, thread)
             case ["goto" | "posts", _, *_]:
                 self.check_thread_recursion(scrape_item)
-                return await self.follow_redirect_w_get(scrape_item)
+                return await self.follow_redirect(scrape_item)
             case _:
                 raise ValueError
 
@@ -595,7 +595,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         link = link or scrape_item.url
         slug = link.name or link.parent.name
         if slug.isdigit():
-            return await self.follow_redirect_w_head(scrape_item.create_new(link))
+            return await self.follow_redirect(scrape_item.create_new(link))
 
         await super().handle_internal_link(scrape_item, link)
 

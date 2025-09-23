@@ -35,7 +35,7 @@ class ScraperClient:
         self._max_html_stem_len = 245 - min_html_file_path_len
 
     @contextlib.asynccontextmanager
-    async def _limiter(self, domain: str):
+    async def _limiter(self, domain: str) -> AsyncGenerator[None]:
         with self.client_manager.request_context(domain):
             domain_limiter = self.client_manager.get_rate_limiter(domain)
             async with self.client_manager.global_rate_limiter, domain_limiter:
