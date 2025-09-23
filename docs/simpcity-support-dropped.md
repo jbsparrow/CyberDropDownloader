@@ -45,5 +45,5 @@ I encourage you to use the program responsibly. Here are some tips to help minim
 
 If you wish to continue downloading from SimpCity, you can use Tampermonkey scripts like these ones:
 
-- [SimpCity Tampermonkey Forum Downloader](https://simpcity.su/threads/forum-post-downloader-tampermonkey-script.96714/).
-- [Forums Link Grabber](https://github.com/Garcarius/forumslinkgraber)
+* [SimpCity Tampermonkey Forum Downloader](https://simpcity.su/threads/forum-post-downloader-tampermonkey-script.96714/).
+* [Forums Link Grabber](https://github.com/Garcarius/forumslinkgraber)

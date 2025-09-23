@@ -22,6 +22,77 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.0.0] - 2025-09-23
+
+### Added
+
+- Allow downloading google docs files with a custom format by using a `format` query param
+- Cloudflare stream support
+- pCloud support
+- MegaCloud support
+- PimpBunny support
+- HiAnime support
+- Safe.Soul support
+- Voe.sx support
+- Support for subfolders (MediaFire)
+- Support for short URL formats (MediaFire)
+- Support for subfolders (Dropbox)
+- Support for alternative pixeldrain domains: `pixeldrain.net`, `pixeldra.in`
+- Support for `pd.cybar.xyz` URLs to bypass pixeldrain daily limit
+- The `--separate-post` and `--separate-post-format` options now work for tiktok posts
+- CDL can now download private TikTok posts when using cookies
+- New config option to download tiktok videos in original quality: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#download-tiktok-src-quality-videos>
+- New `--max-thread-folder-depth` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#maximum_thread_folder_depth>
+- New `--ignore-coomer-post-content` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#ignore_coomer_post_content>
+- The `--ignore-coomer-ads` config option now affects all Kemono based crawlers (Coomer, Kemono & Nekohouse)
+
+### Changed
+
+- The recommended python version is now python 3.12+, to take advandage of eager tasks
+- Start scripts will automatically install a compatible python version
+- Start scripts no longer support 32bit systems
+- Handle shared folders with single file as loose files (Yetishare)
+- Increase default rate limit, from 10req/s to 25req/s
+- Increase max concurrent bunkr downloads, from 1 to 3
+- Parse full spec cookies from Flaresolverr responses
+- CDL will no longer try to merge subtitles for HLS downloads. They will be downloaded as separate files
+- Make requests with the same domain as the original input URL (saint2.su)
+- Tiktok downloads use a new logic to create filenames and folders. Folder structure will be different from previous versions.
+- CDL will now iterate over each file and subfolder recursively, instead of downloading an entire folder as a zip (dropbox)
+- `--read-timeout` now accepts `None` as value. This will make CDL keep the socket connection open indefinitely, even if the server is not sending data anymore
+- `--read-timeout` and `--connection-timeout` now accept fractions of a seconds as value (ex: `0.3`)
+- `--read-timeout` and `--connection-timeout` now affect all requests CDL will make (flaresolverr requests, scrape requests and download requests)
+- General performance improvements
+
+### Deprecated
+
+- Support for v5 and v6 (config, database and auto-migration) is deprecated and will be removed on the next major release
+
+### Removed
+
+- `--download-dropbox-folders-as-zip` config option
+
+### Fixed
+
+- `--dump-json` output file missing some fields
+- CDL trying to download all HLS segments at once
+- Download retries always re-starting from zero
+- Global rate limiter being ignored while crawling
+- Crashing when using any value for `--download-speed-limit`
+- Handle b64 encoded URLs (MediaFire)
+- Previously downloaded HLS fragments not being detected
+- HLS subtitle downloads always failing
+- Parsing of 1440p, 2K, 4K and 8K videos (KVS sites)
+- Possible infinite loop when using the bunkrr.org domain (Bunkr)
+- Crashing if a single error happens while crawling a Discord channel (Kemono)
+- Nekohouse crawler
+- Thumbnails being downloaded as is instead of full resolution (Coomer, Kemono, Nekohouse)
+- Handle new rot13 encryption (xHamster)
+- Handle new hex encryption (xHamster)
+- Videos being skipped if the audio was downloaded before (TikTok)
+- Do not crash if the `URL.txt` file has ipv6 URLs or invalid URLs
+- `ConnectionError` after the first attempt of a DNS lookup failed, without trying any DNS fallbacks
+
 ## [7.5.0] - 2025-09-02
 
 ### Added
@@ -62,7 +133,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update API endpoints and parsing (Coomer, Kemono)
 - Files with mangled names if they had non english characters (Coomer, Kemono)
 
-
 ## [7.4.0] - 2025-08-21
 
 ### Added
@@ -97,7 +167,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--ui` options not working
 - Do not sort unjoined HSL files.
 
-
 ## [7.3.1] - 2025-08-02
 
 ### Changed
@@ -118,7 +187,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Download of videos that are not part of a playlist (spankbang)
 - Jdownloader connection
 - CDL always timing out when downloading any file that takes longer than 5 minutes
-
 
 ## [7.3.0] - 2025-07-21
 

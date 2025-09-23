@@ -40,7 +40,6 @@ A browser to use for extraction. Browser must be a supported browser's name.
 | Vivaldi   | :x:                | :white_check_mark: | :white_check_mark: |
 | W3M       | :x:                | :white_check_mark: | :x:                |
 
-
 ## `sites`
 
 | Type            | Default         |

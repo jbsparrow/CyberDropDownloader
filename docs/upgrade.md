@@ -1,5 +1,5 @@
 ---
-description: This is the walk through for transitioning from V4, V5 or V6 to v7
+description: This is the walk through for transitioning from V4-V7 to v8
 icon: arrow-up-to-bracket
 layout:
   title:
@@ -14,7 +14,7 @@ layout:
     visible: true
 ---
 
-# Transition from V4, V5 or V6 to V7
+# Transition to v8
 
 {% hint style="danger" %}
 V6 introduced some breaking changes: Using a more strict config validation logic, replacing `md5` with `xxh128` as the default hashing algorithm, using a new database schema, among others.
@@ -30,15 +30,19 @@ Even after a successful configuration migration, the program may not start if so
 You can use the [Config Options page](reference/configuration-options/README.md) as reference for valid config values
 {% endhint %}
 
-## Import V5 or V6 config into V7
+## Import V5, V6 or v7 config into v8
 
-Good news! If you have a v5 config, CDL can import it. The program will automatically detect the config in the current folder and handle the migration process for you.
+Good news! If you have a v5-v7 config, CDL can import it. The program will automatically detect the config in the current folder and handle the migration process for you.
 
-All you have to do is replace your old start script (for Windows, that's the `.bat` file) with the v7 start script. If CDL does not update automatically to v7, delete the `.venv` folder inside CDL's folder and run the start script again.
+All you have to do is replace your old start script (for Windows, that's the `.bat` file) with the v8 start script.
 
 Please note that after the migration is complete, you may still need to manually adjust some values in the config.
 
 If you are migrating from v5 and the migration fails, the database will be rolled back to its previous state. An automatic backup is also made before the migration begins. However, keep in mind that the backup only includes the database, not the config files.
+
+{% hint style="info" %}
+Support for v5 and v6 (config, database and auto-migration) is deprecated and will be removed in v9
+{% endhint %}
 
 ## Import V4 config
 
@@ -74,16 +78,19 @@ For a lot of people, the `download_history.sqlite` file will be in the same fold
 If it's not there, you can find it here:
 
 Windows:
+
 ```shell
 C:\Users\<USER>\AppData\Local\Cyberdrop-DL\Cyberdrop-DL\download_history.sqlite
 ```
 
 macOS:
+
 ```shell
 /Library/Application Support/Cyberdrop-DL/Cyberdrop-DL/download_history.sqlite
 ```
 
 Linux:
+
 ```shell
 /home/<USER>/.local/share/Cyberdrop-DL/Cyberdrop-DL/download_history.sqlite
 ```

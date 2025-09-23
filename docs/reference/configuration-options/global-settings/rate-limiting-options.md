@@ -13,12 +13,11 @@ The number of seconds to wait while connecting to a website before timing out
 
 {% hint style="info" %} This value will also be used for Flaresolverr (if enabled) as the max number of seconds to solve a CAPTCHA challenge {% endhint %}
 
-
 ## `download_attempts`
 
 | Type          | Default |
 | ------------- | ------- |
-| `PositiveInt` | `5`     |
+| `PositiveInt` | `2`     |
 
 The number of download attempts per file. Some conditions are never retried (such as a `404` HTTP status)
 
@@ -26,7 +25,7 @@ The number of download attempts per file. Some conditions are never retried (suc
 
 | Type               | Default |
 | ------------------ | ------- |
-| `NonNegativeFloat` | `0.5`   |
+| `NonNegativeFloat` | `0.0`   |
 
 This is the number of seconds to wait between downloads to the same domain.
 
@@ -36,7 +35,6 @@ Some domains have internal limits set by the program, which can not be modified:
 - `coomer`: 0.5,
 - `kemono`: 0.5,
 - `nhentai.net`: 1,
-
 
 ## `download_speed_limit`
 
@@ -108,13 +106,13 @@ This is the maximum number of files that can be downloaded simultaneously.
 
 | Type          | Default |
 | ------------- | ------- |
-| `PositiveInt` | `3`     |
+| `PositiveInt` | `5`     |
 
 This is the maximum number of files that can be downloaded from a single domain simultaneously.
 
 Some domains have internal limits set by the program, which can not be modified:
 
-- `bunkr`: 1
+- `bunkr`: 3
 - `cyberdrop`: 1
 - `cyberfile`: 1
 - `noodlemagazine`: 2
@@ -124,9 +122,9 @@ Some domains have internal limits set by the program, which can not be modified:
 
 ## `rate_limit`
 
-| Type          | Default |
-| ------------- | ------- |
-| `PositiveInt` | `50`    |
+| Type            | Default |
+| --------------- | ------- |
+| `PositiveFloat` | `50.0` |
 
 {% hint style="info" %}
 This setting specifies speed and it's interpreted as `<value> / second`. ex: `50` means `50 requests / second`
@@ -136,8 +134,8 @@ This is the maximum number of requests that can be made by the program per secon
 
 ## `read_timeout`
 
-| Type          | Default |
-| ------------- | ------- |
-| `PositiveInt` | `300`   |
+| Type                       | Default |
+| -------------------------- | ------- |
+| `PositiveFloat` or `null` | `300.0` |
 
-The number of seconds to wait while reading data from a website before timing out.
+The number of seconds to wait while reading data from a website before timing out. A `null` value will make CDL keep the socket connection open indefinitely, even if the server is not sending data anymore
