@@ -49,6 +49,11 @@ class Resolution(NamedTuple):
     width: int
     height: int
 
+    @classmethod
+    @property
+    def HIGHEST(cls) -> Resolution:  # noqa: N802
+        return Resolution(9999, 9999)
+
     @property
     def name(self) -> str:
         if 7600 < self.width < 8200:
