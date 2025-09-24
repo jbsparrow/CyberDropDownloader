@@ -181,7 +181,7 @@ _find_flashvars = re.compile(r"(\w+):\s*'([^']*)'").findall
 
 def _parse_video_vars(video_vars: str) -> KVSVideo:
     flashvars: dict[str, str] = dict(_find_flashvars(video_vars))
-    url_keys = filter(_match_video_url_keys, flashvars.keys())
+    url_keys = list(filter(_match_video_url_keys, flashvars.keys()))
     license_token = _get_license_token(flashvars["license_code"])
 
     def get_formats():
@@ -196,12 +196,11 @@ def _parse_video_vars(video_vars: str) -> KVSVideo:
             url = _deobfuscate_url(url_str, license_token)
             yield resolution, url
 
-    formats = get_formats()
-    for resolution, url in list(formats):
-        if resolution == "HQ":
+    for resolution, url in get_formats():
+        if isinstance(resolution, str) and resolution == "HQ":
             return KVSVideo(flashvars["video_id"], flashvars["video_title"], url, 0)
 
-    resolution, url = max(formats)
+    resolution, url = max(get_formats())
     return KVSVideo(flashvars["video_id"], flashvars["video_title"], url, resolution)
 
 
