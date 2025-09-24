@@ -12,4 +12,16 @@ TEST_CASES = [
             }
         ],
     ),
+    (
+        "https://thisvid.com/albums/bruxel/",
+        [
+            {
+                "url": "re:https://media.thisvid.com/contents/albums/main/700x525/517000/51739",
+                "download_folder": r"re:Julia Bruxel \[album\] \(ThisVid\)",
+                "referer": "re:https://thisvid.com/albums/bruxel",
+                "album_id": "517393",
+            },
+        ],
+        11,
+    ),
 ]
