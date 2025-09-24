@@ -189,11 +189,19 @@ def _parse_video_vars(video_vars: str) -> KVSVideo:
             url_str = flashvars[key]
             if "/get_file/" not in url_str:
                 continue
-            resolution = Resolution.parse(flashvars[f"{key}_text"])
+            if flashvars[f"{key}_text"] == "HQ":
+                resolution = "HQ"
+            else:
+                resolution = Resolution.parse(flashvars[f"{key}_text"])
             url = _deobfuscate_url(url_str, license_token)
             yield resolution, url
 
-    resolution, url = max(get_formats())
+    formats = get_formats()
+    for resolution, url in list(formats):
+        if resolution == "HQ":
+            return KVSVideo(flashvars["video_id"], flashvars["video_title"], url, 0)
+
+    resolution, url = max(formats)
     return KVSVideo(flashvars["video_id"], flashvars["video_title"], url, resolution)
 
 
