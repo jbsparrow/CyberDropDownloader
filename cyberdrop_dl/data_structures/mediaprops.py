@@ -49,10 +49,7 @@ class Resolution(NamedTuple):
     width: int
     height: int
 
-    @classmethod
-    @property
-    def HIGHEST(cls) -> Resolution:  # noqa: N802
-        return Resolution(9999, 9999)
+    HIGHEST = (9999, 9999)
 
     @property
     def name(self) -> str:
