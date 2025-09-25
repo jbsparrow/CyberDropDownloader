@@ -38,4 +38,17 @@ TEST_CASES = [
         [],
         142,
     ),
+    (
+        "https://bunkr.ax/v/rFicV4QnhSHBE",
+        [
+            {
+                "url": r"re:1df93418-5063-4e1b-851e-9470cb8fc5c6\.mp4",
+                "filename": "MysteriousProd.24.09.06.April.Olsen.Rebel.Rhyder.All.About.Fucking.720p.mp4",
+                "original_filename": "1df93418-5063-4e1b-851e-9470cb8fc5c6.mp4",
+                "referer": "https://get.bunkrr.su/file/41348624",
+                "album_id": None,
+                "datetime": None,
+            }
+        ],
+    ),
 ]
