@@ -700,7 +700,7 @@ class Crawler(ABC):
                 return parsed_date
 
         except Exception as e:
-            msg = f"{msg}. {format = }: {e!r}"
+            msg = f"{msg}. {date_or_datetime = }{format = }: {e!r}"
 
         log(msg, bug=True)
 
