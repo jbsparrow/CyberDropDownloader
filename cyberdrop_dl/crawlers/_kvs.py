@@ -189,7 +189,8 @@ def _parse_video_vars(video_vars: str) -> KVSVideo:
             url_str = flashvars[key]
             if "/get_file/" not in url_str:
                 continue
-            resolution = Resolution.parse(flashvars[f"{key}_text"])
+            quality = flashvars[f"{key}_text"]
+            resolution = Resolution.highest() if quality == "HQ" else Resolution.parse(quality)
             url = _deobfuscate_url(url_str, license_token)
             yield resolution, url
 

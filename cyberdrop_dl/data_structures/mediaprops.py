@@ -105,8 +105,13 @@ class Resolution(NamedTuple):
     def unknown() -> Resolution:
         return UNKNOWN_RESOLUTION
 
+    @staticmethod
+    def highest() -> Resolution:
+        return HIGHEST_RESOLUTION
+
 
 UNKNOWN_RESOLUTION = Resolution.parse(0)
+HIGHEST_RESOLUTION = Resolution(9999, 9999)
 
 
 COMMON_RESOLUTIONS: Final = tuple(
