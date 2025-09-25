@@ -49,8 +49,6 @@ class Resolution(NamedTuple):
     width: int
     height: int
 
-    HIGHEST = (9999, 9999)
-
     @property
     def name(self) -> str:
         if 7600 < self.width < 8200:
@@ -107,8 +105,13 @@ class Resolution(NamedTuple):
     def unknown() -> Resolution:
         return UNKNOWN_RESOLUTION
 
+    @staticmethod
+    def highest() -> Resolution:
+        return HIGHEST_RESOLUTION
+
 
 UNKNOWN_RESOLUTION = Resolution.parse(0)
+HIGHEST_RESOLUTION = Resolution(9999, 9999)
 
 
 COMMON_RESOLUTIONS: Final = tuple(
