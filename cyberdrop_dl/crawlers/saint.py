@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class Selectors:
     VIDEOS = "a.btn-primary.action.download"
     EMBED_SRC = "video[id=main-video] source"
-    DOWNLOAD_BUTTON = "a:contains('Download Video')"
+    DOWNLOAD_BUTTON = "a:-soup-contains('Download Video')"
     NOT_FOUND_IMAGE = "video#video-container img[src*='assets/notfound.gif']"
 
 

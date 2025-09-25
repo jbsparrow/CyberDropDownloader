@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://pixeldrain.com/api/")
-JS_SELECTOR = 'script:contains("window.initial_node")'
+JS_SELECTOR = 'script:-soup-contains("window.initial_node")'
 PRIMARY_URL = AbsoluteHttpURL("https://pixeldrain.com")
 
 

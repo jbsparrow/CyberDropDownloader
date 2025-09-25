@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 class Selector:
     DOWNLOAD_BUTTON = "a[id=downloadButton]"
-    DATE = "ul[class=details] li:contains(Uploaded) span"
+    DATE = "ul[class=details] li:-soup-contains(Uploaded) span"
 
 
 _PRIMARY_URL = AbsoluteHttpURL("https://www.mediafire.com/")

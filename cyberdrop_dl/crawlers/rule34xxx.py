@@ -17,7 +17,7 @@ class Selector:
     CONTENT = "div[class=image-list] span a"
     IMAGE = "img[id=image]"
     VIDEO = "video source"
-    DATE = "li:contains('Posted: ')"
+    DATE = "li:-soup-contains('Posted: ')"
     IMAGE_OR_VIDEO = f"{IMAGE}, {VIDEO}"
 
 

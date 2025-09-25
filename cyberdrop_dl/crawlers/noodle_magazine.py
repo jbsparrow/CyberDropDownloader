@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-PLAYLIST_SELECTOR = "script:contains('window.playlist')"
+PLAYLIST_SELECTOR = "script:-soup-contains('window.playlist')"
 METADATA_SELECTOR = "script[type='application/ld+json']"
 SEARCH_STRING_SELECTOR = "div.mh_line > h1.c_title"
 VIDEOS_SELECTOR = "div#list_videos a.item_link"

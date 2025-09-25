@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class Selectors:
     TITLE = "div#incflix-videowrap > h2"
     VIDEO = "div#incflix-videowrap source"
-    NEXT = "table#incflix-pager a:contains('>')"
+    NEXT = "table#incflix-pager a:-soup-contains('>')"
     VIDEO_THUMBS = "section#photos a"
     TAG_TITLE = "span#replaceTag1"
 

@@ -171,6 +171,6 @@ def _parse_episodes_resp(html: str):
 def _parse_server_resp(html: str):
     soup = bs4.BeautifulSoup(html, "html.parser")
     for server_type in ("sub", "dub", "raw"):
-        if server_tag := soup.select_one(f"div[data-type={server_type}]:contains('HD-1')"):
+        if server_tag := soup.select_one(f"div[data-type={server_type}]:-soup-contains('HD-1')"):
             server_id = css.get_attr(server_tag, "data-id")
             yield server_type, server_id

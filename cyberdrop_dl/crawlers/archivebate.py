@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class Selectors:
-    JS = "script:contains('MDCore.ref')"
+    JS = "script:-soup-contains('MDCore.ref')"
     VIDEO = "iframe[src*=mixdrop]"
     USER_NAME = "div.info a[href*='archivebate.store/profile/']"
     SITE_NAME = f"{USER_NAME} + p"

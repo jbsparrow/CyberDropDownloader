@@ -20,8 +20,8 @@ class Selector:
     ITEM = "a[class='image-container --media']"
     NEXT_PAGE = "a[data-pagination=next]"
 
-    DATE_SINGLE_ITEM = f"{ITEM_DESCRIPTION}:contains('Uploaded') span"
-    DATE_ALBUM_ITEM = f"{ITEM_DESCRIPTION}:contains('Added to') span"
+    DATE_SINGLE_ITEM = f"{ITEM_DESCRIPTION}:-soup-contains('Uploaded') span"
+    DATE_ALBUM_ITEM = f"{ITEM_DESCRIPTION}:-soup-contains('Added to') span"
     DATE = css.CssAttributeSelector(f"{DATE_SINGLE_ITEM}, {DATE_ALBUM_ITEM}", "title")
     MAIN_IMAGE = css.CssAttributeSelector("div#image-viewer img", "src")
 

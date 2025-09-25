@@ -16,7 +16,7 @@ class Selectors:
     ALBUM_IMAGES = "div#gdt.gt200 a"
     DATE = "td[class=gdt2]"
     TITLE = "h1[id=gn]"
-    NEXT_PAGE = "td[onclick='document.location=this.firstChild.href']:contains('>') a"
+    NEXT_PAGE = "td[onclick='document.location=this.firstChild.href']:-soup-contains('>') a"
 
 
 _SELECTORS = Selectors()

@@ -72,8 +72,8 @@ class Selectors:
     THUMBNAIL = 'img[alt="image"]'
     IMAGE_PREVIEW = "img.max-h-full.w-auto.object-cover.relative"
     VIDEO = "video > source"
-    JS_SLUG = "script:contains('jsSlug')"
-    NEXT_PAGE = "nav.pagination a[href]:contains('»')"
+    JS_SLUG = "script:-soup-contains('jsSlug')"
+    NEXT_PAGE = "nav.pagination a[href]:-soup-contains('»')"
 
 
 _SELECTORS = Selectors()

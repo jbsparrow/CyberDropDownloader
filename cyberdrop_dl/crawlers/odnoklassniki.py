@@ -40,7 +40,7 @@ class VideoProvider:
 
 class Selector:
     CHANNEL_NAME = ".album-info_name"
-    CHANNEL_HASH = "script:contains('gwtHash:')"
+    CHANNEL_HASH = "script:-soup-contains('gwtHash:')"
 
     CHANNEL_LAST_ELEMENT = css.CssAttributeSelector("[data-last-element]", "data-last-element")
     FLASHVARS = css.CssAttributeSelector("[data-options*='flashvars']", "data-options")
