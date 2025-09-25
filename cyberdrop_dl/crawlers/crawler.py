@@ -151,7 +151,7 @@ class Crawler(ABC):
 
     @final
     def _register_response_checks(self) -> None:
-        if self._json_response_check is Crawler._json_response_check:
+        if self._json_response_check.__func__ is Crawler._json_response_check.__func__:
             return
 
         for host in (self.DOMAIN, self.PRIMARY_URL.host):
