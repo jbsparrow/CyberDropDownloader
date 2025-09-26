@@ -243,11 +243,10 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(422, "Could not find source")
 
         if not scrape_item.possible_datetime:
-            if soup.select_one(_SELECTORS.ITEM_DATE):
-                scrape_item.possible_datetime = self.parse_date(
-                    css.select_one_get_text(soup, _SELECTORS.ITEM_DATE),
-                    "%H:%M:%S %d/%m/%Y",
-                )
+            scrape_item.possible_datetime = self.parse_date(
+                css.select_one_get_text(soup, _SELECTORS.ITEM_DATE),
+                "%H:%M:%S %d/%m/%Y",
+            )
 
         title = open_graph.title(soup)  # See: https://github.com/jbsparrow/CyberDropDownloader/issues/929
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
