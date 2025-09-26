@@ -94,7 +94,7 @@ class XVideosCrawler(Crawler):
                     return await self.video(scrape_item)
                 case [_ as part, _] if part in _EXTENDED_ACCOUNTS:
                     return await self.account(scrape_item)
-                case [_ as part, _, "photos", gallery_id, *_] if part in _EXTENDED_ACCOUNTS:
+                case [_ as part, _, "photos" | "post", gallery_id, *_] if part in _EXTENDED_ACCOUNTS:
                     return await self.gallery(scrape_item, gallery_id)
                 case [_ as part] if part not in _EXTENDED_ACCOUNTS:  # channel
                     return await self.account(scrape_item)
@@ -138,6 +138,7 @@ class XVideosCrawler(Crawler):
         scrape_item.setup_as_profile(self.create_title(f"{display_name} [{name}]"))
 
         frag = scrape_item.url.fragment
+        part = "photos" if "profiles" in scrape_item.url.parts else "post"
         if not frag or "_tabPhotos" in frag:
             galleries: dict[str, Any] | list[str] = json.loads(
                 get_text_between(script, '"galleries":', '"visitor":').removesuffix(",")
@@ -147,7 +148,7 @@ class XVideosCrawler(Crawler):
                 _ = galleries.pop("0", None)
 
             for gallery_id in galleries:
-                url = scrape_item.url / "photos" / gallery_id
+                url = scrape_item.url / part / gallery_id.removeprefix("f-")
                 new_scrape_item = scrape_item.create_child(url, new_title_part="photos")
                 self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
@@ -202,6 +203,7 @@ class XVideosCrawler(Crawler):
             raise ScrapeError(json_resp["code"])
 
     async def _iter_api_pages(self, scrape_item: ScrapeItem, api_url: AbsoluteHttpURL, new_part: str) -> None:
+        per_page: int = 36
         for page in itertools.count(0):
             json_resp: dict[str, Any] = await self.request_json(
                 api_url / str(page),
@@ -212,6 +214,7 @@ class XVideosCrawler(Crawler):
             if json_resp["code"] != 0:
                 raise ScrapeError(json_resp["code"])
 
+            per_page = json_resp.get("nb_per_page") or per_page
             videos: list[dict[str, str]] = json_resp["videos"]
             for video in videos:
                 if new_part == "videos":
@@ -223,5 +226,5 @@ class XVideosCrawler(Crawler):
                 self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
 
-            if json_resp.get("hasMoreVideos", None) is False or len(videos) < json_resp["nb_per_page"]:
+            if json_resp.get("hasMoreVideos", None) is False or len(videos) < per_page:
                 break
