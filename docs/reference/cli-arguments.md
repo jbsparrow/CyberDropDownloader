@@ -272,9 +272,9 @@ media_duration_limits:
   --minimum-audio-duration MINIMUM_AUDIO_DURATION
 
 files:
-  -d DOWNLOAD_FOLDER, --download-folder DOWNLOAD_FOLDER
+  -d, --download-folder DOWNLOAD_FOLDER
   -j, --dump-json, --no-dump-json
-  -i INPUT_FILE, --input-file INPUT_FILE
+  -i, --input-file INPUT_FILE
   --save-pages-html, --no-save-pages-html
 
 ignore_options:
