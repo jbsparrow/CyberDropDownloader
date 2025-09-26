@@ -117,7 +117,7 @@ Download TikTok audios from posts and save them as separate files
 | ---------- | ------- | ------------ |
 | `BoolFlag` | `False` | `store_true` |
 
-By default, CDL will download the  "optimized for stremaing" version of tiktok videos. Setting this option to `True` will download videos in original (source) quality.
+By default, CDL will download the  "optimized for streaming" version of tiktok videos. Setting this option to `True` will download videos in original (source) quality.
 
 `_original` will be added as a prefix to their filename.
 
