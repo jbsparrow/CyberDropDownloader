@@ -20,15 +20,15 @@ if TYPE_CHECKING:
 
 PRIMARY_URL = AbsoluteHttpURL("https://rule34video.com/")
 DOWNLOADS_SELECTOR = "div#tab_video_info div.row_spacer div.wrap > a.tag_item"
-JS_SELECTOR = "head > script:contains('uploadDate')"
+JS_SELECTOR = "head > script:-soup-contains('uploadDate')"
 VIDEO_TITLE_SELECTOR = "h1.title_video"
 REQUIRED_FORMAT_STRINGS = "download=true", "download_filename="
 
 PLAYLIST_ITEM_SELECTOR = "div.item.thumb > a.th"
 PLAYLIST_NEXT_PAGE_SELECTOR = "div.item.pager.next > a"
 PLAYLIST_TITLE_SELECTORS = {
-    "tags": "h1.title:contains('Tagged with')",
-    "search": "h1.title:contains('Videos for:')",
+    "tags": "h1.title:-soup-contains('Tagged with')",
+    "search": "h1.title:-soup-contains('Videos for:')",
     "members": "div.channel_logo > h2.title",
     "models": "div.brand_inform > div.title",
 }

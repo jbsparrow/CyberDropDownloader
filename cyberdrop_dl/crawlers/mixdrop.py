@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class Selectors:
-    JS = "script:contains('MDCore.ref')"
+    JS = "script:-soup-contains('MDCore.ref')"
     FILE_NAME = "div.tbl-c.title b"
 
 

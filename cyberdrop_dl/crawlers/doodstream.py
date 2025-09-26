@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 class Selectors:
     VIDEO = "div#video_player video"
-    MD5_JS = "script:contains('/pass_md5/')"
-    FILE_ID_JS = "script:contains('file_id')"
+    MD5_JS = "script:-soup-contains('/pass_md5/')"
+    FILE_ID_JS = "script:-soup-contains('file_id')"
 
 
 _SELECTORS = Selectors()

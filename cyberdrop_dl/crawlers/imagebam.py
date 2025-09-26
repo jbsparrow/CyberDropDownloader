@@ -19,7 +19,7 @@ class Selectors:
     THUMBNAILS = "ul.images a.thumbnail"
     IMAGE = "img.main-image"
     GALLERY_INFO = "div.view-navigation a:has(i.fas.fa-reply)"
-    IS_GALLERY = ".card-header:contains('Share this gallery')"
+    IS_GALLERY = ".card-header:-soup-contains('Share this gallery')"
     NEXT_PAGE = "a.page-link[rel=next]"
 
 

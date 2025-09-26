@@ -27,7 +27,7 @@ class Selectors:
     AV1 = "span.download-av1 > a"
     PROFILE_GALLERY = "div[id^='pf'] a"
     PROFILE_PLAYLIST = "div.streameventsday.showAll > div#pl > a"
-    DATE_JS = "main script:contains('uploadDate')"
+    DATE_JS = "main script:-soup-contains('uploadDate')"
     GALLERY_TITLE = "div#galleryheader > h1"
 
 

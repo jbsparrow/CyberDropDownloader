@@ -29,8 +29,8 @@ class KVSVideo:
 
 
 class Selectors:
-    UNAUTHORIZED = "div.video-holder:contains('This video is a private video')"
-    FLASHVARS = "script:contains('video_title:')"
+    UNAUTHORIZED = "div.video-holder:-soup-contains('This video is a private video')"
+    FLASHVARS = "script:-soup-contains('video_title:')"
     USER_NAME = "div.headline > h2"
     ALBUM_NAME = "div.headline > h1"
     ALBUM_PICTURES = "div.album-list > a"
@@ -41,9 +41,9 @@ class Selectors:
     COMMON_VIDEOS_TITLE = "div#list_videos_common_videos_list h1"
     VIDEOS = "div#list_videos_common_videos_list_items a"
     NEXT_PAGE = "li.pagination-next > a"
-    ALBUM_ID = "script:contains('album_id')"
-    DATE2 = "span:contains('Added:') + span"
-    DATE1 = "div.info span:contains('Submitted:')"
+    ALBUM_ID = "script:-soup-contains('album_id')"
+    DATE2 = "span:-soup-contains('Added:') + span"
+    DATE1 = "div.info span:-soup-contains('Submitted:')"
     DATE = f"{DATE1}, {DATE2}"
 
 

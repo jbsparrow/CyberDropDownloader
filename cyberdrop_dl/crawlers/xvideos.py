@@ -34,12 +34,12 @@ _ACCOUNT_PATHS = (f"/{_escape(sorted(_EXTENDED_ACCOUNTS))}/<name>", "/<channel_n
 
 
 class Selectors:
-    ACCOUNT_INFO_JS = "script:contains('\"id_user\":')"
-    HLS_VIDEO_JS = "script:contains('setVideoHLS(')"
+    ACCOUNT_INFO_JS = "script:-soup-contains('\"id_user\":')"
+    HLS_VIDEO_JS = "script:-soup-contains('setVideoHLS(')"
     DELETED_VIDEO = "h1.inlineError"
     GALLERY_IMG = "div[id*='galpic'] a.embed-responsive-item"
     GALLERY_TITLE = "h4.bg-title"
-    NEXT_PAGE = "a[href]:contains('Next')"
+    NEXT_PAGE = "a[href]:-soup-contains('Next')"
 
 
 class XVideosCrawler(Crawler):
