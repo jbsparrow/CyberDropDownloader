@@ -1,6 +1,19 @@
 DOMAIN = "bunkrr"
 TEST_CASES = [
     (
+        # No datetime info
+        "https://bunkr.pk/f/k3B4hDIRexYfV",
+        [
+            {
+                "url": "re:Stepmom.+Best.Friend.mp4",
+                "filename": "Katalina Kyle, Savanah Storm - What If She Hears Us! Caught Fucking My Stepmoms Best Friend.mp4",
+                "original_filename": "4260d330-9881-4324-8bf4-87657e5c11c5.mp4",
+                "referer": "https://bunkr.site/f/k3B4hDIRexYfV",
+                "datetime": None,
+            }
+        ],
+    ),
+    (
         # paginated
         "https://bunkr.cr/a/5aZU25Cb",
         [
