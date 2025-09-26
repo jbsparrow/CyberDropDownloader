@@ -165,7 +165,8 @@ class XVideosCrawler(Crawler):
             quickies_api = scrape_item.url.origin() / "quickies-api/profilevideos/all/none/N" / user_id
             await self._iter_api_pages(scrape_item, quickies_api, "quickies")
 
-    async def gallery(self, scrape_item: ScrapeItem, album_id: str):
+    @error_handling_wrapper
+    async def gallery(self, scrape_item: ScrapeItem, album_id: str) -> None:
         title: str = ""
         results = await self.get_album_results(album_id)
         async for soup in self.web_pager(scrape_item.url, relative_to=scrape_item.url.origin()):
