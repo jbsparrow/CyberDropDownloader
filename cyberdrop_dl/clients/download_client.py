@@ -153,8 +153,8 @@ class DownloadClient:
         while True:
             resp = None
             try:
-                resp = await self.client_manager._download_session.get(download_url, headers=download_headers)
-                return await process_response(resp)
+                async with self.client_manager._download_session.get(download_url, headers=download_headers) as resp:
+                    return await process_response(resp)
             except (DownloadError, DDOSGuardError):
                 if resp is None:
                     raise

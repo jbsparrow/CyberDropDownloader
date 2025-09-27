@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 
 
 class Selector:
-    DOWNLOAD_BUTTON = ".btn-group.responsiveMobileMargin button:contains('Download')[onclick*='download_token']"
+    DOWNLOAD_BUTTON = ".btn-group.responsiveMobileMargin button:-soup-contains('Download')[onclick*='download_token']"
     DROPDOWN_MENU = ".dropdown-menu.dropdown-info a[onclick*='download_token']"
     FILE_NAME = ".image-name-title"
-    FILE_UPLOAD_DATE = "td:contains('Uploaded:') + td"
-    FILE_INFO = "script:contains('showFileInformation')"
+    FILE_UPLOAD_DATE = "td:-soup-contains('Uploaded:') + td"
+    FILE_INFO = "script:-soup-contains('showFileInformation')"
 
-    LOAD_IMAGES = "div[class*='page-container'] script:contains('loadImages')"
+    LOAD_IMAGES = "div[class*='page-container'] script:-soup-contains('loadImages')"
     FOLDER_ID = "#folderId"
     _FOLDER_ITEM = "#fileListing [class*=fileItem]"
     FILES = f"{_FOLDER_ITEM}[fileid]"

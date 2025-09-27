@@ -22,6 +22,28 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.1.0] - 2025-09-27
+
+### Added
+
+- imglike support
+- Support for channel photos (xVideos)
+
+### Changed
+
+- Remove SimpCity disclaimer on first time startup
+- Tiktok now has a hardcoded rate limit of 0.5 req/s
+
+### Fixed
+
+- `str object cannot be interpreted as an integer` error when using any retry option
+- Date parsing (pixeldrain)
+- Date parsing (bunkr)
+- Channel's pagination (xVideos)
+- Http errors being reported as `Not Implemented` (Pixeldrain, MediaFire, GoFile)
+- Http errors causing CDL to crash while downloading galleries (xVideos)
+- CDL getting stuck after 100 TCP connections
+
 ## [8.0.0] - 2025-09-23
 
 ### Added
@@ -41,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for `pd.cybar.xyz` URLs to bypass pixeldrain daily limit
 - The `--separate-post` and `--separate-post-format` options now work for tiktok posts
 - CDL can now download private TikTok posts when using cookies
-- New config option to download tiktok videos in original quality: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#download-tiktok-src-quality-videos>
+- New config option to download tiktok videos in original quality: <https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#download-tiktok-src-quality-videos>
 - New `--max-thread-folder-depth` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#maximum_thread_folder_depth>
 - New `--ignore-coomer-post-content` config option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#ignore_coomer_post_content>
 - The `--ignore-coomer-ads` config option now affects all Kemono based crawlers (Coomer, Kemono & Nekohouse)

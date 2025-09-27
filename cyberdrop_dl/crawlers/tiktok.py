@@ -4,7 +4,7 @@ import asyncio
 import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, type_adapter
@@ -88,6 +88,7 @@ class TikTokCrawler(Crawler):
     DOMAIN: ClassVar[str] = "tiktok"
     FOLDER_DOMAIN: ClassVar[str] = "TikTok"
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date:%Y-%m-%d} - {id}"
+    _RATE_LIMIT = 1, 2
 
     @property
     def download_audios(self) -> bool:
@@ -148,7 +149,7 @@ class TikTokCrawler(Crawler):
             for post in posts:
                 new_scrape_item = scrape_item.create_child(post.canonical_url)
                 if not post.images and self.download_src_quality_videos:
-                    self.create_task(self.src_quality_media(new_scrape_item, post.id, post))
+                    self.create_task(self.src_quality_media_task(new_scrape_item, post.id, post))
                 else:
                     self._handle_post(new_scrape_item, post)
                 scrape_item.add_children()
@@ -171,6 +172,8 @@ class TikTokCrawler(Crawler):
         post = Post.from_dict(json_data["detail"])
         post.is_src_quality = True
         self._handle_post(scrape_item, post)
+
+    src_quality_media_task = auto_task_id(src_quality_media)
 
     async def _get_task_result(self, task_id: str) -> dict[str, Any]:
         result_url = _API_TASK_RESULT_URL.with_query(task_id=task_id)

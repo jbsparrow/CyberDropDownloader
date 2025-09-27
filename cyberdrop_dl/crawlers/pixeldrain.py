@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://pixeldrain.com/api/")
-JS_SELECTOR = 'script:contains("window.initial_node")'
+JS_SELECTOR = 'script:-soup-contains("window.initial_node")'
 PRIMARY_URL = AbsoluteHttpURL("https://pixeldrain.com")
 
 
@@ -50,7 +50,7 @@ class PixelDrainCrawler(Crawler):
                 continue
 
             filename = file["name"]
-            date = self.parse_date(file["date_upload"])
+            date = self.parse_iso_date(file["date_upload"])
             try:
                 filename, ext = self.get_filename_and_ext(filename)
             except NoExtensionError:
@@ -78,7 +78,7 @@ class PixelDrainCrawler(Crawler):
             return await self.filesystem(scrape_item)
 
         link = self.create_download_link(json_resp["id"])
-        scrape_item.possible_datetime = self.parse_date(json_resp["date_upload"])
+        scrape_item.possible_datetime = self.parse_iso_date(json_resp["date_upload"])
         filename: str = json_resp["name"]
         mime_type: str = json_resp["mime_type"]
         try:
@@ -129,7 +129,7 @@ class PixelDrainCrawler(Crawler):
         json_str = get_text_between(js_text, "window.initial_node =", "window.user = ").removesuffix(";")
         json_data = json.loads(json_str)
         log_debug(json_data)
-        scrape_item.possible_datetime = self.parse_date(json_data["path"][0]["created"])
+        scrape_item.possible_datetime = self.parse_iso_date(json_data["path"][0]["created"])
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(link, scrape_item, filename, ext)

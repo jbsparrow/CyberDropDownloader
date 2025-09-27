@@ -22,8 +22,8 @@ RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"] 
 VIDEO_REMOVED_SELECTOR = "[id='video_removed'], [class*='video_removed']"
 VIDEOS_SELECTOR = "div.video-list > div.video-item > a"
 
-JS_STREAM_DATA_SELECTOR = "main.main-container > script:contains('var stream_data')"
-JS_VIDEO_INFO_SELECTOR = "main.main-container > script:contains('uploadDate')"
+JS_STREAM_DATA_SELECTOR = "main.main-container > script:-soup-contains('var stream_data')"
+JS_VIDEO_INFO_SELECTOR = "main.main-container > script:-soup-contains('uploadDate')"
 
 
 @dataclass(frozen=True)

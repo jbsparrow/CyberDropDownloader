@@ -151,7 +151,7 @@ class Crawler(ABC):
 
     @final
     def _register_response_checks(self) -> None:
-        if self._json_response_check is Crawler._json_response_check:
+        if self._json_response_check.__func__ is Crawler._json_response_check.__func__:
             return
 
         for host in (self.DOMAIN, self.PRIMARY_URL.host):
@@ -700,7 +700,7 @@ class Crawler(ABC):
                 return parsed_date
 
         except Exception as e:
-            msg = f"{msg}. {format = }: {e!r}"
+            msg = f"{msg}. {date_or_datetime = }{format = }: {e!r}"
 
         log(msg, bug=True)
 
@@ -784,7 +784,11 @@ class Crawler(ABC):
         if _placeholder_config.include_audio_codec and audio_codec:
             extra_info.append(audio_codec)
 
-        if _placeholder_config.include_resolution and resolution and resolution != (0, 0):
+        if (
+            _placeholder_config.include_resolution
+            and resolution
+            and resolution not in [Resolution.highest(), Resolution.unknown()]
+        ):
             if not isinstance(resolution, Resolution):
                 resolution = Resolution.parse(resolution)
             extra_info.append(resolution.name)

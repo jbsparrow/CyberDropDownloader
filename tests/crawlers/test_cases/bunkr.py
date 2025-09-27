@@ -1,6 +1,19 @@
 DOMAIN = "bunkrr"
 TEST_CASES = [
     (
+        # No datetime info
+        "https://bunkr.pk/f/k3B4hDIRexYfV",
+        [
+            {
+                "url": "re:Stepmom.+Best.Friend.mp4",
+                "filename": "Katalina Kyle, Savanah Storm - What If She Hears Us! Caught Fucking My Stepmoms Best Friend.mp4",
+                "original_filename": "4260d330-9881-4324-8bf4-87657e5c11c5.mp4",
+                "referer": "https://bunkr.site/f/k3B4hDIRexYfV",
+                "datetime": None,
+            }
+        ],
+    ),
+    (
         # paginated
         "https://bunkr.cr/a/5aZU25Cb",
         [
@@ -37,5 +50,18 @@ TEST_CASES = [
         "https://bunkrrr.org/a/n12rHpzB",
         [],
         142,
+    ),
+    (
+        "https://bunkr.ax/v/rFicV4QnhSHBE",
+        [
+            {
+                "url": r"re:1df93418-5063-4e1b-851e-9470cb8fc5c6\.mp4",
+                "filename": "MysteriousProd.24.09.06.April.Olsen.Rebel.Rhyder.All.About.Fucking.720p.mp4",
+                "original_filename": "1df93418-5063-4e1b-851e-9470cb8fc5c6.mp4",
+                "referer": "https://get.bunkrr.su/file/41348624",
+                "album_id": None,
+                "datetime": None,
+            }
+        ],
     ),
 ]

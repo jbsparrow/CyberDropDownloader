@@ -32,7 +32,7 @@ class Selectors:
     SET_NAME = "span[title='Set'] a"
     SET_ABBR = "span[title='Set Abbreviation']"
     SET_SERIES_CODE = "div.card-tabs span[title='Set Series Code']"
-    SET_INFO = "script:contains('datePublished')"
+    SET_INFO = "script:-soup-contains('datePublished')"
     NEXT_PAGE = "li[title='Next Page (Press →)'] a"
 
 
