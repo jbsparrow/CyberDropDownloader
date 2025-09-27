@@ -37,6 +37,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
             "/album/<id>",
             "/album/<name>.<id>",
         ),
+        "Category": "/category/<name>",
         "Image": (
             "/img/<id>",
             "/img/<name>.<id>",
@@ -97,18 +98,26 @@ class CheveretoCrawler(Crawler, is_generic=True):
                 scrape_item.setup_as_profile(title)
             self._process_page(scrape_item, soup)
 
+    async def _get_final_album_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        if "category" in url.parts:
+            return url
+
+        # We need the full URL (aka "/<name>.<id>") to fetch sub albums
+        if "." not in url.name:
+            url = await self._get_redirect_url(url)
+
+        # The first redirect may have only added a trailing slash, try again
+        if not url.name and "." not in url.parts[-2]:
+            url = await self._get_redirect_url(url)
+
+        return url
+
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem, album_id: str) -> None:
         results = await self.get_album_results(album_id)
         title: str = ""
 
-        # We need the full URL (aka "/<name>.<id>") to fetch sub albums
-        if "." not in scrape_item.url.name:
-            scrape_item.url = await self._get_redirect_url(scrape_item.url)
-
-        # The first redirect may have only added a trailing slash, try again
-        if not scrape_item.url.name and "." not in scrape_item.url.parts[-2]:
-            scrape_item.url = await self._get_redirect_url(scrape_item.url)
+        scrape_item.url = await self._get_final_album_url(scrape_item.url)
 
         async for soup in self.web_pager(_sort_by_new(scrape_item.url), trim=False):
             if not title:
@@ -116,7 +125,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
                     await self._unlock_password_protected_album(scrape_item)
                     return await self.album(scrape_item, album_id)
 
-                title = open_graph.get_title(soup) or open_graph.get("description", soup)
+                title = open_graph.get_title(soup) or open_graph.get("description", soup) or ""
+                assert title
                 title = self.create_title(title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
             self._process_page(scrape_item, soup, results)

@@ -117,13 +117,19 @@ Download TikTok audios from posts and save them as separate files
 | ---------- | ------- | ------------ |
 | `BoolFlag` | `False` | `store_true` |
 
-Download TikTok videos in source quality.
+By default, CDL will download the  "optimized for streaming" version of tiktok videos. Setting this option to `True` will download videos in original (source) quality.
+
+`_original` will be added as a prefix to their filename.
 
 {% hint style="warning" %}
-Enabling this option will make downloads several orders of magnitude slower.
+This will make video downloads several times slower
 
 When it is set to `False` (the default) CDL can download 50 videos with a single request.
 When it is set to `True` , CDL needs to make at least 3 requests _per_ video to download them.
+
+There's also a daily limit of the API CDL uses: 5000 requests per day
+
+Setting this option to `True` will consume the daily limit faster
 {% endhint %}
 
 ### `max-items-retry`
@@ -266,9 +272,9 @@ media_duration_limits:
   --minimum-audio-duration MINIMUM_AUDIO_DURATION
 
 files:
-  -d DOWNLOAD_FOLDER, --download-folder DOWNLOAD_FOLDER
+  -d, --download-folder DOWNLOAD_FOLDER
   -j, --dump-json, --no-dump-json
-  -i INPUT_FILE, --input-file INPUT_FILE
+  -i, --input-file INPUT_FILE
   --save-pages-html, --no-save-pages-html
 
 ignore_options:
