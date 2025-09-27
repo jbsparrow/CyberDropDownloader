@@ -14,7 +14,7 @@ class CoomerCrawler(KemonoBaseCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://coomer.st")
     DOMAIN: ClassVar[str] = "coomer"
     API_ENTRYPOINT = AbsoluteHttpURL("https://coomer.st/api/v1")
-    SERVICES = "onlyfans", "fansly"
+    SERVICES = "onlyfans", "fansly", "candfans"
     OLD_DOMAINS: ClassVar[tuple[str, ...]] = "coomer.party", "coomer.su"
 
     @property
