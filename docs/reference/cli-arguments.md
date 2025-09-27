@@ -94,15 +94,6 @@ This does not affect the original cache
 
 Skips UI, start download immediately
 
-### `download-dropbox-folders-as-zip`
-
-
-| Type       | Default | Action       |
-| ---------- | ------- | ------------ |
-| `BoolFlag` | `False` | `store_true` |
-
-Folder downloads from Dropbox are disabled by default because they will be downloaded as a single zip file. Enable them with this option
-
 ### `download-tiktok-audios`
 
 | Type       | Default | Action       |
