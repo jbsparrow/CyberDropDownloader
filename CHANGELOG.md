@@ -22,7 +22,7 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [8.1.0] - 2025-09-30
+## [8.1.0] - 2025-09-27
 
 ### Added
 
@@ -31,12 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Remove SimpCity disclaimer on startup
+- Remove SimpCity disclaimer on first time startup
 - Tiktok now has a hardcoded rate limit of 0.5 req/s
 
 ### Fixed
 
-- Resolution parsing (ThisVid)
 - `str object cannot be interpreted as an integer` error when using any retry option
 - Date parsing (pixeldrain)
 - Date parsing (bunkr)
