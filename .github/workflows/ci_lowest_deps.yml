@@ -1,0 +1,41 @@
+name: Min deps
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: python ${{ matrix.python-version }}, ${{ matrix.uv-resolution }} dependencies
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12, 3.13]
+        uv-resolution:
+          - "lowest"
+          - "lowest-direct"
+
+      fail-fast: True
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Update toml for uv
+        run: uvx migrate-to-uv
+
+      - name: Install CDL
+        run: uv sync --group test --resolution ${{ matrix.uv-resolution }} --no-install-package lz4
+
+      - name: Run tests
+        run: uv run pytest -s --no-sync
