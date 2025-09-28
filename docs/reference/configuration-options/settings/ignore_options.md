@@ -78,7 +78,7 @@ When this is set to `false`, CDL will scan the text inside each post for URLs an
 Despite the name, this option affects all kemono based sites (Nekohouse, Kemono and Coomer)
 
 {% hint style="warning" %}
-This requires making x50 more requests when downloading an entire profile. Only enable this option if you actually need it
+This requires making 50x more requests when downloading an entire profile. Only enable this option if you actually need it
 {% endhint %}
 
 ## `only_hosts`
