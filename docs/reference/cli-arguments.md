@@ -147,6 +147,14 @@ This option has no effect unless you run CDL with one of the retry options: `--r
 
 Force CDL to run with a vertical layout
 
+### `print-stats`
+
+| Type       | Default | Action        |
+| ---------- | ------- | ------------- |
+| `BoolFlag` | `True`  | `store_false` |
+
+Show stats report at the end of a run
+
 ### `retry-all`
 
 | Type       | Default | Action       |
