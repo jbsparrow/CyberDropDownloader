@@ -132,9 +132,8 @@ class HistoryTable:
     async def set_album_id(self, domain: str, media_item: MediaItem) -> None:
         """Sets an album_id in the database."""
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
         query = "UPDATE media SET album_id = ? WHERE domain = ? and url_path = ?"
-        await self.db_conn.execute(query, (media_item.album_id, domain, url_path))
+        await self.db_conn.execute(query, (media_item.album_id, domain, media_item.db_path))
         await self.db_conn.commit()
 
     async def check_complete_by_referer(self, domain: str | None, referer: URL) -> bool:
@@ -162,7 +161,7 @@ class HistoryTable:
     async def insert_incompleted(self, domain: str, media_item: MediaItem) -> None:
         """Inserts an uncompleted file into the database."""
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
+        url_path = media_item.db_path
         download_filename = media_item.download_filename or ""
         cursor = await self.db_conn.cursor()
         query = "UPDATE media SET domain = ?, album_id = ? WHERE domain = 'no_crawler' and url_path = ? and referer = ?"
@@ -199,7 +198,7 @@ class HistoryTable:
     async def mark_complete(self, domain: str, media_item: MediaItem) -> None:
         """Mark a download as completed in the database."""
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
+        url_path = media_item.db_path
         query = "UPDATE media SET completed = 1, completed_at = CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?"
         await self.db_conn.execute(query, (domain, url_path))
         await self.db_conn.commit()
@@ -207,7 +206,7 @@ class HistoryTable:
     async def add_filesize(self, domain: str, media_item: MediaItem) -> None:
         """Adds the file size to the db."""
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
+        url_path = media_item.db_path
         file_size = media_item.complete_file.stat().st_size
         query = """UPDATE media SET file_size=? WHERE domain = ? and url_path = ?"""
         await self.db_conn.execute(query, (file_size, domain, url_path))
@@ -216,7 +215,7 @@ class HistoryTable:
     async def add_duration(self, domain: str, media_item: MediaItem) -> None:
         """Adds the duration to the db."""
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
+        url_path = media_item.db_path
         query = "UPDATE media SET duration=? WHERE domain = ? and url_path = ?"
         await self.db_conn.execute(query, (media_item.duration, domain, url_path))
         await self.db_conn.commit()
@@ -226,7 +225,7 @@ class HistoryTable:
         if media_item.is_segment:
             return
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
+        url_path = media_item.db_path
         query = "SELECT duration FROM media WHERE domain = ? and url_path = ?"
         cursor = await self.db_conn.execute(query, (domain, url_path))
         if row := await cursor.fetchone():
@@ -234,7 +233,7 @@ class HistoryTable:
 
     async def add_download_filename(self, domain: str, media_item: MediaItem) -> None:
         """Add the download_filename to the db."""
-        url_path = get_db_path(media_item.url, str(media_item.referer))
+        url_path = media_item.db_path
         query = "UPDATE media SET download_filename=? WHERE domain = ? and url_path = ? and download_filename = ''"
         await self.db_conn.execute(query, (media_item.download_filename, domain, url_path))
         await self.db_conn.commit()
@@ -253,7 +252,7 @@ class HistoryTable:
         if media_item.is_segment:
             return media_item.filename
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
+        url_path = media_item.db_path
         query = "SELECT download_filename FROM media WHERE domain = ? and url_path = ?"
         cursor = await self.db_conn.execute(query, (domain, url_path))
         if row := await cursor.fetchone():

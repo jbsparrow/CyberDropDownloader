@@ -376,7 +376,7 @@ class Crawler(ABC):
             assert is_absolute_http_url(debrid_link)
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
         media_item = MediaItem.from_item(
-            scrape_item, url, download_folder, filename, original_filename, debrid_link, ext=ext
+            scrape_item, url, self.DOMAIN, download_folder, filename, original_filename, debrid_link, ext=ext
         )
 
         self.create_task(self.handle_media_item(media_item, m3u8))
