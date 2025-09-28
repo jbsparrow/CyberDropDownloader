@@ -220,17 +220,17 @@ options:
 CLI-only options:
   LINK(S)                                                                       link(s) to content to download (passing multiple links is supported)
   --appdata-folder APPDATA_FOLDER                                               AppData folder path
-  --completed-after COMPLETED_AFTER                                             only download completed downloads at or after this date
-  --completed-before COMPLETED_BEFORE                                           only download completed downloads at or before this date
+  --completed-after COMPLETED_AFTER                                             only retry downloads that were completed on or after this date
+  --completed-before COMPLETED_BEFORE                                           only retry downloads that were completed on or before this date
   --config CONFIG                                                               name of config to load
   --config-file CONFIG_FILE                                                     path to the CDL settings.yaml file to load
-  --disable-cache                                                               Temporarily disable the requests cache
+  --disable-cache                                                               temporarily disable the requests cache
   --download                                                                    skips UI, start download immediately
-  --download-tiktok-audios                                                      download TikTok audios
+  --download-tiktok-audios                                                      download TikTok audios from posts and save them as separate files
   --download-tiktok-src-quality-videos                                          download TikTok videos in source quality
   --max-items-retry MAX_ITEMS_RETRY                                             max number of links to retry
-  --portrait                                                                    show UI in a portrait layout
-  --print-stats                                                                 Show stats report at the end of a run
+  --portrait                                                                    force CDL to run with a vertical layout
+  --print-stats                                                                 show stats report at the end of a run
   --retry-all                                                                   retry all downloads
   --retry-failed                                                                retry failed downloads
   --retry-maintenance                                                           retry download of maintenance files (bunkr). Requires files to be hashed
