@@ -94,7 +94,7 @@ Context that will used to verify SSL connections. Valid values are:
 
 - `truststore+certifi`: Will use certificates already included with the OS, with a fallback to `certifi` for missing certificates
 
-- `None`: Will completly disable SSL verification, allowing insecure connections.
+- `None`: Will completely disable SSL verification, allowing insecure connections.
 
 Setting this to `None` will allow the program to connect to websites without SSL encryption (insecurely).
 

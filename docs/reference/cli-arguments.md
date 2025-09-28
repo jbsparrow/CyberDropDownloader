@@ -217,7 +217,7 @@ CLI-only options:
   --config CONFIG                                                               name of config to load
   --config-file CONFIG_FILE                                                     path to the CDL settings.yaml file to load
   --disable-cache                                                               Temporarily disable the requests cache
-  --download                                                                    skips UI, start download immediatly
+  --download                                                                    skips UI, start download immediately
   --download-tiktok-audios                                                      download TikTok audios
   --download-tiktok-src-quality-videos                                          download TikTok videos in source quality
   --max-items-retry MAX_ITEMS_RETRY                                             max number of links to retry

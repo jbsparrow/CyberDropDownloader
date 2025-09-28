@@ -75,7 +75,7 @@ class CommandLineOnlyArgs(BaseModel):
     config: str | None = Field(None, description="name of config to load")
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
     disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
-    download: bool = Field(False, description="skips UI, start download immediatly")
+    download: bool = Field(False, description="skips UI, start download immediately")
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     download_tiktok_src_quality_videos: bool = Field(False, description="download TikTok videos in source quality")
     max_items_retry: int = Field(0, description="max number of links to retry")

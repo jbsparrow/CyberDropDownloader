@@ -113,7 +113,7 @@ Using anything other that `DEBUG` makes troubleshooting issues harder. Practical
 {% hint style="info" %}
 There is one more verbose level of logs: `DEVELOPER`
 
-It includes pager logs, posts logs, individual requests logs (their URLs and their response code), requests cache hits and misses, file system locks logs and local variable values from within a traceback. It's not exposed as a config option becuase it is too verbose.
+It includes pager logs, posts logs, individual requests logs (their URLs and their response code), requests cache hits and misses, file system locks logs and local variable values from within a traceback. It's not exposed as a config option because it is too verbose.
 
 You can set the environment variable `CDL_DEBUG_LOG_FOLDER` to any valid folder and CDL will create an additional log file with the level set to `DEVELOPER` inside it.
 {% endhint %}

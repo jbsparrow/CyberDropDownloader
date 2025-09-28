@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import weakref
-from typing import TYPE_CHECKING, Any, ClassVar, Final
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import bs4
 
@@ -57,11 +57,11 @@ class HiAnimeCrawler(Crawler):
         "**NOTE**": (
             "You can select the language to be downloaded by using a 'lang' query param. "
             "Valid options: 'sub' or 'dub'. Default: 'sub'"
-            "If the chosen language is not avaiable, CDL will use the first one available"
+            "If the chosen language is not available, CDL will use the first one available"
         ),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://hianime.to/")
-    OLD_DOMAINS: Final = "zoro.to", "aniwatch.to", "aniwatchtv.to"
+    OLD_DOMAINS: ClassVar[tuple[str, ...]] = "zoro.to", "aniwatch.to", "aniwatchtv.to"
     DOMAIN: ClassVar[str] = "hianime"
 
     def __post_init__(self) -> None:
@@ -107,10 +107,10 @@ class HiAnimeCrawler(Crawler):
             self._animes[anime_id] = anime = await self._request_anime_info(web_url, anime_id)
             return anime
 
-    async def request_json(self, url: AbsoluteHttpURL, **kwargs: Any) -> Any:
+    async def request_json(self, url: AbsoluteHttpURL, *args, **kwargs: Any) -> Any:
         # Sometimes they return HTML in the content type headers, but it is JSON
         headers = kwargs.pop("headers", {}) | {"Accept": "application/json"}
-        async with self.request(url, headers=headers, **kwargs) as resp:
+        async with self.request(url, *args, headers=headers, **kwargs) as resp:
             return await resp.json(content_type=False)
 
     async def _request_anime_info(self, web_url: AbsoluteHttpURL, anime_id: int) -> Anime:
