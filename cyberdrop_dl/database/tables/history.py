@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlite3 import IntegrityError, Row
 from typing import TYPE_CHECKING, cast
 
+from cyberdrop_dl.data_structures.url_objects import MediaItem
 from cyberdrop_dl.utils.utilities import log
 
 from .definitions import create_fixed_history, create_history
@@ -15,29 +16,10 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.crawlers import Crawler
-    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.database import Database
 
 
-_FETCH_MANY_SIZE = 1000
-
-
-def get_db_path(url: URL, domain: str = "") -> str:
-    """Gets the URL path to be put into the DB and checked from the DB."""
-
-    # TODO: domain SHOULD be mandatory, not optional. Make it mandatory and update any place that uses it
-
-    if domain:
-        if "e-hentai" in domain:
-            return url.path.split("keystamp")[0][:-1]
-
-        if "mediafire" in domain:
-            return url.name
-
-        if "mega.nz" in domain:
-            return url.path_qs if not (frag := url.fragment) else f"{url.path_qs}#{frag}"
-
-    return url.path
+_FETCH_MANY_SIZE: int = 1000
 
 
 class HistoryTable:
@@ -97,7 +79,7 @@ class HistoryTable:
         if self._database.ignore_history:
             return False
 
-        url_path = get_db_path(url, domain)
+        url_path = MediaItem.create_db_path(url, domain)
 
         async def select_referer_and_completed() -> tuple[str, bool]:
             query = "SELECT referer, completed FROM media WHERE domain = ? and url_path = ?"
