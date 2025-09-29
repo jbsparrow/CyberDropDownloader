@@ -152,6 +152,7 @@ class HlsSegment(NamedTuple):
 @dataclass(unsafe_hash=True, slots=True, kw_only=True)
 class MediaItem:
     url: AbsoluteHttpURL
+    domain: str
     referer: AbsoluteHttpURL
     download_folder: Path
     filename: str
@@ -177,13 +178,34 @@ class MediaItem:
     downloaded: bool = field(default=False, compare=False)
 
     parent_media_item: MediaItem | None = field(default=None, compare=False)
+    db_path: str = field(init=False, repr=False)
     _task_id: TaskID | None = field(default=None, compare=False)
+
+    def __post_init__(self) -> None:
+        self.db_path = self.create_db_path(self.url, self.domain)
+
+    @staticmethod
+    def create_db_path(url: yarl.URL, domain: str) -> str:
+        """Gets the URL path to be put into the DB and checked from the DB."""
+
+        if domain:
+            if "e-hentai" in domain:
+                return url.path.split("keystamp")[0][:-1]
+
+            if "mediafire" in domain:
+                return url.name
+
+            if "mega.nz" in domain:
+                return url.path_qs if not (frag := url.fragment) else f"{url.path_qs}#{frag}"
+
+        return url.path
 
     @staticmethod
     def from_item(
         origin: ScrapeItem | MediaItem,
         url: AbsoluteHttpURL,
         /,
+        domain: str,
         download_folder: Path,
         filename: str,
         original_filename: str | None = None,
@@ -195,6 +217,7 @@ class MediaItem:
     ) -> MediaItem:
         return MediaItem(
             url=url,
+            domain=domain,
             download_folder=download_folder,
             filename=filename,
             debrid_link=debrid_link,
