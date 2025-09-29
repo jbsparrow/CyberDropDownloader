@@ -66,7 +66,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
         if self.is_subdomain(scrape_item.url):
             return await self.direct_file(scrape_item)
 
-        match scrape_item.url.parts[1:]:
+        parts = scrape_item.url.parts[1:] if scrape_item.url.parts[1:][0] != "admin" else scrape_item.url.parts[2:]
+        match parts:
             case ["a" | "album" | "category", album_slug]:
                 return await self.album(scrape_item, _id(album_slug))
             case ["img" | "image" | "video" | "videos", _]:
