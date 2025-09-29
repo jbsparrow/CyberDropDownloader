@@ -65,4 +65,19 @@ TEST_CASES = [
             },
         ],
     ),
+    (
+        # Fails with aiohttp and works with curl-cffi
+        "https://imglike.com/album/D%C3%A9sir%C3%A9e-Nick-Boob-Slip-at-unesco-benefiz-gala%2C-2001.vihF",
+        [
+            {
+                "url": "https://imglike.com/images/2020/12/03/Desiree-Nick-Boob-Slip-at-unesco-benefiz-gala-2001-1.jpg",
+                "filename": "Desiree-Nick-Boob-Slip-at-unesco-benefiz-gala-2001-1.jpg",
+                "referer": "https://imglike.com/image/rq5gV",
+                "album_id": "vihF",
+                "download_folder": r"re:Désirée Nick Boob Slip at unesco-benefiz gala, 2001 \(ImgLike\)",
+                "datetime": None,
+            },
+        ],
+        10,
+    ),
 ]
