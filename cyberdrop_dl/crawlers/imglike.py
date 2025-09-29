@@ -19,5 +19,4 @@ class ImgLikeCrawler(CheveretoCrawler):
 
     @copy_signature(Crawler.request_soup)
     async def request_soup(self, url: AbsoluteHttpURL, *args, impersonate: bool = False, **kwargs) -> BeautifulSoup:
-        impersonate = impersonate or "image" in url.parts
-        return await super().request_soup(url, *args, impersonate=impersonate, **kwargs)
+        return await super().request_soup(url, *args, impersonate=True, **kwargs)
