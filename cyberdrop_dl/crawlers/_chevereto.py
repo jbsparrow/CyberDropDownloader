@@ -54,7 +54,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
         "Direct links": "",
     }
     NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
-    CHEVERETO_SUPPORTS_VIDEO = True
+    DEFAULT_TRIM_URLS: ClassVar[bool] = False
+    CHEVERETO_SUPPORTS_VIDEO: ClassVar[bool] = True
 
     def __init_subclass__(cls, **kwargs) -> None:
         if not cls.CHEVERETO_SUPPORTS_VIDEO:
@@ -221,4 +222,6 @@ def _thumbnail_to_src(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
 
 def _sort_by_new(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     init_page = int(url.query.get("page") or 1)
+    if url.name:
+        url = url / ""
     return url.with_query(sort="date_desc", page=init_page)
