@@ -12,6 +12,7 @@ TEST_CASES = [
         ],
     ),
     (
+        # No reslution info in video page
         "https://thisvid.com/videos/smelling-foreskin/",
         [
             {
