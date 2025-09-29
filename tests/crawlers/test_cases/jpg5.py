@@ -101,4 +101,14 @@ TEST_CASES = [
         ],
         1065,
     ),
+    (
+        "https://jpg5.su/img/NK9wL8h",
+        [
+            {
+                "url": "https://simp6.selti-delivery.ru/images3/Palm-Desert-Resuscitation-Education-YourCPRMD.com4fc75181ec3d573e.png",
+                "filename": "Palm-Desert-Resuscitation-Education-YourCPRMD.com4fc75181ec3d573e.png",
+                "referer": "https://jpg6.su/img/NK9wL8h",
+            },
+        ],
+    ),
 ]
