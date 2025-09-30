@@ -22,7 +22,7 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.utils import ffmpeg
 from cyberdrop_dl.utils.args import ParsedArgs, parse_args
-from cyberdrop_dl.utils.logger import QueuedLogger, log
+from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, log
 from cyberdrop_dl.utils.utilities import close_if_defined, get_system_information
 
 if TYPE_CHECKING:
@@ -67,6 +67,8 @@ class Manager:
         self.loggers: dict[str, QueuedLogger] = {}
         self.args = args
         self.states: AsyncioEvents
+
+        constants.console_handler = LogHandler(level=constants.CONSOLE_LEVEL)
 
     @property
     def config(self):

@@ -308,7 +308,6 @@ def _setup_manager(args: tuple[str, ...] | None = None) -> Manager:
     This will also run the UI for the program
     After this function returns, the manager will be ready to use and scraping / downloading can begin.
     """
-    constants.console_handler = LogHandler(level=constants.CONSOLE_LEVEL)
     with _startup_logging(first_time_setup=True):
         manager = Manager(args)
         try:
