@@ -168,12 +168,12 @@ class HashClient:
             try:
                 deleted = await delete_file(file, to_trash)
                 if deleted:
-                    msg = f"Removed new download '{file}' with hash {hash_value} [{suffix}]"
+                    msg = f"Removed new download '{file}' with hash xxh128:{hash_value} [{suffix}]"
                     log(msg, 10)
                     self.manager.progress_manager.hash_progress.add_removed_file()
 
             except OSError as e:
-                log(f"Unable to remove '{file}' with hash {hash_value}: {e}", 40)
+                log(f"Unable to remove '{file}' with hash xxh128:{hash_value}: {e}", 40)
             finally:
                 sem.release()
 
