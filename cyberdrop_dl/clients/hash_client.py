@@ -162,6 +162,8 @@ class HashClient:
         to_trash = self.dupe_cleanup_options.send_deleted_to_trash
         suffix = "Sent to trash " if to_trash else "Permanently deleted"
 
+        sem = asyncio.BoundedSemaphore(20)
+
         async def delete_and_log(file: Path, hash_value: str) -> None:
             try:
                 deleted = await delete_file(file, to_trash)
@@ -172,6 +174,8 @@ class HashClient:
 
             except OSError as e:
                 log(f"Unable to remove '{file}' with hash {hash_value}: {e}", 40)
+            finally:
+                sem.release()
 
         async with asyncio.TaskGroup() as tg:
 
@@ -179,6 +183,7 @@ class HashClient:
                 db_matches = await get_matches(hash_value, size, "xxh128")
                 for row in db_matches[1:]:
                     file = Path(row["folder"], row["download_filename"])
+                    await sem.acquire()
                     tg.create_task(delete_and_log(file, hash_value))
 
             for hash_value, size_dict in final_dict.items():
