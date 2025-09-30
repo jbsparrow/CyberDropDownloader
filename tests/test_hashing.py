@@ -17,8 +17,11 @@ if TYPE_CHECKING:
 def get_hashes(path: Path) -> set[tuple[str, str]]:
     query = "SELECT hash_type, hash FROM hash "
     conn = sqlite3.connect(path)
-    cursor = conn.execute(query)
-    return set(cursor.fetchall())
+    try:
+        cursor = conn.execute(query)
+        return set(cursor.fetchall())
+    finally:
+        conn.close()
 
 
 def create_files(path: Path, number: int) -> None:
