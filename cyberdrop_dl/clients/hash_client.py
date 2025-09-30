@@ -16,6 +16,7 @@ from cyberdrop_dl.utils.utilities import get_size_or_none
 if TYPE_CHECKING:
     from yarl import URL
 
+    from cyberdrop_dl.config.config_model import DupeCleanup
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
 
@@ -42,6 +43,10 @@ class HashClient:
         self.sha256 = "sha256"
         self.hashed_media_items: set[MediaItem] = set()
         self.hashes_dict: defaultdict[str, defaultdict[int, set[Path]]] = defaultdict(lambda: defaultdict(set))
+
+    @property
+    def dupe_cleanup_options(self) -> DupeCleanup:
+        return self.manager.config.dupe_cleanup_options
 
     async def startup(self) -> None:
         pass
@@ -152,29 +157,33 @@ class HashClient:
 
     async def final_dupe_cleanup(self, final_dict: dict[str, dict]) -> None:
         """cleanup files based on dedupe setting"""
-        to_trash = self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash
+
+        get_matches = self.manager.db_manager.hash_table.get_files_with_hash_matches
+        to_trash = self.dupe_cleanup_options.send_deleted_to_trash
         suffix = "Sent to trash " if to_trash else "Permanently deleted"
 
-        async def delete_and_log(file: Path):
+        async def delete_and_log(file: Path, hash_value: str) -> None:
             try:
                 deleted = await delete_file(file, to_trash)
                 if deleted:
-                    log(f"Removed new download '{file}' with hash {hash} [{suffix}]", 10)
+                    msg = f"Removed new download '{file}' with hash {hash_value} [{suffix}]"
+                    log(msg, 10)
                     self.manager.progress_manager.hash_progress.add_removed_file()
 
             except OSError as e:
-                log(f"Unable to remove '{file}' with hash {hash}: {e}", 40)
+                log(f"Unable to remove '{file}' with hash {hash_value}: {e}", 40)
 
-        tasks = []
-        get_matches = self.manager.db_manager.hash_table.get_files_with_hash_matches
-        for hash, size_dict in final_dict.items():
-            for size in size_dict:
-                db_matches = await get_matches(hash, size, self.xxhash)
-                for match in db_matches[1:]:
-                    file = Path(*match[:2])
-                    tasks.append(delete_and_log(file))
+        async with asyncio.TaskGroup() as tg:
 
-        await asyncio.gather(*tasks)
+            async def delete_dupes(hash_value: str, size: int) -> None:
+                db_matches = await get_matches(hash_value, size, "xxh128")
+                for row in db_matches[1:]:
+                    file = Path(row["folder"], row["download_filename"])
+                    tg.create_task(delete_and_log(file, hash_value))
+
+            for hash_value, size_dict in final_dict.items():
+                for size in size_dict:
+                    tg.create_task(delete_dupes(hash_value, size))
 
     async def get_file_hashes_dict(self) -> dict:
         """Get a dictionary of files based on matching file hashes and file size."""
