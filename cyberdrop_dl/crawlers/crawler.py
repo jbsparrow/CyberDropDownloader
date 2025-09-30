@@ -467,6 +467,19 @@ class Crawler(ABC):
             return True
         return False
 
+    @final
+    async def check_complete_by_hash(
+        self: Crawler, scrape_item: ScrapeItem | URL, hash_type: str, hash_value: str
+    ) -> bool:
+        """Returns `True` if at least 1 file with this hash is recorded on the database"""
+        downloaded = await self.manager.db_manager.hash_table.check_hash_exists(hash_type, hash_value)
+        if downloaded:
+            url = scrape_item if isinstance(scrape_item, URL) else scrape_item.url
+            log(f"Skipping {url} as its hash ({hash_type}:{hash_value}) has already been downloaded", 10)
+            self.manager.progress_manager.download_progress.add_previously_completed()
+            return True
+        return False
+
     async def get_album_results(self, album_id: str) -> dict[str, int]:
         """Checks whether an album has completed given its domain and album id."""
         return await self.manager.db_manager.history_table.check_album(self.DOMAIN, album_id)
