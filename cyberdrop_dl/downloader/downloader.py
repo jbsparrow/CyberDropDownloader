@@ -264,7 +264,7 @@ class Downloader:
         def create_segments() -> Generator[HlsSegment]:
             for index, segment in enumerate(m3u8.segments, 1):
                 assert segment.uri
-                name = f"{index:0{padding}d}.cdl_hsl"
+                name = f"{index:0{padding}d}.cdl_hls"
                 yield HlsSegment(segment.title, name, parse_url(segment.absolute_uri))
 
         async def download_segment(segment: HlsSegment):

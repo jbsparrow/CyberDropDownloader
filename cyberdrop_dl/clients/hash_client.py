@@ -49,6 +49,7 @@ class HashClient:
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
         with self.manager.live_manager.get_hash_live(stop=True):
+            self.manager.progress_manager.hash_progress.base_dir = path
             if not await asyncio.to_thread(path.is_dir):
                 raise NotADirectoryError
             for file in path.rglob("*"):
@@ -81,7 +82,7 @@ class HashClient:
         self, file: Path | str, original_filename: str | None = None, referer: URL | None = None
     ) -> str | None:
         file = Path(file)
-        if file.suffix == ".part":
+        if file.suffix in (".cdl_hls", ".cdl_hsl", ".part"):
             return
         if not await asyncio.to_thread(get_size_or_none, file):
             return
@@ -112,7 +113,7 @@ class HashClient:
                     original_filename,
                     referer,
                 )
-                self.manager.progress_manager.hash_progress.add_new_completed_hash()
+                self.manager.progress_manager.hash_progress.add_new_completed_hash(hash_type)
             else:
                 self.manager.progress_manager.hash_progress.add_prev_hash()
                 await self.manager.db_manager.hash_table.insert_or_update_hash_db(
