@@ -190,7 +190,10 @@ class HashClient:
             if not deleted:
                 return
 
-            msg = f"Removed new download '{file}' [{self._deleted_file_suffix}]. File hash matches with a previous download ({hash_string})"
+            msg = (
+                f"Removed new download '{file}' [{self._deleted_file_suffix}]. "
+                f"File hash matches with a previous download ({hash_string})"
+            )
             log(msg, 10)
             self.manager.progress_manager.hash_progress.add_removed_file()
 
