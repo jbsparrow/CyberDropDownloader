@@ -52,7 +52,11 @@ class CamwhoresTVCrawler(KernelVideoSharingCrawler):
         await super().iter_videos(scrape_item, video_category)
         soup = await self.request_soup(url)
 
-        last_page = int(css.get_text(soup.select(LAST_PAGE_SELECTOR)[-1]))
+        try:
+            last_page = int(css.get_text(soup.select(LAST_PAGE_SELECTOR)[-1]))
+        except IndexError:
+            return
+
         # TODO: Porntrex also uses KVS. Make the KVS crawler handle it by default
         await PorntrexCrawler.proccess_additional_pages(
             self,  # type: ignore[ArgumentType]
