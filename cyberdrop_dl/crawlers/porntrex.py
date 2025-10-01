@@ -131,8 +131,10 @@ class PorntrexCrawler(Crawler):
         title, *_ = title.split(",Page")
         title = self.create_title(f"{title} [{collection_type}]")
         scrape_item.setup_as_album(title)
-        last_page_tag = soup.select(_SELECTORS.LAST_PAGE)
-        last_page: int = int(last_page_tag[-1].get_text(strip=True)) if last_page_tag else 1
+        if last_page_tag := soup.select(_SELECTORS.LAST_PAGE):
+            last_page = int(last_page_tag[-1].get_text(strip=True))
+        else:
+            last_page = 1
 
         for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_OR_ALBUMS):
             self.create_task(self.run(new_scrape_item))
@@ -151,6 +153,8 @@ class PorntrexCrawler(Crawler):
                 self.create_task(self.run(new_scrape_item))
 
     async def proccess_additional_pages(self, scrape_item: ScrapeItem, last_page: int, **kwargs: str) -> None:
+        if last_page == 1:
+            return
         block_id: str = "list_videos_common_videos_list_norm"
         from_param_name: str = "from"
         search_query: str = ""
