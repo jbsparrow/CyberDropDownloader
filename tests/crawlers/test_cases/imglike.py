@@ -72,7 +72,7 @@ TEST_CASES = [
                 "url": "https://imglike.com/images/2022/10/03/01__4_.jpg",
                 "filename": "01__4_.jpg",
                 "referer": "https://imglike.com/image/L1iUm",
-                "album_id": "iNlR",
+                "album_id": "iNlRg",
             }
         ],
     ),
