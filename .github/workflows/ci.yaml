@@ -42,15 +42,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Install Poetry
+        run: pipx install poetry
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
-          cache: 'poetry'
-
-      - name: Install Poetry
-        run: pipx install poetry
+          cache: poetry
 
       - name: Install dependencies
         run: |
