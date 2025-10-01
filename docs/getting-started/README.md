@@ -16,24 +16,18 @@ layout:
 
 # Getting Started
 
-{% hint style="warning" %}
-Cyberdrop-DL requires python 3.11, 3.12 or python 3.13
-{% endhint %}
-
-## Installing Python
-
-Cyberdrop-DL is written in Python. You'll need Python installed on your system to be able to run it. If you're using Linux or macOS, Python is likely already included by default. However, if you're on Windows or need a different version, you can easily download and install Python from the official website
-
-{% content-ref url="python-install/" %}
-[python-install](python-install/)
-{% endcontent-ref %}
-
 ## Installing Cyberdrop-DL</a>
 
-There are two ways to install Cyberdrop-DL. The first is the easy method, where you simply download the start scripts. The second method involves using pip for installation, which is recommended for advanced users who prefer managing dependencies manually.
+There are two ways to install Cyberdrop-DL. The first is the easy method, where you simply download the start scripts. The start scrips will automatically install a compatible python version and then install Cyberdrop-DL.
+
+The second method is installing cyberdrop-dl direcly from pypi using `uv`, `pipx` or `pip`
+
+For instructions, see:
 
 {% content-ref url="cyberdrop-dl-install.md" %}
-[cyberdrop-dl-install.md](cyberdrop-dl-install.md)
+{% endcontent-ref %}
+
+{% content-ref url="cyberdrop-dl-on-android.md" %}
 {% endcontent-ref %}
 
 ## What now?</a>
@@ -41,7 +35,7 @@ There are two ways to install Cyberdrop-DL. The first is the easy method, where 
 If you downloaded the start scripts, just open the start script with the name of the OS you are using. For a manual install, execute the program with this command:
 
 ```shell
-cyberdrop-dl
+cyberdrop-dl-patched
 ```
 
 On the main screen, you can use the 'Edit URLs' option to add the URLs for the files you wish to download, them select the `download` option. That's it!

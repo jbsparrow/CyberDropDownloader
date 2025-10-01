@@ -55,16 +55,16 @@ class Profile:
 class Selectors:
     ALBUM_FROM_PHOTO = "div#thumbSlider > h2 > a"
     ALBUM_TITLE = "h1[class*=photoAlbumTitle]"
-    DATE = "script:contains('uploadDate')"
+    DATE = "script:-soup-contains('uploadDate')"
     GIF = "div#js-gifToWebm"
-    JS_VIDEO_INFO = "script:contains('var flashvars_')"
+    JS_VIDEO_INFO = "script:-soup-contains('var flashvars_')"
     NEXT_PAGE = "li.page_next a"
     PHOTO = "div#photoImageSection img"
     PLAYLIST_TITLE = "h1.playlistTitle"
     PLAYLIST_VIDEOS = "ul#videoPlaylist a.linkVideoThumb"
     TITLE = "div.title-container > h1.title"
 
-    GEO_BLOCKED = ".geoBlocked > h1:contains('page is not available')"
+    GEO_BLOCKED = ".geoBlocked > h1:-soup-contains('page is not available')"
     NO_VIDEO = "section.noVideo"
     REMOVED = "div.removed"
 

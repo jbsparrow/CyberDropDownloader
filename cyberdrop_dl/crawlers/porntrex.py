@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class Selectors:
-    VIDEO_JS = "div.video-holder script:contains('var flashvars')"
+    VIDEO_JS = "div.video-holder script:-soup-contains('var flashvars')"
     NEXT_PAGE = "div#list_videos_videos_pagination li.next"
     USER_NAME = "div.user-name"
     VIDEOS_2 = "div#list_videos_common_videos_list_items a"

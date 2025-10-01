@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any, ClassVar, Final
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers._kvs import extract_kvs_video
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -25,8 +25,8 @@ class KVSVideo:
 
 
 class Selector:
-    UNAUTHORIZED = "div.video-holder:contains('This video is a private video')"
-    VIDEO_VARS = "script:contains('video_title:')"
+    UNAUTHORIZED = "div.video-holder:-soup-contains('This video is a private video')"
+    VIDEO_VARS = "script:-soup-contains('video_title:')"
     VIDEOS = "div#list_videos_common_videos_list_items a"
     MODEL_NAME = "div.pb-model-title .model-name"
     ITEM = "a[href].pb-item-link"
@@ -44,13 +44,18 @@ def _pagination_query(url: AbsoluteHttpURL) -> dict[str, Any]:
 class PimpBunnyCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Videos": "/videos/...",
+        "Models": "/onlyfans-models/<model_name>",
+        "Model Albums": "/albums/models/<model_name>",
+        "Album": "/albums/<album_name>",
+        "Category": "/categories/<category>",
+        "Tag": "/tags/<tag>",
     }
 
     DOMAIN: ClassVar[str] = "pimpbunny.com"
     FOLDER_DOMAIN: ClassVar[str] = "PimpBunny"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pimpbunny.com")
-    DEFAULT_TRIM_URLS: Final = False
-    NEXT_PAGE_SELECTOR: Final = ".pb-pagination-list .next a[href]"
+    DEFAULT_TRIM_URLS: ClassVar[bool] = False
+    NEXT_PAGE_SELECTOR: ClassVar[str] = ".pb-pagination-list .next a[href]"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:

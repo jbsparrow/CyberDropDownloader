@@ -63,6 +63,9 @@ class Resolution(NamedTuple):
 
     @staticmethod
     def parse(url_number_or_string: yarl.URL | str | int, /) -> Resolution:
+        if url_number_or_string is None:
+            return UNKNOWN_RESOLUTION
+
         if isinstance(url_number_or_string, int):
             return Resolution._from_height(url_number_or_string)
 
@@ -105,8 +108,13 @@ class Resolution(NamedTuple):
     def unknown() -> Resolution:
         return UNKNOWN_RESOLUTION
 
+    @staticmethod
+    def highest() -> Resolution:
+        return HIGHEST_RESOLUTION
+
 
 UNKNOWN_RESOLUTION = Resolution.parse(0)
+HIGHEST_RESOLUTION = Resolution(9999, 9999)
 
 
 COMMON_RESOLUTIONS: Final = tuple(

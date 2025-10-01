@@ -17,7 +17,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://efukt.com")
 
 
 class Selectors:
-    DATE = "div.videobox span.stat:contains('Uploaded')"
+    DATE = "div.videobox span.stat:-soup-contains('Uploaded')"
     TITLE = "div.videobox > div.heading > h1"
     VIDEO = "div.videoplayer source"
     NEXT_PAGE = "a.next_page"

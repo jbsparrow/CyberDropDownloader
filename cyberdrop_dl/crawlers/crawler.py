@@ -20,7 +20,6 @@ from cyberdrop_dl import constants
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem, copy_signature
-from cyberdrop_dl.database import get_db_path
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
@@ -151,7 +150,7 @@ class Crawler(ABC):
 
     @final
     def _register_response_checks(self) -> None:
-        if self._json_response_check is Crawler._json_response_check:
+        if self._json_response_check.__func__ is Crawler._json_response_check.__func__:
             return
 
         for host in (self.DOMAIN, self.PRIMARY_URL.host):
@@ -376,7 +375,7 @@ class Crawler(ABC):
             assert is_absolute_http_url(debrid_link)
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
         media_item = MediaItem.from_item(
-            scrape_item, url, download_folder, filename, original_filename, debrid_link, ext=ext
+            scrape_item, url, self.DOMAIN, download_folder, filename, original_filename, debrid_link, ext=ext
         )
 
         self.create_task(self.handle_media_item(media_item, m3u8))
@@ -497,7 +496,7 @@ class Crawler(ABC):
         """Checks whether an album has completed given its domain and album id."""
         if not album_results:
             return False
-        url_path = get_db_path(url, self.DOMAIN)
+        url_path = MediaItem.create_db_path(url, self.DOMAIN)
         if url_path in album_results and album_results[url_path] != 0:
             log(f"Skipping {url} as it has already been downloaded")
             self.manager.progress_manager.download_progress.add_previously_completed()
@@ -700,7 +699,7 @@ class Crawler(ABC):
                 return parsed_date
 
         except Exception as e:
-            msg = f"{msg}. {format = }: {e!r}"
+            msg = f"{msg}. {date_or_datetime = }{format = }: {e!r}"
 
         log(msg, bug=True)
 
@@ -784,7 +783,11 @@ class Crawler(ABC):
         if _placeholder_config.include_audio_codec and audio_codec:
             extra_info.append(audio_codec)
 
-        if _placeholder_config.include_resolution and resolution and resolution != (0, 0):
+        if (
+            _placeholder_config.include_resolution
+            and resolution
+            and resolution not in [Resolution.highest(), Resolution.unknown()]
+        ):
             if not isinstance(resolution, Resolution):
                 resolution = Resolution.parse(resolution)
             extra_info.append(resolution.name)

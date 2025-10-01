@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class Selectors:
-    NEXT = "li > a:contains('»')"
+    NEXT = "li > a:-soup-contains('»')"
     VIDEO = "video.video-js > source"
     PHOTO = "img.thumb__img"
     TITLE = "h1.user-page"

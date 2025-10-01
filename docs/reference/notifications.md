@@ -9,7 +9,7 @@ Cyberdrop-DL generates a report at the end of a run with stats about all the dow
 
 You can set up CDL to sent you the report via discord, email, a native notification of your OS, telegram and many other services.
 
-## Notifications via Discord.
+## Notifications via Discord
 
 To get notifications via discord, you need to provide a discord `webhook_url` inside the `setting.yaml` of the config you are running.
 
@@ -48,6 +48,7 @@ To get notifications via email, use this URL format in your `apprise.txt` file:
 ```shell
 mailto://user:password@domain.com
 ```
+
 {% endtab %}
 
 {% tab title="Email + Logs" %}
@@ -57,7 +58,6 @@ Add `attach_logs` to your email URL in your `apprise.txt` file:
 attach_logs=mailto://user:password@domain.com
 ```
 
-
 {% endtab %}
 
 {% tab title="Native OS notifications" %}
@@ -65,11 +65,10 @@ Some operating systems require additional dependencies for notifications to work
 
 | OS | Syntax|
 | ---- | --- |
-|[Linux (DBus Notifications)](https://github.com/caronc/apprise/wiki/Notify_dbus) |	`dbus://` <br> `qt://` <br> `glib://` <br> `kde:// `|
+|[Linux (DBus Notifications)](https://github.com/caronc/apprise/wiki/Notify_dbus) | `dbus://` <br> `qt://` <br> `glib://` <br> `kde://`|
 |[Linux (Gnome Notifications)](https://github.com/caronc/apprise/wiki/Notify_gnome) | `gnome://` |
-|[macOS](https://github.com/caronc/apprise/wiki/Notify_macosx)  |	`macosx://` 	 |
-|[Windows](https://github.com/caronc/apprise/wiki/Notify_windows)|	`windows://` |
-
+|[macOS](https://github.com/caronc/apprise/wiki/Notify_macosx)  | `macosx://`   |
+|[Windows](https://github.com/caronc/apprise/wiki/Notify_windows)| `windows://` |
 
 {% endtab %}
 
@@ -79,5 +78,6 @@ Add `attach_logs` to the `webhook_url` config option:
 ```shell
 attach_logs=https://discord.com/api/webhooks/webhook_id/webhook_token
 ```
+
 {% endtab %}
 {% endtabs %}

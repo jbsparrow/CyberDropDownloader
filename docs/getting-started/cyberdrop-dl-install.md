@@ -7,7 +7,11 @@ icon: download
 
 ## Using Start Scripts (From Release Page)
 
-This is the simplest method to get the program up and running. Pre-configured start files are provided that will automatically install, update, and launch the program for you.
+This is the simplest method to get the program up and running. Pre-configured start files are provided that will automatically install python, install cyberdrop-dl, update, and launch the program for you.
+
+{% hint style="info" %}
+The start scripts only work on 64bits operating systems. If you are running a 32bit OS, you need to install direcly from pypi and may need to compile some dependencies
+{% endhint %}
 
 You can download them here: [https://github.com/jbsparrow/CyberDropDownloader/releases/latest](https://github.com/jbsparrow/CyberDropDownloader/releases/latest)
 
@@ -31,30 +35,63 @@ xcode-select --install
 
 <summary>Optional: Running Cyberdrop-DL Script with Custom Parameters</summary>
 
-You can open the start script from the zip in a text editor like notepad. At the top of the file, you will find 3 variables:
+You can open the start script from the zip in a text editor like notepad. At the top of the file, you will this line:
 
 ```shell
-set "PYTHON="
-set "VENV_DIR="
 set "COMMANDLINE_ARGS="
 ```
-
-`PYTHON`: Specify a custom path to the Python executable. This is useful if you have multiple Python versions installed and want to select a specific one
-
-`VENV_DIR`: Define the path where the Python virtual environment will be created
 
 `COMMANDLINE_ARGS`:  Provide any arguments to pass to Cyberdrop-Dl. For more information, refer to the [CLI Arguments section](../reference/cli-arguments.md)
 
 {% hint style="info" %}
-You **MUST** put the values _inside_ the double quotes. Ex: `set "PYTHON=C:\Program Files\Python311\python.exe"`
+You **MUST** put the values _inside_ the double quotes. Ex: `set "COMMANDLINE_ARGS=--disable-cache"`
 {% endhint %}
 
 </details>
 
 ## Manual Install
 
+### 1. Using `uv`
+
+The recommended way to install Cyberdrop-DL is using [`uv`](https://docs.astral.sh/uv).
+
+{% tabs %}
+
+{% tab title="macOS / Linux" %}
+
+```shell
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+{% endtab %}
+
+{% tab title="Windows" %}
+
+```shell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+{% endtab %}
+{% endtabs %}
+
+Once you have `uv`, you can install Cyberdrop-DL using:
+
+```shell
+uv tool install cyberdrop-dl-patched
+```
+
+### 2. Manual Python Install
+
+If you do not want to or can't use `uv`, you will need to install a compatible python version manually.
+
+If you don't have python, you can find and download it from their official website: [https://www.python.org/downloads/](https://www.python.org/downloads/)
+
+{% hint style="info" %}
+Cyberdrop-DL requires python 3.11, 3.12 or python 3.13. The **RECOMMENED** version is 3.12+
+{% endhint %}
+
 {% hint style="warning" %}
-If you are using a version of Cyberdrop-DL from the previous repository, you **MUST** uninstall it before installing the patched version.
+If you are using a version of Cyberdrop-DL from the previous repository (`cyberdrop-dl` instead of `cyberdrop-dl-patched`), you **MUST** uninstall it before installing the patched version.
 
 ```shell
 pip uninstall cyberdrop-dl
@@ -62,14 +99,34 @@ pip uninstall cyberdrop-dl
 
 {% endhint %}
 
-In a command prompt/terminal window:
+Once you have python, you can install Cyberdrop-DL directly from pypi using `pipx` or `pip`. In a command prompt/terminal window:
+
+{% tabs %}
+
+{% tab title="pipx" %}
+
+- Install `pipx` (if you don't have it already)
 
 ```shell
-pip install --upgrade cyberdrop-dl-patched
+pip install pipx
 ```
 
-If you're on Mac/Linux, you may need to change it to be
+- Install cdl
 
 ```shell
-pip3 install --upgrade cyberdrop-dl-patched
+pipx install cyberdrop-dl-patched
 ```
+
+{% endtab %}
+
+{% tab title="pip" %}
+{% hint style="warning" %}
+Using bare `pip` to install `cyberdrop-dl-patched` is discouraged as it may lead to dependency conflicts with global installs and an inconsistent environment. Consider using `uv` or `pipx`
+{% endhint %}
+
+```shell
+pip install cyberdrop-dl-patched
+```
+
+{% endtab %}
+{% endtabs %}

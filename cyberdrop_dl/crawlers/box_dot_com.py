@@ -41,7 +41,7 @@ class SharedFolder(AliasModel):
 
 APP_DOMAIN = "app.box.com"
 DOWNLOAD_URL_BASE = AbsoluteHttpURL("https://app.box.com/index.php?rm=box_download_shared_file")
-JS_SELECTOR = "script:contains('Box.postStreamData')"
+JS_SELECTOR = "script:-soup-contains('Box.postStreamData')"
 
 PRIMARY_URL = AbsoluteHttpURL("https://www.box.com")
 

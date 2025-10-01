@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 PRIMARY_URL = AbsoluteHttpURL("https://motherless.com")
-MEDIA_INFO_JS_SELECTOR = "script:contains('__fileurl')"
+MEDIA_INFO_JS_SELECTOR = "script:-soup-contains('__fileurl')"
 ITEM_SELECTOR = "div.thumb-container a.img-container"
 ITEM_TITLE_SELECTOR = "div.media-meta-title"
 GALLERY_TITLE_SELECTOR = "div.gallery-title > h2"

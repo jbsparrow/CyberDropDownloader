@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class Selector:
     VIDEOS = ".videolist a[data-anim]"
     VIDEO_IFRAME = "div.player-frame iframe"
-    NEXT_PAGE = "div.page-list a:contains('Next')"
+    NEXT_PAGE = "div.page-list a:-soup-contains('Next')"
 
 
 class XXXBunkerCrawler(Crawler):

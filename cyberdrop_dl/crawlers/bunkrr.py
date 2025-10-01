@@ -72,8 +72,8 @@ class Selectors:
     THUMBNAIL = 'img[alt="image"]'
     IMAGE_PREVIEW = "img.max-h-full.w-auto.object-cover.relative"
     VIDEO = "video > source"
-    JS_SLUG = "script:contains('jsSlug')"
-    NEXT_PAGE = "nav.pagination a[href]:contains('»')"
+    JS_SLUG = "script:-soup-contains('jsSlug')"
+    NEXT_PAGE = "nav.pagination a[href]:-soup-contains('»')"
 
 
 _SELECTORS = Selectors()
@@ -241,12 +241,6 @@ class BunkrrCrawler(Crawler):
         # Everything failed, abort
         if not link:
             raise ScrapeError(422, "Could not find source")
-
-        if not scrape_item.possible_datetime:
-            scrape_item.possible_datetime = self.parse_date(
-                css.select_one_get_text(soup, _SELECTORS.ITEM_DATE),
-                "%H:%M:%S %d/%m/%Y",
-            )
 
         title = open_graph.title(soup)  # See: https://github.com/jbsparrow/CyberDropDownloader/issues/929
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)

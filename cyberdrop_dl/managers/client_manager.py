@@ -116,7 +116,7 @@ class CloudflareTurnstile:
         "captchawrapper",
         "cf-turnstile",
         "script[src*='challenges.cloudflare.com/turnstile']",
-        "script:contains('Dont open Developer Tools')",
+        "script:-soup-contains('Dont open Developer Tools')",
     )
     ALL_SELECTORS = ", ".join(SELECTORS)
 

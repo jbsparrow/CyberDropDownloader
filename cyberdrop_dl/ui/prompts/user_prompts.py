@@ -41,16 +41,8 @@ def main_prompt(manager: Manager) -> int:
     }
 
     choices = basic_prompts.create_choices(OPTIONS, append_last=EXIT_CHOICE)
-    simp_disclaimer_shown = manager.cache_manager.get("simp_disclaimer_shown")
-    if not simp_disclaimer_shown:
-        choices = [Choice(-1, "!! PRESS <ENTER> TO VIEW DISCLAIMER !!")]
 
-    prompt_options = {"style": get_style({"pointer": "#ff0000 bold"}) if not simp_disclaimer_shown else None}
-
-    if not simp_disclaimer_shown:
-        prompt_options["long_instruction"] = "ENTER: view disclaimer"
-
-    return basic_prompts.ask_choice(choices, **prompt_options)
+    return basic_prompts.ask_choice(choices)
 
 
 """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MANAGE CONFIG PROMPTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

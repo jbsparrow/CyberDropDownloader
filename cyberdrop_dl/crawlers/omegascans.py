@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 DATE_SELECTOR = 'h2[class="font-semibold font-sans text-muted-foreground text-xs"]'
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.omegascans.org/chapter/query")
-JS_SELECTOR = "script:contains('series_id')"
-DATE_JS_SELECTOR = "script:contains('created')"
+JS_SELECTOR = "script:-soup-contains('series_id')"
+DATE_JS_SELECTOR = "script:-soup-contains('created')"
 IMAGE_SELECTOR = "p[class*=flex] img"
 
 PRIMARY_URL = AbsoluteHttpURL("https://omegascans.org")

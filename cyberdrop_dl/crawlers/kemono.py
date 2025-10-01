@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Concatenate, Literal
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
 
-from cyberdrop_dl.crawlers.crawler import Crawler, auto_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
 from cyberdrop_dl.models import AliasModel
@@ -165,12 +165,18 @@ def fallback_if_no_api(
 
 
 class KemonoBaseCrawler(Crawler, is_abc=True):
-    SUPPORTED_PATHS: ClassVar[dict[str, str]] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Model": "/<service>/user/<user_id>",
-        "Favorites": "/favorites/<user_id>",
+        "Favorites": (
+            r"/favorites?type=post\|artist",
+            r"/account/favorites/posts\|artists",
+        ),
         "Search": "/search?q=...",
         "Individual Post": "/<service>/user/<user_id>/post/<post_id>",
-        "Direct links": "/(data|thumbnail)/...",
+        "Direct links": (
+            "/data/...",
+            "/thumbnail/...",
+        ),
     }
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
     API_ENTRYPOINT: ClassVar[AbsoluteHttpURL]
@@ -217,7 +223,9 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 return await self.post(scrape_item)
             case [service, "user", _] if service in self.SERVICES:
                 return await self.profile(scrape_item)
-            case ["favorites", _] if (type_ := scrape_item.url.query.get("type")) in ("post", "artist"):
+            case ["favorites"] if (type_ := scrape_item.url.query.get("type")) in ("post", "artist"):
+                return await self.favorites(scrape_item, type_)
+            case ["account", "favorites", slug] if (type_ := slug.removesuffix("s")) in ("post", "artist"):
                 return await self.favorites(scrape_item, type_)
             case ["posts"] if search_query := scrape_item.url.query.get("q"):
                 return await self.search(scrape_item, search_query)

@@ -23,7 +23,7 @@ class PostType(IntEnum):
 
 
 class Selectors:
-    JW_PLAYER = "script:contains('playerInstance.setup')"
+    JW_PLAYER = "script:-soup-contains('playerInstance.setup')"
     MODEL_NAME_FROM_PROFILE = "div.actor-name > h1"
     MODEL_NAME_FROM_VIDEO = "h2.actor-title-port"
     MODEL_NAME = f"{MODEL_NAME_FROM_VIDEO}, {MODEL_NAME_FROM_PROFILE}"

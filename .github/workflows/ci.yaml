@@ -5,10 +5,18 @@ on:
     branches:
       - master
       - dev
+    paths:
+      - 'cyberdrop_dl/**/*.py'
+      - 'tests/**/*.py'
+      - '.github/workflows/ci.yaml'
   pull_request:
     branches:
       - master
       - dev
+    paths:
+      - 'cyberdrop_dl/**/*.py'
+      - 'tests/**/*.py'
+      - '.github/workflows/ci.yaml'
   workflow_dispatch:
 
 jobs:
@@ -32,10 +40,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -47,5 +55,6 @@ jobs:
           poetry install
 
       - name: Run pytest
+        timeout-minutes: 10
         run: |
           poetry run pytest -v --cov --ignore=tests/test_apprise.py

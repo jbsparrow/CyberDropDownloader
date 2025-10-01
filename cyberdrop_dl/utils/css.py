@@ -151,7 +151,7 @@ def get_json_ld_date(soup: Tag) -> str:
 def get_json_ld(soup: Tag, /, contains: str | None = None) -> dict[str, Any]:
     selector = "script[type='application/ld+json']"
     if contains:
-        selector += f":contains('{contains}')"
+        selector += f":-soup-contains('{contains}')"
 
     ld_json = json.loads(select_one_get_text(soup, selector)) or {}
     if isinstance(ld_json, list):

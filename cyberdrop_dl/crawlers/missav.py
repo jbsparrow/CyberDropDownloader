@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 M3U8_SERVER = AbsoluteHttpURL("https://surrit.com/")
 PRIMARY_URL = AbsoluteHttpURL("https://missav.ws")
-DATE_SELECTOR = "div > span:contains('Release date:') + time"
-DVD_CODE_SELECTOR = "div > span:contains('Code:') + span"
+DATE_SELECTOR = "div > span:-soup-contains('Release date:') + time"
+DVD_CODE_SELECTOR = "div > span:-soup-contains('Code:') + span"
 
 
 class MissAVCrawler(Crawler):
@@ -57,7 +57,7 @@ class MissAVCrawler(Crawler):
 
 
 def get_uuid(soup: BeautifulSoup) -> str:
-    js_text = css.select_one_get_text(soup, "script:contains('m3u8|')")
+    js_text = css.select_one_get_text(soup, "script:-soup-contains('m3u8|')")
     uuid_joined_parts = js_text.split("m3u8|", 1)[-1].split("|com|surrit", 1)[0]
     uuid_parts = reversed(uuid_joined_parts.split("|"))
     return "-".join(uuid_parts)
