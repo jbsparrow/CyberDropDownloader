@@ -187,10 +187,12 @@ class HashClient:
         except OSError as e:
             log(f"Unable to remove '{file}' ({hash_string}): {e}", 40)
         else:
-            if deleted:
-                msg = f"Removed new download '{file}' [{self._deleted_file_suffix}]. File hash matches with a previous download ({hash_string})"
-                log(msg, 10)
-                self.manager.progress_manager.hash_progress.add_removed_file()
+            if not deleted:
+                return
+
+            msg = f"Removed new download '{file}' [{self._deleted_file_suffix}]. File hash matches with a previous download ({hash_string})"
+            log(msg, 10)
+            self.manager.progress_manager.hash_progress.add_removed_file()
 
         finally:
             self._sem.release()
