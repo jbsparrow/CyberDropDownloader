@@ -150,15 +150,16 @@ class CheveretoCrawler(Crawler, is_generic=True):
         self, scrape_item: ScrapeItem, soup: BeautifulSoup, results: dict[str, int] | None = None
     ) -> None:
         for thumb, new_scrape_item in self.iter_children(scrape_item, soup, Selector.ITEM):
-            if thumb:
-                source = _thumbnail_to_src(thumb)
-                if results and self.check_album_results(source, results):
-                    continue
+            if image_url := _match_img(new_scrape_item.url):
+                new_scrape_item.url = image_url
 
-                # for images, we can download the file from the thumbnail, skipping an additional request per img
-                # cons: we won't get the upload date
-                if image_url := _match_img(new_scrape_item.url):
-                    new_scrape_item.url = image_url
+                if thumb:
+                    # for images, we can download the file from the thumbnail, skipping an additional request per img
+                    # cons: we won't get the upload date
+                    source = _thumbnail_to_src(thumb)
+                    if results and self.check_album_results(source, results):
+                        continue
+
                     self.create_task(self.direct_file(new_scrape_item, source))
                     continue
 
