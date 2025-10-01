@@ -344,7 +344,7 @@ class ClientManager:
             _crawler_errors[domain] += 1
             raise
         else:
-            # we could potencially reset the counter here
+            # we could potentially reset the counter here
             # _crawler_errors[domain] = 0
             pass
         finally:

@@ -50,7 +50,7 @@ class BoxDotComCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (APP_DOMAIN,)
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "File or Folder": "app.box.com/s?sh=<share_code>",
-        "Embeded File or Folder": (
+        "Embedded File or Folder": (
             "app.box.com/embed/s?sh=<share_code>",
             "app.box.com/embed_widget/s?sh=<share_code>",
         ),

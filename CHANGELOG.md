@@ -202,7 +202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- DDoS-Guard errors even when using cookies becuase CDL was using an old domain (Coomer, Kemono)
+- DDoS-Guard errors even when using cookies because CDL was using an old domain (Coomer, Kemono)
 - `ffprobe` version is always being logged as `None` if not available on path, even though it comes built-in with CDL
 - Catch and log any warnings while parsing dates
 - Albums downloads (pixhost)
@@ -261,7 +261,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Downloads from password protected albums (jpg5, imagepond)
 - Multiple nested attachments folders being created (forums)
 - `file_date_iso` and `file_date_us` not being parsed as valid format fields for sorting
-- Mangled fields names in errors messages from formating options
+- Mangled fields names in errors messages from formatting options
 - Missav HLS downloads
 
 ## [7.1.0] - 2025-07-14
@@ -371,14 +371,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Do not use reddit's `user-agent` for every site
 - Fix `unclose client session` error at the end of a run
 - Fix parsing of dropbox folders URLS
-- Handle embeded URLS (box.com)
+- Handle embedded URLS (box.com)
 - [Regression] Fixed free space check when using network drives (windows)
 
 ## [6.10.1] - 2025-06-15
 
 ### Changed
 
-- CDL will try to parse upload dates from human expresions. ex: "Last friday at 10:55", "3 hours, 50 minutes ago",
+- CDL will try to parse upload dates from human expressions. ex: "Last friday at 10:55", "3 hours, 50 minutes ago",
 - Scrape errors from the generic crawler will be logged as "Unsupported" instead of "Unknown"
 - Normalize posix paths
 

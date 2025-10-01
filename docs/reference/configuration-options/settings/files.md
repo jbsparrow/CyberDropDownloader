@@ -21,24 +21,25 @@ Each line in the file will contain the following details (this may change on fut
 ```json
 {
     "url": "https://store9.gofile.io/download/web/7c88c147-ABCD-4e4d-9a6c-12345678/a_video.mp4",
+    "referer": "https://gofile.io/d/ABC123",
     "download_folder": "Downloads/Cyberdrop-DL Downloads/test_album (GoFile)",
-    "filename": "a_video.mp4",
+    "filename": "0hxte0li0o931lwgcrzbz_source.mp4",
     "original_filename": "a_video.mp4",
+    "download_filename": "0hxte0li0o931lwgcrzbz_source.mp4",
+    "filesize": 12054723,
+    "ext": ".mp4",
     "debrid_link": null,
     "duration": null,
-    "ext": ".mp4",
-    "download_filename": "a_video.mp4",
-    "filesize": 1386362524,
-    "partial_file": "Downloads/Cyberdrop-DL Downloads/test_album (GoFile)/a_video.mp4.part",
-    "complete_file": "Downloads/Cyberdrop-DL Downloads/test_album (GoFile)/a_video.mp4",
-    "hash": "3eb33af55e51f7f369ecfebf86d34f99",
-    "downloaded": true,
-    "referer": "https://gofile.io/d/ABC123",
     "album_id": "ABC123",
-    "datetime": "2024-11-18T16:55:45",
+    "datetime": "2025-01-22T11:00:07",
     "parents": ["https://a_forum.com/threads/<name>.54321/post-123123"],
     "parent_threads": ["https://a_forum.com/threads/<name>.54321"],
+    "partial_file": "Downloads/Cyberdrop-DL Downloads/test_album (GoFile)/a_video.mp4.part",
+    "complete_file": "Downloads/Cyberdrop-DL Downloads/test_album (GoFile)/a_video.mp4",
+    "hash": "xxh128:53ee56b7bfafa31b8780a572e9783df3",
+    "downloaded": true,
     "attempts": 1
+
 }
 ```
 
