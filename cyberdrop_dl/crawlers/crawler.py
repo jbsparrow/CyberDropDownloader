@@ -20,7 +20,6 @@ from cyberdrop_dl import constants
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem, copy_signature
-from cyberdrop_dl.database import get_db_path
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
@@ -376,7 +375,7 @@ class Crawler(ABC):
             assert is_absolute_http_url(debrid_link)
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
         media_item = MediaItem.from_item(
-            scrape_item, url, download_folder, filename, original_filename, debrid_link, ext=ext
+            scrape_item, url, self.DOMAIN, download_folder, filename, original_filename, debrid_link, ext=ext
         )
 
         self.create_task(self.handle_media_item(media_item, m3u8))
@@ -497,7 +496,7 @@ class Crawler(ABC):
         """Checks whether an album has completed given its domain and album id."""
         if not album_results:
             return False
-        url_path = get_db_path(url, self.DOMAIN)
+        url_path = MediaItem.create_db_path(url, self.DOMAIN)
         if url_path in album_results and album_results[url_path] != 0:
             log(f"Skipping {url} as it has already been downloaded")
             self.manager.progress_manager.download_progress.add_previously_completed()

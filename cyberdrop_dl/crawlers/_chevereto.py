@@ -4,7 +4,7 @@ import base64
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, copy_signature
 from cyberdrop_dl.exceptions import PasswordProtectedError
 from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, xor_decrypt
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class Selector:
     ITEM_DESCRIPTION = "p[class*=description-meta]"
-    ITEM = "a[class='image-container --media']"
+    ITEM = "a.image-container"
     NEXT_PAGE = "a[data-pagination=next]"
 
     DATE_SINGLE_ITEM = f"{ITEM_DESCRIPTION}:-soup-contains('Uploaded') span"
@@ -54,7 +54,8 @@ class CheveretoCrawler(Crawler, is_generic=True):
         "Direct links": "",
     }
     NEXT_PAGE_SELECTOR = Selector.NEXT_PAGE
-    CHEVERETO_SUPPORTS_VIDEO = True
+    DEFAULT_TRIM_URLS: ClassVar[bool] = False
+    CHEVERETO_SUPPORTS_VIDEO: ClassVar[bool] = True
 
     def __init_subclass__(cls, **kwargs) -> None:
         if not cls.CHEVERETO_SUPPORTS_VIDEO:
@@ -73,13 +74,22 @@ class CheveretoCrawler(Crawler, is_generic=True):
                 return await self.media(scrape_item)
             case ["images", _, *_]:
                 return await self.direct_file(scrape_item)
+            case [_, "albums"]:
+                return await self.profile(scrape_item)
             case [_]:
                 return await self.profile(scrape_item)
             case _:
                 raise ValueError
 
+    @copy_signature(Crawler.request_soup)
+    async def request_soup(self, url: AbsoluteHttpURL, *args, impersonate: bool = False, **kwargs) -> BeautifulSoup:
+        # chevereto redirects are URL encoded and aiohttp always reencodes them by default, leading to an infinite redirect loop, so we use cURL
+        # We may be able to use aiohttp in v4
+        # See: https://github.com/jbsparrow/CyberDropDownloader/pull/1356#issuecomment-3349190328
+        return await super().request_soup(url, *args, impersonate=True, **kwargs)
+
     @classmethod
-    def transform_url(cls, url: AbsoluteHttpURL):
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         url = super().transform_url(url)
         match url.parts[1:]:
             case ["a" | "album" as part, album_slug, "sub"]:
@@ -140,17 +150,18 @@ class CheveretoCrawler(Crawler, is_generic=True):
         self, scrape_item: ScrapeItem, soup: BeautifulSoup, results: dict[str, int] | None = None
     ) -> None:
         for thumb, new_scrape_item in self.iter_children(scrape_item, soup, Selector.ITEM):
-            assert thumb
-            source = _thumbnail_to_src(thumb)
-            if results and self.check_album_results(source, results):
-                continue
-
-            # for images, we can download the file from the thumbnail, skipping an additional request per img
-            # cons: we won't get the upload date
             if image_url := _match_img(new_scrape_item.url):
                 new_scrape_item.url = image_url
-                self.create_task(self.direct_file(new_scrape_item, source))
-                continue
+
+                if thumb:
+                    # for images, we can download the file from the thumbnail, skipping an additional request per img
+                    # cons: we won't get the upload date
+                    source = _thumbnail_to_src(thumb)
+                    if results and self.check_album_results(source, results):
+                        continue
+
+                    self.create_task(self.direct_file(new_scrape_item, source))
+                    continue
 
             self.create_task(self.run(new_scrape_item))
 
@@ -221,4 +232,6 @@ def _thumbnail_to_src(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
 
 def _sort_by_new(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     init_page = int(url.query.get("page") or 1)
+    if url.name:
+        url = url / ""
     return url.with_query(sort="date_desc", page=init_page)

@@ -38,4 +38,16 @@ TEST_CASES = [
             },
         ],
     ),
+    (
+        "https://coomer.st/candfans/user/371301/post/352699",
+        [
+            {
+                "url": "https://coomer.st/data/59/7a/597a80f2a436bc4d323d46fa2db66048c78b3e76523dfe74e36e460a3e590552.jpg?f=bSdKvym8HPghOntEPmjVOyqUAj4cdsXOHIVchR88.jpg",
+                "filename": "bSdKvym8HPghOntEPmjVOyqUAj4cdsXOHIVchR88.jpg",
+                "referer": "https://coomer.st/candfans/user/371301/post/352699",
+                "download_folder": r"re:りこ \(Coomer\)",
+                "album_id": "371301",
+            },
+        ],
+    ),
 ]
