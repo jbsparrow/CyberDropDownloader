@@ -47,6 +47,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
+          cache: 'poetry'
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
