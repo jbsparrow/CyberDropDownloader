@@ -66,6 +66,17 @@ TEST_CASES = [
         ],
     ),
     (
+        "https://imglike.com/bonton18/albums",
+        [
+            {
+                "url": "https://imglike.com/images/2022/10/03/01__4_.jpg",
+                "filename": "01__4_.jpg",
+                "referer": "https://imglike.com/image/L1iUm",
+                "album_id": "iNlR",
+            }
+        ],
+    ),
+    (
         # Fails with aiohttp and works with curl-cffi
         "https://imglike.com/album/D%C3%A9sir%C3%A9e-Nick-Boob-Slip-at-unesco-benefiz-gala%2C-2001.vihF",
         [
