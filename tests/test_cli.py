@@ -1,8 +1,9 @@
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
-from cyberdrop_dl.main import run
+from cyberdrop_dl.main import _create_director, run
 
 
 @pytest.mark.parametrize(
@@ -13,10 +14,46 @@ from cyberdrop_dl.main import run
     ],
 )
 def test_command_by_console_output(tmp_cwd: Path, capsys: pytest.CaptureFixture[str], command: str, text: str) -> None:
-    try:
-        run(tuple(command.split()))
-    except SystemExit:
-        pass
-    captured = capsys.readouterr()
-    output = captured.out
+    run(tuple(command.split()))
+    output = capsys.readouterr().out
     assert text in output
+
+
+def test_startup_logger_should_not_created_on_a_successful_run(
+    tmp_cwd: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run("--download")
+    startup_file = Path.cwd() / "startup.log"
+    assert not startup_file.exists()
+
+
+def test_startup_logger_should_not_created_on_invalid_cookies(tmp_cwd: Path) -> None:
+    from cyberdrop_dl.utils.logger import catch_exceptions
+
+    director = _create_director("--download")
+    cookies_file = director.manager.path_manager.cookies_dir / "cookies.txt"
+    cookies_file.write_bytes(b"Not a cookie file")
+    catch_exceptions(director.run)()
+
+    logs = director.manager.path_manager.main_log.read_text()
+    assert "does not look like a Netscape format cookies file" in logs
+
+    startup_file = Path.cwd() / "startup.log"
+    assert not startup_file.exists()
+
+
+def test_startup_logger_is_created_on_yaml_error(tmp_cwd: Path) -> None:
+    from cyberdrop_dl.exceptions import InvalidYamlError
+    from cyberdrop_dl.utils.logger import catch_exceptions
+
+    with mock.patch(
+        "cyberdrop_dl.director.Director._run", side_effect=InvalidYamlError(Path("fake_file.yaml"), ValueError())
+    ):
+        director = _create_director("--download")
+        catch_exceptions(director.run)()
+
+    startup_file = Path.cwd() / "startup.log"
+    assert startup_file.exists()
+
+    logs = startup_file.read_text()
+    assert "Unable to read file" in logs

@@ -36,7 +36,7 @@ from cyberdrop_dl.utils.webhook import send_webhook_message
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine
+    from collections.abc import Callable, Coroutine, Sequence
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -231,7 +231,7 @@ def _setup_main_logger(manager: Manager, config_name: str) -> None:
     logger.addHandler(queued_logger.handler)
 
 
-def _setup_manager(args: tuple[str, ...] | None = None) -> Manager:
+def _setup_manager(args: Sequence[str] | None = None) -> Manager:
     """Starts the program and returns the manager.
 
     This will also run the UI for the program
@@ -264,7 +264,7 @@ def _setup_manager(args: tuple[str, ...] | None = None) -> Manager:
 class Director:
     """Creates a manager and runs it"""
 
-    def __init__(self, args: tuple[str, ...] | None = None) -> None:
+    def __init__(self, args: Sequence[str] | None = None) -> None:
         if os.name == "nt":
             asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
         self.loop = asyncio.new_event_loop()
