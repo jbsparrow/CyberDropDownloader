@@ -19,15 +19,15 @@ def test_command_by_console_output(tmp_cwd: Path, capsys: pytest.CaptureFixture[
     assert text in output
 
 
-def test_startup_logger_should_not_created_on_a_successful_run(
-    tmp_cwd: Path, capsys: pytest.CaptureFixture[str]
+def test_startup_logger_should_not_be_created_on_a_successful_run(
+    tmp_cwd: Path
 ) -> None:
     run("--download")
     startup_file = Path.cwd() / "startup.log"
     assert not startup_file.exists()
 
 
-def test_startup_logger_should_not_created_on_invalid_cookies(tmp_cwd: Path) -> None:
+def test_startup_logger_should_not_be_created_on_invalid_cookies(tmp_cwd: Path) -> None:
     from cyberdrop_dl.utils.logger import catch_exceptions
 
     director = _create_director("--download")

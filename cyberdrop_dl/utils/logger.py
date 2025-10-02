@@ -306,8 +306,8 @@ def catch_exceptions(func: Callable[_P, _ExitCode]) -> Callable[_P, _ExitCode]:
     """Decorator to automatically log uncaught exceptions.
 
     Exceptions will be logged to a file in the current working directory
-    beacuse the manager setup itself may have failed, therefore we don't know
-    what the proper log file path.
+    because the manager setup itself may have failed, therefore we don't know
+    what the proper log file path is.
     """
 
     @wraps(func)
