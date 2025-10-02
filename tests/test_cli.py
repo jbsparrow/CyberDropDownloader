@@ -14,14 +14,15 @@ from cyberdrop_dl.main import _create_director, run
     ],
 )
 def test_command_by_console_output(tmp_cwd: Path, capsys: pytest.CaptureFixture[str], command: str, text: str) -> None:
-    run(tuple(command.split()))
+    try:
+        run(command.split())
+    except SystemExit:
+        pass
     output = capsys.readouterr().out
     assert text in output
 
 
-def test_startup_logger_should_not_be_created_on_a_successful_run(
-    tmp_cwd: Path
-) -> None:
+def test_startup_logger_should_not_be_created_on_a_successful_run(tmp_cwd: Path) -> None:
     run("--download")
     startup_file = Path.cwd() / "startup.log"
     assert not startup_file.exists()
