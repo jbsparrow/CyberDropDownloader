@@ -46,7 +46,6 @@ def test_startup_logger_should_not_be_created_on_invalid_cookies(tmp_cwd: Path) 
 
 def test_startup_logger_is_created_on_yaml_error(tmp_cwd: Path) -> None:
     from cyberdrop_dl.exceptions import InvalidYamlError
-    from cyberdrop_dl.utils.logger import catch_exceptions
 
     with mock.patch(
         "cyberdrop_dl.director.Director._run", side_effect=InvalidYamlError(Path("fake_file.yaml"), ValueError())
