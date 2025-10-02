@@ -52,7 +52,7 @@ def test_startup_logger_is_created_on_yaml_error(tmp_cwd: Path) -> None:
         "cyberdrop_dl.director.Director._run", side_effect=InvalidYamlError(Path("fake_file.yaml"), ValueError())
     ):
         try:
-            run(_create_director("--download"))
+            run("--download")
         except SystemExit:
             pass
 
