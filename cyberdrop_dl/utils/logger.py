@@ -288,10 +288,9 @@ def _setup_startup_logger() -> Generator[None]:
     except Exception:
         try:
             file = Path.cwd() / "startup.log"
-            file.unlink(missing_ok=True)
             file_handler = LogHandler(
                 level=10,
-                file=file.open("a", encoding="utf8"),
+                file=file.open("w", encoding="utf8"),
                 width=constants.DEFAULT_CONSOLE_WIDTH,
             )
             startup_logger.addHandler(file_handler)
