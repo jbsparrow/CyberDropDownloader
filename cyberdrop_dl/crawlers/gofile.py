@@ -15,6 +15,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Mapping
 
+    from typing_extensions import ReadOnly
+
 
 _FIND_WT = re.compile(r'appdata\.wt\s=\s"([^"]+)"').search
 _API_ENTRYPOINT = AbsoluteHttpURL("https://api.gofile.io")
@@ -24,9 +26,9 @@ _PER_PAGE: int = 1000
 
 
 class Node(TypedDict):
-    canAccess: bool
+    canAccess: ReadOnly[bool]
     id: str
-    type: Literal["folder", "file"]
+    type: ReadOnly[Literal["folder", "file"]]
     name: str
     createTime: int
 
