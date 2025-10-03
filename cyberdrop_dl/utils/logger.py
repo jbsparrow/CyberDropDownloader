@@ -23,12 +23,11 @@ from cyberdrop_dl.exceptions import InvalidYamlError
 
 logger = logging.getLogger("cyberdrop_dl")
 logger_debug = logging.getLogger("cyberdrop_dl_debug")
-startup_logger = logging.getLogger("cyberdrop_dl.startup")
+startup_logger = logging.getLogger("cyberdrop_dl_startup")
 _DEFAULT_CONSOLE = Console()
 
-ERROR_PREFIX = "\n[bold red]ERROR: [/bold red]"
-USER_NAME = Path.home().resolve().parts[-1]
-NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
+_USER_NAME = Path.home().resolve().name
+_NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
 
 
 if TYPE_CHECKING:
@@ -43,20 +42,37 @@ if TYPE_CHECKING:
     _ExitCode = str | int | None
 
 
-EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
+class JsonLogRecord(logging.LogRecord):
+    def getMessage(self) -> str:  # noqa: N802
+        """`dicts` will be logged as json, lazily"""
+        self.msg = self._proccess_msg(self.msg)
+        if self.args:
+            self.args = tuple(map(self._proccess_msg, self.args))
+
+        return super().getMessage()
+
+    @staticmethod
+    def _proccess_msg(msg: object) -> object:
+        # Use our custom decoder to support more types
+        if isinstance(msg, dict):
+            return json.dumps(msg, indent=2, ensure_ascii=False, default=str)
+        return msg
 
 
-def get_log_level_text(name: str, color: str) -> Text:
+logging.setLogRecordFactory(JsonLogRecord)
+
+
+def _get_log_level_text(name: str, color: str) -> Text:
     #  From markup to prevent applying the color to the entire line
     return Text.from_markup(f"[{color}]{name}[/{color}]") if color else Text(name)
 
 
 RICH_LOG_LEVELS = {
-    10: get_log_level_text("DEBUG    ", "cyan"),
-    20: get_log_level_text("INFO     ", ""),
-    30: get_log_level_text("WARNING  ", "yellow"),
-    40: get_log_level_text("ERROR    ", "bold red"),
-    50: get_log_level_text("CRITICAL ", "bold red"),
+    10: _get_log_level_text("DEBUG    ", "cyan"),
+    20: _get_log_level_text("INFO     ", ""),
+    30: _get_log_level_text("WARNING  ", "yellow"),
+    40: _get_log_level_text("ERROR    ", "bold red"),
+    50: _get_log_level_text("CRITICAL ", "bold red"),
 }
 
 
@@ -117,7 +133,8 @@ class QueuedLogger:
 
 
 class NoPaddingLogRender(LogRender):
-    cdl_padding = 0
+    cdl_padding: int = 0
+    EXCLUDE_PATH_LOGGING_FROM: tuple[str, ...] = "logger.py", "base.py", "session.py", "cache_control.py"
 
     def __call__(  # type: ignore[reportIncompatibleMethodOverride]
         self,
@@ -151,9 +168,9 @@ class NoPaddingLogRender(LogRender):
             output.pad_right(1)
 
         if not self.cdl_padding:
-            self.cdl_padding = get_renderable_length(output)
+            self.cdl_padding = _get_renderable_length(output)
 
-        if self.show_path and path and not any(path.startswith(p) for p in EXCLUDE_PATH_LOGGING_FROM):
+        if self.show_path and path and not any(path.startswith(p) for p in self.EXCLUDE_PATH_LOGGING_FROM):
             path_text = Text(style="log.path")
             path_text.append(path, style=f"link file://{link_path}" if link_path else "")
             if line_no:
@@ -169,7 +186,7 @@ class NoPaddingLogRender(LogRender):
 
         for renderable in Renderables(renderables):  # type: ignore
             if isinstance(renderable, Text):
-                renderable = indent_text(renderable, console, self.cdl_padding)
+                renderable = _indent_text(renderable, console, self.cdl_padding)
                 renderable.stylize("log.message")
                 output.append(renderable)
                 continue
@@ -178,12 +195,12 @@ class NoPaddingLogRender(LogRender):
         return Group(output, *padded_lines)
 
 
-def get_renderable_length(renderable) -> int:
+def _get_renderable_length(renderable) -> int:
     measurement = Measurement.get(_DEFAULT_CONSOLE, _DEFAULT_CONSOLE.options, renderable)
     return measurement.maximum
 
 
-def indent_text(text: Text, console: Console, indent: int = 30) -> Text:
+def _indent_text(text: Text, console: Console, indent: int = 30) -> Text:
     """Indents each line of a Text object except the first one."""
     indent_str = Text("\n" + (" " * indent))
     new_text = Text()
@@ -198,7 +215,7 @@ def indent_text(text: Text, console: Console, indent: int = 30) -> Text:
     return first_line.append(new_text)
 
 
-def indent_string(text: str, indent_level: int = 9) -> str:
+def _indent_string(text: str, indent_level: int = 9) -> str:
     """Indents each line of a string object except the first one."""
     indentation = " " * indent_level
     lines = text.splitlines()
@@ -216,33 +233,28 @@ class RedactedConsole(Console):
         return _redact_message(output)
 
 
-def process_log_msg(message: object) -> object:
-    if isinstance(message, dict):
-        return json.dumps(message, indent=4, ensure_ascii=False)
-    return message
-
-
 def create_rich_log_msg(msg: str, level: int = 10) -> Text:
     """Create a rich text where the level has color"""
     rich_level = RICH_LOG_LEVELS.get(level) or RICH_LOG_LEVELS[10]
-    return rich_level + indent_string(msg)
+    return rich_level + _indent_string(msg)
 
 
 def log(message: object, level: int = 10, bug: bool = False, **kwargs) -> None:
     """Simple logging function."""
-    msg = process_log_msg(message)
-    log_debug(msg, level, **kwargs)
+    log_debug(message, level, **kwargs)
     if bug:
-        msg = f"{msg}. Please open a bug report at {NEW_ISSUE_URL}"
+        args = message, f"Please open a bug report at {_NEW_ISSUE_URL}"
+        message = "{}.{}"
         level = 30
-    logger.log(level, msg, **kwargs)
+    else:
+        args = ()
+    logger.log(level, message, *args, **kwargs)
 
 
 def log_debug(message: object, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     if env.DEBUG_VAR:
-        msg = process_log_msg(message)
-        logger_debug.log(level, msg, **kwargs)
+        logger_debug.log(level, message, **kwargs)
 
 
 def log_with_color(message: Text | str, style: str, level: int = 20, show_in_stats: bool = True, **kwargs) -> None:
@@ -268,8 +280,8 @@ def _redact_message(message: Exception | Text | str) -> str:
     redacted = str(message)
     separators = ["\\", "\\\\", "/"]
     for sep in separators:
-        as_tail = sep + USER_NAME
-        as_part = USER_NAME + sep
+        as_tail = sep + _USER_NAME
+        as_part = _USER_NAME + sep
         redacted = redacted.replace(as_tail, f"{sep}[REDACTED]").replace(as_part, f"[REDACTED]{sep}")
     return redacted
 
