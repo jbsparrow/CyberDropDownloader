@@ -42,6 +42,14 @@ if TYPE_CHECKING:
     _ExitCode = str | int | None
 
 
+class RedactedConsole(Console):
+    """Custom console to remove username from logs"""
+
+    def _render_buffer(self, buffer) -> str:
+        output: str = super()._render_buffer(buffer)
+        return _redact_message(output)
+
+
 class JsonLogRecord(logging.LogRecord):
     def getMessage(self) -> str:  # noqa: N802
         """`dicts` will be logged as json, lazily"""
@@ -60,20 +68,6 @@ class JsonLogRecord(logging.LogRecord):
 
 
 logging.setLogRecordFactory(JsonLogRecord)
-
-
-def _get_log_level_text(name: str, color: str) -> Text:
-    #  From markup to prevent applying the color to the entire line
-    return Text.from_markup(f"[{color}]{name}[/{color}]") if color else Text(name)
-
-
-RICH_LOG_LEVELS = {
-    10: _get_log_level_text("DEBUG    ", "cyan"),
-    20: _get_log_level_text("INFO     ", ""),
-    30: _get_log_level_text("WARNING  ", "yellow"),
-    40: _get_log_level_text("ERROR    ", "bold red"),
-    50: _get_log_level_text("CRITICAL ", "bold red"),
-}
 
 
 class LogHandler(RichHandler):
@@ -215,36 +209,12 @@ def _indent_text(text: Text, console: Console, indent: int = 30) -> Text:
     return first_line.append(new_text)
 
 
-def _indent_string(text: str, indent_level: int = 9) -> str:
-    """Indents each line of a string object except the first one."""
-    indentation = " " * indent_level
-    lines = text.splitlines()
-    if len(lines) <= 1:
-        return text
-    indented_lines = [lines[0]] + [indentation + line for line in lines[1:]]
-    return "\n".join(indented_lines)
-
-
-class RedactedConsole(Console):
-    """Custom console to remove username from logs"""
-
-    def _render_buffer(self, buffer) -> str:
-        output: str = super()._render_buffer(buffer)
-        return _redact_message(output)
-
-
-def create_rich_log_msg(msg: str, level: int = 10) -> Text:
-    """Create a rich text where the level has color"""
-    rich_level = RICH_LOG_LEVELS.get(level) or RICH_LOG_LEVELS[10]
-    return rich_level + _indent_string(msg)
-
-
 def log(message: object, level: int = 10, bug: bool = False, **kwargs) -> None:
     """Simple logging function."""
     log_debug(message, level, **kwargs)
     if bug:
         args = message, f"Please open a bug report at {_NEW_ISSUE_URL}"
-        message = "{}.{}"
+        message = "{}. {}"
         level = 30
     else:
         args = ()
