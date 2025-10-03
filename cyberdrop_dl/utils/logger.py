@@ -53,11 +53,12 @@ class RedactedConsole(Console):
 class JsonLogRecord(logging.LogRecord):
     def getMessage(self) -> str:  # noqa: N802
         """`dicts` will be logged as json, lazily"""
-        self.msg = self._proccess_msg(self.msg)
-        if self.args:
-            self.args = tuple(map(self._proccess_msg, self.args))
 
-        return super().getMessage()
+        if self.args:
+            args = map(self._proccess_msg, self.args)
+            return self.msg.format(*args)
+
+        return str(self._proccess_msg(self.msg))
 
     @staticmethod
     def _proccess_msg(msg: object) -> object:
