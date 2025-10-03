@@ -56,7 +56,10 @@ class JsonLogRecord(logging.LogRecord):
 
         if self.args:
             args = map(self._proccess_msg, self.args)
-            return self.msg.format(*args)
+            try:
+                return self.msg.format(*args)
+            except Exception:
+                return self.msg % args
 
         return str(self._proccess_msg(self.msg))
 
