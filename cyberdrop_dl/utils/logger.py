@@ -54,14 +54,15 @@ class JsonLogRecord(logging.LogRecord):
     def getMessage(self) -> str:  # noqa: N802
         """`dicts` will be logged as json, lazily"""
 
+        msg = str(self._proccess_msg(self.msg))
         if self.args:
             args = map(self._proccess_msg, self.args)
             try:
-                return self.msg.format(*args)
+                return msg.format(*args)
             except Exception:
-                return self.msg % args
+                return msg % args
 
-        return str(self._proccess_msg(self.msg))
+        return msg
 
     @staticmethod
     def _proccess_msg(msg: object) -> object:
