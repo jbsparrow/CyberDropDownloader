@@ -84,7 +84,13 @@ class ApiAlbumResponse(TypedDict):
 
 
 class GoFileCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/d/..."}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/d/<content_id>",
+        "**NOTE**": (
+            "Use `password` as a query param to download password protected albums",
+            "ex: https://gofile.io/d/ABC654?password=1234",
+        ),
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "gofile"
     FOLDER_DOMAIN: ClassVar[str] = "GoFile"
