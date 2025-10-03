@@ -62,7 +62,7 @@ class JsonLogRecord(logging.LogRecord):
 
     @staticmethod
     def _proccess_msg(msg: object) -> object:
-        # Use our custom decoder to support more types
+        # TODO: Use our custom decoder to support more types
         if isinstance(msg, dict):
             return json.dumps(msg, indent=2, ensure_ascii=False, default=str)
         return msg
