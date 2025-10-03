@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import asyncio
 import http
 import re
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, NotRequired, TypedDict, cast
 
-from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import Crawler, RateLimit, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, AbsoluteHttpURL, ScrapeItem
 from cyberdrop_dl.exceptions import DownloadError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -17,9 +16,9 @@ if TYPE_CHECKING:
 
 
 _FIND_WT = re.compile(r'appdata\.wt\s=\s"([^"]+)"').search
-API_ENTRYPOINT = AbsoluteHttpURL("https://api.gofile.io")
-GLOBAL_JS_URL = AbsoluteHttpURL("https://gofile.io/dist/js/global.js")
-PRIMARY_URL = AbsoluteHttpURL("https://gofile.io")
+_API_ENTRYPOINT = AbsoluteHttpURL("https://api.gofile.io")
+_GLOBAL_JS_URL = AbsoluteHttpURL("https://gofile.io/dist/js/global.js")
+_PRIMARY_URL = AbsoluteHttpURL("https://gofile.io")
 
 
 class Node(TypedDict):
@@ -82,10 +81,10 @@ class ApiAlbumResponse(TypedDict):
 
 class GoFileCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/d/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "gofile"
     FOLDER_DOMAIN: ClassVar[str] = "GoFile"
-    _RATE_LIMIT: ClassVar[tuple[float, float]] = 4, 10
+    _RATE_LIMIT: ClassVar[RateLimit] = 4, 10
 
     def __post_init__(self) -> None:
         self.api_key = self.manager.config_manager.authentication_data.gofile.api_key
@@ -101,20 +100,21 @@ class GoFileCrawler(Crawler):
             raise ScrapeError(404)
 
     async def async_startup(self) -> None:
-        await self.get_account_token(API_ENTRYPOINT)
+        await self.get_account_token(_API_ENTRYPOINT)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if "d" in scrape_item.url.parts:
-            return await self.album(scrape_item)
-        raise ValueError
+        match scrape_item.url.parts[1:]:
+            case ["d", content_id]:
+                return await self.album(scrape_item, content_id)
+            case _:
+                raise ValueError
 
     @error_handling_wrapper
-    async def album(self, scrape_item: ScrapeItem) -> None:
+    async def album(self, scrape_item: ScrapeItem, content_id: str) -> None:
         if not self.api_key or not self.website_token:
             return
 
-        content_id = scrape_item.url.name
-        api_url = API_ENTRYPOINT.joinpath("contents", content_id).with_query(wt=self.website_token)
+        api_url = (_API_ENTRYPOINT / "contents" / content_id).with_query(wt=self.website_token)
 
         if password := scrape_item.url.query.get("password"):
             sha256_password = sha256(password.encode()).hexdigest()
@@ -126,8 +126,10 @@ class GoFileCrawler(Crawler):
         except DownloadError as e:
             if e.status != http.HTTPStatus.UNAUTHORIZED:
                 raise
+
             async with self.startup_lock:
                 await self.get_website_token(update=True)
+
             api_url = api_url.update_query(wt=self.website_token)
             json_resp = await self.request_json(api_url, headers=self.headers)
 
@@ -143,69 +145,49 @@ class GoFileCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=content_id)
         scrape_item.part_of_album = part_of_album
         scrape_item.url = scrape_item.url.with_query(None)
-        await self.handle_children(album["children"], scrape_item)
+        self._handle_children(scrape_item, album["children"])
 
-    async def handle_children(self, children: Mapping[str, Node], scrape_item: ScrapeItem) -> None:
+    def _handle_children(self, scrape_item: ScrapeItem, children: Mapping[str, Node]) -> None:
         """Sends files to downloader and adds subfolder to scrape queue."""
-        subfolders: list[AbsoluteHttpURL] = []
-        unavailable: list[AbsoluteHttpURL] = []
-        dangerous: list[AbsoluteHttpURL] = []
 
         def get_website_url(node: Node) -> AbsoluteHttpURL:
             if node["type"] == "folder":
-                return PRIMARY_URL / "d" / (node.get("code") or node["id"])
+                return _PRIMARY_URL / "d" / (node.get("code") or node["id"])
             return scrape_item.url.with_fragment(file["id"])
 
         for child in children.values():
+            web_url = get_website_url(child)
             if not child["canAccess"]:
-                url = get_website_url(child)
-                unavailable.append(url)
+                self.raise_exc(scrape_item.create_child(web_url), ScrapeError(403))
+                continue
+
+            if child.get("v" + "iru" + "ses"):  # Auto flagged by GoFile. We can download them but better not to
+                self.raise_exc(scrape_item.create_child(web_url), ScrapeError("Dangerous File"))
                 continue
 
             if child["type"] == "folder":
-                folder = cast("UnlockedFolder", child)
-                url = PRIMARY_URL / "d" / folder["code"]
-                subfolders.append(url)
+                self.create_task(self.run(scrape_item.create_child(web_url)))
+                scrape_item.add_children()
                 continue
 
             assert child["type"] == "file"
             file = cast("UnlockedFile", child)
 
-            link_str = file["link"]
-            if not link_str or link_str == "overloaded":
-                link_str = file.get("directLink")
-                assert link_str
+            link_str: str = file["link"]
+            if (not link_str or link_str == "overloaded") and "directLink" in file:
+                link_str = file["directLink"]
 
+            assert link_str
             link = self.parse_url(link_str)
-
-            if file.get("v" + "iru" + "ses"):  # Auto flagged by GoFile. We can download them but better not to
-                dangerous.append(link)
-                continue
 
             if file.get("isFrozen"):
                 self.log(f"{link} is marked as frozen, download may fail", 30)
 
             filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-            new_scrape_item = scrape_item.create_new(scrape_item.url, possible_datetime=file["createTime"])
-            await self.handle_file(link, new_scrape_item, filename, ext)
+            new_scrape_item = scrape_item.copy()
+            new_scrape_item.possible_datetime = file["createTime"]
+            self.create_task(self.handle_file(link, new_scrape_item, link.name, ext, custom_filename=filename))
             scrape_item.add_children()
-
-        for url in subfolders:
-            subfolder = scrape_item.create_child(url)
-            self.create_task(self.run(subfolder))
-
-        tasks = []
-        for url in unavailable:
-            tasks.append(self.raise_error(url, 403))
-
-        for url in dangerous:
-            tasks.append(self.raise_error(url, "Dangerous File"))
-
-        await asyncio.gather(*tasks)
-
-    @error_handling_wrapper
-    async def raise_error(self, url: AbsoluteHttpURL, status: str | int, message: str | None = None) -> None:
-        raise ScrapeError(status, message)
 
     @error_handling_wrapper
     async def get_account_token(self, _) -> None:
@@ -217,7 +199,7 @@ class GoFileCrawler(Crawler):
         await self.get_website_token()
 
     async def _get_new_api_key(self) -> str:
-        api_url = API_ENTRYPOINT / "accounts"
+        api_url = _API_ENTRYPOINT / "accounts"
         json_resp = await self.request_json(api_url, method="POST", data={})
         if json_resp["status"] != "ok":
             raise ScrapeError(401, "Couldn't generate GoFile API token", origin=api_url)
@@ -236,10 +218,10 @@ class GoFileCrawler(Crawler):
         await self._update_website_token()
 
     async def _update_website_token(self) -> None:
-        text = await self.request_text(GLOBAL_JS_URL)
+        text = await self.request_text(_GLOBAL_JS_URL)
         match = _FIND_WT(text)
         if not match:
-            raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=GLOBAL_JS_URL)
+            raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=_GLOBAL_JS_URL)
 
         self.website_token = match.group(1)
         self.manager.cache_manager.save("gofile_website_token", self.website_token)

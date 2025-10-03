@@ -61,6 +61,7 @@ if TYPE_CHECKING:
 OneOrTuple: TypeAlias = T | tuple[T, ...]
 SupportedPaths: TypeAlias = dict[str, OneOrTuple[str]]
 SupportedDomains: TypeAlias = OneOrTuple[str]
+RateLimit = tuple[float, float]
 
 
 HASH_PREFIXES = "md5:", "sha1:", "sha256:", "xxh128:"
@@ -101,7 +102,7 @@ class Crawler(ABC):
     DOMAIN: ClassVar[str]
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
 
-    _RATE_LIMIT: ClassVar[tuple[float, float]] = 25, 1
+    _RATE_LIMIT: ClassVar[RateLimit] = 25, 1
     _DOWNLOAD_SLOTS: ClassVar[int | None] = None
 
     @copy_signature(ScraperClient._request)
