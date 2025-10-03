@@ -175,22 +175,25 @@ class GoFileCrawler(Crawler):
 
             assert child["type"] == "file"
             file = cast("UnlockedFile", child)
-
-            link_str: str = file["link"]
-            if (not link_str or link_str == "overloaded") and "directLink" in file:
-                link_str = file["directLink"]
-
-            assert link_str
-            link = self.parse_url(link_str)
-
-            if file.get("isFrozen"):
-                self.log(f"{link} is marked as frozen, download may fail", 30)
-
-            filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-            new_scrape_item = scrape_item.copy()
-            new_scrape_item.possible_datetime = file["createTime"]
-            self.create_task(self.handle_file(link, new_scrape_item, link.name, ext, custom_filename=filename))
+            self._file(scrape_item, file)
             scrape_item.add_children()
+
+    @error_handling_wrapper
+    def _file(self, scrape_item: ScrapeItem, file: UnlockedFile) -> None:
+        link_str: str = file["link"]
+        if (not link_str or link_str == "overloaded") and "directLink" in file:
+            link_str = file["directLink"]
+
+        assert link_str
+        link = self.parse_url(link_str)
+
+        if file.get("isFrozen"):
+            self.log(f"{link} is marked as frozen, download may fail", 30)
+
+        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
+        new_scrape_item = scrape_item.copy()
+        new_scrape_item.possible_datetime = file["createTime"]
+        self.create_task(self.handle_file(link, new_scrape_item, link.name, ext, custom_filename=filename))
 
     @error_handling_wrapper
     async def get_account_token(self, _) -> None:
