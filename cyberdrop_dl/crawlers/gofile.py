@@ -160,6 +160,7 @@ class GoFileCrawler(Crawler):
             api_url = api_url.update_query(wt=self.website_token)
             json_resp = await self.request_json(api_url, headers=self.headers)
 
+        self._json_response_check(json_resp)
         _check_album_response(json_resp)
         return json_resp
 
