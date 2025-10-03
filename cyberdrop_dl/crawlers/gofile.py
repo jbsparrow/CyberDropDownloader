@@ -23,6 +23,7 @@ _API_ENTRYPOINT = AbsoluteHttpURL("https://api.gofile.io")
 _GLOBAL_JS_URL = AbsoluteHttpURL("https://gofile.io/dist/js/global.js")
 _PRIMARY_URL = AbsoluteHttpURL("https://gofile.io")
 _PER_PAGE: int = 1000
+_TOKEN_MIN_AGE: timedelta = timedelta(seconds=120)
 
 
 class Node(TypedDict):
@@ -231,7 +232,7 @@ class GoFileCrawler(Crawler):
 
     async def get_website_token(self, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
-        if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
+        if datetime.now(UTC) - self._website_token_date < _TOKEN_MIN_AGE:
             return
         if update:
             self.website_token = ""
