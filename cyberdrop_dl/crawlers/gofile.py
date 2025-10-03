@@ -156,7 +156,7 @@ class GoFileCrawler(Crawler):
         def get_website_url(node: Node) -> AbsoluteHttpURL:
             if node["type"] == "folder":
                 return _PRIMARY_URL / "d" / (node.get("code") or node["id"])
-            return scrape_item.url.with_fragment(file["id"])
+            return scrape_item.url.with_fragment(node["id"])
 
         for child in children.values():
             web_url = get_website_url(child)
@@ -190,10 +190,11 @@ class GoFileCrawler(Crawler):
         if file.get("isFrozen"):
             self.log(f"{link} is marked as frozen, download may fail", 30)
 
-        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
+        name = file["name"]
+        filename, ext = self.get_filename_and_ext(name, assume_ext=".mp4")
         new_scrape_item = scrape_item.copy()
         new_scrape_item.possible_datetime = file["createTime"]
-        self.create_task(self.handle_file(link, new_scrape_item, link.name, ext, custom_filename=filename))
+        self.create_task(self.handle_file(link, new_scrape_item, name, ext, custom_filename=filename))
 
     @error_handling_wrapper
     async def get_account_token(self, _) -> None:
