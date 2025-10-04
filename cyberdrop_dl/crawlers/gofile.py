@@ -67,6 +67,7 @@ class Album(UnlockedFolder):
     childrenCount: int
     children: dict[str, Node]
     password: NotRequired[str]
+    passwordStatus: NotRequired[str]
 
 
 class AlbumMetadata(TypedDict):
@@ -265,11 +266,18 @@ def _check_album_response(json_resp: ApiAlbumResponse) -> None:
     """Parses and raises errors if we can not proccess the API response."""
 
     album: Album = json_resp["data"]
-    if (password := album.get("password")) and (password in ("passwordRequired", "passwordWrong")):
-        raise PasswordProtectedError(password)
+    if album["canAccess"]:
+        return
 
-    if not album["canAccess"]:
-        raise ScrapeError(403, "Album is private")
+    if album.get("password"):
+        status = album.get("passwordStatus", "")
+        error_msg = {
+            "passwordRequired": "Album is password protected",
+            "passwordWrong": "Wrong album password",
+        }.get(status)
+        raise PasswordProtectedError(error_msg)
+
+    raise ScrapeError(403, "Album is private")
 
 
 def _is_single_not_nested_file(scrape_item: ScrapeItem, album: Album) -> bool:

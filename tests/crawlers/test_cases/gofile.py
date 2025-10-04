@@ -34,4 +34,17 @@ TEST_CASES = [
             },
         ],
     ),
+    ("https://gofile.io/d/tZeyhP?password=wrong_password", []),
+    (
+        "https://gofile.io/d/tZeyhP?password=cdl_password",
+        [
+            {
+                "url": "ANY",
+                "filename": "Apashe - Majesty (Instrumental).webm",
+                "download_folder": r"re:CDL_test_password \(GoFile\)/folder_A",
+                "referer": "https://gofile.io/d/T3gI1u#26617578-4770-41fb-9352-cad172b10b35",
+                "album_id": "T3gI1u",
+            },
+        ],
+    ),
 ]
