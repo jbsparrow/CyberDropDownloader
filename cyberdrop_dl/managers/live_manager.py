@@ -25,7 +25,7 @@ class LiveManager:
         self.fullscreen = f = self.manager.parsed_args.cli_only_args.fullscreen_ui
         self.refresh_rate = rate = self.manager.config_manager.global_settings_data.ui_options.refresh_rate
         self.live = Live(refresh_per_second=rate, transient=True, screen=f, auto_refresh=True)
-        self.current_layout: str
+        self.current_layout: str = ""
 
     @contextmanager
     def get_live(self, name: str, stop: bool = False) -> Generator[Live | None]:
@@ -60,20 +60,30 @@ class LiveManager:
     def live_context_manager(self, layout: RenderableType | None, stop: bool = False) -> Generator[Live | None]:
         stop_event = asyncio.Event()
         orientation_task = None
-        og_console = constants.console_handler.console
+
         try:
-            constants.console_handler.console = self.live.console
-            self.live.start()
-            if layout:
-                self.live.update(layout, refresh=True)
-                if self.current_layout in ("vertical_layout", "horizontal_layout"):
-                    orientation_task = asyncio.create_task(self.watch_orientation(stop_event))
-            yield self.live
+            with self.replace_console():
+                self.live.start()
+                if layout:
+                    self.live.update(layout, refresh=True)
+                    if self.current_layout in ("vertical_layout", "horizontal_layout"):
+                        orientation_task = asyncio.create_task(self.watch_orientation(stop_event))
+                yield self.live
         finally:
-            constants.console_handler.console = og_console
             stop_event.set()
             if orientation_task:
                 orientation_task.cancel()
             if stop:
                 self.live.update("")
                 self.live.stop()
+
+    @contextmanager
+    def replace_console(self) -> Generator[None]:
+        """Disable the default console, replacing it with the internal live's console"""
+
+        default_console = constants.console_handler.console
+        try:
+            constants.console_handler.console = self.live.console
+            yield
+        finally:
+            constants.console_handler.console = default_console
