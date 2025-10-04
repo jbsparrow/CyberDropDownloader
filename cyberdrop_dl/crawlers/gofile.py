@@ -13,7 +13,7 @@ from cyberdrop_dl.exceptions import DownloadError, PasswordProtectedError, Scrap
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Mapping
+    from collections.abc import AsyncGenerator
 
     from typing_extensions import ReadOnly
 
@@ -128,6 +128,12 @@ class GoFileCrawler(Crawler):
             return
 
         is_first_page: bool = True
+
+        def get_website_url(node: Node) -> AbsoluteHttpURL:
+            if node["type"] == "folder":
+                return _PRIMARY_URL / "d" / (node.get("code") or node["id"])
+            return scrape_item.url.with_fragment(node["id"])
+
         async for album in self._album_pager(content_id, scrape_item.url.query.get("password")):
             if is_first_page:
                 if _is_single_not_nested_file(scrape_item, album):
@@ -143,7 +149,11 @@ class GoFileCrawler(Crawler):
                 scrape_item.url = scrape_item.url.with_query(None)
                 is_first_page = False
 
-            self._handle_children(scrape_item, album["children"])
+            for node in album["children"].values():
+                web_url = get_website_url(node)
+                new_scrape_item = scrape_item.create_child(web_url)
+                self._handle_node(new_scrape_item, node)
+                scrape_item.add_children()
 
     async def _album_pager(self, content_id: str, password: str | None = None) -> AsyncGenerator[Album]:
         api_url = (_API_ENTRYPOINT / "contents" / content_id).with_query(wt=self.website_token, pageSize=_PER_PAGE)
@@ -177,33 +187,17 @@ class GoFileCrawler(Crawler):
         self._json_response_check(json_resp)
         return json_resp
 
-    def _handle_children(self, scrape_item: ScrapeItem, children: Mapping[str, Node]) -> None:
-        """Sends files to downloader and adds subfolder to scrape queue."""
+    @error_handling_wrapper
+    def _handle_node(self, scrape_item: ScrapeItem, node: Node) -> None:
+        _check_node_is_accessible(node)
 
-        def get_website_url(node: Node) -> AbsoluteHttpURL:
-            if node["type"] == "folder":
-                return _PRIMARY_URL / "d" / (node.get("code") or node["id"])
-            return scrape_item.url.with_fragment(node["id"])
+        if node["type"] == "folder":
+            self.create_task(self.run(scrape_item))
+            return
 
-        for node in children.values():
-            web_url = get_website_url(node)
-            new_scrape_item = scrape_item.create_child(web_url)
-
-            try:
-                _check_node_is_accessible(node)
-            except (ScrapeError, PasswordProtectedError) as e:
-                self.raise_exc(new_scrape_item, e)
-                continue
-
-            if node["type"] == "folder":
-                self.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
-                continue
-
-            assert node["type"] == "file"
-            file = cast("File", node)
-            self.create_task(self._file(new_scrape_item, file))
-            scrape_item.add_children()
+        assert node["type"] == "file"
+        file = cast("File", node)
+        self.create_task(self._file(scrape_item, file))
 
     @error_handling_wrapper
     async def _file(self, scrape_item: ScrapeItem, file: File) -> None:
