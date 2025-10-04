@@ -5,7 +5,7 @@ import itertools
 import re
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, TypeGuard, cast
+from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, TypeGuard
 
 from cyberdrop_dl.crawlers.crawler import Crawler, RateLimit, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, AbsoluteHttpURL, ScrapeItem
@@ -129,11 +129,6 @@ class GoFileCrawler(Crawler):
 
         is_first_page: bool = True
 
-        def get_website_url(node: Node) -> AbsoluteHttpURL:
-            if node["type"] == "folder":
-                return _PRIMARY_URL / "d" / (node.get("code") or node["id"])
-            return scrape_item.url.with_fragment(node["id"])
-
         async for album in self._album_pager(content_id, scrape_item.url.query.get("password")):
             if is_first_page:
                 if _is_single_not_nested_file(scrape_item, album):
@@ -149,11 +144,30 @@ class GoFileCrawler(Crawler):
                 scrape_item.url = scrape_item.url.with_query(None)
                 is_first_page = False
 
-            for node in album["children"].values():
-                web_url = get_website_url(node)
-                new_scrape_item = scrape_item.create_child(web_url)
-                self._handle_node(new_scrape_item, node)
-                scrape_item.add_children()
+            self._handle_children(scrape_item, album["children"])
+
+    def _handle_children(self, scrape_item: ScrapeItem, children: dict[str, Node]) -> None:
+        def get_website_url(node: Node) -> AbsoluteHttpURL:
+            if node["type"] == "folder":
+                return _PRIMARY_URL / "d" / (node.get("code") or node["id"])
+            return scrape_item.url.with_fragment(node["id"])
+
+        for node in children.values():
+            web_url = get_website_url(node)
+            new_scrape_item = scrape_item.create_child(web_url)
+            self._handle_node(new_scrape_item, node)
+            scrape_item.add_children()
+
+    @error_handling_wrapper
+    def _handle_node(self, scrape_item: ScrapeItem, node: Node) -> None:
+        if not _check_node_is_accessible(node):
+            return
+
+        if node["type"] == "folder":
+            self.create_task(self.run(scrape_item))
+            return
+
+        self.create_task(self._file(scrape_item, node))
 
     async def _album_pager(self, content_id: str, password: str | None = None) -> AsyncGenerator[Album]:
         api_url = (_API_ENTRYPOINT / "contents" / content_id).with_query(wt=self.website_token, pageSize=_PER_PAGE)
@@ -186,18 +200,6 @@ class GoFileCrawler(Crawler):
 
         self._json_response_check(json_resp)
         return json_resp
-
-    @error_handling_wrapper
-    def _handle_node(self, scrape_item: ScrapeItem, node: Node) -> None:
-        _check_node_is_accessible(node)
-
-        if node["type"] == "folder":
-            self.create_task(self.run(scrape_item))
-            return
-
-        assert node["type"] == "file"
-        file = cast("File", node)
-        self.create_task(self._file(scrape_item, file))
 
     @error_handling_wrapper
     async def _file(self, scrape_item: ScrapeItem, file: File) -> None:
@@ -258,7 +260,10 @@ class GoFileCrawler(Crawler):
         self._website_token_date = datetime.now(UTC)
 
 
-def _check_node_is_accessible(node: Node) -> TypeGuard[UnlockedNode]:
+def _check_node_is_accessible(node: Node) -> TypeGuard[File | Album]:
+    if (type_ := node["type"]) not in ("file", "folder"):
+        raise ScrapeError(f"Unknown node type: {type_}")
+
     if node.get("v" + "iru" + "ses"):
         raise ScrapeError("Dangerous File")
 
