@@ -267,8 +267,9 @@ class Crawler(ABC):
         try:
             yield
         except Exception:
-            self.log(f"[{self.FOLDER_DOMAIN}] {msg}. Crawler has been disabled")
+            self.log(f"[{self.FOLDER_DOMAIN}] {msg}. Crawler has been disabled", 40)
             self.disabled = True
+            raise
 
     async def async_startup(self) -> None: ...  # noqa: B027
 

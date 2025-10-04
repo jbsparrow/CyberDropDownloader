@@ -113,8 +113,7 @@ class GoFileCrawler(Crawler):
             raise ScrapeError(404)
 
     async def async_startup(self) -> None:
-        with self.disable_on_error("Unable to get website token"):
-            await self.get_account_token()
+        await self.get_account_token(_API_ENTRYPOINT)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -222,13 +221,15 @@ class GoFileCrawler(Crawler):
         scrape_item.possible_datetime = file["createTime"]
         await self.handle_file(link, scrape_item, name, ext, custom_filename=filename)
 
-    async def get_account_token(self) -> None:
+    @error_handling_wrapper
+    async def get_account_token(self, _) -> None:
         """Gets the token for the API."""
-        self.api_key = self.api_key or await self._get_new_api_key()
-        self.headers["Authorization"] = f"Bearer {self.api_key}"
-        cookies = {"accountToken": self.api_key}
-        self.update_cookies(cookies)
-        await self.get_website_token()
+        with self.disable_on_error("Unable to get website token"):
+            self.api_key = self.api_key or await self._get_new_api_key()
+            self.headers["Authorization"] = f"Bearer {self.api_key}"
+            cookies = {"accountToken": self.api_key}
+            self.update_cookies(cookies)
+            await self.get_website_token()
 
     async def _get_new_api_key(self) -> str:
         api_url = _API_ENTRYPOINT / "accounts"
