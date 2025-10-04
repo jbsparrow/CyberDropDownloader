@@ -81,7 +81,7 @@ class AlbumMetadata(TypedDict):
     pageSize: int
 
 
-class ApiAlbumResponse(Response):
+class AlbumResponse(Response):
     data: Album
     metadata: AlbumMetadata
 
@@ -113,7 +113,8 @@ class GoFileCrawler(Crawler):
             raise ScrapeError(404)
 
     async def async_startup(self) -> None:
-        await self.get_account_token(_API_ENTRYPOINT)
+        with self.disable_on_error("Unable to get website token"):
+            await self.get_account_token()
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -184,9 +185,9 @@ class GoFileCrawler(Crawler):
             if not resp["metadata"]["hasNextPage"]:
                 break
 
-    async def _request_album(self, api_url: AbsoluteHttpURL) -> ApiAlbumResponse:
+    async def _request_album(self, api_url: AbsoluteHttpURL) -> AlbumResponse:
         try:
-            json_resp: ApiAlbumResponse = await self.request_json(api_url, headers=self.headers)
+            json_resp: AlbumResponse = await self.request_json(api_url, headers=self.headers)
 
         except DownloadError as e:
             if e.status != http.HTTPStatus.UNAUTHORIZED:
@@ -221,8 +222,7 @@ class GoFileCrawler(Crawler):
         scrape_item.possible_datetime = file["createTime"]
         await self.handle_file(link, scrape_item, name, ext, custom_filename=filename)
 
-    @error_handling_wrapper
-    async def get_account_token(self, _) -> None:
+    async def get_account_token(self) -> None:
         """Gets the token for the API."""
         self.api_key = self.api_key or await self._get_new_api_key()
         self.headers["Authorization"] = f"Bearer {self.api_key}"

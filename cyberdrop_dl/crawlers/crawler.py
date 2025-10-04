@@ -261,6 +261,15 @@ class Crawler(ABC):
             await self.async_startup()
             self.ready = True
 
+    @final
+    @contextlib.contextmanager
+    def disable_on_error(self, msg: str) -> Generator[None]:
+        try:
+            yield
+        except Exception:
+            self.log(f"[{self.FOLDER_DOMAIN}] {msg}. Crawler has been disabled")
+            self.disabled = True
+
     async def async_startup(self) -> None: ...  # noqa: B027
 
     @final
