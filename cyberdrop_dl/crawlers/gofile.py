@@ -183,22 +183,23 @@ class GoFileCrawler(Crawler):
 
         for child in children.values():
             web_url = get_website_url(child)
+            new_scrape_item = scrape_item.create_child(web_url)
             if not child["canAccess"]:
-                self.raise_exc(scrape_item.create_child(web_url), ScrapeError(403))
+                self.raise_exc(new_scrape_item, ScrapeError(403, "Album is private"))
                 continue
 
             if child.get("v" + "iru" + "ses"):  # Auto flagged by GoFile. We can download them but better not to
-                self.raise_exc(scrape_item.create_child(web_url), ScrapeError("Dangerous File"))
+                self.raise_exc(new_scrape_item, ScrapeError("Dangerous File"))
                 continue
 
             if child["type"] == "folder":
-                self.create_task(self.run(scrape_item.create_child(web_url)))
+                self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
                 continue
 
             assert child["type"] == "file"
             file = cast("UnlockedFile", child)
-            self.create_task(self._file(scrape_item, file))
+            self.create_task(self._file(new_scrape_item, file))
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -218,9 +219,8 @@ class GoFileCrawler(Crawler):
 
         name = file["name"]
         filename, ext = self.get_filename_and_ext(name, assume_ext=".mp4")
-        new_scrape_item = scrape_item.copy()
-        new_scrape_item.possible_datetime = file["createTime"]
-        await self.handle_file(link, new_scrape_item, name, ext, custom_filename=filename)
+        scrape_item.possible_datetime = file["createTime"]
+        await self.handle_file(link, scrape_item, name, ext, custom_filename=filename)
 
     @error_handling_wrapper
     async def get_account_token(self, _) -> None:
