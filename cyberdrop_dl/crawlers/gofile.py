@@ -5,7 +5,7 @@ import itertools
 import re
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, TypeGuard, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, RateLimit, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, AbsoluteHttpURL, ScrapeItem
@@ -26,6 +26,10 @@ _PER_PAGE: int = 1000
 _TOKEN_MIN_AGE: timedelta = timedelta(seconds=120)
 
 
+class Response(TypedDict):
+    status: str
+
+
 class Node(TypedDict):
     canAccess: ReadOnly[bool]
     id: str
@@ -39,10 +43,9 @@ class Node(TypedDict):
 
 class UnlockedNode(Node):
     canAccess: Literal[True]
-    code: str
 
 
-class UnlockedFile(UnlockedNode):
+class File(UnlockedNode):
     type: Literal["file"]
     link: str
     directLink: NotRequired[str]  # Only present in overloded files (imported)
@@ -56,30 +59,29 @@ class UnlockedFile(UnlockedNode):
     thumbnail: str
 
 
-class UnlockedFolder(UnlockedNode):
+class Album(UnlockedNode):
     type: Literal["folder"]
-
-    # Not used
-    isRoot: NotRequired[bool]
-
-
-class Album(UnlockedFolder):
+    code: str
     childrenCount: int
     children: dict[str, Node]
     password: NotRequired[str]
     passwordStatus: NotRequired[str]
 
+    # Not used
+    isRoot: NotRequired[bool]
+
 
 class AlbumMetadata(TypedDict):
+    hasNextPage: bool
+
+    # Not used
     totalCount: int
     totalPages: int
     page: int
     pageSize: int
-    hasNextPage: bool
 
 
-class ApiAlbumResponse(TypedDict):
-    status: str
+class ApiAlbumResponse(Response):
     data: Album
     metadata: AlbumMetadata
 
@@ -104,7 +106,7 @@ class GoFileCrawler(Crawler):
         self._website_token_date = datetime.now(UTC) - timedelta(days=7)
 
     @classmethod
-    def _json_response_check(cls, json_resp: Any) -> None:
+    def _json_response_check(cls, json_resp: Response) -> None:
         if not isinstance(json_resp, dict):
             return
         if "notFound" in json_resp["status"]:
@@ -152,7 +154,9 @@ class GoFileCrawler(Crawler):
 
         for page in itertools.count(1):
             resp = await self._request_album(api_url.update_query(page=page))
-            yield resp["data"]
+            album = resp["data"]
+            _check_node_is_accessible(album)
+            yield album
             if not resp["metadata"]["hasNextPage"]:
                 break
 
@@ -171,7 +175,6 @@ class GoFileCrawler(Crawler):
             json_resp = await self.request_json(api_url, headers=self.headers)
 
         self._json_response_check(json_resp)
-        _check_album_response(json_resp)
         return json_resp
 
     def _handle_children(self, scrape_item: ScrapeItem, children: Mapping[str, Node]) -> None:
@@ -182,29 +185,28 @@ class GoFileCrawler(Crawler):
                 return _PRIMARY_URL / "d" / (node.get("code") or node["id"])
             return scrape_item.url.with_fragment(node["id"])
 
-        for child in children.values():
-            web_url = get_website_url(child)
+        for node in children.values():
+            web_url = get_website_url(node)
             new_scrape_item = scrape_item.create_child(web_url)
-            if not child["canAccess"]:
-                self.raise_exc(new_scrape_item, ScrapeError(403, "Album is private"))
+
+            try:
+                _check_node_is_accessible(node)
+            except (ScrapeError, PasswordProtectedError) as e:
+                self.raise_exc(new_scrape_item, e)
                 continue
 
-            if child.get("v" + "iru" + "ses"):  # Auto flagged by GoFile. We can download them but better not to
-                self.raise_exc(new_scrape_item, ScrapeError("Dangerous File"))
-                continue
-
-            if child["type"] == "folder":
+            if node["type"] == "folder":
                 self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
                 continue
 
-            assert child["type"] == "file"
-            file = cast("UnlockedFile", child)
+            assert node["type"] == "file"
+            file = cast("File", node)
             self.create_task(self._file(new_scrape_item, file))
             scrape_item.add_children()
 
     @error_handling_wrapper
-    async def _file(self, scrape_item: ScrapeItem, file: UnlockedFile) -> None:
+    async def _file(self, scrape_item: ScrapeItem, file: File) -> None:
         link_str: str = file["link"]
         if (not link_str or link_str == "overloaded") and "directLink" in file:
             link_str = file["directLink"]
@@ -262,15 +264,15 @@ class GoFileCrawler(Crawler):
         self._website_token_date = datetime.now(UTC)
 
 
-def _check_album_response(json_resp: ApiAlbumResponse) -> None:
-    """Parses and raises errors if we can not proccess the API response."""
+def _check_node_is_accessible(node: Node) -> TypeGuard[UnlockedNode]:
+    if node.get("v" + "iru" + "ses"):
+        raise ScrapeError("Dangerous File")
 
-    album: Album = json_resp["data"]
-    if album["canAccess"]:
-        return
+    if node["canAccess"]:
+        return True
 
-    if album.get("password"):
-        status = album.get("passwordStatus", "")
+    if node.get("password"):
+        status = node.get("passwordStatus", "")
         error_msg = {
             "passwordRequired": "Album is password protected",
             "passwordWrong": "Wrong album password",
