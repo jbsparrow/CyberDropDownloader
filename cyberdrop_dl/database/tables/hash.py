@@ -87,6 +87,15 @@ class HashTable:
             log(f"Error retrieving folder and filename: {e}", 40, exc_info=e)
             return []
 
+    async def check_hash_exists(self, hash_type: str, hash_value: str) -> bool:
+        if self._database.ignore_history:
+            return False
+
+        query = "SELECT 1 FROM hash WHERE hash.hash_type = ? AND hash.hash = ? LIMIT 1"
+        cursor = await self.db_conn.execute(query, (hash_type, hash_value))
+        result = await cursor.fetchone()
+        return result is not None
+
     async def insert_or_update_hash_db(
         self, hash_value: str, hash_type: str, file: Path | str, original_filename: str | None, referer: URL | None
     ) -> bool:

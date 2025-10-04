@@ -3,9 +3,8 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
-import aiofiles.os
 from send2trash import send2trash
 
 from cyberdrop_dl.data_structures.hash import Hashing
@@ -16,6 +15,7 @@ from cyberdrop_dl.utils.utilities import get_size_or_none
 if TYPE_CHECKING:
     from yarl import URL
 
+    from cyberdrop_dl.config.config_model import DupeCleanup
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
 
@@ -42,6 +42,19 @@ class HashClient:
         self.sha256 = "sha256"
         self.hashed_media_items: set[MediaItem] = set()
         self.hashes_dict: defaultdict[str, defaultdict[int, set[Path]]] = defaultdict(lambda: defaultdict(set))
+        self._sem = asyncio.BoundedSemaphore(20)
+
+    @property
+    def _to_trash(self) -> bool:
+        return self.dupe_cleanup_options.send_deleted_to_trash
+
+    @property
+    def _deleted_file_suffix(self) -> Literal["Sent to trash", "Permanently deleted"]:
+        return "Sent to trash" if self._to_trash else "Permanently deleted"
+
+    @property
+    def dupe_cleanup_options(self) -> DupeCleanup:
+        return self.manager.config.dupe_cleanup_options
 
     async def startup(self) -> None:
         pass
@@ -49,6 +62,7 @@ class HashClient:
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
         with self.manager.live_manager.get_hash_live(stop=True):
+            self.manager.progress_manager.hash_progress.base_dir = path
             if not await asyncio.to_thread(path.is_dir):
                 raise NotADirectoryError
             for file in path.rglob("*"):
@@ -81,7 +95,7 @@ class HashClient:
         self, file: Path | str, original_filename: str | None = None, referer: URL | None = None
     ) -> str | None:
         file = Path(file)
-        if file.suffix == ".part":
+        if file.suffix in (".cdl_hls", ".cdl_hsl", ".part"):
             return
         if not await asyncio.to_thread(get_size_or_none, file):
             return
@@ -112,7 +126,7 @@ class HashClient:
                     original_filename,
                     referer,
                 )
-                self.manager.progress_manager.hash_progress.add_new_completed_hash()
+                self.manager.progress_manager.hash_progress.add_new_completed_hash(hash_type)
             else:
                 self.manager.progress_manager.hash_progress.add_prev_hash()
                 await self.manager.db_manager.hash_table.insert_or_update_hash_db(
@@ -152,29 +166,40 @@ class HashClient:
 
     async def final_dupe_cleanup(self, final_dict: dict[str, dict]) -> None:
         """cleanup files based on dedupe setting"""
-        to_trash = self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash
-        suffix = "Sent to trash " if to_trash else "Permanently deleted"
 
-        async def delete_and_log(file: Path):
-            try:
-                deleted = await delete_file(file, to_trash)
-                if deleted:
-                    log(f"Removed new download '{file}' with hash {hash} [{suffix}]", 10)
-                    self.manager.progress_manager.hash_progress.add_removed_file()
-
-            except OSError as e:
-                log(f"Unable to remove '{file}' with hash {hash}: {e}", 40)
-
-        tasks = []
         get_matches = self.manager.db_manager.hash_table.get_files_with_hash_matches
-        for hash, size_dict in final_dict.items():
-            for size in size_dict:
-                db_matches = await get_matches(hash, size, self.xxhash)
-                for match in db_matches[1:]:
-                    file = Path(*match[:2])
-                    tasks.append(delete_and_log(file))
+        async with asyncio.TaskGroup() as tg:
 
-        await asyncio.gather(*tasks)
+            async def delete_dupes(hash_value: str, size: int) -> None:
+                db_matches = await get_matches(hash_value, size, "xxh128")
+                for row in db_matches[1:]:
+                    file = Path(row["folder"], row["download_filename"])
+                    await self._sem.acquire()
+                    tg.create_task(self._delete_and_log(file, hash_value))
+
+            for hash_value, size_dict in final_dict.items():
+                for size in size_dict:
+                    tg.create_task(delete_dupes(hash_value, size))
+
+    async def _delete_and_log(self, file: Path, xxh128_value: str) -> None:
+        hash_string = f"xxh128:{xxh128_value}"
+        try:
+            deleted = await _delete_file(file, self._to_trash)
+        except OSError as e:
+            log(f"Unable to remove '{file}' ({hash_string}): {e}", 40)
+        else:
+            if not deleted:
+                return
+
+            msg = (
+                f"Removed new download '{file}' [{self._deleted_file_suffix}]. "
+                f"File hash matches with a previous download ({hash_string})"
+            )
+            log(msg, 10)
+            self.manager.progress_manager.hash_progress.add_removed_file()
+
+        finally:
+            self._sem.release()
 
     async def get_file_hashes_dict(self) -> dict:
         """Get a dictionary of files based on matching file hashes and file size."""
@@ -196,7 +221,7 @@ class HashClient:
         return self.hashes_dict
 
 
-async def delete_file(path: Path, to_trash: bool = True) -> bool:
+async def _delete_file(path: Path, to_trash: bool = True) -> bool:
     """Deletes a file and return `True` on success, `False` is the file was not found.
 
     Any other exception is propagated"""
@@ -204,10 +229,11 @@ async def delete_file(path: Path, to_trash: bool = True) -> bool:
     if to_trash:
         coro = asyncio.to_thread(send2trash, path)
     else:
-        coro = aiofiles.os.unlink(Path(path))
+        coro = asyncio.to_thread(path.unlink)
 
     try:
         await coro
+        return True
     except FileNotFoundError:
         pass
     except OSError as e:
@@ -215,7 +241,5 @@ async def delete_file(path: Path, to_trash: bool = True) -> bool:
         msg = str(e)
         if "File not found" not in msg:
             raise
-    else:
-        return True
 
     return False
