@@ -102,7 +102,6 @@ target-version = "py311"
 [tool.ruff.lint]
 select = [
     "A",  # flake8-builtins
-    "ANN001",  # flake8-annotations
     "ANN201",  # flake8-annotations
     "ANN205",  # flake8-annotations
     "ANN206",  # flake8-annotations
@@ -143,11 +142,20 @@ extend-safe-fixes = [
     "TC"  # move import from and to TYPE_CHECKING blocks
 ]
 ignore = [
+    "ANN201",  # missing-return-type-undocumented-public-function
     "COM812",  # missing-trailing-comma
     "E501",  # suppress line-too-long, let formatter decide
+    "EM101",  # raw-string-in-exception
+    "INP001",  # implicit-namespace-package
     "N806",  # uppercase variables in functions
+    "PLC0415",  # import-outside-top-level
+    "PLR0913",  # too-many-arguments
+    "PLR2004",  # magic-value-comparison
+    "PLW2901",  # redefined-loop-name
+    "RET503",  # implicit-return
     "S101",  # assert
     "SLF001",  # Private member accessed
+    "TRY003",  # raise-vanilla-args
     "TRY301"  # raise-within-try
 ]
 unfixable = [
@@ -171,6 +179,9 @@ quote-annotations = true
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.pylint]
+max-returns = 20
 
 [tool.tomlsort]
 all = true
