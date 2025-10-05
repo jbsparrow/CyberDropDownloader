@@ -16,8 +16,8 @@ Cyberdrop-DL maintains an internal database of all downloaded files, indexed by 
 
 If enabled, calculates the `md5` hash for every downloaded file and store it in the internal database. This allows the program to match files with sites that provide hash information before downloading them, skipping the download altogether if a match is found
 
-{% hint style="warning" %}
-`md5` was the default hashing algorithm of Cyberdrop-DL V5. If you have a V5 database that you'd like to import into a newer version, it's recommended to enable `md5` hashing to ensure new downloads match previously hashed files.
+{% hint style="info" %}
+`md5` was the default hashing algorithm of Cyberdrop-DL V5. Since v6, the default algorithm is `xxhash128`.
 {% endhint %}
 
 ## `add_sha256_hash`
@@ -39,6 +39,10 @@ Enables deduping files functionality. Needs `hashing` to be enabled
 The `auto_dedupe` feature scans the database for files with matching hashes and sizes, automatically deleting any duplicates and retaining only the oldest copy.
 
 Deletion will only occur if two or more matching files are found during the database search.
+
+{% hint style="warning" %}
+Auto dedupe will delete files if you have _ever_ downloaded them before, even if you no longer have the original download on disk
+{% endhint %}
 
 ## `hashing`
 
