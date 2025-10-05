@@ -8,9 +8,9 @@ dependencies = [
     "aiohttp-client-cache ==0.13.0",
     "aiolimiter >=1.2.1",
     "aiosqlite==0.17.0",
-    "apprise >=1.9.4",
+    "apprise (>=1.9.5,<2.0.0)",
     "asyncpraw >=7.8.1",
-    "beautifulsoup4 ==4.13.4",  # TODO: Fix "replaced with REPLACEMENT CHARACTER" warnings for 4.13.5 [bug=2112242]
+    "beautifulsoup4 >=4.14.2",
     "browser-cookie3 >=0.20.1",
     "certifi >=2025.8.3",
     "curl-cffi >=0.13; implementation_name == 'cpython' ",
@@ -24,12 +24,12 @@ dependencies = [
     "psutil >=7.1.0",
     "pycares >=4.10.0",
     "pycryptodome >=3.23.0",
-    "pydantic >=2.11.7",
+    "pydantic (>=2.11.10,<3.0.0)",
     "pyyaml >=6.0.2",
     "rich >=14.0.0",
     "send2trash >=1.8.3",
     "truststore >=0.10.4",
-    "xxhash >=3.5.0",
+    "xxhash >=3.6.0",
     "yarl >=1.20.1"
 ]
 description = "Bulk downloader for multiple file hosts"
