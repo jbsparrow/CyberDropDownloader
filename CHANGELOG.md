@@ -36,11 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Parsing of account's favorites URLs (Kemono, Coomer, Nekohouse)
-- Downloading of videos without an explicit resolution (ThisVid, CamwhoresTv)
+- Download of videos without an explicit resolution (ThisVid, CamwhoresTv)
 - Directory hashing from the main UI
 - Incorrect hash being logged when files are deleted
 - Do not try to fetch more pages if only 1 exists (KVS sites)
 - `TooManyRedirects` error trying to download images/albums with encoded characters in their URL (ImagePond, ImgLike)
+- Download of albums without a thumbnail (Chevereto)
+- Entire albums being skipped if the full res version of their thumbnail was downloaded before (Chevereto)
 
 ## [8.1.0] - 2025-09-27
 
