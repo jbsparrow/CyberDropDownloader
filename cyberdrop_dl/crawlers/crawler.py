@@ -61,6 +61,7 @@ if TYPE_CHECKING:
 OneOrTuple: TypeAlias = T | tuple[T, ...]
 SupportedPaths: TypeAlias = dict[str, OneOrTuple[str]]
 SupportedDomains: TypeAlias = OneOrTuple[str]
+RateLimit = tuple[float, float]
 
 
 HASH_PREFIXES = "md5:", "sha1:", "sha256:", "xxh128:"
@@ -101,7 +102,7 @@ class Crawler(ABC):
     DOMAIN: ClassVar[str]
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
 
-    _RATE_LIMIT: ClassVar[tuple[float, float]] = 25, 1
+    _RATE_LIMIT: ClassVar[RateLimit] = 25, 1
     _DOWNLOAD_SLOTS: ClassVar[int | None] = None
 
     @copy_signature(ScraperClient._request)
@@ -259,6 +260,16 @@ class Crawler(ABC):
             self._register_response_checks()
             await self.async_startup()
             self.ready = True
+
+    @final
+    @contextlib.contextmanager
+    def disable_on_error(self, msg: str) -> Generator[None]:
+        try:
+            yield
+        except Exception:
+            self.log(f"[{self.FOLDER_DOMAIN}] {msg}. Crawler has been disabled", 40)
+            self.disabled = True
+            raise
 
     async def async_startup(self) -> None: ...  # noqa: B027
 
