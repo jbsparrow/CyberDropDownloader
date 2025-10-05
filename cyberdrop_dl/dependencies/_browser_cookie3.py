@@ -20,23 +20,12 @@ from typing import Dict, List, Union
 
 
 if sys.platform.startswith("linux") or "bsd" in sys.platform.lower():
-    try:
-        import jeepney
-        from jeepney.io.blocking import open_dbus_connection
-
-        USE_DBUS_LINUX = False
-    except ImportError:
-        import dbus
-
-        USE_DBUS_LINUX = True
+    import jeepney
+    from jeepney.io.blocking import open_dbus_connection
 
 
 shadowcopy = None
-if sys.platform == "win32":
-    try:
-        import shadowcopy
-    except ImportError:
-        pass
+USE_DBUS_LINUX = False
 
 
 # external dependencies
