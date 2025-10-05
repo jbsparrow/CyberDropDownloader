@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Candfans support (coomer)
 - Support user's albums URLs (Chevereto)
+- Support folders with 1000+ items (GoFile)
 
 ### Changed
 
