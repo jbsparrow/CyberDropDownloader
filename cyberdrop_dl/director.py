@@ -13,11 +13,11 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
-import browser_cookie3
 from pydantic import ValidationError
 from rich import print as rich_print
 
 from cyberdrop_dl import constants, env
+from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.exceptions import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper

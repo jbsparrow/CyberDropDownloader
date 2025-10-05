@@ -6,13 +6,13 @@ import sys
 from functools import wraps
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
-import browser_cookie3
 from requests import request
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.text import Text
 
 from cyberdrop_dl.clients.hash_client import hash_directory_scanner
+from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
