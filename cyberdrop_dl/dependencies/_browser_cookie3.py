@@ -36,17 +36,16 @@ try:
 except ImportError:
     LZ4_INSTALLED = False
 
-from Cryptodome.Cipher import AES
-from Cryptodome.Protocol.KDF import PBKDF2
-from Cryptodome.Util.Padding import unpad
+from Crypto.Cipher import AES
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Util.Padding import unpad
 
 __doc__ = "Load browser cookies into a cookiejar"
 
 CHROMIUM_DEFAULT_PASSWORD = b"peanuts"
 
 
-class BrowserCookieError(Exception):
-    pass
+class BrowserCookieError(Exception): ...
 
 
 def _windows_group_policy_path():
