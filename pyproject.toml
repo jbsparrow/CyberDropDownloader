@@ -110,21 +110,20 @@ select = [
     "ASYNC",  # flake8-async
     "B",  # flake8-bugbear
     "C4",  # flake8-comprehensions
-    "COM8",  # flake8-commas linter
+    "COM",  # flake8-commas
     "E",  # pycodestyle
     "EM",  # flake8-errmsg
     "EXE",  # flake8-executable
     "F",  # pyflakes
     "FA",  # flake8-future-annotations
-    "FA102",  # future annotations
     "FURB",  # refurb
     "I",  # isort
+    "ICN",  # flake8-import-conventions
     "INP",  # flake8-no-pep420
     "ISC",  # flake8-implicit-str-concat
     "N",  # pep8-naming
     "PIE",  # flake8-pie
     "PL",  # Pylint
-    "PLR1716",  # boolean chained comparison
     "PTH",  # flake8-use-pathlib
     "PYI",  # flake8-pyi
     "Q",  # flake8-quotes
