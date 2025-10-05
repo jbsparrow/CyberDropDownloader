@@ -101,23 +101,42 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = [
-    "ASYNC",  # async calls that do not await anything or use blocking methods
+    "A",  # flake8-builtins
+    "ANN001",  # flake8-annotations
+    "ANN201",  # flake8-annotations
+    "ANN205",  # flake8-annotations
+    "ANN206",  # flake8-annotations
+    "ARG",  # flake8-unused-arguments
+    "ASYNC",  # flake8-async
     "B",  # flake8-bugbear
     "C4",  # flake8-comprehensions
     "COM8",  # flake8-commas linter
-    "E",  # pycodestyle errors
+    "E",  # pycodestyle
+    "EM",  # flake8-errmsg
+    "EXE",  # flake8-executable
     "F",  # pyflakes
+    "FA",  # flake8-future-annotations
     "FA102",  # future annotations
-    "FURB188",  # slice-to-remove-prefix-or-suffix
+    "FURB",  # refurb
     "I",  # isort
-    "N",  # PEP8 naming conventions
+    "INP",  # flake8-no-pep420
+    "ISC",  # flake8-implicit-str-concat
+    "N",  # pep8-naming
+    "PIE",  # flake8-pie
+    "PL",  # Pylint
     "PLR1716",  # boolean chained comparison
-    "PTH",  # use pathlib instead of os
+    "PTH",  # flake8-use-pathlib
+    "PYI",  # flake8-pyi
     "Q",  # flake8-quotes
-    "RUF",  # RUF specific fixes
+    "RET",  # flake8-return
+    "RSE",  # flake8-raise
+    "RUF",  # ruff-specific
+    "SIM",  # flake8-simplify
+    "T10",  # flake8-debugger
     "T20",  # flake8-print
     "TC",  # flake8-type-checking
     "TID",  # flake8-tidy-imports
+    "TRY",  # tryceratops
     "UP",  # pyupgrade
     "W"  # pycodestyle warnings
 ]
@@ -127,7 +146,10 @@ extend-safe-fixes = [
 ignore = [
     "COM812",  # missing-trailing-comma
     "E501",  # suppress line-too-long, let formatter decide
-    "N806"  # uppercase variables in functions
+    "N806",  # uppercase variables in functions
+    "S101",  # assert
+    "SLF001",  # Private member accessed
+    "TRY301"  # raise-within-try
 ]
 unfixable = [
     "ERA"  # do not autoremove commented out code
