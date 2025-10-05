@@ -133,6 +133,14 @@ unfixable = [
     "ERA"  # do not autoremove commented out code
 ]
 
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.flake8-type-checking]
+# Add quotes around type annotations, if doing so would allow
+# an import to be moved into a type-checking block.
+quote-annotations = true
+
 [tool.ruff.lint.per-file-ignores]
 "**/{tests,docs}/*" = [
     "E402",  # imports not at the top of the file.
