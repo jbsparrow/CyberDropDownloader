@@ -1,8 +1,5 @@
 import sys
-import warnings
 from collections.abc import Sequence
-
-from cyberdrop_dl.director import Director
 
 
 def main(args: Sequence[str] | None = None) -> None:
@@ -20,7 +17,6 @@ def run(args: Sequence[str] | None = None) -> str | int | None:
 
 
 def _create_director(args: Sequence[str] | None = None) -> Director:
-    warnings.filterwarnings("ignore", category=SyntaxWarning, message="invalid escape sequence.*")
     from cyberdrop_dl.director import Director
 
     return Director(args)
