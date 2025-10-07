@@ -36,7 +36,7 @@ jobs:
           # https://github.com/mhammond/pywin32/issues/1289
           - os: windows-latest
             python-version: "pypy-3.11"
-      fail-fast: true
+      fail-fast: false
 
     defaults:
       run:

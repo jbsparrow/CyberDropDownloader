@@ -56,6 +56,10 @@ jobs:
         run: |
           poetry install
 
+      - run: eval $(poetry env activate)
+
+      - run: 'python -c "import pydantic.version; print(pydantic.version.version_info())"'
+
       - name: Run pytest
         timeout-minutes: 10
         run: |
