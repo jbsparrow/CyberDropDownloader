@@ -52,11 +52,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --all-groups
 
       - run: 'uv run python -c "import pydantic.version; print(pydantic.version.version_info())"'
 
       - name: Run pytest
         timeout-minutes: 10
         run: |
-          uvx pytest -v --cov --ignore=tests/test_apprise.py
+          uv run pytest -v --cov --ignore=tests/test_apprise.py
