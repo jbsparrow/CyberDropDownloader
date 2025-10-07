@@ -59,4 +59,4 @@ jobs:
       - name: Run pytest
         timeout-minutes: 10
         run: |
-          uv run pytest -v --cov --ignore=tests/test_apprise.py
+          uvx pytest -v --cov --ignore=tests/test_apprise.py
