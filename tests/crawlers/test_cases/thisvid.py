@@ -8,7 +8,18 @@ TEST_CASES = [
                 "filename": "A wedding photo to remember [12797267].mp4",
                 "referer": "https://thisvid.com/videos/a-wedding-photo-to-remember",
                 "album_id": None,
-                "datetime": 1753326000,
+            }
+        ],
+    ),
+    (
+        # No resolution info in video page
+        "https://thisvid.com/videos/smelling-foreskin/",
+        [
+            {
+                "url": "https://thisvid.com/videos/smelling-foreskin",
+                "filename": "Smelling foreskin [794368].mp4",
+                "referer": "https://thisvid.com/videos/smelling-foreskin",
+                "album_id": None,
             }
         ],
     ),

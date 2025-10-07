@@ -20,7 +20,7 @@ This is a bulk downloader for the supported sites. It supports resumable downloa
 
 ## How do I update this?
 
-If you are using one of the provided start files, it should do so automatically. Keep in mind that they will only update to the newest version within the same major version. ex: if you are using v8 start scripts, they will update to the lastest v8 release. When v9 is out, you will need to download the new start scripts
+If you are using one of the provided start files, it should do so automatically. Keep in mind that they will only update to the newest version within the same major version. ex: if you are using v8 start scripts, they will update to the latest v8 release. When v9 is out, you will need to download the new start scripts
 
 ## Why do i get `DDoS-Guard` error downloading from `x` site?
 
@@ -55,11 +55,11 @@ This issue is likely related to the limitations of the traditional command promp
 
 This issue is caused by an improper installation of Python, specifically Python not being added to the system PATH.
 
-It is recommended to revisit the [Getting Started](getting-started/README.md) guide and follow the steps provided to reinstall or use one of the lastest start scripts
+It is recommended to revisit the [Getting Started](getting-started/README.md) guide and follow the steps provided to reinstall or use one of the latest start scripts
 
 ## How do I scrape forum threads?
 
-You need to import cookies to use as autentication for those sites. Follow the instructions here: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839)
+You need to import cookies to use as authentication for those sites. Follow the instructions here: [How to extract cookies (DDoSGuard or login errors) #839](https://github.com/jbsparrow/CyberDropDownloader/discussions/839)
 
 ## Why are the filenames the way they are?
 

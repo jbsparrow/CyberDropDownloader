@@ -27,7 +27,9 @@ This setting is temporary and will always reset to `false` after each run
 {% hint style="warning" %}
 Use this option only when absolutely necessary, as it will significantly increase the number of requests being made.
 
-For example, scraping an album normally takes one single request. However, with `--deep-scrape`, CDL will make `n` requests per album, where `n` is the total number of items in the album
+For example, scraping an album normally takes one single request.
+
+With `--deep-scrape`, CDL will make `n` requests per album, where `n` is the total number of items in the album
 {% endhint %}
 
 ## `delete_partial_files`
@@ -100,8 +102,8 @@ Defines the logging level for messages, according to [Python logging levels](htt
 | `NOTSET`   | 0     | Disables all log messages                                                                                      |
 | `DEBUG`    | 10    | Offers detailed information, typically useful to troubleshoot problems                                         |
 | `INFO`     | 20    | Provides general information about scrape and download progress                                                |
-| `WARNING`  | 30    | Highlights a potential issue or something that might need attention (e.g. `Login wasn't provided for <FORUM>`) |
-| `ERROR`    | 40    | Denotes a serious problem preventing Cyberdrop-DL to execute some function                                     |
+| `WARNING`  | 30    | Potential issues or something that might need attention (e.g. `Login wasn't provided for <FORUM>`) |
+| `ERROR`    | 40    | Serious problem preventing Cyberdrop-DL to execute some function                                     |
 | `CRITICAL` | 50    | Fatal error that causes Cyberdrop-DL to exit immediately                                                       |
 
 {% hint style="info" %}
@@ -109,17 +111,16 @@ Using anything other that `DEBUG` makes troubleshooting issues harder. Practical
 {% endhint %}
 
 {% hint style="info" %}
-There is more verbose level of logs: `DEVELOPER`
+There is one more verbose level of logs: `DEVELOPER`
 
-It includes pager logs, posts logs, individual requests logs (their URLs and their response code), requests cache hits and misses, file system locks logs and local variable values from within a traceback. It's not exposed as a config option becuase it is too verbose.
+It includes pager logs, posts logs, individual requests logs (their URLs and their response code), requests cache hits and misses, file system locks logs and local variable values from within a traceback. It's not exposed as a config option because it is too verbose.
 
 You can set the environment variable `CDL_DEBUG_LOG_FOLDER` to any valid folder and CDL will create an additional log file with the level set to `DEVELOPER` inside it.
 {% endhint %}
 
-{% hint style="critical" %}
-As the name suggest, the `DEVELOPER` log level is only meant for developers or, more generally, people that want and have the "know how"
-to troubleshoot CDL issues on their own. You should never share those logs with _anyone_ as it could potentially have raw information in
-the locals informaion of the tracebacks like cookies, auth credentials, IPs, etc.
+{% hint style="warning" %}
+As the name suggests, the `DEVELOPER` log level is only meant for developers or, more generally, people that want and have the know how
+to troubleshoot CDL issues on their own. You should never share those logs with _anyone_ as it could potentially have raw information in the tracebacks like cookies, auth credentials, IPs, etc.
 {% endhint %}
 
 ## `send_unsupported_to_jdownloader`

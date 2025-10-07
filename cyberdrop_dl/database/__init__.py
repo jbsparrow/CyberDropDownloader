@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import aiosqlite
 
 from .tables import HashTable, HistoryTable, SchemaVersionTable, TempRefererTable
-from .tables.history import get_db_path
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -58,4 +57,4 @@ class Database:
             await self._db_conn.commit()
 
 
-__all__ = ["Database", "get_db_path"]
+__all__ = ["Database"]

@@ -238,12 +238,13 @@ class ScrapeMapper:
 
             scrape_item.add_to_parent_title("Loose Files")
             scrape_item.part_of_album = True
-            download_folder = get_download_path(self.manager, scrape_item, "no_crawler")
+            domain = "no_crawler"
+            download_folder = get_download_path(self.manager, scrape_item, domain)
             try:
                 filename, _ = get_filename_and_ext(scrape_item.url.name)
             except NoExtensionError:
                 filename, _ = get_filename_and_ext(scrape_item.url.name, forum=True)
-            media_item = MediaItem.from_item(scrape_item, scrape_item.url, download_folder, filename)
+            media_item = MediaItem.from_item(scrape_item, scrape_item.url, domain, download_folder, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
             return
 

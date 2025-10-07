@@ -16,7 +16,6 @@ from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 
 from cyberdrop_dl.constants import CustomHTTPStatus
 from cyberdrop_dl.data_structures.url_objects import HlsSegment, MediaItem
-from cyberdrop_dl.database import get_db_path
 from cyberdrop_dl.exceptions import (
     DownloadError,
     DurationError,
@@ -167,7 +166,7 @@ class Downloader:
         async with self._semaphore:
             await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
-            self.processed_items.add(get_db_path(media_item.url, self.domain))
+            self.processed_items.add(media_item.db_path)
             self.update_queued_files(increase_total=False)
             async with self.manager.client_manager.global_download_slots:
                 return await self.start_download(media_item)
@@ -265,7 +264,7 @@ class Downloader:
         def create_segments() -> Generator[HlsSegment]:
             for index, segment in enumerate(m3u8.segments, 1):
                 assert segment.uri
-                name = f"{index:0{padding}d}.cdl_hsl"
+                name = f"{index:0{padding}d}.cdl_hls"
                 yield HlsSegment(segment.title, name, parse_url(segment.absolute_uri))
 
         async def download_segment(segment: HlsSegment):
@@ -274,6 +273,7 @@ class Downloader:
             seg_media_item = MediaItem.from_item(
                 media_item,
                 segment.url,
+                domain=media_item.domain,
                 download_folder=download_folder,
                 filename=segment.name,
                 ext=media_item.ext,

@@ -20,7 +20,6 @@ from cyberdrop_dl import constants
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem, copy_signature
-from cyberdrop_dl.database import get_db_path
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
@@ -62,6 +61,7 @@ if TYPE_CHECKING:
 OneOrTuple: TypeAlias = T | tuple[T, ...]
 SupportedPaths: TypeAlias = dict[str, OneOrTuple[str]]
 SupportedDomains: TypeAlias = OneOrTuple[str]
+RateLimit = tuple[float, float]
 
 
 HASH_PREFIXES = "md5:", "sha1:", "sha256:", "xxh128:"
@@ -102,7 +102,7 @@ class Crawler(ABC):
     DOMAIN: ClassVar[str]
     PRIMARY_URL: ClassVar[AbsoluteHttpURL]
 
-    _RATE_LIMIT: ClassVar[tuple[float, float]] = 25, 1
+    _RATE_LIMIT: ClassVar[RateLimit] = 25, 1
     _DOWNLOAD_SLOTS: ClassVar[int | None] = None
 
     @copy_signature(ScraperClient._request)
@@ -261,6 +261,16 @@ class Crawler(ABC):
             await self.async_startup()
             self.ready = True
 
+    @final
+    @contextlib.contextmanager
+    def disable_on_error(self, msg: str) -> Generator[None]:
+        try:
+            yield
+        except Exception:
+            self.log(f"[{self.FOLDER_DOMAIN}] {msg}. Crawler has been disabled", 40)
+            self.disabled = True
+            raise
+
     async def async_startup(self) -> None: ...  # noqa: B027
 
     @final
@@ -376,7 +386,7 @@ class Crawler(ABC):
             assert is_absolute_http_url(debrid_link)
         download_folder = get_download_path(self.manager, scrape_item, self.FOLDER_DOMAIN)
         media_item = MediaItem.from_item(
-            scrape_item, url, download_folder, filename, original_filename, debrid_link, ext=ext
+            scrape_item, url, self.DOMAIN, download_folder, filename, original_filename, debrid_link, ext=ext
         )
 
         self.create_task(self.handle_media_item(media_item, m3u8))
@@ -468,6 +478,19 @@ class Crawler(ABC):
             return True
         return False
 
+    @final
+    async def check_complete_by_hash(
+        self: Crawler, scrape_item: ScrapeItem | URL, hash_type: str, hash_value: str
+    ) -> bool:
+        """Returns `True` if at least 1 file with this hash is recorded on the database"""
+        downloaded = await self.manager.db_manager.hash_table.check_hash_exists(hash_type, hash_value)
+        if downloaded:
+            url = scrape_item if isinstance(scrape_item, URL) else scrape_item.url
+            log(f"Skipping {url} as its hash ({hash_type}:{hash_value}) has already been downloaded", 10)
+            self.manager.progress_manager.download_progress.add_previously_completed()
+            return True
+        return False
+
     async def get_album_results(self, album_id: str) -> dict[str, int]:
         """Checks whether an album has completed given its domain and album id."""
         return await self.manager.db_manager.history_table.check_album(self.DOMAIN, album_id)
@@ -497,7 +520,7 @@ class Crawler(ABC):
         """Checks whether an album has completed given its domain and album id."""
         if not album_results:
             return False
-        url_path = get_db_path(url, self.DOMAIN)
+        url_path = MediaItem.create_db_path(url, self.DOMAIN)
         if url_path in album_results and album_results[url_path] != 0:
             log(f"Skipping {url} as it has already been downloaded")
             self.manager.progress_manager.download_progress.add_previously_completed()

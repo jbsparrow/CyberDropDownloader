@@ -12,15 +12,16 @@ description: These are some general settings that will be used regardless of whi
 You can supply a list of crawlers to disable for the current run. This will make CDL completely ignore the crawler, as if the site was not supported. However, links from the site will still be processed by Real-Debrid (if enabled), Jdownloader (If enabled) and the Generic crawler (If enabled), in that order.
 
 The list should be valid crawlers names. The name of the crawler is the name of the primary site they support. ex: `4Chan`, `Bunkrr`, `Dropbox`
+
 Crawlers names correspond to the column `site` in the [supported sites page](https://script-ware.gitbook.io/cyberdrop-dl/reference/supported-websites#supported-sites).
 
 ## `enable_generic_crawler`
 
 | Type   | Default |
 | ------ | ------- |
-| `bool` | `false`  |
+| `bool` | `false` |
 
-CDl has a generic crawler that will try to download from unsupported sites. Setting this to `true` will enable it.
+CDL has a generic crawler that will try to download from unsupported sites. Setting this to `true` will enable it.
 
 {% hint style="info" %}
 CDL will always try to download from unsupported URLs if the last part of the URL has a known file extension. ex: `.jpg`
@@ -49,7 +50,7 @@ See: [How to extract cookies (DDoSGuard or login errors) #839](https://github.co
 | ------------- | ------- |
 | `PositiveInt` | `95`    |
 
-This is the maximum number of characters filename should have. CDL will truncate filenames longer that this.
+This is the maximum number of characters a filename should have. CDL will truncate filenames longer that this.
 
 ## `max_folder_name_length`
 
@@ -93,7 +94,7 @@ Context that will used to verify SSL connections. Valid values are:
 
 - `truststore+certifi`: Will use certificates already included with the OS, with a fallback to `certifi` for missing certificates
 
-- `None`: Will completly disable SSL verification, allowing secure connections.
+- `None`: Will completely disable SSL verification, allowing insecure connections.
 
 Setting this to `None` will allow the program to connect to websites without SSL encryption (insecurely).
 
