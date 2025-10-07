@@ -1,5 +1,12 @@
+from __future__ import annotations
+
 import sys
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from cyberdrop_dl.director import Director
 
 
 def main(args: Sequence[str] | None = None) -> None:

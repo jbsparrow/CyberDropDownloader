@@ -9,7 +9,6 @@ from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, ParamSpec
 
-import browser_cookie3
 from rich._log_render import LogRender
 from rich.console import Console, Group
 from rich.containers import Lines, Renderables
@@ -19,6 +18,7 @@ from rich.padding import Padding
 from rich.text import Text, TextType
 
 from cyberdrop_dl import constants, env
+from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.exceptions import InvalidYamlError
 
 logger = logging.getLogger("cyberdrop_dl")
