@@ -9,7 +9,7 @@
 [![Docs](https://img.shields.io/badge/docs-wiki-blue?link=https%3A%2F%2Fscript-ware.gitbook.io%2Fcyberdrop-dl)](https://script-ware.gitbook.io/cyberdrop-dl)
 [![GitHub License](https://img.shields.io/github/license/jbsparrow/CyberDropDownloader)](https://github.com/jbsparrow/CyberDropDownloader/blob/master/LICENSE)
 [![linting - Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/jbsparrow/CyberDropDownloader/actions/workflows/ruff.yaml)
-[![tests](https://github.com/jbsparrow/CyberDropDownloader/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/jbsparrow/CyberDropDownloader/actions/workflows/ci.yml)
+[![tests](https://github.com/jbsparrow/CyberDropDownloader/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/jbsparrow/CyberDropDownloader/actions/workflows/ci.yaml)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/cyberdrop-dl-patched)](https://pypistats.org/packages/cyberdrop-dl-patched)
 
 [![Discord](https://discordapp.com/api/guilds/1070206871564197908/widget.png?style=banner2)](https://discord.com/invite/P5nsbKErwy)

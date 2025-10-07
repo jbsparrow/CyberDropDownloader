@@ -12,5 +12,6 @@ TEST_CASES = [
                 "debrid_link": "ANY",
             }
         ],
-    )
+    ),
+    ("https://www.camwhores.tv/tags/hate/", [], 8),
 ]

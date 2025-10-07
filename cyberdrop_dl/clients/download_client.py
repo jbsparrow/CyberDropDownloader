@@ -29,11 +29,12 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-_CONTENT_TYPES_OVERRIDES = {"text/vnd.trolltech.linguist": "video/MP2T"}
-_SLOW_DOWNLOAD_PERIOD = 10  # seconds
-_CHROME_ANDROID_USER_AGENT = (
+_CONTENT_TYPES_OVERRIDES: dict[str, str] = {"text/vnd.trolltech.linguist": "video/MP2T"}
+_SLOW_DOWNLOAD_PERIOD: int = 10  # seconds
+_CHROME_ANDROID_USER_AGENT: str = (
     "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.7204.180 Mobile Safari/537.36"
 )
+_FREE_SPACE_CHECK_PERIOD: int = 5  # Check every 5 chunks
 
 
 class DownloadClient:
@@ -216,9 +217,9 @@ class DownloadClient:
 
         async def check_free_space() -> None:
             nonlocal current_chunk
+            if current_chunk % _FREE_SPACE_CHECK_PERIOD == 0:
+                await self.manager.storage_manager.check_free_space(media_item)
             current_chunk += 1
-            if current_chunk % 5 == 0:
-                return await self.manager.storage_manager.check_free_space(media_item)
 
         return check_free_space
 

@@ -70,17 +70,23 @@ def is_terminal_in_portrait() -> bool:
 class CommandLineOnlyArgs(BaseModel):
     links: list[HttpURL] = Field([], description="link(s) to content to download (passing multiple links is supported)")
     appdata_folder: Path | None = Field(None, description="AppData folder path")
-    completed_after: date | None = Field(None, description="only download completed downloads at or after this date")
-    completed_before: date | None = Field(None, description="only download completed downloads at or before this date")
+    completed_after: date | None = Field(
+        None, description="only retry downloads that were completed on or after this date"
+    )
+    completed_before: date | None = Field(
+        None, description="only retry downloads that were completed on or before this date"
+    )
     config: str | None = Field(None, description="name of config to load")
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
-    disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
-    download: bool = Field(False, description="skips UI, start download immediatly")
-    download_tiktok_audios: bool = Field(False, description="download TikTok audios")
+    disable_cache: bool = Field(False, description="temporarily disable the requests cache")
+    download: bool = Field(False, description="skips UI, start download immediately")
+    download_tiktok_audios: bool = Field(
+        False, description="download TikTok audios from posts and save them as separate files"
+    )
     download_tiktok_src_quality_videos: bool = Field(False, description="download TikTok videos in source quality")
     max_items_retry: int = Field(0, description="max number of links to retry")
-    portrait: bool = Field(is_terminal_in_portrait(), description="show UI in a portrait layout")
-    print_stats: bool = Field(True, description="Show stats report at the end of a run")
+    portrait: bool = Field(is_terminal_in_portrait(), description="force CDL to run with a vertical layout")
+    print_stats: bool = Field(True, description="show stats report at the end of a run")
     retry_all: bool = Field(False, description="retry all downloads")
     retry_failed: bool = Field(False, description="retry failed downloads")
     retry_maintenance: bool = Field(

@@ -17,7 +17,7 @@ All the options in these list are optional. The default value for all of them is
 
 - `session`
 
-Value of the `session` cookie from the website. This will allow CDL to download from your favoruites by using `https://coomer.su/favorites` as an input URL.
+Value of the `session` cookie from the website. This will allow CDL to download from your favoruites by using `https://coomer.st/favorites` as an input URL.
 
 </details>
 
@@ -27,7 +27,7 @@ Value of the `session` cookie from the website. This will allow CDL to download 
 
 - `session`
 
-Value of the `session` cookie from the website. This will allow CDL to download from your favoruites by using `https://kemono.su/favorites` as an input URL.
+Value of the `session` cookie from the website. This will allow CDL to download from your favoruites by using `https://kemono.cr/favorites` as an input URL.
 
 </details>
 
@@ -144,10 +144,14 @@ After generating the app, you need to provide Cyberdrop-DL these values:
 
 <summary>Mega.nz</summary>
 
-To enable native downloads from mega.nz (without real-debrid or j-downloader), provide these values to Cyberdrop-DL:
+If you have premium or want to download files/folders only shared with you, provide CDL these values:
 
 - `email`
 
 - `password`
+
+{% hint style="warning" %}
+Accounts with 2 factor authentication (2FA) are NOT supported
+{% endhint %}
 
 </details>

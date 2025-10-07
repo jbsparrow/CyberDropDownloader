@@ -13,11 +13,11 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
-import browser_cookie3
 from pydantic import ValidationError
 from rich import print as rich_print
 
 from cyberdrop_dl import constants, env
+from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.exceptions import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
@@ -231,10 +231,9 @@ def _setup_main_logger(manager: Manager, config_name: str) -> None:
 
     if not manager.parsed_args.cli_only_args.fullscreen_ui:
         constants.CONSOLE_LEVEL = settings_data.runtime_options.console_log_level
+        constants.console_handler = LogHandler(level=constants.CONSOLE_LEVEL)
 
-    constants.console_handler = console_handler = LogHandler(level=constants.CONSOLE_LEVEL)
-    logger.addHandler(console_handler)
-
+    logger.addHandler(constants.console_handler)
     file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width)
     queued_logger = QueuedLogger(manager, file_handler)
     logger.addHandler(queued_logger.handler)
