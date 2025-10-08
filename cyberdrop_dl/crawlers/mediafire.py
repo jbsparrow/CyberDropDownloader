@@ -1,14 +1,17 @@
+"""https://www.mediafire.com/developers/core_api"""
+
 from __future__ import annotations
 
 import base64
+import dataclasses
 import itertools
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, is_blob_or_svg
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, is_blob_or_svg, type_adapter
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -18,15 +21,20 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-class Selector:
-    DOWNLOAD_BUTTON = "a#downloadButton"
-    DATE = "ul.details li:-soup-contains(Uploaded) span"
-
-
-class Folder(NamedTuple):
+@dataclasses.dataclass(slots=True, frozen=True)
+class Folder:
     name: str
     has_files: bool
     has_folders: bool
+
+
+@dataclasses.dataclass(slots=True, frozen=True)
+class File:
+    quickkey: str
+    filename: str
+    created: str
+    size: int
+    hash: str
 
 
 _PRIMARY_URL = AbsoluteHttpURL("https://www.mediafire.com/")
@@ -46,7 +54,7 @@ class MediaFireCrawler(Crawler):
     SKIP_PRE_CHECK: ClassVar[bool] = True
 
     def __post_init__(self) -> None:
-        self.api = MediaFireApi(self)
+        self.api = MediaFireAPI(self)
 
     @classmethod
     def _json_response_check(cls, json_resp: Any) -> None:
@@ -61,16 +69,16 @@ class MediaFireCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if (
             scrape_item.url.path == "/"
-            and (file_id := scrape_item.url.query_string)
-            and not ("&" in file_id or "=" in file_id)
+            and (quick_key := scrape_item.url.query_string)
+            and not ("&" in quick_key or "=" in quick_key)
         ):
-            return await self.file(scrape_item, file_id)
+            return await self.file(scrape_item, quick_key)
 
         match scrape_item.url.parts[1:]:
             case ["folder", folder_key, *_]:
                 return await self.folder(scrape_item, folder_key)
-            case ["file", file_id, *_]:
-                return await self.file(scrape_item, file_id)
+            case ["file", quick_key, *_]:
+                return await self.file(scrape_item, quick_key)
             case _:
                 raise ValueError
 
@@ -83,11 +91,10 @@ class MediaFireCrawler(Crawler):
         if folder.has_files:
             async for files in self.api.folder_content(folder_key, "files"):
                 for file in files:
-                    file_id: str = file["quickkey"]
-                    link = self.PRIMARY_URL / "file" / file_id
-                    new_scrape_item = scrape_item.create_child(link)
-                    new_scrape_item.possible_datetime = self.parse_iso_date(file["created"])
-                    self.create_task(self._file_task(new_scrape_item, file_id))
+                    file_ = self.api.parse_file(file)
+                    url = _PRIMARY_URL / "file" / file_.quickkey
+                    new_scrape_item = scrape_item.create_child(url)
+                    self.create_task(self._file_task(new_scrape_item, file_))
                     scrape_item.add_children()
 
         if folder.has_folders:
@@ -99,28 +106,36 @@ class MediaFireCrawler(Crawler):
                     scrape_item.add_children()
 
     @error_handling_wrapper
-    async def file(self, scrape_item: ScrapeItem, file_id: str) -> None:
-        canonical_url = self.PRIMARY_URL / "file" / file_id
+    async def file(self, scrape_item: ScrapeItem, quick_key: str) -> None:
+        canonical_url = self.PRIMARY_URL / "file" / quick_key
         if await self.check_complete_from_referer(canonical_url):
+            return
+        file = await self.api.file_info(quick_key)
+        scrape_item.url = canonical_url
+        await self._file(scrape_item, file, check_referer=False)
+
+    @error_handling_wrapper
+    async def _file(self, scrape_item: ScrapeItem, file: File, *, check_referer: bool = True) -> None:
+        if check_referer and await self.check_complete_from_referer(scrape_item):
+            return
+
+        hash_algo = "sha256" if len(file.hash) == 64 else "md5"
+        if await self.check_complete_by_hash(scrape_item, hash_algo, file.hash):
             return
 
         soup = await self.request_soup(scrape_item.url, impersonate=True)
-        if not scrape_item.possible_datetime:
-            scrape_item.possible_datetime = self.parse_iso_date(
-                css.select_one_get_text(soup, Selector.DATE),
-            )
-
-        scrape_item.url = canonical_url
+        scrape_item.possible_datetime = self.parse_iso_date(file.created)
         link = self.parse_url(_extract_download_link(soup))
-        filename, ext = self.get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
+        filename, ext = self.get_filename_and_ext(file.filename)
+        await self.handle_file(link, scrape_item, file.filename, ext, custom_filename=filename)
 
-    _file_task = auto_task_id(file)
+    _file_task = auto_task_id(_file)
 
 
-class MediaFireApi:
+class MediaFireAPI:
     def __init__(self, crawler: Crawler) -> None:
         self._crawler = crawler
+        self.parse_file = type_adapter(File)
 
     async def _api_request(self, path: str, **params: int | str) -> dict[str, Any]:
         assert params
@@ -150,26 +165,39 @@ class MediaFireApi:
         resp: dict[str, Any] = (
             await self._api_request(
                 "folder/get_info.php",
-                recursive="yes",
-                details="yes",
                 folder_key=folder_key,
             )
         )["folder_info"]
 
-        return Folder(name=resp["name"], has_files=bool(resp["file_count"]), has_folders=bool(resp["folder_count"]))
+        return Folder(
+            name=resp["name"],
+            has_files=bool(int(resp["file_count"])),
+            has_folders=bool(
+                int(resp["folder_count"]),
+            ),
+        )
+
+    async def file_info(self, quick_key: str) -> File:
+        resp: dict[str, Any] = (
+            await self._api_request(
+                "file/get_info.php",
+                quick_key=quick_key,
+            )
+        )["file_info"]
+        return self.parse_file(resp)
 
 
 def _extract_download_link(soup: BeautifulSoup) -> str:
-    link_tag = soup.select_one(Selector.DOWNLOAD_BUTTON)
-    if not link_tag:
+    download_button = soup.select_one("a#downloadButton")
+    if not download_button:
         if "Something appears to be missing" in soup.get_text():
             raise ScrapeError(410)
         raise ScrapeError(422)
 
-    if encoded_url := css.get_attr_or_none(link_tag, "data-scrambled-url"):
+    if encoded_url := css.get_attr_or_none(download_button, "data-scrambled-url"):
         return base64.b64decode(encoded_url).decode()
 
-    url = css.get_attr(link_tag, "href")
+    url = css.get_attr(download_button, "href")
     if is_blob_or_svg(url):
         raise ScrapeError(422)
     return url
