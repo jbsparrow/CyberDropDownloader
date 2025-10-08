@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import itertools
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
@@ -19,18 +19,18 @@ if TYPE_CHECKING:
 
 
 class Selector:
-    DOWNLOAD_BUTTON = "a[id=downloadButton]"
-    DATE = "ul[class=details] li:-soup-contains(Uploaded) span"
+    DOWNLOAD_BUTTON = "a#downloadButton"
+    DATE = "ul.details li:-soup-contains(Uploaded) span"
+
+
+class Folder(NamedTuple):
+    name: str
+    has_files: bool
+    has_folders: bool
 
 
 _PRIMARY_URL = AbsoluteHttpURL("https://www.mediafire.com/")
 _API_URL = _PRIMARY_URL / "api/1.4"
-
-
-class FolderInfo(NamedTuple):
-    name: str
-    has_files: bool
-    has_folders: bool
 
 
 class MediaFireCrawler(Crawler):
@@ -43,7 +43,10 @@ class MediaFireCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "mediafire"
-    SKIP_PRE_CHECK = True
+    SKIP_PRE_CHECK: ClassVar[bool] = True
+
+    def __post_init__(self) -> None:
+        self.api = MediaFireApi(self)
 
     @classmethod
     def _json_response_check(cls, json_resp: Any) -> None:
@@ -71,59 +74,14 @@ class MediaFireCrawler(Crawler):
             case _:
                 raise ValueError
 
-    async def _api_request(self, path: str, **params: Any) -> dict[str, Any]:
-        params["response_format"] = "json"
-        api_url = (_API_URL / path).with_query(params)
-        return (await self.request_json(api_url))["response"]
-
-    async def _iter_folder_content(self, folder_key: str, content_type: str) -> AsyncGenerator[list[dict[str, Any]]]:
-        async def get_content(chunk: int) -> dict[str, Any]:
-            return (
-                await self._api_request(
-                    "folder/get_content.php",
-                    folder_key=folder_key,
-                    content_type=content_type,
-                    chunk=chunk,
-                    chunk_size=1000,
-                    filter="public",
-                )
-            )["folder_content"]
-
-        next_task = self.create_task(get_content(1))
-
-        for chunk in itertools.count(2):
-            if next_task is None:
-                break
-            content = await next_task
-            if content["more_chunks"] == "yes":
-                next_task = self.create_task(get_content(chunk))
-            else:
-                next_task = None
-            yield content[content_type]
-
-    async def _get_folder_info(self, folder_key: str) -> FolderInfo:
-        resp: dict[str, Any] = (
-            await self._api_request(
-                "folder/get_info.php",
-                recursive="yes",
-                details="yes",
-                folder_key=folder_key,
-            )
-        )["folder_info"]
-        return FolderInfo(
-            name=resp["name"],
-            has_files=bool(resp["file_count"]),
-            has_folders=bool(resp["folder_count"]),
-        )
-
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, folder_key: str) -> None:
-        folder = await self._get_folder_info(folder_key)
+        folder = await self.api.folder_info(folder_key)
         title = self.create_title(folder.name, folder_key)
         scrape_item.setup_as_album(title, album_id=folder_key)
 
         if folder.has_files:
-            async for files in self._iter_folder_content(folder_key, "files"):
+            async for files in self.api.folder_content(folder_key, "files"):
                 for file in files:
                     file_id: str = file["quickkey"]
                     link = self.PRIMARY_URL / "file" / file_id
@@ -133,7 +91,7 @@ class MediaFireCrawler(Crawler):
                     scrape_item.add_children()
 
         if folder.has_folders:
-            async for folders in self._iter_folder_content(folder_key, "folders"):
+            async for folders in self.api.folder_content(folder_key, "folders"):
                 for folder in folders:
                     link = self.PRIMARY_URL / "folder" / folder["folderkey"]
                     new_scrape_item = scrape_item.create_child(link)
@@ -158,6 +116,47 @@ class MediaFireCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext)
 
     _file_task = auto_task_id(file)
+
+
+class MediaFireApi:
+    def __init__(self, crawler: Crawler) -> None:
+        self._crawler = crawler
+
+    async def _api_request(self, path: str, **params: int | str) -> dict[str, Any]:
+        assert params
+        params["response_format"] = "json"
+        api_url = (_API_URL / path).with_query(params)
+        return (await self._crawler.request_json(api_url))["response"]
+
+    async def folder_content(
+        self, folder_key: str, content_type: Literal["files", "folders"]
+    ) -> AsyncGenerator[list[dict[str, Any]]]:
+        for chunk in itertools.count(1):
+            content = (
+                await self._api_request(
+                    "folder/get_content.php",
+                    folder_key=folder_key,
+                    content_type=content_type,
+                    chunk=chunk,
+                    chunk_size=1000,
+                    filter="public",
+                )
+            )["folder_content"]
+            yield content[content_type]
+            if content["more_chunks"] != "yes":
+                break
+
+    async def folder_info(self, folder_key: str) -> Folder:
+        resp: dict[str, Any] = (
+            await self._api_request(
+                "folder/get_info.php",
+                recursive="yes",
+                details="yes",
+                folder_key=folder_key,
+            )
+        )["folder_info"]
+
+        return Folder(name=resp["name"], has_files=bool(resp["file_count"]), has_folders=bool(resp["folder_count"]))
 
 
 def _extract_download_link(soup: BeautifulSoup) -> str:
