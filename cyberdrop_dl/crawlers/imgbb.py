@@ -34,7 +34,7 @@ class ImgBBCrawler(CheveretoCrawler):
             return await self.direct_file(scrape_item)
 
         match scrape_item.url.parts[1:]:
-            case ["albums", album_id]:
+            case ["album", album_id]:
                 return await self.album(scrape_item, album_id)
             case [_]:
                 return await self.media(scrape_item)
@@ -44,12 +44,3 @@ class ImgBBCrawler(CheveretoCrawler):
         match url.parts[1:]:
             case [_]:
                 return url
-
-    async def direct_file(
-        self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None, assume_ext: str | None = None
-    ) -> None:
-        link = self._thumbnail_to_src(url or scrape_item.url)
-        if scrape_item.url.host == IMAGES_CDN and len(scrape_item.url.parts) > 1:
-            image_id = scrape_item.url.parts[1]
-            scrape_item.url = self.PRIMARY_URL / image_id
-        await super().direct_file(scrape_item, link, assume_ext)
