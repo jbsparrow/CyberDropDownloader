@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
@@ -13,13 +12,6 @@ if TYPE_CHECKING:
 
 _PRIMARY_URL = AbsoluteHttpURL("https://wetransfer.com/")
 _API_ENTRYPOINT = _PRIMARY_URL / "api/v4/transfers"
-
-
-@dataclasses.dataclass(slots=True, frozen=True, order=True)
-class File:
-    id: str
-    security_hash: str
-    recipient_id: str | None = None
 
 
 class WeTransferCrawler(Crawler):
@@ -65,14 +57,13 @@ class WeTransferCrawler(Crawler):
     async def file(
         self, scrape_item: ScrapeItem, file_id: str, security_hash: str, recipient_id: str | None = None
     ) -> None:
-        file = File(file_id, security_hash, recipient_id)
-        download_url = _API_ENTRYPOINT / file.id / "download"
+        download_url = _API_ENTRYPOINT / file_id / "download"
         if await self.check_complete_from_referer(download_url):
             return
 
-        payload = {"intent": "entire_transfer", "security_hash": file.security_hash}
-        if file.recipient_id:
-            payload["recipient_id"] = file.recipient_id
+        payload = {"intent": "entire_transfer", "security_hash": security_hash}
+        if recipient_id:
+            payload["recipient_id"] = recipient_id
 
         resp: dict[str, str] = await self.request_json(download_url, method="POST", json=payload)
         link = self.parse_url(resp["direct_link"])
