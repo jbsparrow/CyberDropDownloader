@@ -26,7 +26,7 @@ class HashProgress:
         self._remove_progress = _generic_progress()
         self._match_progress = _generic_progress()
         self._file_info = Progress("{task.description}")
-        self._base_dir: Path
+        self._base_dir: Path = manager.path_manager.download_folder
 
         # hashing
         self._computed_hashes = self._prev_hashed = 0
