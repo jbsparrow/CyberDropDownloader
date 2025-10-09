@@ -27,6 +27,10 @@ class Folder:
     has_files: bool
     has_folders: bool
 
+    @property
+    def is_empty(self) -> bool:
+        return not (self.has_files or self.has_folders)
+
 
 @dataclasses.dataclass(slots=True, frozen=True)
 class File:
@@ -87,6 +91,12 @@ class MediaFireCrawler(Crawler):
         folder = await self.api.folder_info(folder_key)
         title = self.create_title(folder.name, folder_key)
         scrape_item.setup_as_album(title, album_id=folder_key)
+
+        if folder.is_empty:
+            # Make a request anyway to try to get a descriptive error from MediaFire
+            async for _ in self.api.folder_content(folder_key, "folders"):
+                break
+            raise ScrapeError(204, "Folder is empty")
 
         if folder.has_files:
             async for files in self.api.folder_content(folder_key, "files"):

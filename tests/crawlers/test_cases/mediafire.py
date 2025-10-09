@@ -31,7 +31,7 @@ TEST_CASES = [
                 "url": "re:https://download",
                 "filename": "kobo_clara.kepub.epub",
                 "referer": "https://www.mediafire.com/file/5iv342h2u39e0t6",
-                "download_folder": r"re:kcc samples \(MediaFire\)",
+                "download_folder": r"re:kcc samples \(Mediafire\)",
                 "album_id": "ixh40veo6hrc5",
                 "datetime": 1746643902,
             },
@@ -49,7 +49,7 @@ TEST_CASES = [
                 "album_id": "0m0g59yk1pmh5",
             },
             {
-                "url": "re:https://download",
+                "url": "re:https://downloa",
                 "filename": "ReadMe.txt",
                 "referer": "https://www.mediafire.com/file/4tu93kyda5jp6qh",
                 "download_folder": r"re:XJTU-SY_Bearing_Datasets \(Mediafire\)",
@@ -69,5 +69,9 @@ TEST_CASES = [
         "https://www.mediafire.com/folder/9a6a91cgbd7m8",
         [],
         36,
+    ),
+    (
+        "https://www.mediafire.com/folder/ujs6wzw0cecof/",  # DMCA folder
+        [],
     ),
 ]
