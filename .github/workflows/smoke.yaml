@@ -1,0 +1,24 @@
+name: Smoke
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  non_managed:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: pypy-3.11
+
+      - run: pipx install uv
+      - run: 'uv tool run --no-managed-python --with pydantic python -c "import pydantic.version; print(pydantic.version.version_info())"'
+
+  managed:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pipx install uv
+      - run: 'uv tool run --managed-python --with pydantic python -c "import pydantic.version; print(pydantic.version.version_info())"'

@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.11, 3.13, pypy-3.11]
+        python-version: [3.11, 3.13, 3.14, pypy-3.11]
         exclude:
           # sendtotrash and browser_cookies3 need pywin32, which has some cpython specific implementation details
           # https://github.com/mhammond/pywin32/issues/1289
@@ -42,17 +42,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Install Poetry
+        run: pipx install poetry
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+          # allow-prereleases: true
+          # cache: poetry
 
       - name: Install dependencies
         run: |
           poetry install
+
+      - run: eval $(poetry env activate)
+
+      - run: 'python -c "import pydantic.version; print(pydantic.version.version_info())"'
 
       - name: Run pytest
         timeout-minutes: 10

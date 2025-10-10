@@ -9,7 +9,7 @@ from cyberdrop_dl.main import run
     "command, text",
     [
         ("--help", "Bulk asynchronous downloader for multiple file hosts"),
-        ("--show-supported-sites", "for a details about supported paths"),
+        ("--show-supported-sites", "about supported paths"),
     ],
 )
 def test_command_by_console_output(tmp_cwd: Path, capsys: pytest.CaptureFixture[str], command: str, text: str) -> None:
