@@ -103,23 +103,40 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = [
-    "ASYNC",  # async calls that do not await anything or use blocking methods
+    "A",  # flake8-builtins
+    "ANN201",  # flake8-annotations
+    "ANN205",  # flake8-annotations
+    "ANN206",  # flake8-annotations
+    "ARG",  # flake8-unused-arguments
+    "ASYNC",  # flake8-async
     "B",  # flake8-bugbear
     "C4",  # flake8-comprehensions
-    "COM8",  # flake8-commas linter
-    "E",  # pycodestyle errors
+    "COM",  # flake8-commas
+    "E",  # pycodestyle
+    "EM",  # flake8-errmsg
+    "EXE",  # flake8-executable
     "F",  # pyflakes
-    "FA102",  # future annotations
-    "FURB188",  # slice-to-remove-prefix-or-suffix
+    "FA",  # flake8-future-annotations
+    "FURB",  # refurb
     "I",  # isort
-    "N",  # PEP8 naming conventions
-    "PLR1716",  # boolean chained comparison
-    "PTH",  # use pathlib instead of os
+    "ICN",  # flake8-import-conventions
+    "INP",  # flake8-no-pep420
+    "ISC",  # flake8-implicit-str-concat
+    "N",  # pep8-naming
+    "PIE",  # flake8-pie
+    "PL",  # Pylint
+    "PTH",  # flake8-use-pathlib
+    "PYI",  # flake8-pyi
     "Q",  # flake8-quotes
-    "RUF",  # RUF specific fixes
+    "RET",  # flake8-return
+    "RSE",  # flake8-raise
+    "RUF",  # ruff-specific
+    "SIM",  # flake8-simplify
+    "T10",  # flake8-debugger
     "T20",  # flake8-print
     "TC",  # flake8-type-checking
     "TID",  # flake8-tidy-imports
+    "TRY",  # tryceratops
     "UP",  # pyupgrade
     "W"  # pycodestyle warnings
 ]
@@ -127,13 +144,33 @@ extend-safe-fixes = [
     "TC"  # move import from and to TYPE_CHECKING blocks
 ]
 ignore = [
+    "ANN201",  # missing-return-type-undocumented-public-function
     "COM812",  # missing-trailing-comma
     "E501",  # suppress line-too-long, let formatter decide
-    "N806"  # uppercase variables in functions
+    "EM101",  # raw-string-in-exception
+    "INP001",  # implicit-namespace-package
+    "N806",  # uppercase variables in functions
+    "PLC0415",  # import-outside-top-level
+    "PLR0913",  # too-many-arguments
+    "PLR2004",  # magic-value-comparison
+    "PLW2901",  # redefined-loop-name
+    "RET503",  # implicit-return
+    "S101",  # assert
+    "SLF001",  # Private member accessed
+    "TRY003",  # raise-vanilla-args
+    "TRY301"  # raise-within-try
 ]
 unfixable = [
     "ERA"  # do not autoremove commented out code
 ]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.flake8-type-checking]
+# Add quotes around type annotations, if doing so would allow
+# an import to be moved into a type-checking block.
+quote-annotations = true
 
 [tool.ruff.lint.per-file-ignores]
 "**/{tests,docs}/*" = [
@@ -144,6 +181,9 @@ unfixable = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.pylint]
+max-returns = 20
 
 [tool.tomlsort]
 all = true
