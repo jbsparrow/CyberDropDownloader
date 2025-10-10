@@ -57,14 +57,14 @@ class WeTransferCrawler(Crawler):
     async def file(
         self, scrape_item: ScrapeItem, file_id: str, security_hash: str, recipient_id: str | None = None
     ) -> None:
-        download_url = _API_ENTRYPOINT / file_id / "download"
-        if await self.check_complete_from_referer(download_url):
+        if await self.check_complete_from_referer(scrape_item):
             return
 
         payload = {"intent": "entire_transfer", "security_hash": security_hash}
         if recipient_id:
             payload["recipient_id"] = recipient_id
 
-        resp: dict[str, str] = await self.request_json(download_url, method="POST", json=payload)
+        api_url = _API_ENTRYPOINT / file_id / "download"
+        resp: dict[str, str] = await self.request_json(api_url, method="POST", json=payload)
         link = self.parse_url(resp["direct_link"])
         await self.direct_file(scrape_item, link)
