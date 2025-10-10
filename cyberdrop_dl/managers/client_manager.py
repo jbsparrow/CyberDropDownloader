@@ -76,8 +76,6 @@ _null_context = contextlib.nullcontext()
 class DownloadSpeedLimiter(AsyncLimiter):
     __slots__ = (*AsyncLimiter.__slots__, "chunk_size")
 
-    max_rate: int
-
     def __init__(self, speed_limit: int) -> None:
         self.chunk_size: int = 1024 * 1024 * 10  # 10MB
         if speed_limit:
@@ -276,6 +274,7 @@ class ClientManager:
             verify=bool(self.ssl_context),
             proxy=proxy_or_none,
             timeout=self.rate_limiting_options._curl_timeout,
+            max_redirects=constants.MAX_REDIRECTS,
             cookies={cookie.key: cookie.value for cookie in self.cookies},
         )
 
@@ -316,6 +315,7 @@ class ClientManager:
             trace_configs=trace_configs,
             proxy=self.manager.global_config.general.proxy,
             connector=self._new_tcp_connector(),
+            requote_redirect_url=False,
             **kwargs,
         )
 
