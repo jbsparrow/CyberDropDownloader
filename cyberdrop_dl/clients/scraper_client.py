@@ -102,6 +102,7 @@ class ScraperClient:
         impersonate: BrowserTypeLiteral | bool | None,
         cache_disabled: bool,
     ) -> AsyncGenerator[AbstractResponse]:
+        impersonate = self.client_manager.manager.parsed_args.cli_only_args.impersonate or impersonate
         if impersonate:
             self.client_manager.check_curl_cffi_is_available()
             if impersonate is True:
