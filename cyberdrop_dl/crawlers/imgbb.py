@@ -38,6 +38,8 @@ class ImgBBCrawler(CheveretoCrawler):
                 return await self.album(scrape_item, album_id)
             case [_]:
                 return await self.media(scrape_item)
+            case _:
+                raise ValueError
 
     @classmethod
     def _match_img(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
