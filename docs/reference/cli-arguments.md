@@ -127,6 +127,22 @@ There's also a daily limit of the API CDL uses: 5000 requests per day per IP
 Setting this option to `True` will consume the daily limit faster
 {% endhint %}
 
+### `impersonate`
+
+| Type                                                                                         | Default | Action                        |
+| -------------------------------------------------------------------------------------------- | ------- | ----------------------------- |
+| `chrome", "edge", "safari", "safari_ios", "chrome_android", "firefox"`, `BoolFlag` or `null` | `null`  | `store_true` or `store_const` |
+
+Impersonationg allow CDL to make request and appear to be a legitimate web browser. This helps bypass bot-protection on some sites and it is required for any site that only accepts HTTP2 connections.
+
+- The default value (`null`) means CDL will automatically use impersonation for crawlers that were programed to use it.
+- Passing the flag without any value (`--impersonate`) is the same as `--impersonate True`: CDL will use impersonation for ALL requests, using the default impersonation target
+- Passing an specific target (ex: `--impersonate chrome_android`) will make CDL use impersonation for all requests, using that tarjet
+
+{% hint style="info" %}
+The current default target is `chrome`. The default target can change on any new release without notice
+{% endhint %}
+
 ### `max-items-retry`
 
 | Type             | Default |

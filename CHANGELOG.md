@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- New `--impersonate` cli option:
+- New `--impersonate` cli option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#impersonate>
 
 ### Removed
 
