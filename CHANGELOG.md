@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- mp4 downloads (ePorner)
+- MP4 downloads (ePorner)
 - HTTP errors crashing CDL (MediaFire)
 - Albums downloads (ImgBB)
 - Some exceptions not being logged if they happen during startup
