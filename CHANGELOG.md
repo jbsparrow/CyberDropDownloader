@@ -22,6 +22,23 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.3.0] - 2025-10-21
+
+### Added
+
+- New `--impersonate` cli option:
+
+### Removed
+
+- ImgAcid support (site no longer exists)
+
+### Fixed
+
+- mp4 downloads (ePorner)
+- HTTP errors crashing CDL (MediaFire)
+- Albums downloads (ImgBB)
+- Some exceptions not being logged if they happen during startup
+
 ## [8.2.0] - 2025-10-20
 
 ### Added
