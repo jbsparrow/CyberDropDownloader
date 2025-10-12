@@ -35,6 +35,6 @@ def test_impersonate_accepts_valid_targets() -> None:
     assert result.cli_only_args.impersonate == "chrome"
 
 
-def test_impersonate_does_not_accepts_values() -> None:
+def test_impersonate_does_not_accepts_invalid_values() -> None:
     with pytest.raises(SystemExit):
         parse_args(["--impersonate", "not_a_browser"])

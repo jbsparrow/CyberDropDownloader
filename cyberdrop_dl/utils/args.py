@@ -100,7 +100,7 @@ class CommandLineOnlyArgs(BaseModel):
     impersonate: Annotated[
         Literal["chrome", "edge", "safari", "safari_ios", "chrome_android", "firefox"] | bool | None,
         CommandOptions(nargs="?", const=True),
-    ] = Field(None, description="Use this target as impersonationg for all scrape requests")
+    ] = Field(None, description="Use this target as impersonation for all scrape requests")
     max_items_retry: int = Field(0, description="max number of links to retry")
     portrait: bool = Field(is_terminal_in_portrait(), description="force CDL to run with a vertical layout")
     print_stats: bool = Field(True, description="show stats report at the end of a run")
