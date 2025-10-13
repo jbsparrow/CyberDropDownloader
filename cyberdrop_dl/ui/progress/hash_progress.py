@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -58,16 +59,6 @@ class HashProgress:
         )
 
     @property
-    def base_dir(self) -> Path | None:
-        return self._base_dir
-
-    @base_dir.setter
-    def base_dir(self, path: Path) -> None:
-        self._base_dir = path
-        desc = "[green]Base dir: [blue]" + escape(f"{self._base_dir}")
-        self._file_info.update(self._base_dir_task_id, description=desc)
-
-    @property
     def hashed_files(self) -> int:
         return int(self._computed_hashes / len(self._tasks))
 
@@ -88,12 +79,23 @@ class HashProgress:
         """Returns the progress bar."""
         return Panel(self.removed_progress_group, border_style="green", padding=(1, 1))
 
+    @contextlib.contextmanager
+    def currently_hashing_dir(self, path: Path):
+        self._base_dir = path
+        desc = "[green]Base dir: [blue]" + escape(f"{self._base_dir}")
+        self._file_info.update(self._base_dir_task_id, description=desc)
+        try:
+            yield
+        finally:
+            self._base_dir = None
+            self._file_info.update(self._base_dir_task_id, description="")
+
     def update_currently_hashing(self, file: Path) -> None:
-        if not self.base_dir:
+        if not self._base_dir:
             return
         file_size = ByteSize(Path(file).stat().st_size)
         size_text = file_size.human_readable(decimal=True)
-        path = file.relative_to(self.base_dir)
+        path = file.relative_to(self._base_dir)
         desc = "[green]Current file: [blue]" + escape(f"{path}") + f" [green]({size_text})"
         self._file_info.update(self._file_task_id, description=desc)
 

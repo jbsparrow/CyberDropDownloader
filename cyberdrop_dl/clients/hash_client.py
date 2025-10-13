@@ -61,12 +61,14 @@ class HashClient:
 
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
-        with self.manager.live_manager.get_hash_live(stop=True):
-            self.manager.progress_manager.hash_progress.base_dir = path
+        with (
+            self.manager.live_manager.get_hash_live(stop=True),
+            self.manager.progress_manager.hash_progress.currently_hashing_dir(path),
+        ):
             if not await asyncio.to_thread(path.is_dir):
                 raise NotADirectoryError
             for file in path.rglob("*"):
-                await self.update_db_and_retrive_hash(file)
+                _ = await self.update_db_and_retrive_hash(file)
 
     async def hash_item(self, media_item: MediaItem) -> None:
         if media_item.is_segment:
