@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import time
 from contextlib import asynccontextmanager
 from dataclasses import field
@@ -139,8 +138,6 @@ class ProgressManager:
     def print_stats(self, start_time: float) -> None:
         """Prints the stats of the program."""
         if not self.manager.parsed_args.cli_only_args.print_stats:
-            return
-        if "pytest" in sys.modules:
             return
         end_time = time.perf_counter()
         runtime = timedelta(seconds=int(end_time - start_time))
