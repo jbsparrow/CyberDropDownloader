@@ -47,7 +47,7 @@ class ImageBamCrawler(Crawler):
         if "thumbs" in scrape_item.url.host:
             scrape_item.url = thumbnail_to_img(scrape_item.url)
             # this is to update the URL in the UI
-            # TODO: Add URL convertion methods as a pre_check step, before assigning them a task_id
+            # TODO: Add URL conversion methods as a pre_check step, before assigning them a task_id
             # Several crawlers do something like this
             self.create_task(self.run(scrape_item))
             return

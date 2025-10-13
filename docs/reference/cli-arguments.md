@@ -135,7 +135,7 @@ Setting this option to `True` will consume the daily limit faster
 
 Impersonation allows CDL to make requests and appear to be a legitimate web browser. This helps bypass bot-protection on some sites and it's required for any site that only accepts HTTP2 connections.
 
-- The default value (`null`) means CDL will automatically use impersonation for crawlers that were programed to use it.
+- The default value (`null`) means CDL will automatically use impersonation for crawlers that were programmed to use it.
 - Passing the flag without any value (`--impersonate`) is the same as `--impersonate True`: CDL will use impersonation for ALL requests, using the default impersonation target
 - Passing an specific target (ex: `--impersonate chrome_android`) will make CDL use impersonation for all requests, using that tarjet
 

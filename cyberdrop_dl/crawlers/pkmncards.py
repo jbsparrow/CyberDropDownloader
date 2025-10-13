@@ -70,7 +70,7 @@ class SimpleCard:
     """Simplified version of Card that groups the information we can get from the title of a page."""
 
     name: str
-    number_str: str  # This can actually contain letters as well, but the oficial name is `number`
+    number_str: str  # This can actually contain letters as well, but the official name is `number`
     set_name: str
     set_abbr: str
     download_url: AbsoluteHttpURL

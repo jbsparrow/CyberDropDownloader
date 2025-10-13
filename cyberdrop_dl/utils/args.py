@@ -44,7 +44,7 @@ def _check_mutually_exclusive(group: Iterable, msg: str) -> None:
 
 def is_terminal_in_portrait() -> bool:
     """Check if CDL is being run in portrait mode based on a few conditions."""
-    # Return True if running in portait mode, False otherwise (landscape mode)
+    # Return True if running in portrait mode, False otherwise (landscape mode)
 
     def check_terminal_size() -> bool:
         terminal_size = get_terminal_size()
