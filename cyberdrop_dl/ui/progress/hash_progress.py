@@ -26,7 +26,7 @@ class HashProgress:
         self._remove_progress = _generic_progress()
         self._match_progress = _generic_progress()
         self._file_info = Progress("{task.description}")
-        self._base_dir: Path = manager.path_manager.download_folder
+        self._base_dir: Path | None = None
 
         # hashing
         self._computed_hashes = self._prev_hashed = 0
@@ -58,7 +58,7 @@ class HashProgress:
         )
 
     @property
-    def base_dir(self) -> Path:
+    def base_dir(self) -> Path | None:
         return self._base_dir
 
     @base_dir.setter
@@ -89,9 +89,11 @@ class HashProgress:
         return Panel(self.removed_progress_group, border_style="green", padding=(1, 1))
 
     def update_currently_hashing(self, file: Path) -> None:
+        if not self.base_dir:
+            return
         file_size = ByteSize(Path(file).stat().st_size)
         size_text = file_size.human_readable(decimal=True)
-        path = file.relative_to(self._base_dir)
+        path = file.relative_to(self.base_dir)
         desc = "[green]Current file: [blue]" + escape(f"{path}") + f" [green]({size_text})"
         self._file_info.update(self._file_task_id, description=desc)
 
