@@ -37,7 +37,7 @@ class ConfigModel(PathAliasModel):
 
 def _is_in_file(search_value: str, file: Path) -> bool:
     try:
-        return search_value.casefold() in file.read_text().casefold()
+        return search_value.casefold() in file.read_text(encoding="utf8").casefold()
     except FileNotFoundError:
         return False
     except Exception as e:

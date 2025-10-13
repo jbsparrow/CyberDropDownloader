@@ -24,32 +24,28 @@ def test_command_by_console_output(tmp_cwd: Path, capsys: pytest.CaptureFixture[
     assert text in output
 
 
-def test_startup_logger_should_not_be_created_on_a_successful_run(
-    tmp_cwd: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_startup_logger_should_not_be_created_on_a_successful_run(tmp_cwd: Path) -> None:
     run("--download")
     startup_file = Path.cwd() / "startup.log"
     assert not startup_file.exists()
 
 
-def test_startup_logger_should_not_be_created_on_invalid_cookies(
-    tmp_cwd: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_startup_logger_should_not_be_created_on_invalid_cookies(tmp_cwd: Path) -> None:
     from cyberdrop_dl.utils.logger import catch_exceptions
 
     director = _create_director("--download")
     cookies_file = director.manager.path_manager.cookies_dir / "cookies.txt"
-    cookies_file.write_bytes(b"Not a cookie file")
+    cookies_file.write_text("Not a cookie file", encoding="utf8")
     catch_exceptions(director.run)()
 
-    logs = director.manager.path_manager.main_log.read_text()
+    logs = director.manager.path_manager.main_log.read_text(encoding="utf8")
     assert "does not look like a Netscape format cookies file" in logs
 
     startup_file = Path.cwd() / "startup.log"
     assert not startup_file.exists()
 
 
-def test_startup_logger_is_created_on_yaml_error(tmp_cwd: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_startup_logger_is_created_on_yaml_error(tmp_cwd: Path) -> None:
     from cyberdrop_dl.exceptions import InvalidYamlError
 
     with mock.patch(
@@ -63,7 +59,7 @@ def test_startup_logger_is_created_on_yaml_error(tmp_cwd: Path, capsys: pytest.C
     startup_file = Path.cwd() / "startup.log"
     assert startup_file.exists()
 
-    logs = startup_file.read_text()
+    logs = startup_file.read_text(encoding="utf8")
     assert "Unable to read file" in logs
 
 
@@ -88,9 +84,7 @@ def test_startup_logger_when_manager_startup_fails(
         assert startup_file.exists() == exists
 
 
-def test_startup_logger_should_not_be_created_when_using_invalid_cli_args(
-    tmp_cwd: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_startup_logger_should_not_be_created_when_using_invalid_cli_args(tmp_cwd: Path) -> None:
     try:
         run("--invalid-command")
     except SystemExit:

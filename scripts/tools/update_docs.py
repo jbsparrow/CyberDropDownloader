@@ -45,7 +45,7 @@ def make_supported_sites_markdown_table(title: str) -> str:
 def update_supported_sites() -> None:
     title = "# Supported sites"
     md_table = make_supported_sites_markdown_table(title)
-    current_content = SUPPORTED_SITES_MD.read_text()
+    current_content = SUPPORTED_SITES_MD.read_text(encoding="utf8")
     end = "<!-- END_SUPPORTED_SITES-->"
     content_before, _, rest = current_content.partition(title)
     _, _, content_after = rest.partition(end)
