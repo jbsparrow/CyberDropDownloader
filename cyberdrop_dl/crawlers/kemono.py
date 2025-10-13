@@ -224,7 +224,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 return await self.post(scrape_item)
             case [service, "user", _] if service in self.SERVICES:
                 return await self.profile(scrape_item)
-            case ["favorites"] if (type_ := scrape_item.url.query.get("type")) in ("post", "artist"):
+            case ["favorites"] if (type_ := scrape_item.url.query.get("type")) in ("post", "artist", None):
+                type_ = type_ or "artist"
                 return await self.favorites(scrape_item, type_)
             case ["account", "favorites", slug] if (type_ := slug.removesuffix("s")) in ("post", "artist"):
                 return await self.favorites(scrape_item, type_)
@@ -327,7 +328,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self.update_cookies({"session": ""})
 
         for item in resp:
-            url = self.PRIMARY_URL / item["service"] / "user" / item["user"]
+            url = self.PRIMARY_URL / item["service"] / "user" / (item.get("user") or ["name"])
             if type_ == "post":
                 url = url / "post" / item["id"]
 

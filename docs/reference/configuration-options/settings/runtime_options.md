@@ -119,7 +119,7 @@ You can set the environment variable `CDL_DEBUG_LOG_FOLDER` to any valid folder 
 {% endhint %}
 
 {% hint style="warning" %}
-As the name suggest, the `DEVELOPER` log level is only meant for developers or, more generally, people that want and have the know how
+As the name suggests, the `DEVELOPER` log level is only meant for developers or, more generally, people that want and have the know how
 to troubleshoot CDL issues on their own. You should never share those logs with _anyone_ as it could potentially have raw information in the tracebacks like cookies, auth credentials, IPs, etc.
 {% endhint %}
 
