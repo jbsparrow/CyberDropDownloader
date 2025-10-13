@@ -244,6 +244,7 @@ CLI-only options:
   --download                                                                    skips UI, start download immediately
   --download-tiktok-audios                                                      download TikTok audios from posts and save them as separate files
   --download-tiktok-src-quality-videos                                          download TikTok videos in source quality
+  --impersonate [IMPERSONATE]                                                   Use this target as impersonation for all scrape requests
   --max-items-retry MAX_ITEMS_RETRY                                             max number of links to retry
   --portrait                                                                    force CDL to run with a vertical layout
   --print-stats                                                                 show stats report at the end of a run
@@ -297,9 +298,9 @@ media_duration_limits:
   --minimum-audio-duration MINIMUM_AUDIO_DURATION
 
 files:
-  -d, --download-folder DOWNLOAD_FOLDER
+  -d DOWNLOAD_FOLDER, --download-folder DOWNLOAD_FOLDER
   -j, --dump-json, --no-dump-json
-  -i, --input-file INPUT_FILE
+  -i INPUT_FILE, --input-file INPUT_FILE
   --save-pages-html, --no-save-pages-html
 
 ignore_options:
