@@ -5,7 +5,6 @@ import contextlib
 import itertools
 import time
 import weakref
-from contextlib import nullcontext
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
@@ -49,7 +48,7 @@ class DownloadClient:
         self._server_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
         self._use_server_locks: set[str] = set()
 
-    def server_limiter(self, domain: str, server: str) -> asyncio.Lock | nullcontext[None]:
+    def server_limiter(self, domain: str, server: str) -> asyncio.Lock | contextlib.nullcontext[None]:
         if domain not in self._use_server_locks:
             return self._null_context
 
