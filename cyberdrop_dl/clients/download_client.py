@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import itertools
 import time
+import weakref
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
@@ -44,12 +45,25 @@ class DownloadClient:
         self.manager = manager
         self.client_manager = client_manager
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
+        self._null_context = contextlib.nullcontext()
+        self._server_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
+        self._use_server_locks: set[str] = set()
 
     @contextlib.asynccontextmanager
-    async def _limiter(self, domain: str):
+    async def _limiter(self, domain: str, server: str):
+        if domain in self._use_server_locks:
+            if server not in self._server_locks:
+                lock = asyncio.Lock()
+                self._server_locks[server] = lock
+
+            server_limiter = self._server_locks[server]
+        else:
+            server_limiter = self._null_context
+
         with self.client_manager.request_context(domain):
-            await self.client_manager.manager.states.RUNNING.wait()
-            yield
+            async with server_limiter:
+                await self.client_manager.manager.states.RUNNING.wait()
+                yield
 
     def _get_download_headers(self, domain: str, referer: AbsoluteHttpURL) -> dict[str, str]:
         download_headers = self.client_manager._default_headers | {"Referer": str(referer)}
@@ -250,7 +264,8 @@ class DownloadClient:
             await self.process_completed(media_item, domain)
             return False
 
-        async with self._limiter(domain):
+        server = (media_item.debrid_link or media_item.url).host
+        async with self._limiter(domain, server):
             downloaded = await self._download(domain, media_item)
 
         if downloaded:
