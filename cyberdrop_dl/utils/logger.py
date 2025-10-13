@@ -4,6 +4,7 @@ import contextlib
 import json
 import logging
 import queue
+import sys
 from functools import wraps
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
@@ -267,8 +268,9 @@ def _setup_startup_logger() -> Generator[None]:
 
     It will only add it if we have an exception, to prevent creating an empty file"""
     startup_logger.setLevel(10)
-    console_handler = LogHandler(level=10)
-    startup_logger.addHandler(console_handler)
+    if "pytest" not in sys.modules:
+        console_handler = LogHandler(level=10)
+        startup_logger.addHandler(console_handler)
     try:
         yield
 
