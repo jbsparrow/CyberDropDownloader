@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from cyberdrop_dl.main import _create_director, run
+from cyberdrop_dl.utils.args import parse_args
 
 
 @pytest.mark.parametrize(
@@ -90,3 +91,20 @@ def test_startup_logger_should_not_be_created_when_using_invalid_cli_args(tmp_cw
         pass
     startup_file = Path.cwd() / "startup.log"
     assert not startup_file.exists()
+
+
+def test_impersonate_defaults_to_true_with_no_args() -> None:
+    result = parse_args(["--download"])
+    assert result.cli_only_args.impersonate is None
+    result = parse_args(["--impersonate"])
+    assert result.cli_only_args.impersonate is True
+
+
+def test_impersonate_accepts_valid_targets() -> None:
+    result = parse_args(["--download", "--impersonate", "chrome"])
+    assert result.cli_only_args.impersonate == "chrome"
+
+
+def test_impersonate_does_not_accepts_invalid_values() -> None:
+    with pytest.raises(SystemExit):
+        parse_args(["--impersonate", "not_a_browser"])
