@@ -19,13 +19,11 @@ from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
-    from asyncio.locks import Lock
-    from collections.abc import Callable, Coroutine, Generator
+    from collections.abc import Callable, Coroutine, Generator, Mapping
     from pathlib import Path
     from typing import Any
 
     import aiohttp
-    from multidict import CIMultiDictProxy
 
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.client_manager import ClientManager
@@ -51,7 +49,7 @@ class DownloadClient:
         self._server_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
         self._use_server_locks: set[str] = set()
 
-    def server_limiter(self, domain: str, server: str) -> Lock | nullcontext[None]:
+    def server_limiter(self, domain: str, server: str) -> asyncio.Lock | nullcontext[None]:
         if domain not in self._use_server_locks:
             return self._null_context
 
@@ -461,7 +459,7 @@ class DownloadClient:
         return proceed
 
 
-def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
+def get_content_type(ext: str, headers: Mapping[str, str]) -> str | None:
     content_type: str = headers.get("Content-Type", "")
     content_length = headers.get("Content-Length")
     if not content_type and not content_length:
@@ -483,7 +481,7 @@ def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
     return content_type
 
 
-def get_last_modified(headers: CIMultiDictProxy) -> int | None:
+def get_last_modified(headers: Mapping[str, str]) -> int | None:
     if date_str := headers.get("Last-Modified"):
         return parse_http_date(date_str)
 

@@ -5,7 +5,7 @@ import logging
 import queue
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
-from typing import IO, TYPE_CHECKING
+from typing import IO, TYPE_CHECKING, Any
 
 from rich._log_render import LogRender
 from rich.console import Console, Group
@@ -220,7 +220,7 @@ def create_rich_log_msg(msg: str, level: int = 10) -> Text:
     return rich_level + indent_string(msg)
 
 
-def log(message: object, level: int = 10, bug: bool = False, **kwargs) -> None:
+def log(message: object, level: int = 10, bug: bool = False, **kwargs: Any) -> None:
     """Simple logging function."""
     msg = process_log_msg(message)
     log_debug(msg, level, **kwargs)
@@ -230,7 +230,7 @@ def log(message: object, level: int = 10, bug: bool = False, **kwargs) -> None:
     logger.log(level, msg, **kwargs)
 
 
-def log_debug(message: object, level: int = 10, **kwargs) -> None:
+def log_debug(message: object, level: int = 10, **kwargs: Any) -> None:
     """Simple logging function."""
     if env.DEBUG_VAR:
         msg = process_log_msg(message)
