@@ -163,7 +163,8 @@ class Downloader:
         await self.client.mark_incomplete(media_item, self.domain)
         if not media_item.is_segment:
             self.update_queued_files()
-        async with self._semaphore:
+        server = (media_item.debrid_link or media_item.url).host
+        async with self.client.server_limiter(media_item.domain, server), self._semaphore:
             await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
             self.processed_items.add(media_item.db_path)

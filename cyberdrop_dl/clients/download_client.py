@@ -5,6 +5,7 @@ import contextlib
 import itertools
 import time
 import weakref
+from contextlib import nullcontext
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
@@ -18,6 +19,7 @@ from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
+    from asyncio.locks import Lock
     from collections.abc import Callable, Coroutine, Generator
     from pathlib import Path
     from typing import Any
@@ -49,21 +51,22 @@ class DownloadClient:
         self._server_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
         self._use_server_locks: set[str] = set()
 
+    def server_limiter(self, domain: str, server: str) -> Lock | nullcontext[None]:
+        if domain not in self._use_server_locks:
+            return self._null_context
+
+        if server not in self._server_locks:
+            lock = asyncio.Lock()
+            self._server_locks[server] = lock
+
+        log_debug(f"Using lock for server '{server}'", 20)
+        return self._server_locks[server]
+
     @contextlib.asynccontextmanager
-    async def _limiter(self, domain: str, server: str):
-        if domain in self._use_server_locks:
-            if server not in self._server_locks:
-                lock = asyncio.Lock()
-                self._server_locks[server] = lock
-
-            server_limiter = self._server_locks[server]
-        else:
-            server_limiter = self._null_context
-
+    async def _track_errors(self, domain: str):
         with self.client_manager.request_context(domain):
-            async with server_limiter:
-                await self.client_manager.manager.states.RUNNING.wait()
-                yield
+            await self.client_manager.manager.states.RUNNING.wait()
+            yield
 
     def _get_download_headers(self, domain: str, referer: AbsoluteHttpURL) -> dict[str, str]:
         download_headers = self.client_manager._default_headers | {"Referer": str(referer)}
@@ -264,8 +267,7 @@ class DownloadClient:
             await self.process_completed(media_item, domain)
             return False
 
-        server = (media_item.debrid_link or media_item.url).host
-        async with self._limiter(domain, server):
+        async with self._track_errors(domain):
             downloaded = await self._download(domain, media_item)
 
         if downloaded:
