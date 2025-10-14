@@ -22,6 +22,23 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.3.0] - 2025-10-21
+
+### Added
+
+- New `--impersonate` cli option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#impersonate>
+
+### Removed
+
+- ImgAcid support (site no longer exists)
+
+### Fixed
+
+- MP4 downloads (ePorner)
+- HTTP errors crashing CDL (MediaFire)
+- Albums downloads (ImgBB)
+- Some exceptions not being logged if they happen during startup
+
 ## [8.2.0] - 2025-10-06
 
 ### Added
@@ -454,7 +471,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Try to use original server (kemono, coomer, nekohouse)
 - Improve cloudflare captcha detection
 - General performance improvements
-- CDL will remove simbols and emojis from filenames in Windows and macOS
+- CDL will remove symbols and emojis from filenames in Windows and macOS
 
 ### Removed
 
@@ -743,7 +760,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ImgBB crawler
 - Download path structure (Tokyomotion)
 - Empty `download_filename` on database
-- Missing tread id on `Last_Scraped_Forum_Post.csv` URLs
+- Missing thread id on `Last_Scraped_Forum_Post.csv` URLs
 - Nudostar Crawler
 - Invalid URL parsing (imgur)
 - Invalid link confirmation URL parsing (forums)
@@ -976,7 +993,7 @@ This update introduces the following changes:
 - UI changes: remove redundant 'X of Y files' from every progress bar, sort scrape and download error by reverse frequency, use equal height for top row UI, fix padding issues, show unsupported URLs stats at the end
 - Add `whitelist` filter, `autostart` and custom `download_dir` options for jdownloader. For more details, visit the wiki: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/runtime_options>
 - Added a "Check for Updates" UI option and improved the update check logic to check for new testing versions.
-- Fix error during program exit when referers table no longer exists
+- Fix error during program exit when referrer table no longer exists
 - Prevents crashes when there are insufficient permissions to move a file
 - Fix an issue where CDL would delete URLs input file
 - Move functions for after download to `post_runtime`

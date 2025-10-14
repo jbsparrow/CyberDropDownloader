@@ -34,7 +34,7 @@ _ERROR_CODES = {
     3: "Unknown method",
     4: "Method not allowed",
     5: "Slow down",
-    6: "Ressource unreachable",
+    6: "Resource unreachable",
     7: "Resource not found",
     8: "Bad token",
     9: "Permission denied",

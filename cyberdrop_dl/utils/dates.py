@@ -29,7 +29,7 @@ def coerce_to_list(value: _S | set[_S] | list[_S] | tuple[_S, ...] | None) -> li
 class DateParser(dateparser.date.DateDataParser):
     """Parses incomplete dates, but they must have at least a known year and month
 
-    Parsed dates are garantied to be in the past with time at midnight (if unknown)
+    Parsed dates are guaranteed to be in the past with time at midnight (if unknown)
 
     It can parse date strings like:
 

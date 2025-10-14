@@ -99,10 +99,10 @@ class BoxDotComCrawler(Crawler):
 
         shared_folder = SharedFolder(**shared_folder_data)
         if "file" not in scrape_item.url.parts:
-            # Proccess folder
+            # Process folder
             return await self.folder(scrape_item, shared_name, shared_folder)
 
-        # Proccess individual file
+        # Process individual file
         assert len(scrape_item.url.parts) >= 5
         file_id = scrape_item.url.parts[4]
         file = next(item for item in shared_folder.items if item.id == file_id)

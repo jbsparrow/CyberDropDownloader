@@ -352,7 +352,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
         await self.handle_file(link, scrape_item, link.name, ext, custom_filename=filename)
 
-    # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~ INTERNAL METHODS, not expected to be overridden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def _register_attachments_servers(self, attachments: list[File]) -> None:
         for attach in attachments:
@@ -413,7 +413,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             self.disabled = True
             raise ScrapeError(503, msg) from e
 
-    """~~~~~~~~  PRIVATE METHODS, should never be overriden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    """~~~~~~~~  PRIVATE METHODS, should never be overridden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def __parse_content_urls(self, post: Post) -> Generator[AbsoluteHttpURL]:
         seen: set[str] = set()

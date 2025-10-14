@@ -47,7 +47,7 @@ class UnlockedNode(Node):
 class File(UnlockedNode):
     type: Literal["file"]
     link: str
-    directLink: NotRequired[str]  # Only present in overloded files (imported)
+    directLink: NotRequired[str]  # Only present in overloaded files (imported)
     isFrozen: NotRequired[bool]  # Only present in files uploaded by free accounts and older than 30 days
     viruses: NotRequired[bool]
     md5: str

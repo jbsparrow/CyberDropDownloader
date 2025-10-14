@@ -48,7 +48,7 @@ class CrawlerTestCase(NamedTuple):
     domain: str
     input_url: str
     results: list[Result]
-    # TODO: depreated total, move to config
+    # TODO: deprecated total, move to config
     total: int | None = None
     config: Config = _default_config
 

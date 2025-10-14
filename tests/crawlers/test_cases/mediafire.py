@@ -49,7 +49,7 @@ TEST_CASES = [
                 "album_id": "0m0g59yk1pmh5",
             },
             {
-                "url": "re:https://downloa",
+                "url": "re:https://download",
                 "filename": "ReadMe.txt",
                 "referer": "https://www.mediafire.com/file/4tu93kyda5jp6qh",
                 "download_folder": r"re:XJTU-SY_Bearing_Datasets \(Mediafire\)",

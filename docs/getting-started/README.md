@@ -18,7 +18,7 @@ layout:
 
 ## Installing Cyberdrop-DL</a>
 
-There are two ways to install Cyberdrop-DL. The first is the easy method, where you simply download the start scripts. The start scrips will automatically install a compatible python version and then install Cyberdrop-DL.
+There are two ways to install Cyberdrop-DL. The first is the easy method, where you simply download the start scripts. The start scripts will automatically install a compatible python version and then install Cyberdrop-DL.
 
 The second method is installing cyberdrop-dl directly from pypi using `uv`, `pipx` or `pip`
 

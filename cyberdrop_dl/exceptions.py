@@ -33,7 +33,7 @@ CLOUDFLARE_HTTP_ERROR_CODES = {
 }
 
 # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#Nonstandard_codes
-# Not all of them, just the ones we actually expect to see and do not shadow standard onces
+# Not all of them, just the ones we actually expect to see and do not shadow standard ones
 NON_STANDARD_HTTP_ERROR_CODES = {
     419: "Page Expired",
     509: "Bandwidth Limit Exceeded",
@@ -47,9 +47,9 @@ HTTP_ERROR_CODES = {
 
 
 class TooManyCrawlerErrors(Exception):  # noqa: N818
-    """This exception will be raised after a crawler had too many errors proccesing URLs"""
+    """This exception will be raised after a crawler had too many errors processing URLs"""
 
-    # This exception does not inherit from `CDLBaseError`` cause it not intented to ever by shown to the user
+    # This exception does not inherit from `CDLBaseError`` cause it not intended to ever by shown to the user
 
 
 class CDLBaseError(Exception):
