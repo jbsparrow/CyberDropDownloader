@@ -575,7 +575,7 @@ class Crawler(ABC):
         return post_title
 
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool | None = None) -> AbsoluteHttpURL:
-        """Wrapper arround `utils.parse_url` to use `self.PRIMARY_URL` as base"""
+        """Wrapper around `utils.parse_url` to use `self.PRIMARY_URL` as base"""
         base = relative_to or self.PRIMARY_URL
         assert is_absolute_http_url(base)
         if trim is None:

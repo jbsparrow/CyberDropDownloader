@@ -26,7 +26,7 @@ class TempRefererTable:
         await self.db_conn.commit()
 
     async def get_temp_referers(self) -> list[str]:
-        """Gets the list of temp referers."""
+        """Gets the list of temp referrer."""
         query = "SELECT referer FROM temp_referer;"
         cursor = await self.db_conn.execute(query)
         rows = await cursor.fetchall()

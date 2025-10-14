@@ -20,8 +20,7 @@ def test_startup(tmp_cwd: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.
     assert msg in output
 
 
-def test_async_startup(tmp_cwd: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_async_startup(tmp_cwd: Path, caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(10)
     run(("--download",))
-    captured = capsys.readouterr()
-    output = captured.out
-    assert "Finished downloading. Enjoy :)" in output
+    assert "Finished downloading. Enjoy :)" in caplog.text

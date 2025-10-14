@@ -190,7 +190,7 @@ Not all sites support all possible flags. Ex: Posts from reddit only support the
 
 If you use a format with a field that the site does not support, CDL will replace it with `UNKNOWN_<FIELD_NAME>`
 
-ex: using the format `reddit post #{id}` wil result in `reddit post #UNKNOWN_ID`
+ex: using the format `reddit post #{id}` will result in `reddit post #UNKNOWN_ID`
 {% endhint %}
 
 Setting it to `{default}` will use the default format, which is different for each crawler:

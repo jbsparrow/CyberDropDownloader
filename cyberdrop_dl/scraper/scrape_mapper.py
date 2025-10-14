@@ -390,7 +390,7 @@ def _create_item_from_row(row: aiosqlite.Row) -> ScrapeItem:
 
 
 def get_crawlers_mapping(manager: Manager | None = None, include_generics: bool = False) -> dict[str, Crawler]:
-    """Retuns a mapping with an instance of all crawlers.
+    """Returns a mapping with an instance of all crawlers.
 
     Crawlers are only created on the first calls. Future calls always return a reference to the same crawlers
 

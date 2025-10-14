@@ -2,7 +2,7 @@
 
 Cyberdrop-DL has a file sorter built in, but it's disabled by default
 
-You can use the field names bellow to create a custom path format. You can also use essentially none of them and have a hard coded path.
+You can use the field names below to create a custom path format. You can also use essentially none of them and have a hard coded path.
 However, `filename` and `ext` must always be used.
 
 Common fields for sorting format options (supported for `audio`, `videos`, `images` and `other`):

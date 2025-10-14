@@ -217,6 +217,6 @@ def is_in_file(search_value: str, file: Path) -> bool:
     if not file.is_file():
         return False
     try:
-        return search_value.casefold() in file.read_text().casefold()
+        return search_value.casefold() in file.read_text(encoding="utf8").casefold()
     except Exception as e:
         raise InvalidYamlError(file, e) from e

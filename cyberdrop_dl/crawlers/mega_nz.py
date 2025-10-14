@@ -2,7 +2,7 @@
 
 This crawler does several CPU intensive operations
 
-It calls checks_complete_by_referer several times even if no request is going to be made, to skip unnecesary compute time
+It calls checks_complete_by_referer several times even if no request is going to be made, to skip unnecessary compute time
 """
 
 from __future__ import annotations
