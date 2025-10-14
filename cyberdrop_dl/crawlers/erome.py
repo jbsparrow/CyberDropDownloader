@@ -36,7 +36,7 @@ class EromeCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "a" in scrape_item.url.parts:
             return await self.album(scrape_item)
-        elif "search" in scrape_item.url.parts and (query:= scrape_item.url.query.get('q')):
+        elif "search" in scrape_item.url.parts and (query := scrape_item.url.query.get("q")):
             return await self.search(scrape_item, query)
         else:
             await self.profile(scrape_item)
