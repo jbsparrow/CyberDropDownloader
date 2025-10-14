@@ -75,8 +75,8 @@ class EromeCrawler(Crawler):
                 scrape_item.add_children()
 
     @error_handling_wrapper
-    async def search(self, scrape_item: ScrapeItem) -> None:
-        title = self.create_title(f"Search - {scrape_item.url.query.get('q', '')}")
+    async def search(self, scrape_item: ScrapeItem, query: str) -> None:
+        title = self.create_title(f"Search - {query}")
         scrape_item.setup_as_album(title)
 
         async for soup in self.web_pager(scrape_item.url, _SELECTORS.NEXT_PAGE):
