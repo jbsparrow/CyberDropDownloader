@@ -35,10 +35,10 @@ def test_startup_logger_should_not_be_created_on_invalid_cookies(tmp_cwd: Path) 
 
     director = _create_director("--download")
     cookies_file = director.manager.path_manager.cookies_dir / "cookies.txt"
-    cookies_file.write_bytes(b"Not a cookie file")
+    cookies_file.write_text("Not a cookie file", encoding="utf8")
     catch_exceptions(director.run)()
 
-    logs = director.manager.path_manager.main_log.read_text()
+    logs = director.manager.path_manager.main_log.read_text(encoding="utf8")
     assert "does not look like a Netscape format cookies file" in logs
 
     startup_file = Path.cwd() / "startup.log"
@@ -59,7 +59,7 @@ def test_startup_logger_is_created_on_yaml_error(tmp_cwd: Path) -> None:
     startup_file = Path.cwd() / "startup.log"
     assert startup_file.exists()
 
-    logs = startup_file.read_text()
+    logs = startup_file.read_text(encoding="utf8")
     assert "Unable to read file" in logs
 
 
@@ -73,7 +73,7 @@ def test_startup_logger_is_created_on_yaml_error(tmp_cwd: Path) -> None:
     ],
 )
 def test_startup_logger_when_manager_startup_fails(
-    tmp_cwd: Path, exception: Exception | type[Exception], exists: bool
+    tmp_cwd: Path, exception: Exception | type[Exception], exists: bool, capsys: pytest.CaptureFixture[str]
 ) -> None:
     with mock.patch("cyberdrop_dl.managers.manager.Manager.set_constants", side_effect=exception):
         try:

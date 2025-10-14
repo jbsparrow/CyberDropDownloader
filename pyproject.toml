@@ -90,11 +90,13 @@ requires-poetry = ">=2.2.0"
 addopts = ["-s"]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
+filterwarnings = [
+    "ignore:Proactor event loop does not implement add_reader:UserWarning"
+]
 markers = [
     "crawler_test_case: tests that do full run with a crawler (making actual network requests)"
 ]
 minversion = "8.4.1"
-testpaths = ["tests"]
 
 [tool.ruff]
 exclude = ["cyberdrop_dl/dependencies/_browser_cookie3.py"]

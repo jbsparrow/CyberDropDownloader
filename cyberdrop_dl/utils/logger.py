@@ -4,6 +4,7 @@ import contextlib
 import json
 import logging
 import queue
+import sys
 from functools import wraps
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
@@ -236,7 +237,7 @@ def log_with_color(message: Text | str, style: str, level: int = 20, show_in_sta
     """Simple logging function with color."""
     text = message if isinstance(message, Text) else Text(message, style=style)
     log(text.plain, level, **kwargs)
-    if constants.CONSOLE_LEVEL >= 50:
+    if constants.CONSOLE_LEVEL >= 50 and "pytest" not in sys.modules:
         _DEFAULT_CONSOLE.print(text)
     if show_in_stats:
         constants.LOG_OUTPUT_TEXT.append_text(text.append("\n"))
@@ -267,8 +268,9 @@ def _setup_startup_logger() -> Generator[None]:
 
     It will only add it if we have an exception, to prevent creating an empty file"""
     startup_logger.setLevel(10)
-    console_handler = LogHandler(level=10)
-    startup_logger.addHandler(console_handler)
+    if "pytest" not in sys.modules:
+        console_handler = LogHandler(level=10)
+        startup_logger.addHandler(console_handler)
     try:
         yield
 
