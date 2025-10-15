@@ -365,9 +365,7 @@ def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
 
             return current_step & 255
 
-        return decode_next
-
-    if algo == 3:
+    elif algo == 3:
 
         def decode_next() -> int:
             nonlocal current_step
@@ -380,9 +378,32 @@ def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
 
             return val & 255
 
-        return decode_next
+    elif algo == 4:
 
-    raise ValueError(f"Unknown crypto algo: {algo}")
+        def decode_next() -> int:
+            nonlocal current_step
+            val = current_step = _ensure_signed_32int(current_step + 0x6D2B79F5)
+            val = _ensure_signed_32int((val << 7) | ((val & 0xFFFFFFFF) >> 25))
+            val = _ensure_signed_32int(val + 0x9E3779B9)
+            val = _ensure_signed_32int(val ^ ((val & 0xFFFFFFFF) >> 11))
+            val = _ensure_signed_32int(val * 0x27D4EB2D)
+            return 255 & val
+
+    elif algo == 5:
+
+        def decode_next() -> int:
+            nonlocal current_step
+
+            current_step = _ensure_signed_32int(current_step ^ (current_step << 7))
+            current_step = _ensure_signed_32int(current_step ^ ((current_step & 0xFFFFFFFF) >> 9))
+            current_step = _ensure_signed_32int(current_step ^ (current_step << 8))
+            current_step = _ensure_signed_32int(current_step + 0xA5A5A5A5)
+            return current_step
+
+    else:
+        raise ValueError(f"Unknown crypto algo: {algo}")
+
+    return decode_next
 
 
 def _is_hex(hex_string: str) -> bool:
