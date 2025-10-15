@@ -350,9 +350,7 @@ def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
             current_step = _ensure_signed_32int(current_step * 1664525) + 1013904223
             return current_step & 255
 
-        return decode_next
-
-    if algo == 2:
+    elif algo == 2:
 
         def decode_next() -> int:
             nonlocal current_step
