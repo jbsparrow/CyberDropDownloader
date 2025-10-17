@@ -70,7 +70,7 @@ class RateLimiting(BaseModel):
     jitter: NonNegativeFloat = 0
     max_simultaneous_downloads_per_domain: PositiveInt = 5
     max_simultaneous_downloads: PositiveInt = 15
-    rate_limit: PositiveInt = 50
+    rate_limit: PositiveInt = 25
 
     connection_timeout: PositiveFloat = 15
     read_timeout: PositiveFloat | None = 300
