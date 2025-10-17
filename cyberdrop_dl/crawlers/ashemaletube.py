@@ -92,10 +92,10 @@ class AShemaleTubeCrawler(Crawler):
             return await self.collection(scrape_item, CollectionType.PLAYLIST)
         if "search" in scrape_item.url.parts:
             return await self.collection(scrape_item, CollectionType.SEARCH)
-        if any(image_keyword in scrape_item.url.parts for image_keyword in ["pics", "images"]):
+        if "images" in scrape_item.url.parts:
+            return await self.direct_file(scrape_item, scrape_item.url.with_query(None))
+        if "pics" in scrape_item.url.parts:
             if len(scrape_item.url.parts) >= 5:
-                if "images" in scrape_item.url.parts and not await self.check_complete_from_referer(scrape_item.url):
-                    return await self.direct_file(scrape_item, scrape_item.url.with_query(None))
                 return await self.image(scrape_item)
             return await self.album(scrape_item)
         if "cam" in scrape_item.url.parts:
