@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handle newer encryption formats in URLs (xHamster)
 - Spankbang crawler
 
-## [8.3.0] - 2025-10-21
+## [8.3.0] - 2025-10-16
 
 ### Added
 
