@@ -77,7 +77,8 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     _load_test_data()
     if "crawler_test_case" in metafunc.fixturenames:
         valid_domains = sorted(_TEST_DATA)
-        domains_to_tests: list[str] = metafunc.config.test_crawlers_domains  # type: ignore
+        # domains_to_tests: list[str] = metafunc.config.test_crawlers_domains  # type: ignore
+        domains_to_tests: list[str] = ["ashemaletube"]
         for domain in domains_to_tests:
             assert domain in valid_domains, f"{domain = } is not a valid or has not tests defined"
 

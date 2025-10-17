@@ -94,6 +94,8 @@ class AShemaleTubeCrawler(Crawler):
             return await self.collection(scrape_item, CollectionType.SEARCH)
         if any(image_keyword in scrape_item.url.parts for image_keyword in ["pics", "images"]):
             if len(scrape_item.url.parts) >= 5:
+                if "images" in scrape_item.url.parts and not await self.check_complete_from_referer(scrape_item.url):
+                    return await self.direct_file(scrape_item, scrape_item.url.with_query(None))
                 return await self.image(scrape_item)
             return await self.album(scrape_item)
         if "cam" in scrape_item.url.parts:
@@ -143,14 +145,11 @@ class AShemaleTubeCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item.url):
             return
-        if "images" in scrape_item.url.parts:
-            await self.direct_file(scrape_item, scrape_item.url.with_query(None))
-        else:
-            soup = await self.request_soup(scrape_item.url, impersonate=True)
-            img_item = soup.select_one(_SELECTORS.IMAGE_ITEM)
-            if not img_item:
-                raise ScrapeError(404)
-            await self.proccess_image(scrape_item, img_item)
+        soup = await self.request_soup(scrape_item.url, impersonate=True)
+        img_item = soup.select_one(_SELECTORS.IMAGE_ITEM)
+        if not img_item:
+            raise ScrapeError(404)
+        await self.proccess_image(scrape_item, img_item)
 
     @error_handling_wrapper
     async def proccess_image(self, scrape_item: ScrapeItem, img_tag: Tag) -> None:
