@@ -21,7 +21,7 @@ TEST_CASES = [
                 "referer": "https://www.ashemaletube.com/pics/265074/jjk-black-uniform/1",
                 "album_id": None,
             }
-        ]
+        ],
     ),
     # Album page link
     (
@@ -46,6 +46,6 @@ TEST_CASES = [
                 "referer": "https://www.ashemaletube.com/videos/1133457",
                 "album_id": None,
             }
-        ]
+        ],
     ),
 ]
