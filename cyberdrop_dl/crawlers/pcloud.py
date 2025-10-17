@@ -90,7 +90,7 @@ class PCloudCrawler(Crawler):
         if node.isfolder:
             scrape_item.setup_as_album(self.create_title(node.name, node.id))
             self._iter_nodes(scrape_item, node.contents)
-            return
+            return None
 
         return await self.file(scrape_item, cast("File", node))
 

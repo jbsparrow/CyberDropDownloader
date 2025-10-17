@@ -68,7 +68,7 @@ class YandexDiskCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
-            return
+            return None
 
         async with self.request_context():
             soup = await self.request_soup(scrape_item.url, headers=_DEFAULT_HEADERS, cache_disabled=True)
@@ -84,7 +84,7 @@ class YandexDiskCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem, folder_id: str, single_file_name: str | None = None) -> None:
         canonical_url = PRIMARY_URL / "d" / folder_id
         if single_file_name and await self.check_complete_from_referer(scrape_item.url):
-            return
+            return None
 
         scrape_item.url = canonical_url
         async with self.request_context():
@@ -109,7 +109,7 @@ class YandexDiskCrawler(Crawler):
             await self._process_file(new_scrape_item, file)
             scrape_item.add_children()
             if single_file_name:
-                return
+                return None
 
         # TODO: Handle subfolders
         # #for subfolder in folder.subfolders:
@@ -128,7 +128,7 @@ class YandexDiskCrawler(Crawler):
     @error_handling_wrapper
     async def _process_file(self, scrape_item: ScrapeItem, file: YandexFile) -> None:
         if await self.check_complete_from_referer(scrape_item):
-            return
+            return None
 
         referer = str(file.url)
         headers = _DEFAULT_HEADERS | {

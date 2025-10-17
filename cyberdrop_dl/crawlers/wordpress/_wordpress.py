@@ -160,7 +160,7 @@ class WordPressBaseCrawler(Crawler, is_abc=True):
         if self.is_attachment(link):
             return await self.direct_file(scrape_item, link)
         if self.PRIMARY_URL.host == link.host:
-            return
+            return None
         new_scrape_item = scrape_item.create_new(link)
         self.handle_external_links(new_scrape_item)
         scrape_item.add_children()
@@ -324,7 +324,7 @@ def _match_date_from_path(url_parts: tuple[str, ...]) -> datetime.datetime | Non
             try:
                 return datetime.datetime(int(year), int(month), int(day))
             except Exception:
-                return
+                return None
 
 
 def _get_original_quality_link(link: str) -> str:

@@ -46,9 +46,8 @@ class HashManager:
         assert self.xx_hasher
         if hash_type == "xxh128":
             return self.xx_hasher()
-        elif hash_type == "md5":
+        if hash_type == "md5":
             return self.md5_hasher()
-        elif hash_type == "sha256":
+        if hash_type == "sha256":
             return self.sha_256_hasher()
-        else:
-            raise ValueError("Invalid hash type")
+        raise ValueError("Invalid hash type")

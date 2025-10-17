@@ -269,7 +269,7 @@ def get_size(path: os.DirEntry) -> int | None:
     try:
         return path.stat(follow_symlinks=False).st_size
     except (OSError, ValueError):
-        return
+        return None
 
 
 def purge_dir_tree(dirname: Path | str) -> bool:

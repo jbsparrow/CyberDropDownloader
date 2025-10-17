@@ -4,10 +4,7 @@ import time
 import warnings
 from argparse import SUPPRESS, ArgumentParser, BooleanOptionalAction, RawDescriptionHelpFormatter
 from argparse import _ArgumentGroup as ArgGroup
-from collections.abc import Iterable, Sequence
-from datetime import date
 from enum import StrEnum, auto
-from pathlib import Path
 from shutil import get_terminal_size
 from typing import TYPE_CHECKING, Annotated, Any, Literal, NoReturn, Self
 
@@ -16,11 +13,16 @@ from pydantic import BaseModel, Field, ValidationError, computed_field, field_va
 from cyberdrop_dl import __version__, env
 from cyberdrop_dl.config import ConfigSettings, GlobalSettings
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.models.types import HttpURL
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+    from datetime import date
+    from pathlib import Path
+
     from pydantic.fields import FieldInfo
+
+    from cyberdrop_dl.models.types import HttpURL
 
 
 CDL_EPILOG = "Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl"
@@ -37,7 +39,7 @@ warnings.simplefilter("always", DeprecationWarning)
 WARNING_TIMEOUT = 5  # seconds
 
 
-def _check_mutually_exclusive(group: Iterable, msg: str) -> None:
+def _check_mutually_exclusive(group: "Iterable", msg: str) -> None:
     if sum(1 for value in group if value) >= 2:
         raise ValueError(msg)
 
@@ -81,16 +83,16 @@ class CommandOptions:
 
 
 class CommandLineOnlyArgs(BaseModel):
-    links: list[HttpURL] = Field([], description="link(s) to content to download (passing multiple links is supported)")
-    appdata_folder: Path | None = Field(None, description="AppData folder path")
-    completed_after: date | None = Field(
+    links: list["HttpURL"] = Field([], description="link(s) to content to download (passing multiple links is supported)")
+    appdata_folder: "Path | None" = Field(None, description="AppData folder path")
+    completed_after: "date | None" = Field(
         None, description="only retry downloads that were completed on or after this date"
     )
-    completed_before: date | None = Field(
+    completed_before: "date | None" = Field(
         None, description="only retry downloads that were completed on or before this date"
     )
     config: str | None = Field(None, description="name of config to load")
-    config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
+    config_file: "Path | None" = Field(None, description="path to the CDL settings.yaml file to load")
     disable_cache: bool = Field(False, description="temporarily disable the requests cache")
     download: bool = Field(False, description="skips UI, start download immediately")
     download_tiktok_audios: bool = Field(
@@ -187,7 +189,6 @@ class ParsedArgs(AliasModel):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
-            pass
 
         return warnings_to_emit
 
@@ -292,7 +293,7 @@ def make_parser() -> tuple[ArgumentParser, dict[str, list[ArgGroup]]]:
     return parser, groups_mapping
 
 
-def get_parsed_args_dict(args: Sequence[str] | None = None) -> dict[str, dict[str, Any]]:
+def get_parsed_args_dict(args: "Sequence[str] | None" = None) -> dict[str, dict[str, Any]]:
     parser, groups_mapping = make_parser()
     namespace = parser.parse_intermixed_args(args)
     parsed_args: dict[str, dict[str, Any]] = {}
@@ -314,7 +315,7 @@ def get_parsed_args_dict(args: Sequence[str] | None = None) -> dict[str, dict[st
     return parsed_args
 
 
-def parse_args(args: Sequence[str] | None = None) -> ParsedArgs:
+def parse_args(args: "Sequence[str] | None" = None) -> ParsedArgs:
     """Parses the command line arguments passed into the program."""
     parsed_args_dict = get_parsed_args_dict(args)
     try:

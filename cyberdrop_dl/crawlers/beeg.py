@@ -62,7 +62,7 @@ def get_video_id(url: AbsoluteHttpURL) -> str | None:
     try:
         return str(int(url.parts[index].removeprefix("-")))
     except Exception:
-        return
+        return None
 
 
 def get_best_format(sources: dict[str, str]) -> Format:

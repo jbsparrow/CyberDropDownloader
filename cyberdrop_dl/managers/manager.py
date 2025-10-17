@@ -279,10 +279,9 @@ def merge_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, Any]:
     for key, val in dict1.items():
         if isinstance(val, dict):
             if key in dict2 and isinstance(dict2[key], dict):
-                merge_dicts(dict1[key], dict2[key])
-        else:
-            if key in dict2:
-                dict1[key] = dict2[key]
+                merge_dicts(val, dict2[key])
+        elif key in dict2:
+            dict1[key] = dict2[key]
 
     for key, val in dict2.items():
         if key not in dict1:

@@ -58,7 +58,7 @@ class JDownloader:
 
     def connect(self) -> None:
         if not self.enabled or self._agent is not None:
-            return
+            return None
         try:
             return self._connect()
         except JDownloaderError as e:

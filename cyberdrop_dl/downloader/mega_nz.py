@@ -309,10 +309,8 @@ def decrypt_attr(attr: bytes, key: U32IntSequence) -> AnyDict:
         end = attr_str.find("}") + 1
         if end >= 1:
             return json.loads(attr_str[start:end])
-        else:
-            raise RuntimeError(f"Unable to properly decode filename, raw content is: {attr_str}")
-    else:
-        return {}
+        raise RuntimeError(f"Unable to properly decode filename, raw content is: {attr_str}")
+    return {}
 
 
 def a32_to_bytes(array: U32IntSequence) -> bytes:
@@ -535,15 +533,14 @@ class MegaApi:
 
         if isinstance(json_resp, int):
             return handle_int_resp(json_resp)
-        elif not isinstance(json_resp, list):
+        if not isinstance(json_resp, list):
             raise RequestError(f"Unknown response: {json_resp:r}")
-        elif json_resp:
+        if json_resp:
             first = json_resp[0]
             if isinstance(first, int):
                 return handle_int_resp(first)
             return first
-        else:
-            raise RequestError(f"Unknown response: {json_resp:r}")
+        raise RequestError(f"Unknown response: {json_resp:r}")
 
     async def login(self, email: str | None = None, password: str | None = None):
         if email and password:

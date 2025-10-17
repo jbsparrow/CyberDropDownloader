@@ -45,7 +45,7 @@ class NoodleMagazineCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "video" in scrape_item.url.parts:
             return await self.search(scrape_item)
-        elif "watch" in scrape_item.url.parts:
+        if "watch" in scrape_item.url.parts:
             return await self.video(scrape_item)
         raise ValueError
 

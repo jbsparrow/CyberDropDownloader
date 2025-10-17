@@ -8,7 +8,7 @@ from json import dumps as json_dumps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-import cyberdrop_dl.constants as constants
+from cyberdrop_dl import constants
 from cyberdrop_dl.clients.response import AbstractResponse
 from cyberdrop_dl.exceptions import DDOSGuardError
 from cyberdrop_dl.utils.cookie_management import make_simple_cookie

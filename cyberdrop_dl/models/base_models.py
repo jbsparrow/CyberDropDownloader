@@ -2,9 +2,8 @@
 
 from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
-import yarl
 from pydantic import (
     AnyUrl,
     BaseModel,
@@ -16,8 +15,12 @@ from pydantic import (
     model_validator,
 )
 
-from cyberdrop_dl.models.types import HttpURL
 from cyberdrop_dl.models.validators import to_apprise_url_dict
+
+if TYPE_CHECKING:
+    import yarl
+
+    from cyberdrop_dl.models.types import HttpURL
 
 _ModelT = TypeVar("_ModelT", bound=BaseModel)
 
@@ -44,12 +47,12 @@ class AppriseURLModel(FrozenModel):
 
     @model_validator(mode="before")
     @staticmethod
-    def parse_input(value: yarl.URL | dict | str) -> Mapping:
+    def parse_input(value: "yarl.URL | dict | str") -> Mapping:
         return to_apprise_url_dict(value)
 
 
 class HttpAppriseURL(AppriseURLModel):
-    url: Secret[HttpURL]
+    url: Secret["HttpURL"]
 
 
 class PathAliasModel(AliasModel):

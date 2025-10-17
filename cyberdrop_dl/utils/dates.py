@@ -135,7 +135,7 @@ def parse_aware_iso_datetime(value: str) -> datetime.datetime | None:
         parsed_date = datetime.datetime.fromisoformat(value)
         return ensure_tz(parsed_date)
     except Exception:
-        return
+        return None
 
 
 def ensure_tz(date_time: datetime.datetime) -> datetime.datetime:

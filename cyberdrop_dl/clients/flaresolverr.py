@@ -151,14 +151,13 @@ class FlareSolverr:
             self._request_lock,
             self.manager.progress_manager.show_status_msg(
                 f"Waiting For Flaresolverr Response [{self._next_request_id()}]"
-            ),
+            ),self.manager.client_manager._session.post(
+            self.url,
+            json=playload,
+            timeout=timeout,
+        ) as response
         ):
-            async with self.manager.client_manager._session.post(
-                self.url,
-                json=playload,
-                timeout=timeout,
-            ) as response:
-                return _FlareSolverrResponse.from_dict(await response.json())
+            return _FlareSolverrResponse.from_dict(await response.json())
 
     async def _create_session(self) -> None:
         session_id = "cyberdrop-dl"

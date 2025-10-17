@@ -73,9 +73,9 @@ async def get_size(path: pathlib.Path) -> int | None:
     except OSError as e:
         if not pathlib._ignore_error(e):  # type: ignore[reportAttributeAccessIssue]
             raise
-        return
+        return None
     except ValueError:
-        return
+        return None
     else:
         if S_ISREG(stat_result.st_mode):
             return stat_result.st_size

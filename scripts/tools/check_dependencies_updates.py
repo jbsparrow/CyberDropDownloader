@@ -12,9 +12,8 @@ import asyncio
 import csv
 import json
 import subprocess
-from collections.abc import Generator
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import aiohttp
 from dateutil import parser
@@ -23,6 +22,9 @@ from rich import print
 from rich.progress import Progress
 from rich.table import Table
 from yarl import URL
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class PackageInfo(NamedTuple):
@@ -60,7 +62,7 @@ async def fetch_package_info(session: aiohttp.ClientSession, package: dict[str, 
     return PackageInfo(name, current_version, latest_version, release_date, update_available)
 
 
-def get_direct_dependencies() -> Generator[str]:
+def get_direct_dependencies() -> "Generator[str]":
     pyproject_toml = Path(__file__).parents[2] / "pyproject.toml"
     with pyproject_toml.open(encoding="utf-8") as file:
         content = file.read()

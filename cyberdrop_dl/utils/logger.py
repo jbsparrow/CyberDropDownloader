@@ -315,7 +315,7 @@ def catch_exceptions(func: Callable[_P, _ExitCode]) -> Callable[_P, _ExitCode]:
 
         except KeyboardInterrupt:
             startup_logger.info("Exiting...")
-            return
+            return None
 
         except Exception:
             msg = "An error occurred, please report this to the developer with your logs file:"

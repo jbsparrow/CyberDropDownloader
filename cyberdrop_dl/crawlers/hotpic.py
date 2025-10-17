@@ -36,9 +36,9 @@ class HotPicCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "album" in scrape_item.url.parts:
             return await self.album(scrape_item)
-        elif "i" in scrape_item.url.parts:
+        if "i" in scrape_item.url.parts:
             return await self.file(scrape_item)
-        elif any(p in scrape_item.url.parts for p in ("uploads", "reddit")):
+        if any(p in scrape_item.url.parts for p in ("uploads", "reddit")):
             return await self.handle_direct_link(scrape_item)
         raise ValueError
 

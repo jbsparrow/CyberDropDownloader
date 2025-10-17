@@ -280,9 +280,9 @@ class Crawler(ABC):
     async def run(self, scrape_item: ScrapeItem) -> None:
         """Runs the crawler loop."""
         if not scrape_item.url.host:
-            return
+            return None
         if self.disabled:
-            return
+            return None
 
         self.waiting_items += 1
         async with self._semaphore:
@@ -708,7 +708,7 @@ class Crawler(ABC):
         msg = f"Date parsing for {self.DOMAIN} seems to be broken"
         if not date_or_datetime:
             log(f"{msg}: Unable to extract date", bug=True)
-            return
+            return None
         if format:
             assert not (format == "%Y-%m-%d" or format.startswith("%Y-%m-%d %H:%M:%S")), (
                 f"{msg} Do not use a custom format to parse iso8601 dates. Call parse_iso_date instead"

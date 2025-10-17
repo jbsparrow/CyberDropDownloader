@@ -420,7 +420,7 @@ def test_lazy_load_embeds() -> None:
     </div>""")
     result = list(TEST_CRAWLER._lazy_load_embeds(post))
     assert len(result) == 1
-    assert "//redgifs.com/ifr/downrightcluelesswirm" == result[0]
+    assert result[0] == "//redgifs.com/ifr/downrightcluelesswirm"
 
 
 @pytest.mark.parametrize(

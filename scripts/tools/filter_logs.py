@@ -5,15 +5,18 @@
 # ]
 # ///
 import argparse
-from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from alive_progress import alive_it  # type: ignore
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 LEVELS_TO_INCLUDE = {"WARNING", "ERROR", "CRITICAL"}
 
 
-def filter_log_file(log_file: Path) -> Iterable[str]:
+def filter_log_file(log_file: Path) -> "Iterable[str]":
     print(f"Filtering: {log_file.resolve()}")  # noqa: T201
     log_content = log_file.read_text(encoding="utf8")
     last_level = None

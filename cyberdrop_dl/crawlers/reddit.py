@@ -74,7 +74,7 @@ class RedditCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in:
-            return
+            return None
 
         async with self.client.client_manager.cache_control(self._session):
             if any(part in scrape_item.url.parts for part in ("user", "u")):

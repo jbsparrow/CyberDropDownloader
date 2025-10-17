@@ -1,9 +1,13 @@
-from pydantic import BaseModel
+
+from typing import TYPE_CHECKING
 
 from .base_models import AliasModel, AppriseURLModel, FrozenModel, HttpAppriseURL, PathAliasModel
 
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
-def get_model_fields(model: BaseModel, *, exclude_unset: bool = True) -> set[str]:
+
+def get_model_fields(model: "BaseModel", *, exclude_unset: bool = True) -> set[str]:
     fields = set()
     default_dict: dict = model.model_dump(exclude_unset=exclude_unset)
     for submodel_name, submodel in default_dict.items():

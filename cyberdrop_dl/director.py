@@ -168,7 +168,7 @@ async def _post_runtime(manager: Manager) -> None:
 
 def _setup_debug_logger(manager: Manager) -> Path | None:
     if not env.DEBUG_VAR:
-        return
+        return None
 
     debug_logger = logging.getLogger("cyberdrop_dl_debug")
     log_level = 10

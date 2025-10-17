@@ -66,7 +66,7 @@ class PixelDrainCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
-            return
+            return None
 
         file_id = scrape_item.url.name
         api_url = API_ENTRYPOINT / "file" / file_id / "info"

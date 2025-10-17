@@ -159,7 +159,7 @@ class TikTokCrawler(Crawler):
         if await self.check_complete(scrape_item.url, scrape_item.url):
             # The video was downloaded, but the audio may have not
             if not self.download_audios:
-                return
+                return None
 
             if post:
                 return self._handle_post(scrape_item, post)

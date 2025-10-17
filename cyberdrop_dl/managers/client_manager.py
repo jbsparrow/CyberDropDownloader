@@ -391,11 +391,11 @@ class ClientManager:
 
         async def check_ddos_guard() -> BeautifulSoup | None:
             if "html" not in response.content_type:
-                return
+                return None
             try:
                 soup = BeautifulSoup(await response.text(), "html.parser")
             except UnicodeDecodeError:
-                return
+                return None
             else:
                 if self.check_ddos_guard(soup) or self.check_cloudflare(soup):
                     raise DDOSGuardError

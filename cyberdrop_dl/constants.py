@@ -5,12 +5,13 @@ from enum import auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from aiohttp.resolver import AsyncResolver, ThreadedResolver
 from rich.text import Text
 
 from cyberdrop_dl.compat import Enum, IntEnum, StrEnum
 
 if TYPE_CHECKING:
+    from aiohttp.resolver import AsyncResolver, ThreadedResolver
+
     from cyberdrop_dl.utils.logger import LogHandler
 
 # TIME
@@ -20,7 +21,7 @@ LOGS_DATETIME_FORMAT = "%Y%m%d_%H%M%S"
 LOGS_DATE_FORMAT = "%Y_%m_%d"
 STARTUP_TIME_STR = STARTUP_TIME.strftime(LOGS_DATETIME_FORMAT)
 STARTUP_TIME_UTC_STR = STARTUP_TIME_UTC.strftime(LOGS_DATETIME_FORMAT)
-DNS_RESOLVER: type[AsyncResolver] | type[ThreadedResolver] | None = None
+DNS_RESOLVER: type["AsyncResolver"] | type["ThreadedResolver"] | None = None
 
 
 # logging

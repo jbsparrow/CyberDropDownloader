@@ -98,9 +98,9 @@ class HashClient:
     ) -> str | None:
         file = Path(file)
         if file.suffix in (".cdl_hls", ".cdl_hsl", ".part"):
-            return
+            return None
         if not await asyncio.to_thread(get_size_or_none, file):
-            return
+            return None
         hash = await self._update_db_and_retrive_hash_helper(file, original_filename, referer, hash_type=self.xxhash)
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
             await self._update_db_and_retrive_hash_helper(file, original_filename, referer, hash_type=self.md5)

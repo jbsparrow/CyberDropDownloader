@@ -156,7 +156,7 @@ class ProgramUI:
         if not domains:
             console.print("No domains selected", style="red")
             enter_to_continue()
-            return
+            return None
         urls = user_prompts.filter_cache_urls(self.manager, domains)
         for url in urls:
             asyncio.run(self.manager.cache_manager.request_cache.delete_url(url))

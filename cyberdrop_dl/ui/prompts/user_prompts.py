@@ -93,7 +93,7 @@ def select_config(configs: list) -> str:
 def switch_default_config_to(manager: Manager, config_name: str) -> str:
     """Asks the user if they want to switch the default config to the provided config"""
     if manager.config_manager.get_default_config() == config_name:
-        return
+        return None
     return basic_prompts.ask_toggle(
         message=f"Do you want to switch the default config to {config_name}?",
     )
@@ -109,7 +109,7 @@ def switch_default_config() -> str:
 def activate_config(manager: Manager, config) -> str:
     """Asks the user if they want to activate the provided config"""
     if manager.config_manager.get_loaded_config() == config:
-        return
+        return None
     return basic_prompts.ask_toggle(message=f"Do also want to activate the {config} config?")
 
 

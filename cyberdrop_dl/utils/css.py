@@ -79,7 +79,7 @@ def get_attr_no_error(tag: Tag, attribute: str) -> str | None:
     try:
         return get_attr_or_none(tag, attribute)
     except Exception:
-        return
+        return None
 
 
 def get_text(tag: Tag, strip: bool = True) -> str:

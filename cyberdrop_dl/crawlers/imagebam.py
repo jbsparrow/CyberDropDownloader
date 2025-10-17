@@ -50,7 +50,7 @@ class ImageBamCrawler(Crawler):
             # TODO: Add URL conversion methods as a pre_check step, before assigning them a task_id
             # Several crawlers do something like this
             self.create_task(self.run(scrape_item))
-            return
+            return None
 
         match scrape_item.url.parts[1:]:
             case ["gallery", _]:

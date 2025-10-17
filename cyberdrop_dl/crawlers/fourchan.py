@@ -48,7 +48,7 @@ class FourChanCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "thread" in scrape_item.url.parts:
             return await self.thread(scrape_item)
-        elif len(scrape_item.url.parts) == 2:
+        if len(scrape_item.url.parts) == 2:
             return await self.board(scrape_item)
         raise ValueError
 

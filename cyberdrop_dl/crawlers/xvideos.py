@@ -227,5 +227,5 @@ class XVideosCrawler(Crawler):
                 self.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
 
-            if json_resp.get("hasMoreVideos", None) is False or len(videos) < per_page:
+            if json_resp.get("hasMoreVideos") is False or len(videos) < per_page:
                 break

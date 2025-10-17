@@ -222,7 +222,7 @@ class MessageBoardCrawler(Crawler, is_abc=True):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in and self.login_required is True:
-            return
+            return None
         scrape_item.url = self.parse_url(str(scrape_item.url))
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
@@ -303,12 +303,12 @@ class MessageBoardCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def handle_link(self, scrape_item: ScrapeItem, link: AbsoluteHttpURL) -> None:
         if link == self.PRIMARY_URL:
-            return
+            return None
         if self.is_attachment(link):
             return await self.handle_internal_link(scrape_item, link)
         if self.PRIMARY_URL.host == link.host:
             self.create_task(self.run(scrape_item.create_child(link)))
-            return
+            return None
         new_scrape_item = scrape_item.create_child(link)
         self.handle_external_links(new_scrape_item)
         scrape_item.add_children()
@@ -554,10 +554,10 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     async def process_child(self, scrape_item: ScrapeItem, link_str: str, *, embeds: bool = False) -> None:
         link_str_ = pre_process_child(link_str, embeds)
         if not link_str_:
-            return
+            return None
         link = await self.get_absolute_link(link_str_)
         if not link:
-            return
+            return None
         if self.is_thumbnail(link):
             link = self.thumbnail_to_img(link)
             if not link:
@@ -584,7 +584,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         selector = self.SELECTORS.confirmation_button
         confirm_button = soup.select_one(selector.element)
         if not confirm_button:
-            return
+            return None
 
         link_str: str = css.get_attr(confirm_button, selector.attribute)
         link_str = link_str.split('" class="link link--internal', 1)[0]
@@ -710,10 +710,9 @@ def check_post_id(init_post_id: int | None, current_post_id: int, scrape_single_
     if init_post_id:
         if init_post_id > current_post_id:
             return (True, False)
-        elif init_post_id == current_post_id:
+        if init_post_id == current_post_id:
             return (not scrape_single_forum_post, True)
-        else:
-            return (not scrape_single_forum_post, not scrape_single_forum_post)
+        return (not scrape_single_forum_post, not scrape_single_forum_post)
 
     assert not scrape_single_forum_post  # We should have raised an exception earlier
     return True, True

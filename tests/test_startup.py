@@ -1,12 +1,17 @@
-from pathlib import Path
 
-import pytest
+
+from typing import TYPE_CHECKING
 
 from cyberdrop_dl.main import run
 from cyberdrop_dl.ui.program_ui import ProgramUI
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def test_startup(tmp_cwd: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    import pytest
+
+
+def test_startup(tmp_cwd: "Path", monkeypatch: "pytest.MonkeyPatch", capsys: "pytest.CaptureFixture[str]") -> None:
     # This is just to test that cyberdrop is able to run in the current python version
     msg = "main UI started successfully"
 
@@ -20,7 +25,7 @@ def test_startup(tmp_cwd: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.
     assert msg in output
 
 
-def test_async_startup(tmp_cwd: Path, caplog: pytest.LogCaptureFixture) -> None:
+def test_async_startup(tmp_cwd: "Path", caplog: "pytest.LogCaptureFixture") -> None:
     caplog.set_level(10)
     run(("--download",))
     assert "Finished downloading. Enjoy :)" in caplog.text

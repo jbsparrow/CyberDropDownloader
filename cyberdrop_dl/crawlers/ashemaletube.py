@@ -168,7 +168,7 @@ class AShemaleTubeCrawler(Crawler):
         video_id: str = scrape_item.url.parts[2]
         canonical_url = PRIMARY_URL / "videos" / video_id
         if await self.check_complete_from_referer(canonical_url):
-            return
+            return None
 
         soup = await self.request_soup(scrape_item.url, impersonate=True)
 

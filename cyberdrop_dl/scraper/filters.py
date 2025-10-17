@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
-import cyberdrop_dl.constants as constants
+from cyberdrop_dl import constants
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import NoExtensionError

@@ -176,8 +176,7 @@ class RealDebridCrawler(Crawler):
                 code = 7 if code == 16 else code
                 msg = _ERROR_CODES.get(code, "Unknown error")
                 raise RealDebridError(response.url, code, msg) from None
-            else:
-                return json_resp
+            return json_resp
 
         await self.client.client_manager.check_http_status(response)
 

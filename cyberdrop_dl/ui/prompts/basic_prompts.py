@@ -79,7 +79,7 @@ def ask_toggle(message: str = "enable", **kwargs):
 
 def enter_to_continue(message: str = "Press <ENTER> to continue", **kwargs):
     if "pytest" in sys.modules:
-        return
+        return None
     options = DEFAULT_OPTIONS | {"long_instruction": "ENTER: continue"} | kwargs
     msg = f"\n{message}"
     return inquirer.confirm(message=msg, qmark="", **options).execute()

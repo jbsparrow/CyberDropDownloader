@@ -350,9 +350,9 @@ class ScrapeMapper:
         """
 
         if domain in _crawlers_disabled_at_runtime:
-            return
+            return None
 
-        crawler = next((crawler for crawler in self.existing_crawlers.values() if crawler.DOMAIN == domain), None)
+        crawler = next((crawler for crawler in self.existing_crawlers.values() if domain == crawler.DOMAIN), None)
         if crawler and not crawler.disabled:
             crawler.disabled = True
             _crawlers_disabled_at_runtime.add(domain)
@@ -435,8 +435,7 @@ def register_crawler(
                     raise ValueError(msg)
                 log(msg, 40)
                 continue
-            else:
-                log(f"Successfully mapped {crawler.PRIMARY_URL} to generic crawler {crawler.GENERIC_NAME}")
+            log(f"Successfully mapped {crawler.PRIMARY_URL} to generic crawler {crawler.GENERIC_NAME}")
 
         elif other:
             msg = f"{domain} from {crawler.NAME} already registered by {other}"
@@ -501,4 +500,4 @@ def match_url_to_crawler(existing_crawlers: dict[str, Crawler], url: AbsoluteHtt
         existing_crawlers[url.host] = crawler = existing_crawlers[domain]
         return crawler
     except (ValueError, TypeError):
-        return
+        return None

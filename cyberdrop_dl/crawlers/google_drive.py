@@ -104,7 +104,7 @@ class GoogleDriveCrawler(Crawler):
                 index = url.parts.index(name)
                 return url.parts[index + 1]
             except (ValueError, IndexError):
-                return
+                return None
 
         if folder_id := (next_to("folders") or next_to("embeddedfolderview")):
             return await self.folder(scrape_item, folder_id)

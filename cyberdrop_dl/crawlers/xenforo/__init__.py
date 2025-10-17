@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from .allporncomix import AllPornComixCrawler
 from .celebforum import CelebForumCrawler
 from .f95zone import F95ZoneCrawler
@@ -7,9 +9,11 @@ from .simpcity import SimpCityCrawler
 from .socialmediagirls import SocialMediaGirlsCrawler
 from .titsintops import TitsInTopsCrawler
 from .xbunker import XBunkerCrawler
-from .xenforo import XenforoCrawler
 
-XF_CRAWLERS: set[type[XenforoCrawler]] = {
+if TYPE_CHECKING:
+    from .xenforo import XenforoCrawler
+
+XF_CRAWLERS: set[type["XenforoCrawler"]] = {
     AllPornComixCrawler,
     CelebForumCrawler,
     F95ZoneCrawler,

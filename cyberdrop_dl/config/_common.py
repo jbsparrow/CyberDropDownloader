@@ -1,5 +1,4 @@
-from pathlib import Path
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import Field as P_Field
 from pydantic.fields import _Unset
@@ -8,6 +7,9 @@ from cyberdrop_dl.exceptions import InvalidYamlError
 from cyberdrop_dl.models import PathAliasModel, get_model_fields
 from cyberdrop_dl.utils import yaml
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 def Field(default: Any, validation_alias: str = _Unset, **kwargs) -> Any:  # noqa: N802
     return P_Field(default=default, validation_alias=validation_alias, **kwargs)
@@ -15,7 +17,7 @@ def Field(default: Any, validation_alias: str = _Unset, **kwargs) -> Any:  # noq
 
 class ConfigModel(PathAliasModel):
     @classmethod
-    def load_file(cls, file: Path, update_if_has_string: str) -> Self:
+    def load_file(cls, file: "Path", update_if_has_string: str) -> Self:
         default = cls()
         if not file.is_file():
             config = default
@@ -31,11 +33,11 @@ class ConfigModel(PathAliasModel):
             yaml.save(file, config)
         return config
 
-    def save_to_file(self, file: Path) -> None:
+    def save_to_file(self, file: "Path") -> None:
         yaml.save(file, self)
 
 
-def _is_in_file(search_value: str, file: Path) -> bool:
+def _is_in_file(search_value: str, file: "Path") -> bool:
     try:
         return search_value.casefold() in file.read_text().casefold()
     except FileNotFoundError:

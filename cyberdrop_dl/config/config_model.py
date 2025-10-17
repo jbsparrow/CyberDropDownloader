@@ -3,29 +3,32 @@ import re
 from datetime import datetime, timedelta
 from logging import DEBUG
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ByteSize, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
 from cyberdrop_dl import constants
 from cyberdrop_dl.constants import BROWSERS, DEFAULT_APP_STORAGE, DEFAULT_DOWNLOAD_STORAGE
 from cyberdrop_dl.data_structures.hash import Hashing
-from cyberdrop_dl.models import HttpAppriseURL
-from cyberdrop_dl.models.types import (
-    ByteSizeSerilized,
-    ListNonEmptyStr,
-    ListNonNegativeInt,
-    LogPath,
-    MainLogPath,
-    NonEmptyStr,
-    NonEmptyStrOrNone,
-    PathOrNone,
-)
 from cyberdrop_dl.models.validators import falsy_as, to_timedelta
 from cyberdrop_dl.supported_domains import SUPPORTED_SITES_DOMAINS
 from cyberdrop_dl.utils.strings import validate_format_string
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 from ._common import ConfigModel, Field, PathAliasModel
+
+if TYPE_CHECKING:
+    from cyberdrop_dl.models import HttpAppriseURL
+    from cyberdrop_dl.models.types import (
+        ByteSizeSerilized,
+        ListNonEmptyStr,
+        ListNonNegativeInt,
+        LogPath,
+        MainLogPath,
+        NonEmptyStr,
+        NonEmptyStrOrNone,
+        PathOrNone,
+    )
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
 _SORTING_COMMON_FIELDS = {
@@ -46,11 +49,11 @@ class DownloadOptions(BaseModel):
     disable_file_timestamps: bool = False
     include_album_id_in_folder_name: bool = False
     include_thread_id_in_folder_name: bool = False
-    maximum_number_of_children: ListNonNegativeInt = []
+    maximum_number_of_children: "ListNonNegativeInt" = []
     remove_domains_from_folder_names: bool = False
     remove_generated_id_from_filenames: bool = False
     scrape_single_forum_post: bool = False
-    separate_posts_format: NonEmptyStr = "{default}"
+    separate_posts_format: "NonEmptyStr" = "{default}"
     separate_posts: bool = False
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
@@ -73,16 +76,16 @@ class Files(PathAliasModel):
 
 
 class Logs(PathAliasModel):
-    download_error_urls: LogPath = Field(Path("Download_Error_URLs.csv"), "download_error_urls_filename")
-    last_forum_post: LogPath = Field(Path("Last_Scraped_Forum_Posts.csv"), "last_forum_post_filename")
+    download_error_urls: "LogPath" = Field(Path("Download_Error_URLs.csv"), "download_error_urls_filename")
+    last_forum_post: "LogPath" = Field(Path("Last_Scraped_Forum_Posts.csv"), "last_forum_post_filename")
     log_folder: Path = DEFAULT_APP_STORAGE / "Configs/{config}/Logs"
     log_line_width: PositiveInt = Field(240, ge=50)
     logs_expire_after: timedelta | None = None
-    main_log: MainLogPath = Field(Path("downloader.log"), "main_log_filename")
+    main_log: "MainLogPath" = Field(Path("downloader.log"), "main_log_filename")
     rotate_logs: bool = False
-    scrape_error_urls: LogPath = Field(Path("Scrape_Error_URLs.csv"), "scrape_error_urls_filename")
-    unsupported_urls: LogPath = Field(Path("Unsupported_URLs.csv"), "unsupported_urls_filename")
-    webhook: HttpAppriseURL | None = Field(None, "webhook_url")
+    scrape_error_urls: "LogPath" = Field(Path("Scrape_Error_URLs.csv"), "scrape_error_urls_filename")
+    unsupported_urls: "LogPath" = Field(Path("Unsupported_URLs.csv"), "unsupported_urls_filename")
+    webhook: "HttpAppriseURL | None" = Field(None, "webhook_url")
 
     @property
     def cdl_responses_dir(self) -> Path:
@@ -125,12 +128,12 @@ class Logs(PathAliasModel):
 
 
 class FileSizeLimits(BaseModel):
-    maximum_image_size: ByteSizeSerilized = ByteSize(0)
-    maximum_other_size: ByteSizeSerilized = ByteSize(0)
-    maximum_video_size: ByteSizeSerilized = ByteSize(0)
-    minimum_image_size: ByteSizeSerilized = ByteSize(0)
-    minimum_other_size: ByteSizeSerilized = ByteSize(0)
-    minimum_video_size: ByteSizeSerilized = ByteSize(0)
+    maximum_image_size: "ByteSizeSerilized" = ByteSize(0)
+    maximum_other_size: "ByteSizeSerilized" = ByteSize(0)
+    maximum_video_size: "ByteSizeSerilized" = ByteSize(0)
+    minimum_image_size: "ByteSizeSerilized" = ByteSize(0)
+    minimum_other_size: "ByteSizeSerilized" = ByteSize(0)
+    minimum_video_size: "ByteSizeSerilized" = ByteSize(0)
 
 
 class MediaDurationLimits(BaseModel):
@@ -158,11 +161,11 @@ class IgnoreOptions(BaseModel):
     exclude_images: bool = False
     exclude_other: bool = False
     exclude_videos: bool = False
-    filename_regex_filter: NonEmptyStrOrNone = None
+    filename_regex_filter: "NonEmptyStrOrNone" = None
     ignore_coomer_ads: bool = False
     ignore_coomer_post_content: bool = True
-    only_hosts: ListNonEmptyStr = []
-    skip_hosts: ListNonEmptyStr = []
+    only_hosts: "ListNonEmptyStr" = []
+    skip_hosts: "ListNonEmptyStr" = []
     exclude_files_with_no_extension: bool = True
 
     @field_validator("filename_regex_filter")
@@ -183,25 +186,25 @@ class RuntimeOptions(BaseModel):
     delete_partial_files: bool = False
     ignore_history: bool = False
     jdownloader_autostart: bool = False
-    jdownloader_download_dir: PathOrNone = None
-    jdownloader_whitelist: ListNonEmptyStr = []
+    jdownloader_download_dir: "PathOrNone" = None
+    jdownloader_whitelist: "ListNonEmptyStr" = []
     log_level: NonNegativeInt = DEBUG
     send_unsupported_to_jdownloader: bool = False
     skip_check_for_empty_folders: bool = False
     skip_check_for_partial_files: bool = False
-    slow_download_speed: ByteSizeSerilized = ByteSize(0)
+    slow_download_speed: "ByteSizeSerilized" = ByteSize(0)
     update_last_forum_post: bool = True
 
 
 class Sorting(BaseModel):
-    scan_folder: PathOrNone = None
+    scan_folder: "PathOrNone" = None
     sort_downloads: bool = False
     sort_folder: Path = DEFAULT_DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
-    sort_incrementer_format: NonEmptyStr = " ({i})"
-    sorted_audio: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
-    sorted_image: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Images/{filename}{ext}"
-    sorted_other: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
-    sorted_video: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
+    sort_incrementer_format: "NonEmptyStr" = " ({i})"
+    sorted_audio: "NonEmptyStrOrNone" = "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
+    sorted_image: "NonEmptyStrOrNone" = "{sort_dir}/{base_dir}/Images/{filename}{ext}"
+    sorted_other: "NonEmptyStrOrNone" = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
+    sorted_video: "NonEmptyStrOrNone" = "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
 
     @field_validator("sort_incrementer_format", mode="after")
     @classmethod
@@ -255,7 +258,7 @@ class Sorting(BaseModel):
 class BrowserCookies(BaseModel):
     auto_import: bool = False
     browser: BROWSERS | None = BROWSERS.firefox
-    sites: list[NonEmptyStr] = SUPPORTED_SITES_DOMAINS
+    sites: list["NonEmptyStr"] = SUPPORTED_SITES_DOMAINS
 
     def model_post_init(self, *_) -> None:
         if self.auto_import and not self.browser:

@@ -68,7 +68,7 @@ class MegaNzCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in:
-            return
+            return None
 
         if frag := scrape_item.url.fragment:  # Mega stores access key in fragment. We can't do anything without the key
             # v1 URLs

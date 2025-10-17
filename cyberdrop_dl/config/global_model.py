@@ -1,6 +1,6 @@
 import random
 from datetime import timedelta
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import aiohttp
 from pydantic import (
@@ -12,11 +12,14 @@ from pydantic import (
     field_serializer,
     field_validator,
 )
-from yarl import URL
 
 from cyberdrop_dl.config._common import ConfigModel, Field
-from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, ListNonEmptyStr, ListPydanticURL, NonEmptyStr
 from cyberdrop_dl.models.validators import falsy_as, falsy_as_none, to_bytesize, to_timedelta
+
+if TYPE_CHECKING:
+    from yarl import URL
+
+    from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, ListNonEmptyStr, ListPydanticURL, NonEmptyStr
 
 MIN_REQUIRED_FREE_SPACE = to_bytesize("512MB")
 DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
@@ -25,14 +28,14 @@ DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
 class General(BaseModel):
     # TODO: Move `ssl_context` to an advance config section
     ssl_context: Literal["truststore", "certifi", "truststore+certifi"] | None = "truststore+certifi"
-    disable_crawlers: ListNonEmptyStr = []
+    disable_crawlers: "ListNonEmptyStr" = []
     enable_generic_crawler: bool = False
-    flaresolverr: HttpURL | None = None
+    flaresolverr: "HttpURL | None" = None
     max_file_name_length: PositiveInt = 95
     max_folder_name_length: PositiveInt = 60
-    proxy: HttpURL | None = None
-    required_free_space: ByteSizeSerilized = DEFAULT_REQUIRED_FREE_SPACE
-    user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0"
+    proxy: "HttpURL | None" = None
+    required_free_space: "ByteSizeSerilized" = DEFAULT_REQUIRED_FREE_SPACE
+    user_agent: "NonEmptyStr" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0"
 
     @field_validator("ssl_context", mode="before")
     @classmethod
@@ -47,7 +50,7 @@ class General(BaseModel):
         return sorted(set(value))
 
     @field_serializer("flaresolverr", "proxy")
-    def serialize(self, value: URL | str) -> str | None:
+    def serialize(self, value: "URL | str") -> str | None:
         return falsy_as(value, None, str)
 
     @field_validator("flaresolverr", "proxy", mode="before")
@@ -64,7 +67,7 @@ class General(BaseModel):
 class RateLimiting(BaseModel):
     download_attempts: PositiveInt = 2
     download_delay: NonNegativeFloat = 0.0
-    download_speed_limit: ByteSizeSerilized = ByteSize(0)
+    download_speed_limit: "ByteSizeSerilized" = ByteSize(0)
     file_host_cache_expire_after: timedelta = timedelta(days=7)
     forum_cache_expire_after: timedelta = timedelta(weeks=4)
     jitter: NonNegativeFloat = 0
@@ -113,10 +116,10 @@ class UIOptions(BaseModel):
 
 
 class GenericCrawlerInstances(BaseModel):
-    wordpress_media: ListPydanticURL = []
-    wordpress_html: ListPydanticURL = []
-    discourse: ListPydanticURL = []
-    chevereto: ListPydanticURL = []
+    wordpress_media: "ListPydanticURL" = []
+    wordpress_html: "ListPydanticURL" = []
+    discourse: "ListPydanticURL" = []
+    chevereto: "ListPydanticURL" = []
 
 
 class GlobalSettings(ConfigModel):

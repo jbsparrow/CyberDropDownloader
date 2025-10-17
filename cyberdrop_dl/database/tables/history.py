@@ -205,7 +205,7 @@ class HistoryTable:
     async def get_duration(self, domain: str, media_item: MediaItem) -> float | None:
         """Returns the duration from the database."""
         if media_item.is_segment:
-            return
+            return None
 
         url_path = media_item.db_path
         query = "SELECT duration FROM media WHERE domain = ? and url_path = ?"

@@ -57,8 +57,7 @@ class DirtyShipCrawler(Crawler):
         if "gallery" in scrape_item.url.parts:
             if len(scrape_item.url.parts) >= 4:
                 return await self.photo(scrape_item)
-            else:
-                return await self.gallery(scrape_item)
+            return await self.gallery(scrape_item)
         return await self.video(scrape_item)
 
     @error_handling_wrapper

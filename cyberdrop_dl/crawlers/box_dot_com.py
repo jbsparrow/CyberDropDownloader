@@ -71,7 +71,7 @@ class BoxDotComCrawler(Crawler):
             canonical_path = canonical_path.replace(trash, "")
         scrape_item.url = scrape_item.url.with_path(canonical_path, keep_query=True, keep_fragment=True)
         if "file" in scrape_item.url.parts and await self.check_complete_from_referer(scrape_item):
-            return
+            return None
 
         soup = await self.request_soup(scrape_item.url)
 
@@ -95,7 +95,7 @@ class BoxDotComCrawler(Crawler):
             canonical_url = get_canonical_url(shared_name, file_id)
             scrape_item.url = canonical_url
             self.create_task(self.run(scrape_item))
-            return
+            return None
 
         shared_folder = SharedFolder(**shared_folder_data)
         if "file" not in scrape_item.url.parts:

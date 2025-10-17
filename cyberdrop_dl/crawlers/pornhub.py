@@ -138,7 +138,7 @@ class PornHubCrawler(Crawler):
             case ["user" | "channel" | "channels" | "model" | "pornstar" as type_, name, *rest]:
                 profile = Profile.new(type_, name, rest)
                 if profile in self.seen_profiles:
-                    return
+                    return None
                 self.seen_profiles.add(profile)
                 return await self.profile(scrape_item, profile)
             case ["album", album_id]:

@@ -408,7 +408,7 @@ def decrypt_api_response(api_response: ApiResponse) -> str:
 def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
     info_js = soup.select_one(_SELECTORS.JS_SLUG)
     if not info_js:
-        return
+        return None
     return get_text_between(info_js.get_text(), "jsSlug = '", "';")
 
 

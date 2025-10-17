@@ -61,7 +61,7 @@ def which_ffprobe() -> str | None:
         _FFPROBE_AVAILABLE = True
         return bin_path
     except RuntimeError:
-        return
+        return None
 
 
 def get_ffmpeg_version() -> str | None:
@@ -171,7 +171,7 @@ def _get_bin_version(bin_path: str) -> str | None:
         )
         stdout = p.stdout.decode("utf-8", errors="ignore")
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired, OSError, ValueError):
-        return
+        return None
     else:
         return stdout.partition("version")[-1].partition("Copyright")[0].strip()
 
