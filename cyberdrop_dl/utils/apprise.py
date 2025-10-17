@@ -212,7 +212,7 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
             "attach_logs": {"body": text.plain},
             "simplified": {},
         }
-        attach_file_failed_msg = "Unable to get copy of main log file. 'attach_logs' URLs will be proccessed without it"
+        attach_file_failed_msg = "Unable to get copy of main log file. 'attach_logs' URLs will be processed without it"
         log_lines = [LogLine(LogLevel.ERROR, attach_file_failed_msg)]
         try:
             shutil.copy(main_log, temp_main_log)

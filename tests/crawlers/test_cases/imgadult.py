@@ -15,7 +15,7 @@ TEST_CASES = [
     ),
     (
         "https://imgadult.com/upload/big/2025/06/22/685761cc22593.jpg",
-        # IDs of thumbnails and src images are diferent. CDL should fail
+        # IDs of thumbnails and src images are different. CDL should fail
         [],
     ),
 ]

@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.11, 3.13, pypy-3.11]
+        python-version: [3.11, 3.13, 3.14, pypy-3.11]
         exclude:
           # sendtotrash and browser_cookies3 need pywin32, which has some cpython specific implementation details
           # https://github.com/mhammond/pywin32/issues/1289

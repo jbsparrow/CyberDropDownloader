@@ -33,11 +33,9 @@ class Selector:
 def _decrypt_url(raw_url: str) -> str | None:
     if raw_url.startswith("http") or raw_url.startswith("/"):
         return raw_url
-    try:
-        if _is_hex(raw_url):
-            return _decode_hex_url(raw_url)
-    except ValueError:
-        pass
+
+    if _is_hex(raw_url):
+        return _decode_hex_url(raw_url)
 
     try:
         decoded_url = base64.b64decode(raw_url)
@@ -350,9 +348,7 @@ def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
             current_step = _ensure_signed_32int(current_step * 1664525) + 1013904223
             return current_step & 255
 
-        return decode_next
-
-    if algo == 2:
+    elif algo == 2:
 
         def decode_next() -> int:
             nonlocal current_step
@@ -365,9 +361,7 @@ def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
 
             return current_step & 255
 
-        return decode_next
-
-    if algo == 3:
+    elif algo == 3:
 
         def decode_next() -> int:
             nonlocal current_step
@@ -380,9 +374,32 @@ def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
 
             return val & 255
 
-        return decode_next
+    elif algo == 4:
 
-    raise ValueError(f"Unknown crypto algo: {algo}")
+        def decode_next() -> int:
+            nonlocal current_step
+            val = current_step = _ensure_signed_32int(current_step + 0x6D2B79F5)
+            val = _ensure_signed_32int((val << 7) | ((val & 0xFFFFFFFF) >> 25))
+            val = _ensure_signed_32int(val + 0x9E3779B9)
+            val = _ensure_signed_32int(val ^ ((val & 0xFFFFFFFF) >> 11))
+            val = _ensure_signed_32int(val * 0x27D4EB2D)
+            return 255 & val
+
+    elif algo == 5:
+
+        def decode_next() -> int:
+            nonlocal current_step
+
+            current_step = _ensure_signed_32int(current_step ^ (current_step << 7))
+            current_step = _ensure_signed_32int(current_step ^ ((current_step & 0xFFFFFFFF) >> 9))
+            current_step = _ensure_signed_32int(current_step ^ (current_step << 8))
+            current_step = _ensure_signed_32int(current_step + 0xA5A5A5A5)
+            return current_step
+
+    else:
+        raise ValueError(f"Unknown crypto algo: {algo}")
+
+    return decode_next
 
 
 def _is_hex(hex_string: str) -> bool:
@@ -397,6 +414,9 @@ def _decode_hex_url(encrypted_url: str) -> str:
     array = bytearray.fromhex(encrypted_url)
     algo = array[0]
     seed = _ensure_signed_32int(array[1] | (array[2] << 8) | (array[3] << 16) | (array[4] << 24))
-    decode_next = _make_decoder(algo, seed)
+    try:
+        decode_next = _make_decoder(algo, seed)
+    except ValueError:
+        raise ValueError(f"Unknown encrypted URL {encrypted_url} with {algo = } and {seed = }") from None
     decoded_array = bytearray([(array[idx + 5] ^ decode_next()) & 255 for idx in range(len(array) - 5)])
     return decoded_array.decode("utf-8")

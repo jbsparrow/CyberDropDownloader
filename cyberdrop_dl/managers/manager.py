@@ -27,6 +27,7 @@ from cyberdrop_dl.utils.utilities import close_if_defined, get_system_informatio
 
 if TYPE_CHECKING:
     from asyncio import TaskGroup
+    from collections.abc import Sequence
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 
@@ -37,7 +38,10 @@ class AsyncioEvents(NamedTuple):
 
 
 class Manager:
-    def __init__(self, args: tuple[str, ...] | None = None) -> None:
+    def __init__(self, args: Sequence[str] | None = None) -> None:
+        if isinstance(args, str):
+            args = [args]
+
         self.parsed_args: ParsedArgs = field(init=False)
         self.cache_manager: CacheManager = CacheManager(self)
         self.path_manager: PathManager = field(init=False)

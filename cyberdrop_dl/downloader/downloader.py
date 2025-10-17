@@ -26,7 +26,7 @@ from cyberdrop_dl.exceptions import (
 )
 from cyberdrop_dl.utils import aio, ffmpeg
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none, parse_url
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
 
 # Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
 WIN_EPOCH_OFFSET = 116444736e9
@@ -126,7 +126,7 @@ class Downloader:
         self.waiting_items = 0
 
         self._additional_headers = {}
-        self._current_attempt_filesize = {}
+        self._current_attempt_filesize: dict[str, int] = {}
         self._file_lock_vault = manager.client_manager.file_locks
         self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
         self._semaphore: asyncio.Semaphore = field(init=False)
@@ -163,7 +163,8 @@ class Downloader:
         await self.client.mark_incomplete(media_item, self.domain)
         if not media_item.is_segment:
             self.update_queued_files()
-        async with self._semaphore:
+        server = (media_item.debrid_link or media_item.url).host
+        async with self.client.server_limiter(media_item.domain, server), self._semaphore:
             await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
             self.processed_items.add(media_item.db_path)
@@ -432,7 +433,7 @@ class Downloader:
                 self.manager.progress_manager.download_progress.add_skipped()
                 self.attempt_task_removal(media_item)
 
-        except (DownloadError, ClientResponseError, InvalidContentTypeError, ClientConnectorError):
+        except (DownloadError, ClientResponseError, InvalidContentTypeError):
             raise
 
         except (
@@ -441,16 +442,14 @@ class Downloader:
             PermissionError,
             TimeoutError,
             ClientError,
+            ClientConnectorError,
         ) as e:
             ui_message = getattr(e, "status", type(e).__name__)
-            if size := await asyncio.to_thread(get_size_or_none, media_item.partial_file):
-                if (
-                    media_item.filename in self._current_attempt_filesize
-                    and self._current_attempt_filesize[media_item.filename] >= size
-                ):
+            if size := await aio.get_size(media_item.partial_file):
+                if self._current_attempt_filesize.get(media_item.filename, 0) >= size:
                     raise DownloadError(ui_message, message=f"{self.log_prefix} failed", retry=True) from None
+
                 self._current_attempt_filesize[media_item.filename] = size
-                media_item.current_attempt = 0
                 raise DownloadError(status=999, message="Download timeout reached, retrying", retry=True) from None
 
             message = str(e)

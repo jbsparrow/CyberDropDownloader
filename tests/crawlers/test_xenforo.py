@@ -361,7 +361,7 @@ def test_extract_embed_url(input_string: str, expected_output: str) -> None:
     assert _forum.extract_embed_url(input_string) == expected_output
 
 
-@pytest.mark.xfail  # regex can not handle URLs with commans in it (kvs)
+@pytest.mark.xfail  # regex can not handle URLs with commands in it (kvs)
 @pytest.mark.parametrize(
     ("input_string", "expected_output"),
     [

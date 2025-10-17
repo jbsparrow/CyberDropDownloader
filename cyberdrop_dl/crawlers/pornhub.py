@@ -221,6 +221,7 @@ class PornHubCrawler(Crawler):
         link = self.parse_url(link_str)
         await self._process_photo(scrape_item, link)
 
+    @error_handling_wrapper
     async def _process_photo(
         self, scrape_item: ScrapeItem, link: AbsoluteHttpURL, results: dict[str, Any] | None = None
     ) -> None:

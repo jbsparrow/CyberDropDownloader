@@ -140,7 +140,7 @@ class FlareSolverr:
         if command is _Command.CREATE_SESSION:
             timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
 
-        #  timeout in miliseconds (60s)
+        #  timeout in milliseconds (60s)
         playload = {"cmd": command, "maxTimeout": 60_000} | kwargs
 
         if data:

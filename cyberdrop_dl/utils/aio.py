@@ -22,7 +22,7 @@ async def gather(coros: Sequence[Awaitable[_T]], batch_size: int = 10) -> list[_
     This function ensures there are never more than `batch_size` tasks created at any given time.
 
     If any exception is raised within a task, all currently running tasks
-    are cancelled and any remaning task in the queue will be ignored.
+    are cancelled and any renaming task in the queue will be ignored.
     """
 
     semaphore = asyncio.BoundedSemaphore(batch_size)

@@ -27,6 +27,7 @@ class EromeCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Album": "/a/...",
         "Profile": "/...",
+        "Search": "/search?q=...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
@@ -35,7 +36,10 @@ class EromeCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "a" in scrape_item.url.parts:
             return await self.album(scrape_item)
-        await self.profile(scrape_item)
+        elif "search" in scrape_item.url.parts and (query := scrape_item.url.query.get("q")):
+            return await self.search(scrape_item, query)
+        else:
+            await self.profile(scrape_item)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -69,3 +73,12 @@ class EromeCrawler(Crawler):
                 filename, ext = self.get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
                 scrape_item.add_children()
+
+    @error_handling_wrapper
+    async def search(self, scrape_item: ScrapeItem, query: str) -> None:
+        title = self.create_title(f"Search - {query}")
+        scrape_item.setup_as_album(title)
+
+        async for soup in self.web_pager(scrape_item.url, _SELECTORS.NEXT_PAGE):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM):
+                self.create_task(self.run(new_scrape_item))

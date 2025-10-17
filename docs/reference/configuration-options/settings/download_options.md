@@ -20,7 +20,7 @@ will be changed to:
 | ------ | ------- |
 | `bool` | `false` |
 
-By default the program will retry a download 10 times. You can set this to `true` to disable it and always retry until the download completes.
+By default the program will retry a download twice. You can set this to `true` to disable it and always retry until the download completes.
 
 However, to make sure the program will not run endlessly, there are certain situations where a file will never be retried, like if the program receives a `404` HTTP status, meaning the link is dead.
 
@@ -143,7 +143,8 @@ For most forum sites, the post id is part of the fragment in the URL.
 ex: `/thread/iphone-16-16e-16-plus-16-pro-16-promax.256047/page-64#post-7512404` has a post id of `7512404`
 
 If `scrape_single_forum_post` is `false`, CDL will download all post in the thread, from post `7512404` until the last post
-If `scrape_single_forum_post` is `true`, CDL will only download file within post `7512404` itself and stop.
+
+If `scrape_single_forum_post` is `true`, CDL will only download files within post `7512404` itself and stop.
 
 ## `separate_posts`
 
@@ -158,7 +159,8 @@ This option only works with sites that have 'posts':
 - `Forums`
 - `Discourse`
 - `reddit`
-- `coomer`, `kemono` and `nekohouse`.
+- `Tiktok`
+- `Coomer`, `Kemono` and `Nekohouse`.
 
 For some sites, this value is hardcorded to `true` because each post is always an individual page:
 
@@ -185,9 +187,10 @@ Unique Path Flags:
 
 {% hint style="warning" %}
 Not all sites support all possible flags. Ex: Posts from reddit only support the `title` flag
+
 If you use a format with a field that the site does not support, CDL will replace it with `UNKNOWN_<FIELD_NAME>`
 
-ex: using the format `reddit post #{number}` -> `reddit post #UNKNOWN_ID`
+ex: using the format `reddit post #{id}` will result in `reddit post #UNKNOWN_ID`
 {% endhint %}
 
 Setting it to `{default}` will use the default format, which is different for each crawler:
@@ -200,6 +203,7 @@ Setting it to `{default}` will use the default format, which is different for ea
 | `Reddit`                              | `{title}`                          |
 | `WordPress`                           | `{date:%Y-%m-%d} - {id} - {title}` |
 | `eFukt`                               | `{date:%Y-%m-%d} {title}`          |
+| `Tiktok`                              | `{date:%Y-%m-%d} - {id}`          |
 
 A date without a `format_spec` defaults to ISO 8601 format
 
@@ -240,13 +244,10 @@ For example, when dealing with Megathreads, if a Megathread is linked to another
 
 Restricts how many levels deep the scraper is allowed to go while scraping a thread
 
-Values:
-
-- `0`: No nesting allowed, only the top level thread is allowed
-- `1+`: limits to the value given
+A value of `0` means only the top level thread will be scraped
 
 {% hint style="info" %}
-This setting is hardcoded to `false` for Discourse sites
+This setting is hardcoded to `0` for Discourse sites
 {% endhint %}
 
 ### Example
