@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import queue
+import sys
+from functools import wraps
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
-from typing import IO, TYPE_CHECKING
+from typing import IO, TYPE_CHECKING, ParamSpec
 
 from rich._log_render import LogRender
 from rich.console import Console, Group
@@ -16,40 +19,61 @@ from rich.padding import Padding
 from rich.text import Text, TextType
 
 from cyberdrop_dl import constants, env
+from cyberdrop_dl.dependencies import browser_cookie3
+from cyberdrop_dl.exceptions import InvalidYamlError
 
 logger = logging.getLogger("cyberdrop_dl")
 logger_debug = logging.getLogger("cyberdrop_dl_debug")
+startup_logger = logging.getLogger("cyberdrop_dl_startup")
 _DEFAULT_CONSOLE = Console()
 
-ERROR_PREFIX = "\n[bold red]ERROR: [/bold red]"
-USER_NAME = Path.home().resolve().parts[-1]
-NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
+_USER_NAME = Path.home().resolve().name
+_NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Generator, Iterable
     from datetime import datetime
 
     from rich.console import ConsoleRenderable
 
     from cyberdrop_dl.managers.manager import Manager
 
-
-EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
-
-
-def get_log_level_text(name: str, color: str) -> Text:
-    #  From markup to prevent applying the color to the entire line
-    return Text.from_markup(f"[{color}]{name}[/{color}]") if color else Text(name)
+    _P = ParamSpec("_P")
+    _ExitCode = str | int | None
 
 
-RICH_LOG_LEVELS = {
-    10: get_log_level_text("DEBUG    ", "cyan"),
-    20: get_log_level_text("INFO     ", ""),
-    30: get_log_level_text("WARNING  ", "yellow"),
-    40: get_log_level_text("ERROR    ", "bold red"),
-    50: get_log_level_text("CRITICAL ", "bold red"),
-}
+class RedactedConsole(Console):
+    """Custom console to remove username from logs"""
+
+    def _render_buffer(self, buffer) -> str:
+        output: str = super()._render_buffer(buffer)
+        return _redact_message(output)
+
+
+class JsonLogRecord(logging.LogRecord):
+    def getMessage(self) -> str:  # noqa: N802
+        """`dicts` will be logged as json, lazily"""
+
+        msg = str(self._proccess_msg(self.msg))
+        if self.args:
+            args = map(self._proccess_msg, self.args)
+            try:
+                return msg.format(*args)
+            except Exception:
+                return msg % args
+
+        return msg
+
+    @staticmethod
+    def _proccess_msg(msg: object) -> object:
+        # TODO: Use our custom decoder to support more types
+        if isinstance(msg, dict):
+            return json.dumps(msg, indent=2, ensure_ascii=False, default=str)
+        return msg
+
+
+logging.setLogRecordFactory(JsonLogRecord)
 
 
 class LogHandler(RichHandler):
@@ -109,7 +133,8 @@ class QueuedLogger:
 
 
 class NoPaddingLogRender(LogRender):
-    cdl_padding = 0
+    cdl_padding: int = 0
+    EXCLUDE_PATH_LOGGING_FROM: tuple[str, ...] = "logger.py", "base.py", "session.py", "cache_control.py"
 
     def __call__(  # type: ignore[reportIncompatibleMethodOverride]
         self,
@@ -143,9 +168,9 @@ class NoPaddingLogRender(LogRender):
             output.pad_right(1)
 
         if not self.cdl_padding:
-            self.cdl_padding = get_renderable_length(output)
+            self.cdl_padding = _get_renderable_length(output)
 
-        if self.show_path and path and not any(path.startswith(p) for p in EXCLUDE_PATH_LOGGING_FROM):
+        if self.show_path and path and not any(path.startswith(p) for p in self.EXCLUDE_PATH_LOGGING_FROM):
             path_text = Text(style="log.path")
             path_text.append(path, style=f"link file://{link_path}" if link_path else "")
             if line_no:
@@ -161,7 +186,7 @@ class NoPaddingLogRender(LogRender):
 
         for renderable in Renderables(renderables):  # type: ignore
             if isinstance(renderable, Text):
-                renderable = indent_text(renderable, console, self.cdl_padding)
+                renderable = _indent_text(renderable, console, self.cdl_padding)
                 renderable.stylize("log.message")
                 output.append(renderable)
                 continue
@@ -170,12 +195,12 @@ class NoPaddingLogRender(LogRender):
         return Group(output, *padded_lines)
 
 
-def get_renderable_length(renderable) -> int:
+def _get_renderable_length(renderable) -> int:
     measurement = Measurement.get(_DEFAULT_CONSOLE, _DEFAULT_CONSOLE.options, renderable)
     return measurement.maximum
 
 
-def indent_text(text: Text, console: Console, indent: int = 30) -> Text:
+def _indent_text(text: Text, console: Console, indent: int = 30) -> Text:
     """Indents each line of a Text object except the first one."""
     indent_str = Text("\n" + (" " * indent))
     new_text = Text()
@@ -190,58 +215,29 @@ def indent_text(text: Text, console: Console, indent: int = 30) -> Text:
     return first_line.append(new_text)
 
 
-def indent_string(text: str, indent_level: int = 9) -> str:
-    """Indents each line of a string object except the first one."""
-    indentation = " " * indent_level
-    lines = text.splitlines()
-    if len(lines) <= 1:
-        return text
-    indented_lines = [lines[0]] + [indentation + line for line in lines[1:]]
-    return "\n".join(indented_lines)
-
-
-class RedactedConsole(Console):
-    """Custom console to remove username from logs"""
-
-    def _render_buffer(self, buffer) -> str:
-        output: str = super()._render_buffer(buffer)
-        return _redact_message(output)
-
-
-def process_log_msg(message: object) -> object:
-    if isinstance(message, dict):
-        return json.dumps(message, indent=4, ensure_ascii=False)
-    return message
-
-
-def create_rich_log_msg(msg: str, level: int = 10) -> Text:
-    """Create a rich text where the level has color"""
-    rich_level = RICH_LOG_LEVELS.get(level) or RICH_LOG_LEVELS[10]
-    return rich_level + indent_string(msg)
-
-
 def log(message: object, level: int = 10, bug: bool = False, **kwargs) -> None:
     """Simple logging function."""
-    msg = process_log_msg(message)
-    log_debug(msg, level, **kwargs)
+    log_debug(message, level, **kwargs)
     if bug:
-        msg = f"{msg}. Please open a bug report at {NEW_ISSUE_URL}"
+        args = message, f"Please open a bug report at {_NEW_ISSUE_URL}"
+        message = "{}. {}"
         level = 30
-    logger.log(level, msg, **kwargs)
+    else:
+        args = ()
+    logger.log(level, message, *args, **kwargs)
 
 
 def log_debug(message: object, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     if env.DEBUG_VAR:
-        msg = process_log_msg(message)
-        logger_debug.log(level, msg, **kwargs)
+        logger_debug.log(level, message, **kwargs)
 
 
 def log_with_color(message: Text | str, style: str, level: int = 20, show_in_stats: bool = True, **kwargs) -> None:
     """Simple logging function with color."""
     text = message if isinstance(message, Text) else Text(message, style=style)
     log(text.plain, level, **kwargs)
-    if constants.CONSOLE_LEVEL >= 50:
+    if constants.CONSOLE_LEVEL >= 50 and "pytest" not in sys.modules:
         _DEFAULT_CONSOLE.print(text)
     if show_in_stats:
         constants.LOG_OUTPUT_TEXT.append_text(text.append("\n"))
@@ -260,7 +256,71 @@ def _redact_message(message: Exception | Text | str) -> str:
     redacted = str(message)
     separators = ["\\", "\\\\", "/"]
     for sep in separators:
-        as_tail = sep + USER_NAME
-        as_part = USER_NAME + sep
+        as_tail = sep + _USER_NAME
+        as_part = _USER_NAME + sep
         redacted = redacted.replace(as_tail, f"{sep}[REDACTED]").replace(as_part, f"[REDACTED]{sep}")
     return redacted
+
+
+@contextlib.contextmanager
+def _setup_startup_logger() -> Generator[None]:
+    """Context manager to add a file handler to the startup logger
+
+    It will only add it if we have an exception, to prevent creating an empty file"""
+    startup_logger.setLevel(10)
+    if "pytest" not in sys.modules:
+        console_handler = LogHandler(level=10)
+        startup_logger.addHandler(console_handler)
+    try:
+        yield
+
+    except Exception:
+        try:
+            file = Path.cwd() / "startup.log"
+            file_handler = LogHandler(
+                level=10,
+                file=file.open("w", encoding="utf8"),
+                width=constants.DEFAULT_CONSOLE_WIDTH,
+            )
+            startup_logger.addHandler(file_handler)
+        except OSError:
+            # We could not create the file for some reason
+            # Ignore this and just log to the console
+            pass
+        raise
+
+
+def catch_exceptions(func: Callable[_P, _ExitCode]) -> Callable[_P, _ExitCode]:
+    """Decorator to automatically log uncaught exceptions.
+
+    Exceptions will be logged to a file in the current working directory
+    because the manager setup itself may have failed, therefore we don't know
+    what the proper log file path is.
+    """
+
+    @wraps(func)
+    def catch(*args, **kwargs) -> _ExitCode | None:
+        try:
+            with _setup_startup_logger():
+                return func(*args, **kwargs)
+
+        except InvalidYamlError as e:
+            startup_logger.error(e.message)
+
+        except browser_cookie3.BrowserCookieError:
+            startup_logger.exception("")
+
+        except OSError as e:
+            startup_logger.exception(str(e))
+
+        except KeyboardInterrupt:
+            startup_logger.info("Exiting...")
+            return
+
+        except Exception:
+            msg = "An error occurred, please report this to the developer with your logs file:"
+            startup_logger.exception(msg)
+
+        return 1
+
+    return catch

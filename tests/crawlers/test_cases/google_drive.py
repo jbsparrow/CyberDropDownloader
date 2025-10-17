@@ -41,7 +41,7 @@ TEST_CASES = [
     ),
     (
         # Huge file with warning do to large size (9.8G), this test may fail.
-        # Public download wihtout an account are limited to about 5G per day and they return 429 with that happends
+        # Public download without an account are limited to about 5G per day and they return 429 with that happens
         "https://drive.google.com/file/d/1WHv5Dm1GtrDZj-AxJZd3T-NMIBXty3eV/view",
         [
             {

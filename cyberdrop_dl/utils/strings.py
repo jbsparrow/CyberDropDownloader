@@ -39,7 +39,7 @@ def safe_format(format_string: str, **fields: Any) -> tuple[str, set[str]]:
 
     Returns:
         str: The formatted string with unknown keys replaced by "UNKNOWN_{KEY_NAME}".
-        set[str]: colletion of unknown field_names in the format string
+        set[str]: collection of unknown field_names in the format string
     """
 
     new_kwargs = dict(fields)

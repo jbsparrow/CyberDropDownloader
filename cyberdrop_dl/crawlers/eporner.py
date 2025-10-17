@@ -202,7 +202,7 @@ def _get_available_sources(soup: BeautifulSoup) -> list[VideoSource]:
 
 def _get_best_src(soup: BeautifulSoup) -> VideoSource:
     formats = _get_available_sources(soup)
-    return max(f for f in formats if f.url.endswith(".m3u8"))
+    return max(f for f in formats if f.url.endswith(".mp4"))
 
 
 def _parse_video(soup: BeautifulSoup) -> Video:

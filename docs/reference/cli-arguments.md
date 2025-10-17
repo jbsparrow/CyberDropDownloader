@@ -127,6 +127,22 @@ There's also a daily limit of the API CDL uses: 5000 requests per day per IP
 Setting this option to `True` will consume the daily limit faster
 {% endhint %}
 
+### `impersonate`
+
+| Type                                                                                         | Default | Action                        |
+| -------------------------------------------------------------------------------------------- | ------- | ----------------------------- |
+| `chrome", "edge", "safari", "safari_ios", "chrome_android", "firefox"`, `BoolFlag` or `null` | `null`  | `store_true` or `store_const` |
+
+Impersonation allows CDL to make requests and appear to be a legitimate web browser. This helps bypass bot-protection on some sites and it's required for any site that only accepts HTTP2 connections.
+
+- The default value (`null`) means CDL will automatically use impersonation for crawlers that were programmed to use it.
+- Passing the flag without any value (`--impersonate`) is the same as `--impersonate True`: CDL will use impersonation for ALL requests, using the default impersonation target
+- Passing an specific target (ex: `--impersonate chrome_android`) will make CDL use impersonation for all requests, using that tarjet
+
+{% hint style="info" %}
+The current default target is `chrome`. The default target can change on any new release without notice
+{% endhint %}
+
 ### `max-items-retry`
 
 | Type             | Default |
@@ -228,6 +244,7 @@ CLI-only options:
   --download                                                                    skips UI, start download immediately
   --download-tiktok-audios                                                      download TikTok audios from posts and save them as separate files
   --download-tiktok-src-quality-videos                                          download TikTok videos in source quality
+  --impersonate [IMPERSONATE]                                                   Use this target as impersonation for all scrape requests
   --max-items-retry MAX_ITEMS_RETRY                                             max number of links to retry
   --portrait                                                                    force CDL to run with a vertical layout
   --print-stats                                                                 show stats report at the end of a run
@@ -281,9 +298,9 @@ media_duration_limits:
   --minimum-audio-duration MINIMUM_AUDIO_DURATION
 
 files:
-  -d, --download-folder DOWNLOAD_FOLDER
+  -d DOWNLOAD_FOLDER, --download-folder DOWNLOAD_FOLDER
   -j, --dump-json, --no-dump-json
-  -i, --input-file INPUT_FILE
+  -i INPUT_FILE, --input-file INPUT_FILE
   --save-pages-html, --no-save-pages-html
 
 ignore_options:

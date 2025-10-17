@@ -364,7 +364,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
     - define: `SELECTORS`, `POST_URL_PART_NAME` and `PAGE_URL_PART_NAME`
 
     This crawler delegates images to other crawlers by default
-    Concrete classes MAY handle images themselfs if they know how to. This will improve performance by reducing the number of requests
+    Concrete classes MAY handle images themselves if they know how to. This will improve performance by reducing the number of requests
 
     To handle images, concrete classes need to:
     - override `IGNORE_EMBEDED_IMAGES_SRC` to `False`

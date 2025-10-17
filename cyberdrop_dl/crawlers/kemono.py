@@ -224,7 +224,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 return await self.post(scrape_item)
             case [service, "user", _] if service in self.SERVICES:
                 return await self.profile(scrape_item)
-            case ["favorites"] if (type_ := scrape_item.url.query.get("type")) in ("post", "artist"):
+            case ["favorites"] if (type_ := scrape_item.url.query.get("type")) in ("post", "artist", None):
+                type_ = type_ or "artist"
                 return await self.favorites(scrape_item, type_)
             case ["account", "favorites", slug] if (type_ := slug.removesuffix("s")) in ("post", "artist"):
                 return await self.favorites(scrape_item, type_)
@@ -327,7 +328,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self.update_cookies({"session": ""})
 
         for item in resp:
-            url = self.PRIMARY_URL / item["service"] / "user" / item["user"]
+            url = self.PRIMARY_URL / item["service"] / "user" / (item.get("user") or ["name"])
             if type_ == "post":
                 url = url / "post" / item["id"]
 
@@ -351,7 +352,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
         await self.handle_file(link, scrape_item, link.name, ext, custom_filename=filename)
 
-    # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~ INTERNAL METHODS, not expected to be overridden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def _register_attachments_servers(self, attachments: list[File]) -> None:
         for attach in attachments:
@@ -412,7 +413,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             self.disabled = True
             raise ScrapeError(503, msg) from e
 
-    """~~~~~~~~  PRIVATE METHODS, should never be overriden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    """~~~~~~~~  PRIVATE METHODS, should never be overridden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def __parse_content_urls(self, post: Post) -> Generator[AbsoluteHttpURL]:
         seen: set[str] = set()
