@@ -50,7 +50,8 @@ class JDownloader:
 
     def _connect(self) -> None:
         if not all((self._config.username, self._config.password, self._config.device)):
-            raise JDownloaderError("JDownloader credentials were not provided.")
+            msg = "JDownloader credentials were not provided."
+            raise JDownloaderError(msg)
         jd = myjdapi.Myjdapi()
         jd.set_app_key("CYBERDROP-DL")
         jd.connect(self._config.username, self._config.password)

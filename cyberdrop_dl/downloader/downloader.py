@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import shutil
 import subprocess
@@ -27,7 +28,6 @@ from cyberdrop_dl.exceptions import (
 from cyberdrop_dl.utils import aio, ffmpeg
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
-import contextlib
 
 # Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
 WIN_EPOCH_OFFSET = 116444736e9
@@ -180,7 +180,8 @@ class Downloader:
             ffmpeg.check_is_available()
         except RuntimeError as e:
             msg = f"{e} - ffmpeg and ffprobe are required for HLS downloads"
-            raise DownloadError("FFmpeg Error", msg, media_item) from None
+            msg = "FFmpeg Error"
+            raise DownloadError(msg, msg, media_item) from None
 
         media_item.complete_file = media_item.download_folder / media_item.filename
         # TODO: register database duration from m3u8 info
@@ -200,7 +201,8 @@ class Downloader:
             ffmpeg_result = await ffmpeg.merge((video, audio), media_item.complete_file)
 
             if not ffmpeg_result.success:
-                raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
+                msg = "FFmpeg Concat Error"
+                raise DownloadError(msg, ffmpeg_result.stderr, media_item)
 
         await self.client.process_completed(media_item, self.domain)
         await self.client.handle_media_item_completion(media_item, downloaded=True)
@@ -229,14 +231,16 @@ class Downloader:
 
             if n_successful != n_segmets:
                 msg = f"Download of some segments failed. Successful: {n_successful:,}/{n_segmets:,} "
-                raise DownloadError("HLS Seg Error", msg, media_item)
+                msg = "HLS Seg Error"
+                raise DownloadError(msg, msg, media_item)
 
             seg_paths = [result.item.complete_file for result in tasks_results]
 
             if n_segmets > 1:
                 ffmpeg_result = await ffmpeg.concat(seg_paths, output)
                 if not ffmpeg_result.success:
-                    raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
+                    msg = "FFmpeg Concat Error"
+                    raise DownloadError(msg, ffmpeg_result.stderr, media_item)
             else:
                 await asyncio.to_thread(seg_paths[0].rename, output)
             return output

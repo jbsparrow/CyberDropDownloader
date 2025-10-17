@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from dataclasses import Field, field
 from datetime import timedelta
 from http import HTTPStatus
@@ -10,7 +11,6 @@ from aiohttp_client_cache import CacheBackend, SQLiteBackend
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.scraper.filters import cache_filter_fn
 from cyberdrop_dl.utils import yaml
-import contextlib
 
 if TYPE_CHECKING:
     from pathlib import Path

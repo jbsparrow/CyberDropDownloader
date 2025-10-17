@@ -75,9 +75,11 @@ def get_apprise_urls(*, file: Path | None = None, urls: list[str] | None = None)
         list[AppriseURL] | None: A list of processed Apprise URLs, or None if no valid URLs are found.
     """
     if not (urls or file):
-        raise ValueError("Neither url of file were supplied")
+        msg = "Neither url of file were supplied"
+        raise ValueError(msg)
     if urls and file:
-        raise ValueError("url of file are mutually exclusive")
+        msg = "url of file are mutually exclusive"
+        raise ValueError(msg)
 
     if file:
         if not file.is_file():

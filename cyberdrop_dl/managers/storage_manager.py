@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import itertools
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
@@ -14,7 +15,6 @@ from pydantic import ByteSize
 
 from cyberdrop_dl.exceptions import InsufficientFreeSpaceError
 from cyberdrop_dl.utils.logger import log, log_debug
-import contextlib
 
 if TYPE_CHECKING:
     from psutil._common import sdiskpart

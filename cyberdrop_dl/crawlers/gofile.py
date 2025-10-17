@@ -257,10 +257,12 @@ class GoFileCrawler(Crawler):
 
 def _check_node_is_accessible(node: Node) -> TypeGuard[File | Folder]:
     if (type_ := node["type"]) not in ("file", "folder"):
-        raise ScrapeError(f"Unknown node type: {type_}")
+        msg = f"Unknown node type: {type_}"
+        raise ScrapeError(msg)
 
     if node.get("viruses"):
-        raise ScrapeError("Dangerous File")
+        msg = "Dangerous File"
+        raise ScrapeError(msg)
 
     if node["canAccess"]:
         return True

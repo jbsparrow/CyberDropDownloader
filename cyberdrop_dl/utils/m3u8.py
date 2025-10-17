@@ -177,4 +177,5 @@ def get_resolution_from_url(url: AbsoluteHttpURL | str) -> Resolution:
     try:
         return Resolution.parse(url)
     except ValueError:
-        raise RuntimeError(f"Unable to parse resolution from {url}") from None
+        msg = f"Unable to parse resolution from {url}"
+        raise RuntimeError(msg) from None

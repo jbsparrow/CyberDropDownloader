@@ -394,7 +394,8 @@ def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
             return current_step
 
     else:
-        raise ValueError(f"Unknown crypto algo: {algo}")
+        msg = f"Unknown crypto algo: {algo}"
+        raise ValueError(msg)
 
     return decode_next
 
@@ -414,6 +415,7 @@ def _decode_hex_url(encrypted_url: str) -> str:
     try:
         decode_next = _make_decoder(algo, seed)
     except ValueError:
-        raise ValueError(f"Unknown encrypted URL {encrypted_url} with {algo = } and {seed = }") from None
+        msg = f"Unknown encrypted URL {encrypted_url} with {algo = } and {seed = }"
+        raise ValueError(msg) from None
     decoded_array = bytearray([(array[idx + 5] ^ decode_next()) & 255 for idx in range(len(array) - 5)])
     return decoded_array.decode("utf-8")

@@ -57,7 +57,8 @@ def cookie_wrapper(func: Callable[P, R]) -> Callable[P, R]:
                      If you are still having issues, make sure all browsers processes are closed in Task Manager."""
             msg = f"{dedent(msg)}\nERROR: {e!s}"
 
-        raise browser_cookie3.BrowserCookieError(f"{msg}{COOKIE_ERROR_FOOTER}")
+        msg = f"{msg}{COOKIE_ERROR_FOOTER}"
+        raise browser_cookie3.BrowserCookieError(msg)
 
     return wrapper
 
@@ -111,7 +112,8 @@ def get_cookies_from_browsers(manager: Manager, *, browser: BROWSERS, domains: l
 
 def clear_cookies(manager: Manager, domains: list[str]) -> None:
     if not domains:
-        raise ValueError("No domains selected")
+        msg = "No domains selected"
+        raise ValueError(msg)
 
     manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
     for domain in domains:

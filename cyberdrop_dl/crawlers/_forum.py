@@ -423,7 +423,8 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         scrape_item.parent_threads.add(thread.url)
         if self.scrape_single_forum_post and not thread.post_id:
             msg = "`--scrape-single-forum-post` is `True`, but the provided URL has no post id"
-            raise ScrapeError("User Error", msg)
+            msg = "User Error"
+            raise ScrapeError(msg, msg)
 
         self.scraped_threads.add(thread.url)
         await self.process_thread(scrape_item, thread)

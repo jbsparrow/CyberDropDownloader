@@ -43,9 +43,11 @@ _EMPTY_FFPROBE_OUTPUT: FFprobeOutput = {"streams": []}
 
 def check_is_available() -> None:
     if not get_ffmpeg_version():
-        raise RuntimeError("ffmpeg is not available")
+        msg = "ffmpeg is not available"
+        raise RuntimeError(msg)
     if not get_ffprobe_version():
-        raise RuntimeError("ffprobe is not available")
+        msg = "ffprobe is not available"
+        raise RuntimeError(msg)
 
 
 @lru_cache
@@ -114,7 +116,8 @@ async def probe(input: Path | URL, /, *, headers: Mapping[str, str] | None = Non
         assert not headers
 
     else:
-        raise ValueError("Can only probe a Path or a yarl.URL")
+        msg = "Can only probe a Path or a yarl.URL"
+        raise ValueError(msg)
 
     command = *_FFPROBE_CALL_PREFIX, str(input)
     if headers:

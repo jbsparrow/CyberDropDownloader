@@ -224,7 +224,8 @@ class ClientManager:
             f"curl_cffi is required to scrape this URL but a dependency it's not available on {system}.\n"
             f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{_curl_import_error!r}"
         )
-        raise ScrapeError("Missing Dependency", msg)
+        msg = "Missing Dependency"
+        raise ScrapeError(msg, msg)
 
     @staticmethod
     def basic_auth(username: str, password: str) -> str:

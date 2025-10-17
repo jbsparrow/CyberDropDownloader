@@ -96,7 +96,8 @@ class Resolution(NamedTuple):
             height = {"2": 1440, "4": 2160, "8": 4320}[match.group(1)]
             return Resolution._from_height(height)
 
-        raise ValueError(f"Unable to parse resolution from {url_number_or_string}")
+        msg = f"Unable to parse resolution from {url_number_or_string}"
+        raise ValueError(msg)
 
     @staticmethod
     def _from_height(height: str | int, aspect_ratio: float = 16 / 9) -> Resolution:

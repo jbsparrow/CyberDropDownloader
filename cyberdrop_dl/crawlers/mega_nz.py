@@ -203,4 +203,5 @@ class MegaNzCrawler(Crawler):
             self.logged_in = True
         except Exception as e:
             self.disabled = True
-            raise LoginError(f"[MegaNZ] {e}") from e
+            msg = f"[MegaNZ] {e}"
+            raise LoginError(msg) from e

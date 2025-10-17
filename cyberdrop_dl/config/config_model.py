@@ -176,7 +176,8 @@ class IgnoreOptions(BaseModel):
         try:
             re.compile(value)
         except re.error as e:
-            raise ValueError("input is not a valid regex") from e
+            msg = "input is not a valid regex"
+            raise ValueError(msg) from e
         return value
 
 
@@ -262,7 +263,8 @@ class BrowserCookies(BaseModel):
 
     def model_post_init(self, *_) -> None:
         if self.auto_import and not self.browser:
-            raise ValueError("You need to provide a browser for auto_import to work")
+            msg = "You need to provide a browser for auto_import to work"
+            raise ValueError(msg)
 
     @field_validator("sites", mode="before")
     @classmethod

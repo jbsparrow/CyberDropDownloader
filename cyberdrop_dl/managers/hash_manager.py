@@ -42,7 +42,8 @@ class HashManager:
 
     def _get_hasher(self, hash_type: str):
         if hash_type == "xx128" and not self.xx_hasher:
-            raise ImportError("xxhash module is not installed")
+            msg = "xxhash module is not installed"
+            raise ImportError(msg)
         assert self.xx_hasher
         if hash_type == "xxh128":
             return self.xx_hasher()
@@ -50,4 +51,5 @@ class HashManager:
             return self.md5_hasher()
         if hash_type == "sha256":
             return self.sha_256_hasher()
-        raise ValueError("Invalid hash type")
+        msg = "Invalid hash type"
+        raise ValueError(msg)

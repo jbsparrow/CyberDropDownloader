@@ -1,6 +1,7 @@
 # type: ignore[reportIncompatibleVariableOverride]
 from __future__ import annotations
 
+import contextlib
 import copy
 import datetime
 from dataclasses import asdict, dataclass, field
@@ -12,7 +13,6 @@ from typing import TYPE_CHECKING, Any, Literal, NamedTuple, ParamSpec, Self, Typ
 import yarl
 
 from cyberdrop_dl.exceptions import MaxChildrenError
-import contextlib
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -246,7 +246,8 @@ class MediaItem:
             # We already have a task_id; we can't replace it, only reset it.
             # This should never happen. Calling code should always check the value before making a new task.
             # We can't silently ignore it either because we will lose any reference to the created task.
-            raise ValueError("task_id is already set")
+            msg = "task_id is already set"
+            raise ValueError(msg)
         if self.parent_media_item is not None:
             self.parent_media_item.set_task_id(task_id)
         else:
@@ -412,7 +413,7 @@ class QueryDatetimeRange(NamedTuple):
         return self
 
     def is_in_range(self, other: datetime.datetime) -> bool:
-        return not (self.before and other >= self.before or self.after and other <= self.after)
+        return not ((self.before and other >= self.before) or (self.after and other <= self.after))
 
     def as_query(self) -> dict[str, Any]:
         return {name: value.isoformat() for name, value in self._asdict().items() if value}

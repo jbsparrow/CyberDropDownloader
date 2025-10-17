@@ -309,7 +309,8 @@ def decrypt_attr(attr: bytes, key: U32IntSequence) -> AnyDict:
         end = attr_str.find("}") + 1
         if end >= 1:
             return json.loads(attr_str[start:end])
-        raise RuntimeError(f"Unable to properly decode filename, raw content is: {attr_str}")
+        msg = f"Unable to properly decode filename, raw content is: {attr_str}"
+        raise RuntimeError(msg)
     return {}
 
 
@@ -412,7 +413,8 @@ async def generate_hashcash_token(challenge: str) -> str:
     version_str, easiness_str, _, token_str = parts
     version = int(version_str)
     if version != 1:
-        raise MegaNzError("hashcash challenge is not version 1 [Mega]")
+        msg = "hashcash challenge is not version 1 [Mega]"
+        raise MegaNzError(msg)
 
     easiness = int(easiness_str)
     base = ((easiness & 63) << 1) + 1
@@ -534,13 +536,15 @@ class MegaApi:
         if isinstance(json_resp, int):
             return handle_int_resp(json_resp)
         if not isinstance(json_resp, list):
-            raise RequestError(f"Unknown response: {json_resp:r}")
+            msg = f"Unknown response: {json_resp:r}"
+            raise RequestError(msg)
         if json_resp:
             first = json_resp[0]
             if isinstance(first, int):
                 return handle_int_resp(first)
             return first
-        raise RequestError(f"Unknown response: {json_resp:r}")
+        msg = f"Unknown response: {json_resp:r}"
+        raise RequestError(msg)
 
     async def login(self, email: str | None = None, password: str | None = None):
         if email and password:
@@ -928,4 +932,5 @@ def _decrypt_chunks(
     file_mac = str_to_a32(mac_bytes)
     computed_mac = file_mac[0] ^ file_mac[1], file_mac[2] ^ file_mac[3]
     if computed_mac != meta_mac:
-        raise RuntimeError("Mismatched mac")
+        msg = "Mismatched mac"
+        raise RuntimeError(msg)

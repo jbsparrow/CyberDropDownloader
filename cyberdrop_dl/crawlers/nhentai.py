@@ -58,7 +58,8 @@ class NHentaiCrawler(Crawler):
                 if collection_type == "favorites":
                     title_tag = css.select_one(soup, Selector.FAVORITES_TITLE)
                     if soup.select_one(Selector.LOGIN_PAGE):
-                        raise LoginError("No cookies provided to download favorites")
+                        msg = "No cookies provided to download favorites"
+                        raise LoginError(msg)
 
                     css.decompose(title_tag, "span")
 

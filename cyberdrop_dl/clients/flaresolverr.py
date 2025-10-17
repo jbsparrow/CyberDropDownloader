@@ -106,7 +106,8 @@ class FlareSolverr:
             raise invalid_response_error from e
 
         if not resp.ok:
-            raise DDOSGuardError(f"Failed to resolve URL with flaresolverr. {resp.message}")
+            msg = f"Failed to resolve URL with flaresolverr. {resp.message}"
+            raise DDOSGuardError(msg)
 
         if not resp.solution:
             raise invalid_response_error
@@ -134,7 +135,8 @@ class FlareSolverr:
 
     async def _request(self, command: _Command, /, data: Any = None, **kwargs: Any) -> _FlareSolverrResponse:
         if not self.url:
-            raise DDOSGuardError("Found DDoS challenge, but FlareSolverr is not configured")
+            msg = "Found DDoS challenge, but FlareSolverr is not configured"
+            raise DDOSGuardError(msg)
 
         timeout = self.manager.global_config.rate_limiting_options._aiohttp_timeout
         if command is _Command.CREATE_SESSION:
@@ -167,7 +169,8 @@ class FlareSolverr:
 
         resp = await self._request(_Command.CREATE_SESSION, session=session_id, **kwargs)
         if not resp.ok:
-            raise DDOSGuardError(f"Failed to create flaresolverr session: {resp.message}")
+            msg = f"Failed to create flaresolverr session: {resp.message}"
+            raise DDOSGuardError(msg)
         self._session_id = session_id
 
     async def _destroy_session(self) -> None:

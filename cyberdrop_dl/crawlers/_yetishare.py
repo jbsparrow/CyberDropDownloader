@@ -213,7 +213,8 @@ class YetiShareCrawler(Crawler, is_abc=True):
         soup = BeautifulSoup(content, "html.parser")
 
         if soup.select_one(Selector.PASSWORD_PROTECTED):
-            raise PasswordProtectedError("File password is invalid")
+            msg = "File password is invalid"
+            raise PasswordProtectedError(msg)
         return soup
 
     async def _unlock_password_protected_folder(self, scrape_item: ScrapeItem, node_id: str) -> None:
@@ -237,7 +238,8 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
 def _check_is_available(soup: BeautifulSoup):
     if soup.select(Selector.RECAPTCHA):
-        raise DDOSGuardError("Google recaptcha found")
+        msg = "Google recaptcha found"
+        raise DDOSGuardError(msg)
 
     content = soup.get_text()
 
