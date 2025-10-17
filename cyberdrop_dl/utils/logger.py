@@ -302,7 +302,7 @@ def catch_exceptions(func: Callable[_P, _ExitCode]) -> Callable[_P, _ExitCode]:
                 return func(*args, **kwargs)
 
         except InvalidYamlError as e:
-            startup_logger.error(e.message)
+            startup_logger.exception(e.message)
 
         except browser_cookie3.BrowserCookieError:
             startup_logger.exception("")

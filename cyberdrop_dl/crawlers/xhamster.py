@@ -31,7 +31,7 @@ class Selector:
 
 
 def _decrypt_url(raw_url: str) -> str | None:
-    if raw_url.startswith("http") or raw_url.startswith("/"):
+    if raw_url.startswith(("http", "/")):
         return raw_url
 
     if _is_hex(raw_url):

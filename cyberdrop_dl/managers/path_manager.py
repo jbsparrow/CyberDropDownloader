@@ -57,7 +57,7 @@ class PathManager:
         if env.RUNNING_IN_IDE and Path.cwd().name == "cyberdrop_dl":
             # This is for testing purposes only"""
             return Path("..").resolve()
-        return Path().resolve()
+        return Path.cwd()
 
     @property
     def appdata(self) -> Path:

@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, ScrapeItem
 
-_T = TypeVar("_T")
 _MAX_POSTS_PER_REQUEST = 50
 _ModelT = TypeVar("_ModelT", bound=BaseModel)
 

@@ -159,8 +159,7 @@ class BoxDotComCrawler(Crawler):
         path = Path()
         path_mapping[path] = root_item
         build_tree(root_id, path)
-        sorted_mapping = dict(sorted(path_mapping.items()))
-        return sorted_mapping
+        return dict(sorted(path_mapping.items()))
 
 
 def get_canonical_url(shared_name: str, id: str, is_folder: bool = False) -> AbsoluteHttpURL:

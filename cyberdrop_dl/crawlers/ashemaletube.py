@@ -138,8 +138,7 @@ class AShemaleTubeCrawler(Crawler):
             raise ScrapeError(401)
         collection_title: str = title_elem.get_text(strip=True)
         collection_title = collection_title.replace(TITLE_TRASH, "").strip()
-        collection_title = self.create_title(f"{collection_title} [{collection_type}]")
-        return collection_title
+        return self.create_title(f"{collection_title} [{collection_type}]")
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:

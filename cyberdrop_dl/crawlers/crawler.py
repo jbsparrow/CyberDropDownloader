@@ -181,7 +181,7 @@ class Crawler(ABC):
 
     @final
     @staticmethod
-    def _assert_fields_overrides(subclass: type[Crawler], *fields: str):
+    def _assert_fields_overrides(subclass: type[Crawler], *fields: str) -> None:
         for field_name in fields:
             assert getattr(subclass, field_name, None), f"Subclass {subclass.__name__} must override: {field_name}"
 

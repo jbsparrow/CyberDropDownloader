@@ -104,8 +104,7 @@ class DateParser(dateparser.date.DateDataParser):
 
 def remove_time_if_not_midnight(date: datetime.datetime) -> datetime.datetime:
     if date.time() != MIDNIGHT_TIME:
-        date_at_midnight = datetime.datetime.combine(date.date(), MIDNIGHT_TIME)
-        return date_at_midnight
+        return datetime.datetime.combine(date.date(), MIDNIGHT_TIME)
     return date
 
 

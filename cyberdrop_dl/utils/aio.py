@@ -6,14 +6,12 @@ import asyncio
 import builtins
 import pathlib
 from stat import S_ISREG
-from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
+from typing import TYPE_CHECKING, TypeVar, cast
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Sequence
 
-    _P = ParamSpec("_P")
     _T = TypeVar("_T")
-    _R = TypeVar("_R")
 
 
 async def gather(coros: Sequence[Awaitable[_T]], batch_size: int = 10) -> list[_T]:

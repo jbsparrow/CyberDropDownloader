@@ -404,8 +404,7 @@ def decrypt_rsa_key(private_key: bytes) -> RSA.RsaKey:
         crt_coeficient_u,
     )
 
-    rsa_key = RSA.construct(rsa_components, consistency_check=True)
-    return rsa_key
+    return RSA.construct(rsa_components, consistency_check=True)
 
 
 async def generate_hashcash_token(challenge: str) -> str:
@@ -797,8 +796,7 @@ class MegaApi:
             path_mapping[path] = root_item
             build_tree(root_id, path)
 
-        sorted_mapping = dict(sorted(path_mapping.items()))
-        return sorted_mapping
+        return dict(sorted(path_mapping.items()))
 
     async def build_file_system(self, nodes_map: Mapping[str, Node], root_ids: list[str]) -> dict[Path, Node]:
         return await asyncio.to_thread(self._build_file_system, nodes_map, root_ids)
