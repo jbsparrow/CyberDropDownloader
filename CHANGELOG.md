@@ -22,6 +22,26 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.4.0] - 2025-10-18
+
+### Added
+
+- Support search URLs (erome)
+- Support direct image URLs (ashemaletube)
+
+### Changed
+
+- Remove hardcoded limiter (GoFile)
+- Remove hardcoded limiter, limit concurrent downloads to 1 file per unique server (Bunkr)
+- Retry client connector errors
+- Always override download URL with selti CDN (JPG5)
+
+### Fixed
+
+- Handle newer encryption formats in URLs (xHamster)
+- Do not crash processing images (PornHub)
+- Spankbang crawler
+
 ## [8.3.0] - 2025-10-16
 
 ### Added
