@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Handle newer encryption formats in URLs (xHamster)
-- Do not crashing processing images (PornHub)
+- Do not crash processing images (PornHub)
 - Spankbang crawler
 
 ## [8.3.0] - 2025-10-16
