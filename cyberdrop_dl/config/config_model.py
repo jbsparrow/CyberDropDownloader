@@ -1,3 +1,5 @@
+# ruff: noqa: TC001
+from __future__ import annotations
 import itertools
 import re
 from datetime import datetime, timedelta
@@ -17,18 +19,18 @@ from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 from ._common import ConfigModel, Field, PathAliasModel
 
-if TYPE_CHECKING:
-    from cyberdrop_dl.models import HttpAppriseURL
-    from cyberdrop_dl.models.types import (
-        ByteSizeSerilized,
-        ListNonEmptyStr,
-        ListNonNegativeInt,
-        LogPath,
-        MainLogPath,
-        NonEmptyStr,
-        NonEmptyStrOrNone,
-        PathOrNone,
-    )
+
+from cyberdrop_dl.models import HttpAppriseURL
+from cyberdrop_dl.models.types import (
+    ByteSizeSerilized,
+    ListNonEmptyStr,
+    ListNonNegativeInt,
+    LogPath,
+    MainLogPath,
+    NonEmptyStr,
+    NonEmptyStrOrNone,
+    PathOrNone,
+)
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
 _SORTING_COMMON_FIELDS = {

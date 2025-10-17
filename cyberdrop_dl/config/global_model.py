@@ -1,3 +1,5 @@
+# ruff: noqa: TC001
+from __future__ import annotations
 import random
 from datetime import timedelta
 from typing import TYPE_CHECKING, Literal
@@ -16,10 +18,10 @@ from pydantic import (
 from cyberdrop_dl.config._common import ConfigModel, Field
 from cyberdrop_dl.models.validators import falsy_as, falsy_as_none, to_bytesize, to_timedelta
 
-if TYPE_CHECKING:
-    from yarl import URL
 
-    from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, ListNonEmptyStr, ListPydanticURL, NonEmptyStr
+from yarl import URL
+
+from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, ListNonEmptyStr, ListPydanticURL, NonEmptyStr
 
 MIN_REQUIRED_FREE_SPACE = to_bytesize("512MB")
 DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")

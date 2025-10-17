@@ -1,3 +1,5 @@
+# ruff: noqa: TC001
+from __future__ import annotations
 from pydantic import BaseModel
 
 from cyberdrop_dl.models import AliasModel
