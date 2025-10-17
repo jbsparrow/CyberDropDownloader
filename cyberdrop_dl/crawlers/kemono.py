@@ -210,9 +210,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         def check_kemono_page(response: AnyResponse) -> bool:
             if any(x in response.url.parts for x in self.SERVICES):
                 return False
-            if "discord/channel" in response.url.path:
-                return False
-            return True
+            return "discord/channel" not in response.url.path
 
         self.register_cache_filter(self.PRIMARY_URL, check_kemono_page)
         if getattr(self, "API_ENTRYPOINT", None):

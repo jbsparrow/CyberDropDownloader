@@ -515,10 +515,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         return iter_links(valid_links, selector.attribute)
 
     def _images(self, post: ForumPostProtocol) -> Iterable[str]:
-        if self.IGNORE_EMBEDED_IMAGES_SRC:
-            selector = self.SELECTORS.posts.a_tag_w_image
-        else:
-            selector = self.SELECTORS.posts.images
+        selector = self.SELECTORS.posts.a_tag_w_image if self.IGNORE_EMBEDED_IMAGES_SRC else self.SELECTORS.posts.images
         images = css.iselect(post.content, selector.element)
         return iter_links(images, selector.attribute)
 
@@ -565,10 +562,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         await self.handle_link(scrape_item, link)
 
     async def get_absolute_link(self, link: str | AbsoluteHttpURL) -> AbsoluteHttpURL | None:
-        if isinstance(link, str):
-            absolute_link = self.parse_url(clean_link_str(link))
-        else:
-            absolute_link = link
+        absolute_link = self.parse_url(clean_link_str(link)) if isinstance(link, str) else link
         if is_confirmation_link(absolute_link):
             return await self.resolve_confirmation_link(absolute_link)
         return absolute_link

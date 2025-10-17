@@ -315,10 +315,7 @@ def _parse_xplayer_sources(initials: dict[str, Any]) -> Iterable[Format]:
                 continue
 
             seen_urls.add(url)
-            if url.suffix == ".m3u8":
-                res = 0
-            else:
-                res = format_dict.get("quality") or format_dict["label"]
+            res = 0 if url.suffix == ".m3u8" else format_dict.get("quality") or format_dict["label"]
 
             yield Format(Resolution.parse(res), codec, url)
 

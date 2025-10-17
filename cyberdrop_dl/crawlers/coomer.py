@@ -25,8 +25,6 @@ class CoomerCrawler(KemonoBaseCrawler):
         await super().async_startup()
 
         def check_coomer_page(response: AnyResponse) -> bool:
-            if any(p in response.url.parts for p in ("onlyfans", "fansly", "data")):
-                return False
-            return True
+            return not any(p in response.url.parts for p in ("onlyfans", "fansly", "data"))
 
         self.register_cache_filter(self.PRIMARY_URL, check_coomer_page)

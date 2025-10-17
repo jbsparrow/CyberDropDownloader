@@ -353,9 +353,8 @@ class BunkrrCrawler(Crawler):
             return await self.request_soup(url.with_host(self.known_good_url.host))
 
         async with self.switch_host_locks[url.host]:
-            if url.host not in known_bad_hosts:
-                if soup := await self._try_request_soup(url):
-                    return soup
+            if url.host not in known_bad_hosts and (soup := await self._try_request_soup(url)):
+                return soup
 
         for host in HOST_OPTIONS - known_bad_hosts:
             async with self.switch_host_locks[host]:

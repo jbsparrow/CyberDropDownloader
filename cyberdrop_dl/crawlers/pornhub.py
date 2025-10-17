@@ -11,6 +11,7 @@ from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
+import contextlib
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -94,10 +95,8 @@ class Format(NamedTuple):
     def new(media: Media) -> Format:
         quality = media["quality"]
         if isinstance(quality, str):
-            try:
+            with contextlib.suppress(ValueError):
                 quality = int(quality)
-            except ValueError:
-                pass
         if not isinstance(quality, int):
             quality = min(media["height"], media["width"])
         values: dict[str, Any] = {k: v for k, v in media.items() if k in Format._fields} | {"quality": quality}

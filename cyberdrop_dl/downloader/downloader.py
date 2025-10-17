@@ -27,6 +27,7 @@ from cyberdrop_dl.exceptions import (
 from cyberdrop_dl.utils import aio, ffmpeg
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
+import contextlib
 
 # Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
 WIN_EPOCH_OFFSET = 116444736e9
@@ -372,20 +373,16 @@ class Downloader:
             pass
 
         # 2. try setting modification and access date
-        try:
+        with contextlib.suppress(OSError):
             await asyncio.to_thread(os.utime, complete_file, (media_item.datetime, media_item.datetime))
-        except OSError:
-            pass
 
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
         if media_item.is_segment:
             return
         if media_item.task_id is not None:
-            try:
+            with contextlib.suppress(ValueError):
                 self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
-            except ValueError:
-                pass
 
             media_item.set_task_id(None)
 

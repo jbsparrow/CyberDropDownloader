@@ -250,10 +250,7 @@ def _parse_subs(video_info: dict[str, Any], origin: AbsoluteHttpURL) -> Generato
         label: str = track["label"]
         lang_code = _parse_lang_code(url.name.removesuffix(url.suffix), label)
         counter[lang_code] += 1
-        if (count := counter[lang_code]) > 1:
-            suffix = f"{lang_code}.{count}{url.suffix}"
-        else:
-            suffix = f"{lang_code}{url.suffix}"
+        suffix = f"{lang_code}.{count}{url.suffix}" if (count := counter[lang_code]) > 1 else f"{lang_code}{url.suffix}"
 
         yield VoeSubtitle(label, lang_code, suffix, url)
 

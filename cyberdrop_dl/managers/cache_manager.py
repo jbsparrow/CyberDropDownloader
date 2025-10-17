@@ -10,6 +10,7 @@ from aiohttp_client_cache import CacheBackend, SQLiteBackend
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.scraper.filters import cache_filter_fn
 from cyberdrop_dl.utils import yaml
+import contextlib
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -88,8 +89,6 @@ class CacheManager:
 
     async def close(self):
         if not isinstance(self.request_cache, Field):
-            try:
+            with contextlib.suppress(Exception):
                 await self.request_cache.close()
-            except Exception:
-                pass
         self.save("version", current_version)

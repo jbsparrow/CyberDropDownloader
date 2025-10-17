@@ -167,7 +167,5 @@ class ScraperClient:
 
 
 async def try_write(file: Path, content: str) -> None:
-    try:
+    with contextlib.suppress(OSError):
         await asyncio.to_thread(file.write_text, content, "utf8")
-    except OSError:
-        pass

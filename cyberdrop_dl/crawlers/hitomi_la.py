@@ -211,10 +211,7 @@ class HitomiLaCrawler(Crawler):
 
 
 def get_image_url(servers: Servers, image: Image) -> AbsoluteHttpURL:
-    if ALLOW_AVIF and image.get("hasavif"):
-        dir = "avif"
-    else:
-        dir = "webp"
+    dir = "avif" if ALLOW_AVIF and image.get("hasavif") else "webp"
     return url_from_hash(servers, image, dir, ext=f".{dir}")
 
 

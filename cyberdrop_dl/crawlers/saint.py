@@ -102,9 +102,7 @@ def _is_not_found(soup: BeautifulSoup) -> bool:
         return True
     if soup.select_one(_SELECTORS.NOT_FOUND_IMAGE):
         return True
-    if "File not found in the database" in soup.get_text():
-        return True
-    return False
+    return "File not found in the database" in soup.get_text()
 
 
 def _get_url_from_base64(link: AbsoluteHttpURL) -> AbsoluteHttpURL:

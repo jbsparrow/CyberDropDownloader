@@ -79,10 +79,7 @@ class AbstractResponse:
 
     @staticmethod
     def parse_headers(url: AbsoluteHttpURL, headers: CIMultiDictProxy[str]) -> tuple[str, AbsoluteHttpURL | None]:
-        if location := headers.get("location"):
-            location = parse_url(location, url.origin(), trim=False)
-        else:
-            location = None
+        location = parse_url(location, url.origin(), trim=False) if (location := headers.get("location")) else None
 
         content_type = (headers.get("Content-Type") or "").lower()
         return content_type, location
@@ -144,10 +141,7 @@ class AbstractResponse:
             raise ScrapeError(204)
 
         if content_type:
-            if isinstance(content_type, str):
-                check = (content_type,)
-            else:
-                check = ("text/plain", "json")
+            check = (content_type,) if isinstance(content_type, str) else ("text/plain", "json")
 
             self._check_content_type(*check, expecting="JSON")
 

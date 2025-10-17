@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal, NamedTuple, ParamSpec, Self, Typ
 import yarl
 
 from cyberdrop_dl.exceptions import MaxChildrenError
+import contextlib
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -313,10 +314,8 @@ class ScrapeItem:
         self.children = self.children_limit = 0
         if self.type is None:
             return
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             self.children_limit = self.children_limits[self.type]
-        except (IndexError, TypeError):
-            pass
 
     def add_children(self, number: int = 1) -> None:
         self.children += number
@@ -413,9 +412,7 @@ class QueryDatetimeRange(NamedTuple):
         return self
 
     def is_in_range(self, other: datetime.datetime) -> bool:
-        if (self.before and other >= self.before) or (self.after and other <= self.after):
-            return False
-        return True
+        return not (self.before and other >= self.before or self.after and other <= self.after)
 
     def as_query(self) -> dict[str, Any]:
         return {name: value.isoformat() for name, value in self._asdict().items() if value}

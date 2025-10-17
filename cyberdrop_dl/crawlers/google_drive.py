@@ -110,10 +110,7 @@ class GoogleDriveCrawler(Crawler):
             return await self.folder(scrape_item, folder_id)
 
         if file_id := next_to("d"):
-            if (first := url.parts[1]) in _DOC_FORMATS:
-                doc = first
-            else:
-                doc = None
+            doc = first if (first := url.parts[1]) in _DOC_FORMATS else None
             return await self.file(scrape_item, file_id, doc)
 
         raise ValueError

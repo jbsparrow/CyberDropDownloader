@@ -66,10 +66,7 @@ def get_attr_or_none(tag: Tag, attribute: str) -> str | None:
             return _parse_srcset(srcset)
         attribute_ = "src"
 
-    if attribute_ == "src":
-        value = tag.get("data-src") or tag.get(attribute_)
-    else:
-        value = tag.get(attribute_)
+    value = tag.get("data-src") or tag.get(attribute_) if attribute_ == "src" else tag.get(attribute_)
     if isinstance(value, list):
         raise SelectorError(f"Expected a single value for {attribute = !r}, got multiple")
     return value

@@ -64,7 +64,7 @@ class DirtyShipCrawler(Crawler):
     async def photo(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
-        if not scrape_item.url.suffix == ".jpg":
+        if scrape_item.url.suffix != ".jpg":
             soup = await self.request_soup(scrape_item.url)
             url = self.parse_url(
                 next(css.get_attr(a, "href") for a in soup.select(_SELECTORS.SINGLE_PHOTO) if "full" in a.get_text())

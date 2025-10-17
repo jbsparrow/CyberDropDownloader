@@ -14,6 +14,7 @@ from pydantic import ByteSize
 
 from cyberdrop_dl.exceptions import InsufficientFreeSpaceError
 from cyberdrop_dl.utils.logger import log, log_debug
+import contextlib
 
 if TYPE_CHECKING:
     from psutil._common import sdiskpart
@@ -112,10 +113,8 @@ class StorageManager:
     async def close(self) -> None:
         await self.reset()
         self._loop.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await self._loop
-        except asyncio.CancelledError:
-            pass
 
     async def _has_sufficient_space(self, folder: Path) -> bool:
         """Checks if there is enough free space to download to this folder.

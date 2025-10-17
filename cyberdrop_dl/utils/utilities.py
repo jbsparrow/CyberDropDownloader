@@ -503,7 +503,7 @@ def get_valid_kwargs(
     if accept_kwargs and any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
         return kwargs
 
-    return {k: v for k, v in kwargs.items() if k in params.keys() and v is not None}
+    return {k: v for k, v in kwargs.items() if k in params and v is not None}
 
 
 def call_w_valid_kwargs(cls: Callable[..., _R], kwargs: Mapping[str, Any]) -> _R:

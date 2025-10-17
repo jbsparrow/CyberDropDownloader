@@ -852,10 +852,7 @@ class Crawler(ABC):
 
 
 def _make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
-    if cls.SUPPORTED_DOMAINS:
-        hosts = cls.SUPPORTED_DOMAINS
-    else:
-        hosts = cls.DOMAIN
+    hosts = cls.SUPPORTED_DOMAINS or cls.DOMAIN
     if isinstance(hosts, str):
         hosts = (hosts,)
     return tuple(sorted({host.removeprefix("www.") for host in hosts}))

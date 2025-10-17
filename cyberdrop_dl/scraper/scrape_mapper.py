@@ -415,10 +415,7 @@ def register_crawler(
 ) -> None:
     if crawler.IS_FALLBACK_GENERIC:
         return
-    if crawler.IS_GENERIC and include_generics:
-        keys = (crawler.GENERIC_NAME,)
-    else:
-        keys = crawler.SCRAPE_MAPPER_KEYS
+    keys = (crawler.GENERIC_NAME,) if crawler.IS_GENERIC and include_generics else crawler.SCRAPE_MAPPER_KEYS
 
     for domain in keys:
         other = existing_crawlers.get(domain)

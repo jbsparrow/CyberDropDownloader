@@ -85,10 +85,7 @@ class LogHandler(RichHandler):
         is_file: bool = file is not None
         redacted: bool = is_file and not debug
         console_cls = RedactedConsole if redacted else Console
-        if file is None and width is None:
-            console = _DEFAULT_CONSOLE
-        else:
-            console = console_cls(file=file, width=width)
+        console = _DEFAULT_CONSOLE if file is None and width is None else console_cls(file=file, width=width)
         options = constants.RICH_HANDLER_DEBUG_CONFIG if debug else constants.RICH_HANDLER_CONFIG
         options = options | kwargs
         super().__init__(level, console, show_time=is_file, **options)
