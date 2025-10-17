@@ -26,7 +26,7 @@ class JPG5Crawler(CheveretoCrawler):
         "jpg5.su",
     )
 
-    _RATE_LIMIT = 1, 1
+    _RATE_LIMIT = 2, 1
 
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
