@@ -100,9 +100,9 @@ def db_transfer_context(db_file):
     try:
         yield cursor
         conn.commit()  # commit changes if no exception occurs
-    except Exception as e:
+    except Exception:
         conn.rollback()
-        raise e
+        raise
     finally:
         cursor.close()
         conn.close()

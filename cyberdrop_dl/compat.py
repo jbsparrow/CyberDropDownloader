@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 import sys
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Self, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -44,8 +44,5 @@ else:
 
 class MayBeUpperStrEnum(StrEnum):
     @classmethod
-    def _missing_(cls, value: object):
-        try:
-            return cls[str(value).upper()]
-        except KeyError as e:
-            raise e
+    def _missing_(cls, value: object) -> Self:
+        return cls[str(value).upper()]
