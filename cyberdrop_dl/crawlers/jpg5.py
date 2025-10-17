@@ -49,7 +49,7 @@ class JPG5Crawler(CheveretoCrawler):
 
         if self.is_subdomain(link) and not link.host.endswith(CDN):
             server, *_ = link.host.rsplit(".", 2)
-            link = link.with_host(f"'{server}.{CDN}")
+            link = link.with_host(f"{server}.{CDN}")
 
         await super().direct_file(scrape_item, link, assume_ext)
 
