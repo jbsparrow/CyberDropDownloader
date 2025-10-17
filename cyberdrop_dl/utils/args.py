@@ -83,7 +83,9 @@ class CommandOptions:
 
 
 class CommandLineOnlyArgs(BaseModel):
-    links: list["HttpURL"] = Field([], description="link(s) to content to download (passing multiple links is supported)")
+    links: list["HttpURL"] = Field(
+        [], description="link(s) to content to download (passing multiple links is supported)"
+    )
     appdata_folder: "Path | None" = Field(None, description="AppData folder path")
     completed_after: "date | None" = Field(
         None, description="only retry downloads that were completed on or after this date"

@@ -362,8 +362,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if previous_server := self.__known_attachment_servers.get(path):
                 if previous_server != server:
                     msg = (
-                        f"[{self.NAME}] {path} found with multiple "
-                        f"different servers: {server = } {previous_server = } "
+                        f"[{self.NAME}] {path} found with multiple different servers: {server = } {previous_server = } "
                     )
                     self.log(msg, 30)
                 continue

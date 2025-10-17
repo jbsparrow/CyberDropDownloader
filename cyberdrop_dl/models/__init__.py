@@ -1,4 +1,3 @@
-
 from typing import TYPE_CHECKING
 
 from .base_models import AliasModel, AppriseURLModel, FrozenModel, HttpAppriseURL, PathAliasModel
