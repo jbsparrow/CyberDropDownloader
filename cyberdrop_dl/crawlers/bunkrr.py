@@ -128,7 +128,7 @@ class BunkrrCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL(f"https://{DATABASE_PRIMARY_HOST}")
     DOMAIN: ClassVar[str] = "bunkrr"
     _RATE_LIMIT: ClassVar[tuple[float, float]] = 5, 1
-    _DOWNLOAD_SLOTS: ClassVar[int | None] = 3
+    _USE_DOWNLOAD_SERVERS_LOCKS: ClassVar[bool] = True
 
     def __post_init__(self) -> None:
         self.switch_host_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)

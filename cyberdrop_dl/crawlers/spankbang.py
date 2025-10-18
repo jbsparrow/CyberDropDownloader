@@ -21,9 +21,7 @@ DEFAULT_QUALITY = "main"
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 VIDEO_REMOVED_SELECTOR = "[id='video_removed'], [class*='video_removed']"
 VIDEOS_SELECTOR = "div.video-list > div.video-item > a"
-
 JS_STREAM_DATA_SELECTOR = "main.main-container > script:-soup-contains('var stream_data')"
-JS_VIDEO_INFO_SELECTOR = "main.main-container > script:-soup-contains('uploadDate')"
 
 
 @dataclass(frozen=True)
@@ -50,7 +48,6 @@ class Format(NamedTuple):
 class Video:
     id: str
     title: str
-    date: str
     best_format: Format
 
 
@@ -126,7 +123,6 @@ class SpankBangCrawler(Crawler):
             return
         scrape_item.url = canonical_url
         resolution, link_str = video.best_format
-        scrape_item.possible_datetime = self.parse_iso_date(video.date)
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=resolution)
@@ -136,15 +132,12 @@ class SpankBangCrawler(Crawler):
 def _parse_video(soup: BeautifulSoup) -> Video:
     title_tag = css.select_one(soup, "div#video h1")
     stream_js_text = css.select_one_get_text(soup, JS_STREAM_DATA_SELECTOR)
-    js_text = css.select_one_get_text(soup, JS_VIDEO_INFO_SELECTOR)
+    video_id = get_text_between(stream_js_text, "ana_video_id = ", ";").strip("'")
     del soup
-    video_data = json.loads(js_text)
     stream_data = json.load_js_obj(get_text_between(stream_js_text, "stream_data = ", ";"))
-    embed_url = AbsoluteHttpURL(video_data["embedUrl"])
     return Video(
-        id=embed_url.parts[1],
+        id=video_id,
         title=css.get_attr_or_none(title_tag, "title") or css.get_text(title_tag),
-        date=video_data["uploadDate"],
         best_format=_get_best_quality(stream_data),
     )
 

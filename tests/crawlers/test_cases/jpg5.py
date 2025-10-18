@@ -46,7 +46,7 @@ TEST_CASES = [
         "https://simp6.jpg5.su/images3/Screenshot-46d10ff096ae50f993.th.png",
         [
             {
-                "url": "https://simp6.jpg5.su/images3/Screenshot-46d10ff096ae50f993.png",
+                "url": "https://simp6.selti-delivery.ru/images3/Screenshot-46d10ff096ae50f993.png",
                 "filename": "Screenshot-46d10ff096ae50f993.png",
                 "referer": "https://simp6.jpg5.su/images3/Screenshot-46d10ff096ae50f993.th.png",
             },
@@ -91,7 +91,7 @@ TEST_CASES = [
         "https://jpg6.su/a/alyrosez.Y2Pmn?password=aly",
         [
             {
-                "url": "https://simp2.jpg5.su/0afcc905cd6c64e52.jpg",
+                "url": "https://simp2.selti-delivery.ru/0afcc905cd6c64e52.jpg",
                 "filename": "0afcc905cd6c64e52.jpg",
                 "referer": "https://jpg6.su/img/ahfHow",
                 "datetime": None,

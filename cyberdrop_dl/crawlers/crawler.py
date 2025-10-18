@@ -104,6 +104,7 @@ class Crawler(ABC):
 
     _RATE_LIMIT: ClassVar[RateLimit] = 25, 1
     _DOWNLOAD_SLOTS: ClassVar[int | None] = None
+    _USE_DOWNLOAD_SERVERS_LOCKS: ClassVar[bool] = False
 
     @copy_signature(ScraperClient._request)
     @contextlib.asynccontextmanager
@@ -256,6 +257,8 @@ class Crawler(ABC):
             self.manager.client_manager.rate_limits[self.DOMAIN] = self.RATE_LIMIT
             if self._DOWNLOAD_SLOTS:
                 self.manager.client_manager.download_slots[self.DOMAIN] = self._DOWNLOAD_SLOTS
+            if self._USE_DOWNLOAD_SERVERS_LOCKS:
+                self.manager.client_manager.download_client._use_server_locks.add(self.DOMAIN)
             self.downloader = self._init_downloader()
             self._register_response_checks()
             await self.async_startup()
