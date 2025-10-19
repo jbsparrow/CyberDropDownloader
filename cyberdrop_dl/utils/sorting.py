@@ -158,7 +158,7 @@ class Sorter:
             return
         height = resolution = width = None
         try:
-            width, height = await asyncio.to_thread(imagesize.get, str(file))
+            width, height = await asyncio.to_thread(imagesize.get, file)
             if width > 0 and height > 0:
                 resolution = f"{width}x{height}"
             else:
