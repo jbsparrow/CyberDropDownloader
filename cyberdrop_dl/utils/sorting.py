@@ -8,8 +8,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
-import PIL
-from PIL import Image
+import imagesize
 from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl.constants import FILE_FORMATS
@@ -159,10 +158,13 @@ class Sorter:
             return
         height = resolution = width = None
         try:
-            with Image.open(file) as image:
-                width, height = image.size
+            width, height = await asyncio.to_thread(imagesize.get, file)
+            if width > 0 and height > 0:
                 resolution = f"{width}x{height}"
-        except (PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError):  # type: ignore
+            else:
+                # imagesize returns (-1, -1) for unsupported/corrupted images
+                width = height = resolution = None
+        except (OSError, ValueError):
             log(f"Unable to get some image properties of '{file}'")
 
         if await self._process_file_move(
