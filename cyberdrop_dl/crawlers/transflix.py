@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
-from cyberdrop_dl.data_structures.mediaprops import Resolution
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -50,14 +49,12 @@ class TransflixCrawler(Crawler):
 
         soup = await self.request_soup(scrape_item.url)
         video = css.select_one(soup, _SELECTORS.VIDEO)
-        video_url = self.parse_url(video["src"])
         title = css.select_one_get_text(soup, "title").replace(TITLE_TRASH, "").strip()
-        res = _parse_resolution_from_title(title)
         filename, ext = self.get_filename_and_ext(video["src"])
-        custom_filename = self.create_custom_filename(title, ext, file_id=video_id, resolution=res)
+        custom_filename = self.create_custom_filename(title, ext, file_id=video_id)
 
         return await self.handle_file(
-            video_url,
+            self.parse_url(video["src"]),
             scrape_item,
             filename,
             ext,
@@ -72,10 +69,3 @@ class TransflixCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url, _SELECTORS.NEXT_PAGE):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.SEARCH_VIDEOS):
                 self.create_task(self.run(new_scrape_item))
-
-
-def _parse_resolution_from_title(title: str) -> str | None:
-    for res in RESOLUTIONS:
-        if res in title or res.replace("p", "") in title:
-            return res
-    return Resolution.unknown()
