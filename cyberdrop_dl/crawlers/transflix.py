@@ -20,7 +20,6 @@ class Selectors:
 _SELECTORS = Selectors()
 
 TITLE_TRASH = "Free Trans Porn - TransFlix"
-RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]
 PRIMARY_URL = AbsoluteHttpURL("https://transflix.net")
 
 class TransflixCrawler(Crawler):
