@@ -22,6 +22,7 @@ _SELECTORS = Selectors()
 TITLE_TRASH = "Free Trans Porn - TransFlix"
 PRIMARY_URL = AbsoluteHttpURL("https://transflix.net")
 
+
 class TransflixCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Video": "/video/...",
@@ -52,13 +53,7 @@ class TransflixCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(video["src"])
         custom_filename = self.create_custom_filename(title, ext, file_id=video_id)
 
-        return await self.handle_file(
-            self.parse_url(video["src"]),
-            scrape_item,
-            filename,
-            ext,
-            custom_filename=custom_filename
-        )
+        return await self.handle_file(self.parse_url(video["src"]), scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem, query: str) -> None:
