@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class Selectors:
     VIDEO = "video#player > source"
     SEARCH_VIDEOS = "div.list-videos div.item > a"
-    NEXT_PAGE = "li.next"
+    NEXT_PAGE = "li.next > a"
 
 
 _SELECTORS = Selectors()
