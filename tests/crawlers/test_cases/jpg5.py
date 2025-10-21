@@ -13,6 +13,18 @@ TEST_CASES = [
         ],
     ),
     (
+        "https://jpg7.cr/img/960x1280-90c58bc6682426b5ff88266b8ec5a647.N3gCSXD",
+        [
+            {
+                "url": "https://simp6.selti-delivery.ru/images3/960x1280_90c58bc6682426b5ff88266b8ec5a647142c31c72206f9a3.jpg",
+                "filename": "960x1280_90c58bc6682426b5ff88266b8ec5a647142c31c72206f9a3.jpg",
+                "referer": "https://jpg7.cr/img/N3gCSXD",
+                "album_id": None,
+                "datetime": 1753538118,
+            }
+        ],
+    ),
+    (
         "https://jpg6.su/img/2520x3360-ab219efe5d20f99740d58188edd20c440659035b8a5c979d.N3iJfxa",
         [
             {
