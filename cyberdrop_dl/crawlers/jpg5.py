@@ -11,7 +11,7 @@ CDN: Final = "selti-delivery.ru"
 
 
 class JPG5Crawler(CheveretoCrawler):
-    SUPPORTED_DOMAINS = "selti-delivery.ru", "jpg6.su"
+    SUPPORTED_DOMAINS = "selti-delivery.ru", "jpg7.cr", "jpg6.su"
     DOMAIN = "jpg5.su"
     FOLDER_DOMAIN = "JPG5"
     PRIMARY_URL = AbsoluteHttpURL("https://jpg6.su")
