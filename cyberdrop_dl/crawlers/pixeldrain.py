@@ -24,6 +24,10 @@ class File(BaseModel):
     mime_type: str
     hash_sha256: str
 
+    @property
+    def download_url(self) -> AbsoluteHttpURL:
+        return (_PRIMARY_URL / "api/file" / self.id).with_query("download")
+
 
 class List(BaseModel):
     id: str
@@ -47,6 +51,10 @@ class Node(BaseModel):
     @property
     def date_upload(self) -> str:
         return self.modified
+
+    @property
+    def download_url(self) -> AbsoluteHttpURL:
+        return (_PRIMARY_URL / "api/filesystem" / self.path.removeprefix("/")).with_query("attach")
 
 
 class FileSystem(BaseModel):
@@ -166,13 +174,8 @@ class PixelDrainCrawler(Crawler):
     async def _file(
         self, scrape_item: ScrapeItem, file: File | Node, debrid_link: AbsoluteHttpURL | None = None
     ) -> None:
-        origin = scrape_item.url.origin()
-        if isinstance(file, File):
-            link = (origin / "api/file" / file.id).with_query("download")
-        else:
-            link = (origin / "api/filesystem" / file.path.removeprefix("/")).with_query("attach")
+        link = file.download_url.with_host(scrape_item.url.origin().host)
 
-        scrape_item.possible_datetime = self.parse_iso_date(file.date_upload)
         if "text/plain" in file.mime_type:
             return await self._text(scrape_item, file)
 
@@ -185,6 +188,7 @@ class PixelDrainCrawler(Crawler):
 
             filename, ext = self.get_filename_and_ext(f"{file.name}{ext}")
 
+        scrape_item.possible_datetime = self.parse_iso_date(file.date_upload)
         await self.handle_file(link, scrape_item, file.name, ext, debrid_link=debrid_link, custom_filename=filename)
 
     @error_handling_wrapper
