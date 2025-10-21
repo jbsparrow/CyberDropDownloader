@@ -168,10 +168,13 @@ class PixelDrainCrawler(Crawler):
             debrid_link = scrape_item.url
             scrape_item.url = _PRIMARY_URL / "u" / file_id
 
+        elif env.PIXELDRAIN_PROXY:
+            debrid_link = AbsoluteHttpURL(f"{env.PIXELDRAIN_PROXY}/{file_id}")
+
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        file: File = await self.api.file_info(file_id, scrape_item.url.origin())
+        file = await self.api.file_info(file_id, scrape_item.url.origin())
         await self._file(scrape_item, file, debrid_link)
 
     @error_handling_wrapper
@@ -195,8 +198,6 @@ class PixelDrainCrawler(Crawler):
             filename, ext = self.get_filename_and_ext(f"{file.name}{ext}")
 
         scrape_item.possible_datetime = self.parse_iso_date(file.date_upload)
-        if env.PIXELDRAIN_PROXY and isinstance(file, File):
-            debrid_link = AbsoluteHttpURL(f"{env.PIXELDRAIN_PROXY}/{file.id}")
         await self.handle_file(link, scrape_item, file.name, ext, debrid_link=debrid_link, custom_filename=filename)
 
     @error_handling_wrapper
