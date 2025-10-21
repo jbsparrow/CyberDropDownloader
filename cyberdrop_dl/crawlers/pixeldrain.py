@@ -138,9 +138,8 @@ class PixelDrainCrawler(Crawler):
 
         origin = scrape_item.url.origin()
         fs = await self.api.filesystem(path, origin)
-        nodes = fs.path
-        base_node = nodes[fs.base_index]
-        root = nodes[0]
+        base_node = fs.path[fs.base_index]
+        root = fs.path[0]
         title = self.create_title(root.name, root.id)
         scrape_item.setup_as_album(title, album_id=root.id)
 
@@ -148,7 +147,7 @@ class PixelDrainCrawler(Crawler):
             files = [base_node]
 
         else:
-            files = (n for n in nodes if n.type == "file")
+            files = (n for n in fs.children if n.type == "file")
 
         for file in files:
             if file.name == ".search_index.gz":
@@ -156,7 +155,7 @@ class PixelDrainCrawler(Crawler):
 
             url = scrape_item.url.origin() / "d" / file.path.removeprefix("/")
             new_scrape_item = scrape_item.create_child(url)
-            for part in file.path.split("/")[1:-1]:
+            for part in file.path.split("/")[2:-1]:
                 new_scrape_item.add_to_parent_title(part)
             self.create_task(self._file_task(new_scrape_item, file))
             scrape_item.add_children()
