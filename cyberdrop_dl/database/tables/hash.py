@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, cast
 
 from cyberdrop_dl.utils.logger import log
 
-from .definitions import create_files, create_hash, create_hash_index, deduplicate_hashes
+from .definitions import create_files, create_hash, create_hash_index
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -26,21 +26,8 @@ class HashTable:
         """Startup process for the HistoryTable."""
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
+        await self.db_conn.execute(create_hash_index)
         await self.db_conn.commit()
-        await self.create_indexes()
-
-    async def create_indexes(self) -> None:
-        check_for_index = """
-        SELECT name FROM sqlite_master WHERE type='index' AND name='idx_hash_type_hash';
-        """
-
-        cursor = await self.db_conn.execute(check_for_index)
-        result = await cursor.fetchone()
-
-        if not result:  # If the index does not exist, deduplicate and create
-            await self.db_conn.execute(deduplicate_hashes)
-            await self.db_conn.execute(create_hash_index)
-            await self.db_conn.commit()
 
     async def get_file_hash_exists(self, path: Path | str, hash_type: str) -> str | None:
         """gets the hash from a complete file path
