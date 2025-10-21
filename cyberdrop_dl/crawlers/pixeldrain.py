@@ -53,6 +53,10 @@ class Node(BaseModel):
         return self.modified
 
     @property
+    def hash_sha256(self) -> str:
+        return self.sha256_sum
+
+    @property
     def download_url(self) -> AbsoluteHttpURL:
         return (_PRIMARY_URL / "api/filesystem" / self.path.removeprefix("/")).with_query("attach")
 
@@ -175,6 +179,8 @@ class PixelDrainCrawler(Crawler):
         self, scrape_item: ScrapeItem, file: File | Node, debrid_link: AbsoluteHttpURL | None = None
     ) -> None:
         link = file.download_url.with_host(scrape_item.url.origin().host)
+        if await self.check_complete_by_hash(link, "sha256", file.hash_sha256):
+            return
 
         if "text/plain" in file.mime_type:
             return await self._text(scrape_item, file)
