@@ -30,7 +30,7 @@ class File(BaseModel):
         return (_PRIMARY_URL / "api/file" / self.id).with_query("download")
 
 
-class List(BaseModel):
+class Folder(BaseModel):
     id: str
     title: str
     files: list[File]
@@ -75,13 +75,13 @@ class PixelDrainCrawler(Crawler):
             "/u/<file_id>",
             "/api/file/<file_id>",
         ),
-        "List": (
+        "Folder": (
             "/l/<list_id>",
             "/api/list/<list_id>",
         ),
         "Filesystem": (
             "/d/<id>",
-            "/api/filesystem/<id>",
+            "/api/filesystem/<path>...",
         ),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
@@ -229,10 +229,10 @@ class PixelDrainAPI:
         content = await self._crawler.request_text(api_url / "info")
         return File.model_validate_json(content)
 
-    async def list(self, list_id: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> List:
+    async def list(self, list_id: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> Folder:
         api_url = origin / "api/list" / list_id
         content = await self._crawler.request_text(api_url)
-        return List.model_validate_json(content)
+        return Folder.model_validate_json(content)
 
     async def filesystem(self, path: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> FileSystem:
         api_url = (origin / "api/filesystem" / path.removeprefix("/")).with_query("stat")
