@@ -34,9 +34,8 @@ fi
 
 if [ "$AUTO_UPDATE" = true ] || ! is_installed "${PACKAGE_NAME}"; then
     echo Installing / Updating ${PACKAGE_NAME}...
-    uv tool install --upgrade "${PACKAGE_NAME}${PACKAGE_VERSION}" || exit 1
+    uv tool install -p ">=3.12,<3.14" --no-build --upgrade "${PACKAGE_NAME}${PACKAGE_VERSION}" || exit 1
 fi
 
-clear
 echo Starting ${PACKAGE_NAME}...
-uvx -p ">=3.12" "${PACKAGE_NAME}" $COMMANDLINE_ARGS
+uvx -p ">=3.12,<3.14" --no-build "${PACKAGE_NAME}" $COMMANDLINE_ARGS
