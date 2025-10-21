@@ -43,6 +43,7 @@ class RedGifsCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "User": "/users/<user>",
         "Gif": "/watch/<gif_id>",
+        "Image": "/i/<image_id>",
         "Embeds": "/ifr/<gif_id>",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
@@ -59,7 +60,7 @@ class RedGifsCrawler(Crawler):
         match scrape_item.url.parts[1:]:
             case ["users", user_name]:
                 return await self.user(scrape_item, _id(user_name))
-            case ["watch" | "ifr", gif_id]:
+            case ["i" | "watch" | "ifr", gif_id]:
                 return await self.gif(scrape_item, _id(gif_id))
 
         if self.is_self_subdomain(scrape_item.url) and len(scrape_item.url.parts) == 2:
