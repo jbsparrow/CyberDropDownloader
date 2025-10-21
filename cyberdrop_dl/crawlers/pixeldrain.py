@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import mimetypes
 from typing import TYPE_CHECKING, ClassVar
 
@@ -8,15 +7,13 @@ from pydantic import BaseModel
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.utils import css, open_graph
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
+from cyberdrop_dl.exceptions import NoExtensionError
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 _PRIMARY_URL = AbsoluteHttpURL("https://pixeldrain.com")
-_JS_SELECTOR = 'script:-soup-contains("window.initial_node")'
 _BYPASS_HOSTS = "pd.cybar.xyz", "pd.1drv.eu.org"
 
 
@@ -137,28 +134,6 @@ class PixelDrainCrawler(Crawler):
             new_scrape_item = scrape_item.create_child(link)
             self.handle_external_links(new_scrape_item)
             scrape_item.add_children()
-
-    async def filesystem(self, scrape_item: ScrapeItem) -> None:
-        soup = await self.request_soup(scrape_item.url)
-
-        og_props = open_graph.parse(soup)
-        filename = og_props.title
-        link_str: str | None = None
-        if "video" in og_props.type:
-            link_str = og_props.video
-        elif "image" in og_props.type:
-            link_str = og_props.image
-
-        if not link_str or "filesystem" not in link_str:
-            raise ScrapeError(422)
-
-        js_text = css.select_one_get_text(soup, _JS_SELECTOR)
-        json_str = get_text_between(js_text, "window.initial_node =", "window.user = ").removesuffix(";")
-        json_data = json.loads(json_str)
-        scrape_item.possible_datetime = self.parse_iso_date(json_data["path"][0]["created"])
-        link = self.parse_url(link_str)
-        filename, ext = self.get_filename_and_ext(filename)
-        await self.handle_file(link, scrape_item, filename, ext)
 
 
 class PixelDrainAPI:
