@@ -38,8 +38,14 @@ class List(BaseModel):
 class PixelDrainCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "pixeldrain.net", "pixeldra.in", *_BYPASS_HOSTS
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "File": "/u|api|file/<file_id>",
-        "List": "/l/<list_id>",
+        "File": (
+            "/u/<file_id>",
+            "/api/file/<file_id>",
+        ),
+        "List": (
+            "/l/<list_id>",
+            "/api/list/<list_id>",
+        ),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "pixeldrain"
@@ -52,12 +58,21 @@ class PixelDrainCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["u" | "api" | "file", file_id]:
+            case ["u", file_id]:
                 return await self.file(scrape_item, file_id)
             case ["l", folder_id]:
                 return await self.folder(scrape_item, folder_id)
             case _:
                 raise ValueError
+
+    @classmethod
+    def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        endpoints = {"file": "u", "list": "l"}
+        match url.parts[1:]:
+            case ["api", type_, id_] if type_ in endpoints:
+                return url.origin() / endpoints[type_] / id_
+
+        return url
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, list_id: str) -> None:
