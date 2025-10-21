@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 
 from pydantic import BaseModel
 
+from cyberdrop_dl import env
 from cyberdrop_dl.crawlers.crawler import Crawler, RateLimit, SupportedDomains, SupportedPaths, auto_task_id
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import NoExtensionError
@@ -194,6 +195,8 @@ class PixelDrainCrawler(Crawler):
             filename, ext = self.get_filename_and_ext(f"{file.name}{ext}")
 
         scrape_item.possible_datetime = self.parse_iso_date(file.date_upload)
+        if env.PIXELDRAIN_PROXY and isinstance(file, File):
+            debrid_link = AbsoluteHttpURL(f"{env.PIXELDRAIN_PROXY}/{file.id}")
         await self.handle_file(link, scrape_item, file.name, ext, debrid_link=debrid_link, custom_filename=filename)
 
     @error_handling_wrapper
