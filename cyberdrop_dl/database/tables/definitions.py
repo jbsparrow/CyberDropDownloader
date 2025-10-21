@@ -70,3 +70,16 @@ CREATE TABLE IF NOT EXISTS temp_hash (
   FOREIGN KEY (folder, download_filename) REFERENCES files(folder, download_filename)
 );
 """
+
+deduplicate_hashes = """
+DELETE FROM hash
+WHERE rowid NOT IN (
+    SELECT MIN(rowid)
+    FROM hash
+    GROUP BY hash, hash_type
+);
+"""
+
+create_hash_index = """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_hash_type_hash ON hash (hash_type, hash);
+"""
