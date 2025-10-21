@@ -37,7 +37,7 @@ class HashTable:
         cursor = await self.db_conn.execute(check_for_index)
         result = await cursor.fetchone()
 
-        if not result: # If the index does not exist, deduplicate and create
+        if not result:  # If the index does not exist, deduplicate and create
             await self.db_conn.execute(deduplicate_hashes)
             await self.db_conn.execute(create_hash_index)
             await self.db_conn.commit()
