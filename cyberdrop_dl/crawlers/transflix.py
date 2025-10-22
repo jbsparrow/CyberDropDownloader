@@ -48,13 +48,14 @@ class TransflixCrawler(Crawler):
             return
 
         soup = await self.request_soup(scrape_item.url)
-        video = css.select_one(soup, _SELECTORS.VIDEO)
         title = css.select_one_get_text(soup, "title").replace(TITLE_TRASH, "").strip()
-        filename, ext = self.get_filename_and_ext(video["src"])
+        video = css.select_one(soup, _SELECTORS.VIDEO)
+        link = self.parse_url(css.get_attr(video, "src"))
+        filename, ext = self.get_filename_and_ext(link.name)
         custom_filename = self.create_custom_filename(title, ext, file_id=video_id)
 
         return await self.handle_file(
-            self.parse_url(video["src"]), scrape_item, filename, ext, custom_filename=custom_filename
+            link, scrape_item, filename, ext, custom_filename=custom_filename
         )
 
     @error_handling_wrapper

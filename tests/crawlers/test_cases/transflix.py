@@ -13,6 +13,6 @@ TEST_CASES = [
     (
         "https://transflix.net/search?q=ruby+wren",
         [],
-        2,
+        4,
     ),
 ]
