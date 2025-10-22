@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal, TypeVar
 
 from pydantic import BaseModel
 
@@ -13,6 +13,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+
+    _ModelT = TypeVar("_ModelT", bound=BaseModel | str)
 
 _PRIMARY_URL = AbsoluteHttpURL("https://pixeldrain.com")
 _BYPASS_HOSTS = "pd.cybar.xyz", "pd.1drv.eu.org"
@@ -94,7 +96,18 @@ class PixelDrainCrawler(Crawler):
     _DOWNLOAD_SLOTS: ClassVar[int | None] = 2
 
     def __post_init__(self) -> None:
-        self.api = PixelDrainAPI(self)
+        self._headers: dict[str, str] = {}
+        if api_key := self.manager.config_manager.authentication_data.pixeldrain.api_key:
+            self._headers["Authorization"] = self.manager.client_manager.basic_auth(
+                "Cyberdrop-DL",
+                api_key,
+            )
+
+    async def _api_request(self, api_url: AbsoluteHttpURL, model: type[_ModelT] = str) -> _ModelT:
+        content = await self.request_text(api_url, headers=self._headers)
+        if isinstance(model, BaseModel):
+            return model.model_validate_json(content)
+        return content  # pyright: ignore[reportReturnType]
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host in _BYPASS_HOSTS:
@@ -125,7 +138,8 @@ class PixelDrainCrawler(Crawler):
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem, list_id: str) -> None:
         origin = scrape_item.url.origin()
-        folder = await self.api.list(list_id, origin)
+        api_url = origin / "api/list" / list_id
+        folder = await self._api_request(api_url, Folder)
         title = self.create_title(folder.title, list_id)
         scrape_item.setup_as_album(title, album_id=list_id)
 
@@ -153,7 +167,8 @@ class PixelDrainCrawler(Crawler):
         # https://github.com/Fornaxian/pixeldrain_web/blob/8e5ecfc5ce44c0b2b4fafdf9e8201dfc98395e88/svelte/src/filesystem/FilesystemAPI.ts
 
         origin = scrape_item.url.origin()
-        fs = await self.api.filesystem(path, origin)
+        api_url = (origin / "api/filesystem" / path).with_query("stat")
+        fs = await self._api_request(api_url, FileSystem)
         base_node = fs.path[fs.base_index]
         root = fs.path[0]
         title = self.create_title(root.name, root.id)
@@ -193,7 +208,8 @@ class PixelDrainCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        file = await self.api.file_info(file_id, scrape_item.url.origin())
+        api_url = scrape_item.url.origin() / "api/file" / file_id
+        file = await self._api_request(api_url, File)
         await self._file(scrape_item, file, debrid_link)
 
     @error_handling_wrapper
@@ -222,7 +238,8 @@ class PixelDrainCrawler(Crawler):
     @error_handling_wrapper
     async def _text(self, scrape_item: ScrapeItem, file: File | Node) -> None:
         scrape_item.setup_as_album(self.create_title(file.name, file.id))
-        text = await self.api.request_text(file.id)
+        api_url = scrape_item.url.origin() / "api/file" / file.id
+        text = await self._api_request(api_url)
 
         for line in text.splitlines():
             try:
@@ -234,33 +251,3 @@ class PixelDrainCrawler(Crawler):
             scrape_item.add_children()
 
     _file_task = auto_task_id(_file)
-
-
-class PixelDrainAPI:
-    def __init__(self, crawler: Crawler) -> None:
-        self._crawler = crawler
-        self._headers: dict[str, str] = {}
-        if api_key := crawler.manager.config_manager.authentication_data.pixeldrain.api_key:
-            self._headers["Authorization"] = crawler.manager.client_manager.basic_auth(
-                "Cyberdrop-DL",
-                api_key,
-            )
-
-    async def request_text(self, file_id: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> str:
-        api_url = origin / "api/file" / file_id
-        return await self._crawler.request_text(api_url, headers=self._headers)
-
-    async def file_info(self, file_id: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> File:
-        api_url = origin / "api/file" / file_id
-        content = await self._crawler.request_text(api_url / "info", headers=self._headers)
-        return File.model_validate_json(content)
-
-    async def list(self, list_id: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> Folder:
-        api_url = origin / "api/list" / list_id
-        content = await self._crawler.request_text(api_url, headers=self._headers)
-        return Folder.model_validate_json(content)
-
-    async def filesystem(self, path: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> FileSystem:
-        api_url = (origin / "api/filesystem" / path.removeprefix("/")).with_query("stat")
-        content = await self._crawler.request_text(api_url, headers=self._headers)
-        return FileSystem.model_validate_json(content)
