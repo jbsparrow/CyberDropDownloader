@@ -21,6 +21,8 @@ class Mock(Any):
         self._nested_attrs: dict[str, Mock] = {}
         self._mock_name = name
 
+    def __call__(self, *args, **kwargs) -> None: ...
+
     def __getattribute__(self, name: str, /) -> Any:
         if name == "manager" and MOCK_MANAGER is not None:
             return MOCK_MANAGER

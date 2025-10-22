@@ -28,7 +28,7 @@ TEST_BASE_CRAWLER = next(iter(crawlers.GENERIC_CRAWLERS))
 def test_generic_crawlers_that_match_supported_crawlers_should_not_be_created(
     running_manager: Manager, link: str
 ) -> None:
-    _ = scrape_mapper.get_crawlers_mapping()
+    _ = scrape_mapper.get_crawlers_mapping(running_manager)
     crawler = next(iter(create_crawlers([link], TEST_BASE_CRAWLER)))
     with pytest.raises(ValueError) as exc_info:
         scrape_mapper.register_crawler(scrape_mapper.existing_crawlers, crawler(running_manager), from_user="raise")
@@ -46,7 +46,7 @@ def test_generic_crawlers_that_match_supported_crawlers_should_not_be_created(
 def test_generic_crawlers_that_do_no_match_supported_crawlers_should_be_created(
     running_manager: Manager, link: str
 ) -> None:
-    _ = scrape_mapper.get_crawlers_mapping()
+    _ = scrape_mapper.get_crawlers_mapping(running_manager)
     crawler = next(iter(create_crawlers([link], TEST_BASE_CRAWLER)))
     existing_crawlers = scrape_mapper.existing_crawlers.copy()
     crawlers_before = set(existing_crawlers.values())
