@@ -23,7 +23,7 @@ class HashTable:
         return self._database._db_conn
 
     async def startup(self) -> None:
-        """Startup process for the HistoryTable."""
+        """Startup process for the HashTable."""
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
         await self.db_conn.execute(create_hash_index)
