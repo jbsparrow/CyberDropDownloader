@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 _M3U8_SERVER = AbsoluteHttpURL("https://surrit.com/")
 _PRIMARY_URL = AbsoluteHttpURL("https://missav.ws")
+_COLLECTION_TYPES = "makers", "search", "genres", "labels", "tags"
 
 
 class Selector:
@@ -28,7 +29,7 @@ class Selector:
 class MissAVCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Video": "/...",
-        "Search": "/search/<query>",
+        **{name.capitalize(): name.removesuffix("s") for name in _COLLECTION_TYPES},
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "missav"
@@ -36,14 +37,16 @@ class MissAVCrawler(Crawler):
     NEXT_PAGE_SELECTOR: ClassVar[str] = Selector.NEXT_PAGE
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if "search" in scrape_item.url.parts:
-            return await self.search(scrape_item)
+        n_parts = len(scrape_item.url.parts)
+        for part in _COLLECTION_TYPES:
+            if part in scrape_item.url.parts and n_parts == scrape_item.url.parts.index(part) + 1:
+                return await self.collection(scrape_item, part)
         return await self.video(scrape_item)
 
     @error_handling_wrapper
-    async def search(self, scrape_item: ScrapeItem) -> None:
-        query = scrape_item.url.name
-        title = self.create_title(f"{query} [search]")
+    async def collection(self, scrape_item: ScrapeItem, collection_type: str) -> None:
+        name = scrape_item.url.name
+        title = self.create_title(f"{name} [{collection_type}]")
         scrape_item.setup_as_album(title)
 
         async for soup in self.web_pager(scrape_item.url, cffi=True):
