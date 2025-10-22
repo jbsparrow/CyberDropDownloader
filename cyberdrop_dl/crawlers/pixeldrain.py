@@ -112,10 +112,11 @@ class PixelDrainCrawler(Crawler):
 
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        endpoints = {"file": "u", "list": "l"}
         match url.parts[1:]:
-            case ["api", type_, id_] if type_ in endpoints:
-                return url.origin() / endpoints[type_] / id_
+            case ["api", "file", id_]:
+                return url.origin() / "u" / id_
+            case ["api", "list", id_]:
+                return url.origin() / "l" / id_
             case ["api", "filesystem", *rest] if rest:
                 return (url.origin() / "d").joinpath(*rest)
             case _:
