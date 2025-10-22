@@ -23,21 +23,23 @@ class Selectors:
     NEXT_PAGE = "a.page-link[rel=next]"
 
 
-_SELECTORS = Selectors()
-PRIMARY_URL = AbsoluteHttpURL("https://www.imagebam.com/")
+_PRIMARY_URL = AbsoluteHttpURL("https://www.imagebam.com/")
 
 
 class ImageBamCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Gallery": "/gallery/...",
-        "Image": "/image/...",
-        "Gallery or Image": "/view/...",
-        "Thumbnails": "thumbs<x>.imagebam.com/...",
+        "Gallery": "/gallery/<id>",
+        "Image": (
+            "/image/<id>",
+            "images<x>.imagebam.com/<id>",
+        ),
+        "Gallery or Image": "/view/<id>",
+        "Thumbnails": "thumbs<x>.imagebam.com/<id>",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "imagebam"
     FOLDER_DOMAIN: ClassVar[str] = "ImageBam"
-    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
+    NEXT_PAGE_SELECTOR: ClassVar[str] = Selectors.NEXT_PAGE
 
     async def async_startup(self) -> None:
         # This skips the "Continue to image" pages.
@@ -64,7 +66,7 @@ class ImageBamCrawler(Crawler):
     async def view(self, scrape_item: ScrapeItem) -> None:
         # view URLs can be either a gallery or a single image.
         soup = await self.request_soup(scrape_item.url)
-        if soup.select_one(_SELECTORS.IS_GALLERY):
+        if soup.select_one(Selectors.IS_GALLERY):
             return await self.gallery(scrape_item, soup)
         await self.image(scrape_item, soup)
 
@@ -73,17 +75,17 @@ class ImageBamCrawler(Crawler):
         if not soup:
             soup = await self.request_soup(scrape_item.url)
 
-        gallery_name = css.select_one_get_text(soup, _SELECTORS.GALLERY_TITLE)
+        gallery_name = css.select_one_get_text(soup, Selectors.GALLERY_TITLE)
         gallery_id = scrape_item.url.name
         title = self.create_title(gallery_name, gallery_id)
         scrape_item.setup_as_album(title, album_id=gallery_id)
         results = await self.get_album_results(gallery_id)
 
         while True:
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.THUMBNAILS, results=results):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, Selectors.THUMBNAILS, results=results):
                 self.create_task(self._image_task(new_scrape_item))
 
-            next_page = css.select_one_get_attr_or_none(soup, _SELECTORS.NEXT_PAGE, "href")
+            next_page = css.select_one_get_attr_or_none(soup, Selectors.NEXT_PAGE, "href")
             if not next_page:
                 break
             soup = await self.request_soup(self.parse_url(next_page))
@@ -96,8 +98,8 @@ class ImageBamCrawler(Crawler):
 
             soup = await self.request_soup(scrape_item.url)
 
-        image_tag = css.select_one(soup, _SELECTORS.IMAGE)
-        if not scrape_item.album_id and (gallery_info := soup.select_one(_SELECTORS.GALLERY_INFO)):
+        image_tag = css.select_one(soup, Selectors.IMAGE)
+        if not scrape_item.album_id and (gallery_info := soup.select_one(Selectors.GALLERY_INFO)):
             gallery_id = self.parse_url(css.get_attr(gallery_info, "href")).name
             scrape_item.album_id = gallery_id
 
@@ -113,5 +115,5 @@ def thumbnail_to_img(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     stem = Path(url.name).stem
     image_id = stem.removesuffix("_t").removesuffix("_o")
     if image_id != stem:
-        return PRIMARY_URL / "view" / image_id
-    return PRIMARY_URL / "image" / image_id
+        return _PRIMARY_URL / "view" / image_id
+    return _PRIMARY_URL / "image" / image_id
