@@ -70,3 +70,7 @@ CREATE TABLE IF NOT EXISTS temp_hash (
   FOREIGN KEY (folder, download_filename) REFERENCES files(folder, download_filename)
 );
 """
+
+create_hash_index = """
+CREATE INDEX IF NOT EXISTS idx_hash_type_hash ON hash (hash_type, hash);
+"""

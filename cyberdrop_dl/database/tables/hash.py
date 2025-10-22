@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, cast
 
 from cyberdrop_dl.utils.logger import log
 
-from .definitions import create_files, create_hash
+from .definitions import create_files, create_hash, create_hash_index
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -23,9 +23,10 @@ class HashTable:
         return self._database._db_conn
 
     async def startup(self) -> None:
-        """Startup process for the HistoryTable."""
+        """Startup process for the HashTable."""
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
+        await self.db_conn.execute(create_hash_index)
         await self.db_conn.commit()
 
     async def get_file_hash_exists(self, path: Path | str, hash_type: str) -> str | None:
