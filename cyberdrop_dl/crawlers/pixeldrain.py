@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 _PRIMARY_URL = AbsoluteHttpURL("https://pixeldrain.com")
 _BYPASS_HOSTS = "pd.cybar.xyz", "pd.1drv.eu.org"
+_PIXELDRAIN_PROXY = AbsoluteHttpURL(env.PIXELDRAIN_PROXY) if env.PIXELDRAIN_PROXY else None
 
 
 class File(BaseModel):
@@ -185,8 +186,8 @@ class PixelDrainCrawler(Crawler):
             debrid_link = scrape_item.url
             scrape_item.url = _PRIMARY_URL / "u" / file_id
 
-        elif env.PIXELDRAIN_PROXY:
-            debrid_link = AbsoluteHttpURL(f"{env.PIXELDRAIN_PROXY}/{file_id}")
+        elif _PIXELDRAIN_PROXY:
+            debrid_link = _PIXELDRAIN_PROXY / file_id
 
         if await self.check_complete_from_referer(scrape_item):
             return
