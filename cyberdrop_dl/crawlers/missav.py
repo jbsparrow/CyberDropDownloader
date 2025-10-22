@@ -69,7 +69,7 @@ class MissAVCrawler(Crawler):
         if date_str:
             scrape_item.possible_datetime = self.parse_iso_date(date_str)
         elif date_tag := soup.select_one(Selector.DATE):
-            scrape_item.possible_datetime = self.parse_date(css.get_attr(date_tag, "datetime"))
+            scrape_item.possible_datetime = self.parse_iso_date(css.get_attr(date_tag, "datetime"))
         else:
             _ = self.parse_date("")  # Trigger warning
 
