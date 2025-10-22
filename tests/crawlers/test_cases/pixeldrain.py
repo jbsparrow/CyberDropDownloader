@@ -68,4 +68,16 @@ TEST_CASES = [
             },
         ],
     ),
+    (
+        "https://pixeldrain.com/l/XUJDdQHj#item=0",
+        [
+            {
+                "url": "https://pixeldrain.com/api/file/ZxJ9b2Ct?download",
+                "filename": "Cyberdrop-DL.v8.4.0.zip",
+                "download_folder": r"re:CDL test album \(PixelDrain\)",
+                "referer": "https://pixeldrain.com/u/ZxJ9b2Ct",
+                "album_id": "XUJDdQHj",
+            },
+        ],
+    ),
 ]

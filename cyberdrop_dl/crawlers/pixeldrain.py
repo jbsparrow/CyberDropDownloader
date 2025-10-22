@@ -73,6 +73,7 @@ class PixelDrainCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "File": (
             "/u/<file_id>",
+            "/l/<list_id>#item=<file_index>",
             "/api/file/<file_id>",
         ),
         "Folder": (
@@ -125,8 +126,17 @@ class PixelDrainCrawler(Crawler):
         title = self.create_title(folder.title, list_id)
         scrape_item.setup_as_album(title, album_id=list_id)
 
+        files = folder.files
+        if scrape_item.url.fragment.startswith(prefix := "item="):
+            try:
+                item_idx = int(scrape_item.url.fragment.removeprefix(prefix))
+                files = [files[item_idx]]
+            except (ValueError, IndexError):
+                msg = f"Unable to parse item index in folder {scrape_item.url}. Falling back to downloading the entire folder"
+                self.log(msg, 30)
+
         results = await self.get_album_results(list_id)
-        for file in folder.files:
+        for file in files:
             api_url = origin / "api/file" / file.id
             if self.check_album_results(api_url, results):
                 continue
