@@ -21,18 +21,34 @@ class Selector:
     UUID = "script:-soup-contains('m3u8|')"
     DATE = "div > span:-soup-contains('Release date:') + time"
     DVD_CODE = "div > span:-soup-contains('Code:') + span"
+    NEXT_PAGE = "nav a[rel=next]"
+    ITEM = ".grid .thumbnail a"
 
 
 class MissAVCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/..."}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Video": "/...",
+        "Search": "/search/<query>",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "missav"
     FOLDER_DOMAIN: ClassVar[str] = "MissAV"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = Selector.NEXT_PAGE
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "search" in scrape_item.url.parts:
-            return await self.video(scrape_item)
+            return await self.search(scrape_item)
         return await self.video(scrape_item)
+
+    @error_handling_wrapper
+    async def search(self, scrape_item: ScrapeItem) -> None:
+        query = scrape_item.url.name
+        title = self.create_title(f"{query} [search]")
+        scrape_item.setup_as_album(title)
+
+        async for soup in self.web_pager(scrape_item.url, cffi=True):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, Selector.ITEM):
+                self.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
