@@ -172,7 +172,7 @@ class PixelDrainCrawler(Crawler):
             if self.check_album_results(file.download_url, results):
                 continue
 
-            url = scrape_item.url.origin() / "d" / file.path.removeprefix("/")
+            url = origin / "d" / file.path.removeprefix("/")
             new_scrape_item = scrape_item.create_child(url)
             for part in file.path.split("/")[2:-1]:
                 new_scrape_item.add_to_parent_title(part)
