@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
+from collections import deque
 from typing import TYPE_CHECKING, ClassVar, Literal, TypeVar
 
 from pydantic import BaseModel
@@ -105,9 +106,9 @@ class PixelDrainCrawler(Crawler):
 
     async def _api_request(self, api_url: AbsoluteHttpURL, model: type[_ModelT] = str) -> _ModelT:
         content = await self.request_text(api_url, headers=self._headers)
-        if isinstance(model, BaseModel):
-            return model.model_validate_json(content)
-        return content  # pyright: ignore[reportReturnType]
+        if isinstance(model, str):
+            return content  # pyright: ignore[reportReturnType]
+        return model.model_validate_json(content)  # pyright: ignore[reportUnknownMemberType]
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host in _BYPASS_HOSTS:
@@ -179,36 +180,40 @@ class PixelDrainCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=root.id)
 
         if base_node.type == "file":
-            children = [base_node]
+            children = deque([base_node])
 
         else:
-            children = fs.children
+            children = deque(fs.children)
 
         results = await self.get_album_results(root.id)
 
-        while node := children.pop(0):
-            if node.name == ".search_index.gz":
-                continue
-
-            url = origin / "d" / node.path.removeprefix("/")
-            new_scrape_item = scrape_item.create_child(url)
-
-            if node.type == "file":
-                if self.check_album_results(node.download_url, results):
+        while True:
+            try:
+                node = children.popleft()
+                if node.name == ".search_index.gz":
                     continue
-                for part in node.path.split("/")[2:-1]:
-                    new_scrape_item.add_to_parent_title(part)
 
-                self.create_task(self._file_task(new_scrape_item, node))
+                url = origin / "d" / node.path.removeprefix("/")
+                new_scrape_item = scrape_item.create_child(url)
 
-            elif node.type == "dir":
-                fs = await request_fs(node.path)
-                children.extend(fs.children)
+                if node.type == "file":
+                    if self.check_album_results(node.download_url, results):
+                        continue
+                    for part in node.path.split("/")[2:-1]:
+                        new_scrape_item.add_to_parent_title(part)
 
-            else:
-                self.raise_exc(new_scrape_item, f"Unknown node type: {node.type}")
+                    self.create_task(self._file_task(new_scrape_item, node))
 
-            scrape_item.add_children()
+                elif node.type == "dir":
+                    fs = await request_fs(node.path)
+                    children.extend(fs.children)
+
+                else:
+                    self.raise_exc(new_scrape_item, f"Unknown node type: {node.type}")
+
+                scrape_item.add_children()
+            except IndexError:
+                pass
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem, file_id: str) -> None:
