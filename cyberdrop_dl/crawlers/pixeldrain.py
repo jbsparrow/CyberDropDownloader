@@ -138,8 +138,7 @@ class PixelDrainCrawler(Crawler):
 
         results = await self.get_album_results(list_id)
         for file in files:
-            api_url = origin / "api/file" / file.id
-            if self.check_album_results(api_url, results):
+            if self.check_album_results(file.download_url, results):
                 continue
 
             url = origin / "u" / file.id
@@ -164,8 +163,12 @@ class PixelDrainCrawler(Crawler):
         else:
             files = (n for n in fs.children if n.type == "file")
 
+        results = await self.get_album_results(root.id)
         for file in files:
             if file.name == ".search_index.gz":
+                continue
+
+            if self.check_album_results(file.download_url, results):
                 continue
 
             url = scrape_item.url.origin() / "d" / file.path.removeprefix("/")
