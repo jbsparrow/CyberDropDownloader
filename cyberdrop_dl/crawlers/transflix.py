@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -50,7 +51,7 @@ class TransflixCrawler(Crawler):
         video = css.select_one(soup, _SELECTORS.VIDEO)
         link = self.parse_url(css.get_attr(video, "src"))
         filename, ext = self.get_filename_and_ext(link.name)
-        scrape_item.possible_datetime = int(filename.split(".")[0])
+        scrape_item.possible_datetime = int(Path(filename).stem)
         custom_filename = self.create_custom_filename(title, ext, file_id=video_id)
 
         return await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
