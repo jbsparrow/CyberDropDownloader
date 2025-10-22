@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import mimetypes
-from collections import deque
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from pydantic import BaseModel
@@ -177,16 +176,20 @@ class PixelDrainCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=root.id)
 
         if base_node.type == "file":
-            children = deque([base_node])
-
-        else:
-            children = deque(fs.children)
+            fs.children = [base_node]
 
         results = await self.get_album_results(root.id)
 
-        while True:
+        async def walk_task(new_scrape_item: ScrapeItem, path: str) -> None:
             try:
-                node = children.popleft()
+                fs = await request_fs(path)
+                scrape_item.add_children(0)
+                await walk_filesystem(fs)
+            except Exception as e:
+                self.raise_exc(new_scrape_item, e)
+
+        async def walk_filesystem(fs: FileSystem) -> None:
+            for node in fs.children:
                 if node.name == ".search_index.gz":
                     continue
 
@@ -196,21 +199,21 @@ class PixelDrainCrawler(Crawler):
                 if node.type == "file":
                     if self.check_album_results(node.download_url, results):
                         continue
+
                     for part in node.path.split("/")[2:-1]:
                         new_scrape_item.add_to_parent_title(part)
 
                     self.create_task(self._file_task(new_scrape_item, node))
 
                 elif node.type == "dir":
-                    fs = await request_fs(node.path)
-                    children.extend(fs.children)
+                    self.create_task(walk_task(new_scrape_item, node.path))
 
                 else:
                     self.raise_exc(new_scrape_item, f"Unknown node type: {node.type}")
 
                 scrape_item.add_children()
-            except IndexError:
-                break
+
+        await walk_filesystem(fs)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem, file_id: str) -> None:
@@ -225,7 +228,7 @@ class PixelDrainCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        api_url = scrape_item.url.origin() / "api/file" / file_id
+        api_url = scrape_item.url.origin() / "api/file" / file_id / "info"
         file = File.model_validate_json(await self._api_request(api_url))
         await self._file(scrape_item, file, debrid_link)
 
