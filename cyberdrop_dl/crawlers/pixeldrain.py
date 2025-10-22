@@ -1,3 +1,5 @@
+"""https://pixeldrain.com/api"""
+
 from __future__ import annotations
 
 import mimetypes
@@ -101,6 +103,14 @@ class PixelDrainCrawler(Crawler):
                 "Cyberdrop-DL",
                 api_key,
             )
+
+    @classmethod
+    def _json_response_check(cls, json_resp: dict) -> None:
+        # TODO: pass the resp obj to the json check functions
+        return
+        if not json_resp["success"]:
+            msg = f"{json_resp['message']} ({json_resp['value']})"
+            raise ValueError(422, msg)
 
     async def _api_request(self, api_url: AbsoluteHttpURL) -> str:
         return await self.request_text(api_url, headers=self._headers)
