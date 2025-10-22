@@ -5,7 +5,7 @@ import sys
 from datetime import date, timedelta
 from enum import Enum
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from pydantic import BaseModel, ValidationError
@@ -50,10 +50,10 @@ def save(file: Path, data: BaseModel | dict) -> None:
         data = data.model_dump()
     file.parent.mkdir(parents=True, exist_ok=True)
     with file.open("w", encoding="utf8") as yaml_file:
-        yaml.dump(data, yaml_file)
+        yaml.dump(data, yaml_file, default_flow_style=False)
 
 
-def load(file: Path, *, create: bool = False) -> dict:
+def load(file: Path, *, create: bool = False) -> dict[str, Any]:
     """Loads a yaml file and returns it as a dict."""
     if create:
         file.parent.mkdir(parents=True, exist_ok=True)
