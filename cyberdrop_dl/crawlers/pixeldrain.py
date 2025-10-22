@@ -223,22 +223,28 @@ class PixelDrainCrawler(Crawler):
 class PixelDrainAPI:
     def __init__(self, crawler: Crawler) -> None:
         self._crawler = crawler
+        self._headers: dict[str, str] = {}
+        if api_key := crawler.manager.config_manager.authentication_data.pixeldrain.api_key:
+            self._headers["Authorization"] = crawler.manager.client_manager.basic_auth(
+                "Cyberdrop-DL",
+                api_key,
+            )
 
     async def request_text(self, file_id: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> str:
         api_url = origin / "api/file" / file_id
-        return await self._crawler.request_text(api_url)
+        return await self._crawler.request_text(api_url, headers=self._headers)
 
     async def file_info(self, file_id: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> File:
         api_url = origin / "api/file" / file_id
-        content = await self._crawler.request_text(api_url / "info")
+        content = await self._crawler.request_text(api_url / "info", headers=self._headers)
         return File.model_validate_json(content)
 
     async def list(self, list_id: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> Folder:
         api_url = origin / "api/list" / list_id
-        content = await self._crawler.request_text(api_url)
+        content = await self._crawler.request_text(api_url, headers=self._headers)
         return Folder.model_validate_json(content)
 
     async def filesystem(self, path: str, origin: AbsoluteHttpURL = _PRIMARY_URL) -> FileSystem:
         api_url = (origin / "api/filesystem" / path.removeprefix("/")).with_query("stat")
-        content = await self._crawler.request_text(api_url)
+        content = await self._crawler.request_text(api_url, headers=self._headers)
         return FileSystem.model_validate_json(content)
