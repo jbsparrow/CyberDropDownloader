@@ -84,6 +84,7 @@ class PixelDrainCrawler(Crawler):
             "/d/<id>",
             "/api/filesystem/<path>...",
         ),
+        "**NOTE**": "text files will not be downloaded but their content will be parse for URLs",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "pixeldrain"
