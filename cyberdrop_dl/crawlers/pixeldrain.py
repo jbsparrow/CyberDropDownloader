@@ -167,32 +167,47 @@ class PixelDrainCrawler(Crawler):
         # https://github.com/Fornaxian/pixeldrain_web/blob/8e5ecfc5ce44c0b2b4fafdf9e8201dfc98395e88/svelte/src/filesystem/FilesystemAPI.ts
 
         origin = scrape_item.url.origin()
-        api_url = (origin / "api/filesystem" / path).with_query("stat")
-        fs = await self._api_request(api_url, FileSystem)
+
+        async def request_fs(path: str):
+            api_url = (origin / "api/filesystem" / path).with_query("stat")
+            return await self._api_request(api_url, FileSystem)
+
+        fs = await request_fs(path)
         base_node = fs.path[fs.base_index]
         root = fs.path[0]
         title = self.create_title(root.name, root.id)
         scrape_item.setup_as_album(title, album_id=root.id)
 
         if base_node.type == "file":
-            files = [base_node]
+            children = [base_node]
 
         else:
-            files = (n for n in fs.children if n.type == "file")
+            children = fs.children
 
         results = await self.get_album_results(root.id)
-        for file in files:
-            if file.name == ".search_index.gz":
+
+        while node := children.pop(0):
+            if node.name == ".search_index.gz":
                 continue
 
-            if self.check_album_results(file.download_url, results):
-                continue
-
-            url = origin / "d" / file.path.removeprefix("/")
+            url = origin / "d" / node.path.removeprefix("/")
             new_scrape_item = scrape_item.create_child(url)
-            for part in file.path.split("/")[2:-1]:
-                new_scrape_item.add_to_parent_title(part)
-            self.create_task(self._file_task(new_scrape_item, file))
+
+            if node.type == "file":
+                if self.check_album_results(node.download_url, results):
+                    continue
+                for part in node.path.split("/")[2:-1]:
+                    new_scrape_item.add_to_parent_title(part)
+
+                self.create_task(self._file_task(new_scrape_item, node))
+
+            elif node.type == "dir":
+                fs = await request_fs(node.path)
+                children.extend(fs.children)
+
+            else:
+                self.raise_exc(new_scrape_item, f"Unknown node type: {node.type}")
+
             scrape_item.add_children()
 
     @error_handling_wrapper
