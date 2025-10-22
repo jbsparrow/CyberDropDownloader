@@ -69,7 +69,7 @@ class FileSystem(BaseModel):
 
 
 class PixelDrainCrawler(Crawler):
-    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "pixeldrain.net", "pixeldra.in", *_BYPASS_HOSTS
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "pixeldrain.net", "pixeldrain.com", "pixeldra.in", *_BYPASS_HOSTS
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "File": (
             "/u/<file_id>",
@@ -94,6 +94,9 @@ class PixelDrainCrawler(Crawler):
         self.api = PixelDrainAPI(self)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
+        if scrape_item.url.host in _BYPASS_HOSTS:
+            return await self.file(scrape_item, scrape_item.url.name)
+
         match scrape_item.url.parts[1:]:
             case ["u", file_id]:
                 return await self.file(scrape_item, file_id)
