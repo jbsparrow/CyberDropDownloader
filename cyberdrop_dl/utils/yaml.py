@@ -22,7 +22,7 @@ class TimedeltaSerializer(BaseModel):
     duration: timedelta
 
 
-def _save_as_str(dumper: yaml.Dumper, value):
+def _save_as_str(dumper: yaml.Dumper, value: object):
     if isinstance(value, Enum):
         return dumper.represent_str(value.name)
     return dumper.represent_str(str(value))
@@ -44,13 +44,15 @@ yaml.add_representer(timedelta, _save_timedelta)
 yaml.add_representer(URL, _save_as_str)
 
 
-def save(file: Path, data: BaseModel | dict) -> None:
+def save(file: Path, data: BaseModel | dict[str, Any]) -> None:
     """Saves a dict to a yaml file."""
     if isinstance(data, BaseModel):
         data = data.model_dump()
     file.parent.mkdir(parents=True, exist_ok=True)
-    with file.open("w", encoding="utf8") as yaml_file:
-        yaml.dump(data, yaml_file, default_flow_style=False)
+    file.write_text(
+        yaml.dump(data, default_flow_style=False),
+        encoding="utf8",
+    )
 
 
 def load(file: Path, *, create: bool = False) -> dict[str, Any]:
@@ -60,9 +62,8 @@ def load(file: Path, *, create: bool = False) -> dict[str, Any]:
         if not file.is_file():
             file.touch()
     try:
-        with file.open(encoding="utf8") as yaml_file:
-            yaml_values = yaml.safe_load(yaml_file.read())
-            return yaml_values if yaml_values else {}
+        yaml_values = yaml.safe_load(file.read_text(encoding="utf8"))
+        return yaml_values or {}
     except KeyboardInterrupt:
         raise
     except Exception as e:
