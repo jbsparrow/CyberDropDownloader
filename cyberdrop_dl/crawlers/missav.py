@@ -23,7 +23,7 @@ class Selector:
     DATE = "div > span:-soup-contains('Release date:') + time"
     DVD_CODE = "div > span:-soup-contains('Code:') + span"
     NEXT_PAGE = "nav a[rel=next]"
-    ITEM = ".grid .thumbnail a"
+    ITEM = ".grid .thumbnail.group a"
 
 
 class MissAVCrawler(Crawler):
@@ -39,7 +39,7 @@ class MissAVCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         n_parts = len(scrape_item.url.parts)
         for part in _COLLECTION_TYPES:
-            if part in scrape_item.url.parts and n_parts == scrape_item.url.parts.index(part) + 1:
+            if part in scrape_item.url.parts and n_parts == scrape_item.url.parts.index(part) + 2:
                 return await self.collection(scrape_item, part)
         return await self.video(scrape_item)
 
@@ -49,7 +49,7 @@ class MissAVCrawler(Crawler):
         title = self.create_title(f"{name} [{collection_type}]")
         scrape_item.setup_as_album(title)
 
-        async for soup in self.web_pager(scrape_item.url, cffi=True):
+        async for soup in self.web_pager(scrape_item.url.update_query(page=1), cffi=True):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, Selector.ITEM):
                 self.create_task(self.run(new_scrape_item))
 
@@ -78,7 +78,7 @@ class MissAVCrawler(Crawler):
         m3u8, info = await self.get_m3u8_from_playlist_url(m3u8_playlist_url)
         ext = ".mp4"
         filename = self.create_custom_filename(title, ext, resolution=info.resolution)
-        await self.handle_file(m3u8_playlist_url, scrape_item, filename, ext, m3u8=m3u8)
+        await self.handle_file(m3u8_playlist_url, scrape_item, title, ext, m3u8=m3u8, custom_filename=filename)
 
 
 def _get_uuid(soup: BeautifulSoup) -> str:
