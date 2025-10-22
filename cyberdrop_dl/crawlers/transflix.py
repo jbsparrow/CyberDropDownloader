@@ -25,7 +25,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://transflix.net")
 
 class TransflixCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Video": "/video/...",
+        "Video": "/video/<name>-<video_id>",
         "Search": "/search/?q=...",
     }
     DOMAIN: ClassVar[str] = "transflix"
