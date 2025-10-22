@@ -29,7 +29,7 @@ class Selector:
 class MissAVCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Video": "/...",
-        **{name.capitalize(): name.removesuffix("s") for name in _COLLECTION_TYPES},
+        **{name.capitalize(): f"/{name}/<{name.removesuffix('s')}>" for name in _COLLECTION_TYPES},
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = _PRIMARY_URL
     DOMAIN: ClassVar[str] = "missav"
