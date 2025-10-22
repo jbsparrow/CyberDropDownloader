@@ -50,6 +50,7 @@ class TransflixCrawler(Crawler):
         video = css.select_one(soup, _SELECTORS.VIDEO)
         link = self.parse_url(css.get_attr(video, "src"))
         filename, ext = self.get_filename_and_ext(link.name)
+        scrape_item.possible_datetime = int(filename.split(".")[0])
         custom_filename = self.create_custom_filename(title, ext, file_id=video_id)
 
         return await self.handle_file(
