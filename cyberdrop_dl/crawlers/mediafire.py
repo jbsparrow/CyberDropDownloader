@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import dataclasses
 import itertools
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
@@ -43,6 +44,11 @@ class File:
 
 _PRIMARY_URL = AbsoluteHttpURL("https://www.mediafire.com/")
 _API_URL = _PRIMARY_URL / "api/1.4"
+_API_ERRORS_OVERRIDES: dict[int, int] = {
+    110: HTTPStatus.GONE,
+    105: HTTPStatus.GONE,
+    293: HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS,
+}
 
 
 class MediaFireCrawler(Crawler):
@@ -67,6 +73,9 @@ class MediaFireCrawler(Crawler):
         resp: dict[str, Any] = json_resp["response"]
         if resp["result"] != "Success":
             code: int = resp["error"]
+            if http_code := _API_ERRORS_OVERRIDES.get(code):
+                raise ScrapeError(http_code)
+
             ui_failure = f"MediaFire Error ({code})"
             raise ScrapeError(ui_failure, resp["message"])
 
