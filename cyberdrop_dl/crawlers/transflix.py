@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -18,8 +18,6 @@ class Selectors:
 
 
 _SELECTORS = Selectors()
-
-TITLE_TRASH = "Free Trans Porn - TransFlix"
 PRIMARY_URL = AbsoluteHttpURL("https://transflix.net")
 
 
@@ -48,7 +46,7 @@ class TransflixCrawler(Crawler):
             return
 
         soup = await self.request_soup(scrape_item.url)
-        title = css.select_one_get_text(soup, "title").replace(TITLE_TRASH, "").strip()
+        title = open_graph.title(soup)
         video = css.select_one(soup, _SELECTORS.VIDEO)
         link = self.parse_url(css.get_attr(video, "src"))
         filename, ext = self.get_filename_and_ext(link.name)
