@@ -6,6 +6,7 @@ import itertools
 import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Concatenate, Literal, NamedTuple, NotRequired, ParamSpec
 
 from pydantic import AliasChoices, BeforeValidator, Field
@@ -223,7 +224,8 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
                 return await self.post(scrape_item)
             case [service, "user", _] if service in self.SERVICES:
                 return await self.profile(scrape_item)
-            case ["favorites"] if (type_ := scrape_item.url.query.get("type")) in ("post", "artist"):
+            case ["favorites"] if (type_ := scrape_item.url.query.get("type")) in ("post", "artist", None):
+                type_ = type_ or "artist"
                 return await self.favorites(scrape_item, type_)
             case ["account", "favorites", slug] if (type_ := slug.removesuffix("s")) in ("post", "artist"):
                 return await self.favorites(scrape_item, type_)
@@ -326,7 +328,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         self.update_cookies({"session": ""})
 
         for item in resp:
-            url = self.PRIMARY_URL / item["service"] / "user" / item["user"]
+            url = self.PRIMARY_URL / item["service"] / "user" / (item.get("user") or ["name"])
             if type_ == "post":
                 url = url / "post" / item["id"]
 
@@ -337,15 +339,20 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
         scrape_item.url = _thumbnail_to_src(scrape_item.url)
         link = _thumbnail_to_src(url or scrape_item.url)
+        hash_value = Path(link.name).stem
+        if await self.check_complete_by_hash(link, "sha256", hash_value):
+            return
+
         try:
             filename, ext = self.get_filename_and_ext(link.query.get("f") or link.name)
         except NoExtensionError:
             # Some patreon URLs have another URL as the filename:
             # ex: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
             filename, ext = self.get_filename_and_ext(link.name)
+
         await self.handle_file(link, scrape_item, link.name, ext, custom_filename=filename)
 
-    # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~ INTERNAL METHODS, not expected to be overridden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def _register_attachments_servers(self, attachments: list[File]) -> None:
         for attach in attachments:
@@ -406,7 +413,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             self.disabled = True
             raise ScrapeError(503, msg) from e
 
-    """~~~~~~~~  PRIVATE METHODS, should never be overriden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    """~~~~~~~~  PRIVATE METHODS, should never be overridden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def __parse_content_urls(self, post: Post) -> Generator[AbsoluteHttpURL]:
         seen: set[str] = set()

@@ -90,7 +90,7 @@ class LeakedZoneCrawler(Crawler):
                 scrape_item.url.with_query(page=page), headers=headers
             )
             # We may be able to omit the last request by just checking the number of posts
-            # Seens to always return 48 posts
+            # Seems to always return 48 posts
             if not posts:
                 break
             for post in (Post.from_dict(post) for post in posts):

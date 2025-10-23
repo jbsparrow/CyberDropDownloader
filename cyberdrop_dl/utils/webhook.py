@@ -72,19 +72,27 @@ async def send_webhook_message(manager: Manager) -> None:
     rich.print("\nSending Webhook Notifications.. ")
     url = cast("AbsoluteHttpURL", webhook.url.get_secret_value())
     form = await _prepare_form(webhook, manager.path_manager.main_log)
+    logger = log
+    result = constants.NotificationResult.FAILED.value
 
-    async with manager.client_manager._new_session() as session, session.post(url, data=form) as response:
-        result = [constants.NotificationResult.SUCCESS.value]
-        result_to_log = result
-        if not response.ok:
-            json_resp: dict[str, Any] = await response.json()
-            if "content" in json_resp:
-                json_resp.pop("content")
-            resp_text = json.dumps(json_resp, indent=4, ensure_ascii=False)
-            result_to_log = constants.NotificationResult.FAILED.value, resp_text
+    try:
+        async with manager.client_manager._new_session() as session, session.post(url, data=form) as response:
+            if response.ok:
+                result = constants.NotificationResult.SUCCESS.value
+                result_to_log = [result]
+                logger = log_debug
+
+            else:
+                json_resp: dict[str, Any] = await response.json()
+                json_resp.pop("content", None)
+                resp_text = json.dumps(json_resp, indent=4, ensure_ascii=False)
+                result_to_log = constants.NotificationResult.FAILED.value, resp_text
+
+    except Exception as e:
+        logger("Unable to send webhook notification", 40, exc_info=e)
+        result_to_log = result, str(e)
 
     log_spacer(10, log_to_console=False)
-    rich.print("Webhook Notifications Results:", *result)
-    logger = log_debug if response.ok else log
+    rich.print("Webhook Notifications Results:", result)
     result_to_log = "\n".join(map(str, result_to_log))
     logger(f"Webhook Notifications Results: {result_to_log}")

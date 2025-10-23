@@ -1,3 +1,4 @@
+import dataclasses
 import sys
 import time
 import warnings
@@ -8,7 +9,7 @@ from datetime import date
 from enum import StrEnum, auto
 from pathlib import Path
 from shutil import get_terminal_size
-from typing import TYPE_CHECKING, Any, NoReturn, Self
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NoReturn, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
@@ -43,7 +44,7 @@ def _check_mutually_exclusive(group: Iterable, msg: str) -> None:
 
 def is_terminal_in_portrait() -> bool:
     """Check if CDL is being run in portrait mode based on a few conditions."""
-    # Return True if running in portait mode, False otherwise (landscape mode)
+    # Return True if running in portrait mode, False otherwise (landscape mode)
 
     def check_terminal_size() -> bool:
         terminal_size = get_terminal_size()
@@ -67,20 +68,42 @@ def is_terminal_in_portrait() -> bool:
     return check_terminal_size()
 
 
+_NOT_SET: Any = object()
+
+
+@dataclasses.dataclass(slots=True, frozen=True, kw_only=True)
+class CommandOptions:
+    nargs: int | str | None = _NOT_SET
+    const: Any = _NOT_SET
+
+    def as_dict(self) -> dict[str, Any]:
+        return {k: v for k, v in dataclasses.asdict(self).items() if v is not _NOT_SET}
+
+
 class CommandLineOnlyArgs(BaseModel):
     links: list[HttpURL] = Field([], description="link(s) to content to download (passing multiple links is supported)")
     appdata_folder: Path | None = Field(None, description="AppData folder path")
-    completed_after: date | None = Field(None, description="only download completed downloads at or after this date")
-    completed_before: date | None = Field(None, description="only download completed downloads at or before this date")
+    completed_after: date | None = Field(
+        None, description="only retry downloads that were completed on or after this date"
+    )
+    completed_before: date | None = Field(
+        None, description="only retry downloads that were completed on or before this date"
+    )
     config: str | None = Field(None, description="name of config to load")
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
-    disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
-    download: bool = Field(False, description="skips UI, start download immediatly")
-    download_tiktok_audios: bool = Field(False, description="download TikTok audios")
+    disable_cache: bool = Field(False, description="temporarily disable the requests cache")
+    download: bool = Field(False, description="skips UI, start download immediately")
+    download_tiktok_audios: bool = Field(
+        False, description="download TikTok audios from posts and save them as separate files"
+    )
     download_tiktok_src_quality_videos: bool = Field(False, description="download TikTok videos in source quality")
+    impersonate: Annotated[
+        Literal["chrome", "edge", "safari", "safari_ios", "chrome_android", "firefox"] | bool | None,
+        CommandOptions(nargs="?", const=True),
+    ] = Field(None, description="Use this target as impersonation for all scrape requests")
     max_items_retry: int = Field(0, description="max number of links to retry")
-    portrait: bool = Field(is_terminal_in_portrait(), description="show UI in a portrait layout")
-    print_stats: bool = Field(True, description="Show stats report at the end of a run")
+    portrait: bool = Field(is_terminal_in_portrait(), description="force CDL to run with a vertical layout")
+    print_stats: bool = Field(True, description="show stats report at the end of a run")
     retry_all: bool = Field(False, description="retry all downloads")
     retry_failed: bool = Field(False, description="retry failed downloads")
     retry_maintenance: bool = Field(
@@ -189,6 +212,11 @@ def _add_args_from_model(
         help_text = field.description or ""
         default = field.default if cli_args else SUPPRESS
         default_options = {"default": default, "dest": full_name, "help": help_text}
+        for meta in field.metadata:
+            if isinstance(meta, CommandOptions):
+                default_options |= meta.as_dict()
+                break
+
         name_or_flags = [f"--{cli_name}"]
         alias: str = field.alias or field.validation_alias or field.serialization_alias  # type: ignore
         if alias and len(alias) == 1:

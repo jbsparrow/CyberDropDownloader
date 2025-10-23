@@ -4,7 +4,6 @@ from __future__ import annotations
 from cyberdrop_dl import env
 
 from ._chevereto import CheveretoCrawler
-from .acidimg import AcidImgCrawler
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
 from .beeg import BeegComCrawler
@@ -100,6 +99,7 @@ from .thisvid import ThisVidCrawler
 from .tiktok import TikTokCrawler
 from .tokyomotion import TokioMotionCrawler
 from .toonily import ToonilyCrawler
+from .transflix import TransflixCrawler
 from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
 from .vbulletin import VBULLETIN_CRAWLERS

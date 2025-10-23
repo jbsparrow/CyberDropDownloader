@@ -31,10 +31,10 @@ This is the number of seconds to wait between downloads to the same domain.
 
 Some domains have internal limits set by the program, which can not be modified:
 
-- `bunkr`: 0.5,
-- `coomer`: 0.5,
-- `kemono`: 0.5,
-- `nhentai.net`: 1,
+- `bunkr`: 0.5
+- `coomer`: 0.5
+- `kemono`: 0.5
+- `nhentai.net`: 1
 
 ## `download_speed_limit`
 
@@ -90,7 +90,7 @@ Same as `file_host_cache_expire_after` but applied to forums requests.
 
 | Type               | Default |
 | ------------------ | ------- |
-| `NonNegativeFloat` | `0`     |
+| `NonNegativeFloat` | `0.0`   |
 
 Additional number of seconds to wait in between downloads. CDL will wait an additional random number of seconds in between 0 and the `jitter` value.
 
@@ -124,7 +124,7 @@ Some domains have internal limits set by the program, which can not be modified:
 
 | Type            | Default |
 | --------------- | ------- |
-| `PositiveFloat` | `50.0` |
+| `PositiveFloat` | `50.0`  |
 
 {% hint style="info" %}
 This setting specifies speed and it's interpreted as `<value> / second`. ex: `50` means `50 requests / second`
@@ -134,8 +134,8 @@ This is the maximum number of requests that can be made by the program per secon
 
 ## `read_timeout`
 
-| Type                       | Default |
-| -------------------------- | ------- |
+| Type                      | Default |
+| ------------------------- | ------- |
 | `PositiveFloat` or `null` | `300.0` |
 
 The number of seconds to wait while reading data from a website before timing out. A `null` value will make CDL keep the socket connection open indefinitely, even if the server is not sending data anymore

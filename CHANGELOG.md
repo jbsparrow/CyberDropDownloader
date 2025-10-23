@@ -22,6 +22,91 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.5.0] - 2025-10-28
+
+### Added
+
+- Support for static images (RedGifs)
+- Support for JPG7 URLS (JPG5)
+- Support for Transflix
+- Support for individual files within folders (PixelDrain)
+- Support for subfolders in filesystem URLs (PixelDrain)
+- Support collections, tags and search URLs (MissAV)
+- Update supported domains and proxies (PixelDrain)
+
+### Changed
+
+- Improve hash query performance
+- Add rate limit back (Gofile)
+- New blocked domains: `twitter`, `x.com`
+
+### Fixed
+
+- Some `timeout` errors being reported as `Unknown`
+- Do not crash if webhook request failed
+- Date parsing (eHentai)
+- URL parsing (ImageBam)
+
+## [8.4.0] - 2025-10-18
+
+### Added
+
+- Support search URLs (erome)
+- Support direct image URLs (ashemaletube)
+
+### Changed
+
+- Remove hardcoded limiter (GoFile)
+- Remove hardcoded limiter, limit concurrent downloads to 1 file per unique server (Bunkr)
+- Retry client connector errors
+- Always override download URL with selti CDN (JPG5)
+
+### Fixed
+
+- Handle newer encryption formats in URLs (xHamster)
+- Do not crash processing images (PornHub)
+- Spankbang crawler
+
+## [8.3.0] - 2025-10-16
+
+### Added
+
+- New `--impersonate` cli option: <https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#impersonate>
+
+### Removed
+
+- ImgAcid support (site no longer exists)
+
+### Fixed
+
+- MP4 downloads (ePorner)
+- HTTP errors crashing CDL (MediaFire)
+- Albums downloads (ImgBB)
+- Some exceptions not being logged if they happen during startup
+
+## [8.2.0] - 2025-10-06
+
+### Added
+
+- Candfans support (coomer)
+- Support user's albums URLs (Chevereto)
+- Support folders with 1000+ items (GoFile)
+
+### Changed
+
+- Use impersonation for all Chevereto sites  
+
+### Fixed
+
+- Parsing of account's favorites URLs (Kemono, Coomer, Nekohouse)
+- Download of videos without an explicit resolution (ThisVid, CamwhoresTv)
+- Directory hashing from the main UI
+- Incorrect hash being logged when files are deleted
+- Do not try to fetch more pages if only 1 exists (KVS sites)
+- `TooManyRedirects` error trying to download images/albums with encoded characters in their URL (ImagePond, ImgLike)
+- Download of albums without a thumbnail (Chevereto)
+- Entire albums being skipped if the full res version of their thumbnail was downloaded before (Chevereto)
+
 ## [8.1.0] - 2025-09-27
 
 ### Added
@@ -202,7 +287,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- DDoS-Guard errors even when using cookies becuase CDL was using an old domain (Coomer, Kemono)
+- DDoS-Guard errors even when using cookies because CDL was using an old domain (Coomer, Kemono)
 - `ffprobe` version is always being logged as `None` if not available on path, even though it comes built-in with CDL
 - Catch and log any warnings while parsing dates
 - Albums downloads (pixhost)
@@ -261,7 +346,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Downloads from password protected albums (jpg5, imagepond)
 - Multiple nested attachments folders being created (forums)
 - `file_date_iso` and `file_date_us` not being parsed as valid format fields for sorting
-- Mangled fields names in errors messages from formating options
+- Mangled fields names in errors messages from formatting options
 - Missav HLS downloads
 
 ## [7.1.0] - 2025-07-14
@@ -371,14 +456,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Do not use reddit's `user-agent` for every site
 - Fix `unclose client session` error at the end of a run
 - Fix parsing of dropbox folders URLS
-- Handle embeded URLS (box.com)
+- Handle embedded URLS (box.com)
 - [Regression] Fixed free space check when using network drives (windows)
 
 ## [6.10.1] - 2025-06-15
 
 ### Changed
 
-- CDL will try to parse upload dates from human expresions. ex: "Last friday at 10:55", "3 hours, 50 minutes ago",
+- CDL will try to parse upload dates from human expressions. ex: "Last friday at 10:55", "3 hours, 50 minutes ago",
 - Scrape errors from the generic crawler will be logged as "Unsupported" instead of "Unknown"
 - Normalize posix paths
 
@@ -431,7 +516,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Try to use original server (kemono, coomer, nekohouse)
 - Improve cloudflare captcha detection
 - General performance improvements
-- CDL will remove simbols and emojis from filenames in Windows and macOS
+- CDL will remove symbols and emojis from filenames in Windows and macOS
 
 ### Removed
 
@@ -720,7 +805,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ImgBB crawler
 - Download path structure (Tokyomotion)
 - Empty `download_filename` on database
-- Missing tread id on `Last_Scraped_Forum_Post.csv` URLs
+- Missing thread id on `Last_Scraped_Forum_Post.csv` URLs
 - Nudostar Crawler
 - Invalid URL parsing (imgur)
 - Invalid link confirmation URL parsing (forums)
@@ -953,7 +1038,7 @@ This update introduces the following changes:
 - UI changes: remove redundant 'X of Y files' from every progress bar, sort scrape and download error by reverse frequency, use equal height for top row UI, fix padding issues, show unsupported URLs stats at the end
 - Add `whitelist` filter, `autostart` and custom `download_dir` options for jdownloader. For more details, visit the wiki: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/runtime_options>
 - Added a "Check for Updates" UI option and improved the update check logic to check for new testing versions.
-- Fix error during program exit when referers table no longer exists
+- Fix error during program exit when referrer table no longer exists
 - Prevents crashes when there are insufficient permissions to move a file
 - Fix an issue where CDL would delete URLs input file
 - Move functions for after download to `post_runtime`

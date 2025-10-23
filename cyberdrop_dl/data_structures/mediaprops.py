@@ -63,6 +63,9 @@ class Resolution(NamedTuple):
 
     @staticmethod
     def parse(url_number_or_string: yarl.URL | str | int, /) -> Resolution:
+        if url_number_or_string is None:
+            return UNKNOWN_RESOLUTION
+
         if isinstance(url_number_or_string, int):
             return Resolution._from_height(url_number_or_string)
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, final
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, copy_signature
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class Selector:
     ITEM_DESCRIPTION = "p[class*=description-meta]"
-    ITEM = "a[class='image-container --media']"
+    ITEM = "a.image-container"
     NEXT_PAGE = "a[data-pagination=next]"
 
     DATE_SINGLE_ITEM = f"{ITEM_DESCRIPTION}:-soup-contains('Uploaded') span"
@@ -44,7 +44,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
             "/image/<id>",
             "/image/<name>.<id>",
         ),
-        "Profiles": "/<user_name>",
+        "Profile": "/<user_name>",
         "Video": (
             "/video/<id>",
             "/video/<name>.<id>",
@@ -74,10 +74,26 @@ class CheveretoCrawler(Crawler, is_generic=True):
                 return await self.media(scrape_item)
             case ["images", _, *_]:
                 return await self.direct_file(scrape_item)
+            case [_, "albums"]:
+                return await self.profile(scrape_item)
             case [_]:
                 return await self.profile(scrape_item)
             case _:
                 raise ValueError
+
+    @final
+    @staticmethod
+    def _thumbnail_to_src(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+        new_name = url.name
+        for trash in (".md.", ".th.", ".fr."):
+            new_name = new_name.replace(trash, ".")
+        return url.with_name(new_name)
+
+    @classmethod
+    def _match_img(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
+        match url.parts[1:]:
+            case ["img" | "image" as part, image_slug, *_]:
+                return url.origin() / part / _id(image_slug)
 
     @copy_signature(Crawler.request_soup)
     async def request_soup(self, url: AbsoluteHttpURL, *args, impersonate: bool = False, **kwargs) -> BeautifulSoup:
@@ -148,17 +164,18 @@ class CheveretoCrawler(Crawler, is_generic=True):
         self, scrape_item: ScrapeItem, soup: BeautifulSoup, results: dict[str, int] | None = None
     ) -> None:
         for thumb, new_scrape_item in self.iter_children(scrape_item, soup, Selector.ITEM):
-            assert thumb
-            source = _thumbnail_to_src(thumb)
-            if results and self.check_album_results(source, results):
-                continue
-
-            # for images, we can download the file from the thumbnail, skipping an additional request per img
-            # cons: we won't get the upload date
-            if image_url := _match_img(new_scrape_item.url):
+            if image_url := self._match_img(new_scrape_item.url):
                 new_scrape_item.url = image_url
-                self.create_task(self.direct_file(new_scrape_item, source))
-                continue
+
+                if thumb:
+                    # for images, we can download the file from the thumbnail, skipping an additional request per img
+                    # cons: we won't get the upload date
+                    source = self._thumbnail_to_src(thumb)
+                    if results and self.check_album_results(source, results):
+                        continue
+
+                    self.create_task(self.direct_file(new_scrape_item, source))
+                    continue
 
             self.create_task(self.run(new_scrape_item))
 
@@ -180,7 +197,7 @@ class CheveretoCrawler(Crawler, is_generic=True):
     async def direct_file(
         self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None, assume_ext: str | None = None
     ) -> None:
-        link = _thumbnail_to_src(url or scrape_item.url)
+        link = self._thumbnail_to_src(url or scrape_item.url)
         await super().direct_file(scrape_item, link, assume_ext)
 
     @error_handling_wrapper
@@ -212,19 +229,6 @@ def _is_password_protected(soup: BeautifulSoup) -> bool:
 
 def _id(slug: str) -> str:
     return slug.rsplit(".")[-1]
-
-
-def _match_img(url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
-    match url.parts[1:]:
-        case ["img" | "image" as part, image_slug, *_]:
-            return url.origin() / part / _id(image_slug)
-
-
-def _thumbnail_to_src(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-    new_name = url.name
-    for trash in (".md.", ".th.", ".fr."):
-        new_name = new_name.replace(trash, ".")
-    return url.with_name(new_name)
 
 
 def _sort_by_new(url: AbsoluteHttpURL) -> AbsoluteHttpURL:

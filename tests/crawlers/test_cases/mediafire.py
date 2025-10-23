@@ -20,7 +20,7 @@ TEST_CASES = [
                 "filename": "ipwn1x-1.0.iso",
                 "referer": "https://www.mediafire.com/file/511jd1358yxvf26",
                 "album_id": None,
-                "datetime": 1651019227,
+                "datetime": 1654132657,
             }
         ],
     ),
@@ -31,9 +31,9 @@ TEST_CASES = [
                 "url": "re:https://download",
                 "filename": "kobo_clara.kepub.epub",
                 "referer": "https://www.mediafire.com/file/5iv342h2u39e0t6",
-                "download_folder": r"re:kcc samples \(MediaFire\)",
+                "download_folder": r"re:kcc samples \(Mediafire\)",
                 "album_id": "ixh40veo6hrc5",
-                "datetime": 1651019227,
+                "datetime": 1746643902,
             },
         ],
         11,
@@ -69,5 +69,9 @@ TEST_CASES = [
         "https://www.mediafire.com/folder/9a6a91cgbd7m8",
         [],
         36,
+    ),
+    (
+        "https://www.mediafire.com/folder/ujs6wzw0cecof/",  # DMCA folder
+        [],
     ),
 ]

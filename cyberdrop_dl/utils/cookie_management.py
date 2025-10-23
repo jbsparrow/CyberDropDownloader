@@ -9,8 +9,7 @@ from http.cookies import SimpleCookie
 from textwrap import dedent
 from typing import TYPE_CHECKING, NamedTuple, ParamSpec, TypeVar
 
-import browser_cookie3
-
+from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:

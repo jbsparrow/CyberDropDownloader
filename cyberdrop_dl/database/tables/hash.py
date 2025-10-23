@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, cast
 
 from cyberdrop_dl.utils.logger import log
 
-from .definitions import create_files, create_hash
+from .definitions import create_files, create_hash, create_hash_index
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -23,9 +23,10 @@ class HashTable:
         return self._database._db_conn
 
     async def startup(self) -> None:
-        """Startup process for the HistoryTable."""
+        """Startup process for the HashTable."""
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
+        await self.db_conn.execute(create_hash_index)
         await self.db_conn.commit()
 
     async def get_file_hash_exists(self, path: Path | str, hash_type: str) -> str | None:
@@ -86,6 +87,15 @@ class HashTable:
         except Exception as e:
             log(f"Error retrieving folder and filename: {e}", 40, exc_info=e)
             return []
+
+    async def check_hash_exists(self, hash_type: str, hash_value: str) -> bool:
+        if self._database.ignore_history:
+            return False
+
+        query = "SELECT 1 FROM hash WHERE hash.hash_type = ? AND hash.hash = ? LIMIT 1"
+        cursor = await self.db_conn.execute(query, (hash_type, hash_value))
+        result = await cursor.fetchone()
+        return result is not None
 
     async def insert_or_update_hash_db(
         self, hash_value: str, hash_type: str, file: Path | str, original_filename: str | None, referer: URL | None

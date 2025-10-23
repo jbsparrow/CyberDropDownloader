@@ -40,7 +40,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://dirtyship.com")
 
 class DirtyShipCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Categorie": "/category/...",
+        "Category": "/category/...",
         "Tag": "/tag/...",
         "Video": "/<video_name>",
         "Gallery": "/gallery/...",

@@ -32,13 +32,13 @@
 # - Fixed filename encoding detection.
 # - Fixed incomplete node information when querying a folder.
 # - Fixed permission error caused by concurrent access to the same file.
-# - Simplified node attributes proccessing logic by deprecating deduntan tuple Node class
+# - Simplified node attributes processing logic by deprecating deduntan tuple Node class
 # - Added xhashcash computation to handle mega challenges while logging.
 # - Replaced all code logic with asynchronous methods.
 # - Added support for downloading entire folders.
 # - Updated primary domain, mega.co.nz to mega.nz.
 # - Defined custom classes for nodes, file and folders.
-# - Added type anotations
+# - Added type annotations
 # - Used memory view to increase performance of MAC computation.
 # - Update syntax and dependencies to support for Python 3.9+.
 # - Separated API and client logic.
@@ -231,7 +231,7 @@ def pad_bytes(data: bytes, length: int = CHUNK_BLOCK_LEN) -> bytes:
 
     Args:
         data: The bytes-like object to pad (bytes or memoryview).
-        lenght: The block size to pad to. Defaults to 16.
+        length: The block size to pad to. Defaults to 16.
 
     Returns:
         A new bytes object that is padded with null bytes such that its length is a multiple of 'length'.

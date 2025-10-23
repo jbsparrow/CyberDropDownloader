@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import itertools
 import time
+import weakref
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
@@ -17,23 +18,23 @@ from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine, Generator
+    from collections.abc import Callable, Coroutine, Generator, Mapping
     from pathlib import Path
     from typing import Any
 
     import aiohttp
-    from multidict import CIMultiDictProxy
 
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
 
 
-_CONTENT_TYPES_OVERRIDES = {"text/vnd.trolltech.linguist": "video/MP2T"}
-_SLOW_DOWNLOAD_PERIOD = 10  # seconds
-_CHROME_ANDROID_USER_AGENT = (
+_CONTENT_TYPES_OVERRIDES: dict[str, str] = {"text/vnd.trolltech.linguist": "video/MP2T"}
+_SLOW_DOWNLOAD_PERIOD: int = 10  # seconds
+_CHROME_ANDROID_USER_AGENT: str = (
     "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.7204.180 Mobile Safari/537.36"
 )
+_FREE_SPACE_CHECK_PERIOD: int = 5  # Check every 5 chunks
 
 
 class DownloadClient:
@@ -43,9 +44,23 @@ class DownloadClient:
         self.manager = manager
         self.client_manager = client_manager
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
+        self._null_context = contextlib.nullcontext()
+        self._server_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
+        self._use_server_locks: set[str] = set()
+
+    def server_limiter(self, domain: str, server: str) -> asyncio.Lock | contextlib.nullcontext[None]:
+        if domain not in self._use_server_locks:
+            return self._null_context
+
+        if server not in self._server_locks:
+            lock = asyncio.Lock()
+            self._server_locks[server] = lock
+
+        log_debug(f"Using lock for server '{server}'", 20)
+        return self._server_locks[server]
 
     @contextlib.asynccontextmanager
-    async def _limiter(self, domain: str):
+    async def _track_errors(self, domain: str):
         with self.client_manager.request_context(domain):
             await self.client_manager.manager.states.RUNNING.wait()
             yield
@@ -216,9 +231,9 @@ class DownloadClient:
 
         async def check_free_space() -> None:
             nonlocal current_chunk
+            if current_chunk % _FREE_SPACE_CHECK_PERIOD == 0:
+                await self.manager.storage_manager.check_free_space(media_item)
             current_chunk += 1
-            if current_chunk % 5 == 0:
-                return await self.manager.storage_manager.check_free_space(media_item)
 
         return check_free_space
 
@@ -249,7 +264,7 @@ class DownloadClient:
             await self.process_completed(media_item, domain)
             return False
 
-        async with self._limiter(domain):
+        async with self._track_errors(domain):
             downloaded = await self._download(domain, media_item)
 
         if downloaded:
@@ -443,7 +458,7 @@ class DownloadClient:
         return proceed
 
 
-def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
+def get_content_type(ext: str, headers: Mapping[str, str]) -> str | None:
     content_type: str = headers.get("Content-Type", "")
     content_length = headers.get("Content-Length")
     if not content_type and not content_length:
@@ -465,7 +480,7 @@ def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
     return content_type
 
 
-def get_last_modified(headers: CIMultiDictProxy) -> int | None:
+def get_last_modified(headers: Mapping[str, str]) -> int | None:
     if date_str := headers.get("Last-Modified"):
         return parse_http_date(date_str)
 

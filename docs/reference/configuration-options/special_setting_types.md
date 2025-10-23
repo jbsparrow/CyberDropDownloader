@@ -24,9 +24,9 @@ You will get the following results:
 
 | Value you used                                 | Value CDL interpreted                                          | Details                                        |
 | ---------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
-| `--skip-host instagram.com`                    | `[instagram.com]`                                              | config values were overridden by CLI values    |
-| `--skip-host "+" instagram.com`                | `[drive.google.com, youtube.com, facebook.com, instagram.com]` | config values and CLI values were merged       |
-| `--skip-host "-" drive.google.com youtube.com` | `[facebook.com]`                                               | CLI values were removed from the config values |
+| `--skip-hosts instagram.com`                    | `[instagram.com]`                                              | config values were overridden by CLI values    |
+| `--skip-hosts "+" instagram.com`                | `[drive.google.com, youtube.com, facebook.com, instagram.com]` | config values and CLI values were merged       |
+| `--skip-hosts "-" drive.google.com youtube.com` | `[facebook.com]`                                               | CLI values were removed from the config values |
 
 {% hint style="info" %}
 Always use quotes for "+" and "-" to make sure your shell does not try to parse them as additional flags
