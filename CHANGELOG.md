@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for Transflix
 - Support for individual files within folders (PixelDrain)
 - Support for subfolders in filesystem URLs (PixelDrain)
+- Support collections, tags and search URLs (MissAV)
 - Update supported domains and proxies (PixelDrain)
 
 ### Changed
