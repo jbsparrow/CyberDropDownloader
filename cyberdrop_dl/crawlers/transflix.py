@@ -51,7 +51,7 @@ class TransflixCrawler(Crawler):
         video = css.select_one(soup, _SELECTORS.VIDEO)
         link = self.parse_url(css.get_attr(video, "src"))
         filename, ext = self.get_filename_and_ext(link.name)
-        scrape_item.possible_datetime = int(Path(filename).stem)
+        scrape_item.possible_datetime = _timestamp_from_filename(filename)
         custom_filename = self.create_custom_filename(title, ext, file_id=video_id)
 
         return await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
@@ -64,3 +64,23 @@ class TransflixCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url, _SELECTORS.NEXT_PAGE):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.SEARCH_VIDEOS):
                 self.create_task(self.run(new_scrape_item))
+
+def _timestamp_from_filename(filename):
+    UNIX_TIMESTAMP_LENGTH: int = 10
+
+    stem = Path(filename).stem
+    if len(stem) == UNIX_TIMESTAMP_LENGTH and stem.isdecimal():
+        return int(stem)
+
+    greater_seq = ""
+    current = ""
+
+    for c in stem:
+        if c.isdigit():
+            current += c
+            if len(current) > len(greater_seq):
+                greater_seq = current
+        else:
+            current = ""
+
+    return int(greater_seq) if greater_seq and len(greater_seq) == UNIX_TIMESTAMP_LENGTH else None

@@ -16,4 +16,16 @@ TEST_CASES = [
         [],
         4,
     ),
+    # Timestamp mixed with other digits
+    (
+        "https://transflix.net/video/hunnypaint-take-care-tranny-videos-xxx-43343",
+        [
+            {
+                "url": "https://cdn.transflix.net/video/2025-03-28/qa2cxgri1743182001.mp4",
+                "filename": "Hunnypaint - Take Care - Tranny Videos Xxx [43343].mp4",
+                "referer": "https://transflix.net/video/hunnypaint-take-care-tranny-videos-xxx-43343",
+                "datetime": 1743182001,
+            }
+        ],
+    ),
 ]
