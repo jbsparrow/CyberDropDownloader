@@ -87,8 +87,8 @@ class GoFileCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Folder / File": "/d/<content_id>",
         "Direct link": (
-            "/download/<content_id>",
-            "/download/web/<content_id>",
+            "/download/<content_id>/<filename>",
+            "/download/web/<content_id>/<filename>",
         ),
         "**NOTE**": (
             "Use `password` as a query param to download password protected folders",
