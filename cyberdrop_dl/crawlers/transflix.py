@@ -68,6 +68,8 @@ class TransflixCrawler(Crawler):
 
 def _timestamp_from_filename(filename: str) -> int | None:
     UNIX_TIMESTAMP_LENGTH: int = 10
-    possible_timestamp = Path(filename).stem[-UNIX_TIMESTAMP_LENGTH:]
-    if len(possible_timestamp) == UNIX_TIMESTAMP_LENGTH and possible_timestamp.isdecimal():
-        return int(possible_timestamp)
+    stem = Path(filename).stem
+    if len(stem) >= UNIX_TIMESTAMP_LENGTH:
+        possible_timestamp = stem[-UNIX_TIMESTAMP_LENGTH:]
+        if possible_timestamp.isdecimal():
+            return int(possible_timestamp)
