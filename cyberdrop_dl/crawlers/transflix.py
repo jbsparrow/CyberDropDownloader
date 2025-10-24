@@ -66,7 +66,7 @@ class TransflixCrawler(Crawler):
                 self.create_task(self.run(new_scrape_item))
 
 
-def _timestamp_from_filename(filename):
+def _timestamp_from_filename(filename: str) -> int | None:
     UNIX_TIMESTAMP_LENGTH: int = 10
 
     stem = Path(filename).stem
