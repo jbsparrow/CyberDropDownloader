@@ -54,6 +54,7 @@ from .influencer_bitches import InfluencerBitchesCrawler
 from .invision import INVISION_CRAWLERS
 from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
+from .koofr import KooFrCrawler
 from .leakedzone import LeakedZoneCrawler
 from .luscious import LusciousCrawler
 from .mediafire import MediaFireCrawler
