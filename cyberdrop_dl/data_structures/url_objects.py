@@ -1,3 +1,4 @@
+# type: ignore[reportIncompatibleVariableOverride]
 from __future__ import annotations
 
 import copy
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
             def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T:
                 return func(*args, **kwargs)
 
-            wrapper.__signature__ = inspect.signature(target).replace(  # type: ignore
+            wrapper.__signature__ = inspect.signature(target).replace(  # pyright: ignore[reportAttributeAccessIssue]
                 return_annotation=inspect.signature(func).return_annotation
             )
             return wrapper
@@ -120,9 +121,6 @@ else:
             return y
 
         return call
-
-
-AnyURL = TypeVar("AnyURL", bound=yarl.URL | AbsoluteHttpURL)
 
 
 class ScrapeItemType(IntEnum):
