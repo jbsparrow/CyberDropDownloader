@@ -16,7 +16,7 @@ TEST_CASES = [
         [],
         4,
     ),
-    # Timestamp mixed with other digits
+    # Timestamp mixed with leading letters
     (
         "https://transflix.net/video/hunnypaint-take-care-tranny-videos-xxx-43343",
         [
