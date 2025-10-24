@@ -282,6 +282,10 @@ class ScrapeItem:
     completed_at: int | None = field(default=None, init=False)
     created_at: int | None = field(default=None, init=False)
     children_limits: list[int] = field(default_factory=list, init=False)
+    password: str | None = field(default=None, init=False)
+
+    def __post_init__(self) -> None:
+        self.password = self.url.query.get("password")
 
     def add_to_parent_title(self, title: str) -> None:
         """Adds a title to the parent title."""
