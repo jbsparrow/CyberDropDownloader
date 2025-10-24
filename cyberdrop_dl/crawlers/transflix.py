@@ -65,6 +65,7 @@ class TransflixCrawler(Crawler):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.SEARCH_VIDEOS):
                 self.create_task(self.run(new_scrape_item))
 
+
 def _timestamp_from_filename(filename):
     UNIX_TIMESTAMP_LENGTH: int = 10
 
