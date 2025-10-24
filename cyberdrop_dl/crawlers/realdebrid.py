@@ -143,9 +143,11 @@ class RealDebridCrawler(Crawler):
             host = original_url.host
             title = self.create_title(f"files [{host}]")
             scrape_item.setup_as_album(title)
-            password = original_url.query.get("password", "")
             json_resp: dict[str, Any] = await self._api_request(
-                "unrestrict/link", link=str(original_url), password=password, remote=False
+                "unrestrict/link",
+                link=str(original_url),
+                password=scrape_item.password,
+                remote=False,
             )
             debrid_url = self.parse_url(json_resp["download"])
             database_url = _flatten_url(original_url, host)

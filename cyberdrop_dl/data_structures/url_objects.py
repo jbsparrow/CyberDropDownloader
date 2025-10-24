@@ -396,12 +396,6 @@ class ScrapeItem:
         """Returns a deep copy of this scrape_item"""
         return copy.deepcopy(self)
 
-    def pop_query(self, name: str) -> str | None:
-        """Get the value of a query param and remove it from this item's URL"""
-        value = self.url.query.get(name)
-        self.url = self.url.without_query_params(name)
-        return value
-
 
 class QueryDatetimeRange(NamedTuple):
     before: datetime.datetime | None = None

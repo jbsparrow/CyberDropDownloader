@@ -196,8 +196,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
         return soup
 
     async def _unlock_password_protected_file(self, scrape_item: ScrapeItem, file_id: str) -> BeautifulSoup:
-        password = scrape_item.pop_query("password")
-        if not password:
+        if not scrape_item.password:
             raise PasswordProtectedError
 
         password_post_url = (self.PRIMARY_URL / file_id).with_query("pt=")
@@ -206,7 +205,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
             password_post_url,
             method="POST",
             data={
-                "filePassword": password,
+                "filePassword": scrape_item.password,
                 "submitme": 1,
             },
         )
@@ -217,8 +216,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
         return soup
 
     async def _unlock_password_protected_folder(self, scrape_item: ScrapeItem, node_id: str) -> None:
-        password = scrape_item.pop_query("password")
-        if not password:
+        if not scrape_item.password:
             raise PasswordProtectedError
 
         # Make a request with the password. Access to the file/folder will be stored in cookies
@@ -226,7 +224,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
             self.FOLDER_PASSWORD_API_URL,
             method="POST",
             data={
-                "folderPassword": password,
+                "folderPassword": scrape_item.password,
                 "folderId": node_id,
                 "submitme": 1,
             },
