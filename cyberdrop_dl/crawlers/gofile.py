@@ -86,6 +86,10 @@ class FolderResponse(Response):
 class GoFileCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Folder / File": "/d/<content_id>",
+        "Direct link": (
+            "/download/<content_id>/<filename>",
+            "/download/web/<content_id>/<filename>",
+        ),
         "**NOTE**": (
             "Use `password` as a query param to download password protected folders",
             "ex: https://gofile.io/d/ABC654?password=1234",
@@ -116,11 +120,22 @@ class GoFileCrawler(Crawler):
         match scrape_item.url.parts[1:]:
             case ["d", content_id]:
                 return await self.folder(scrape_item, content_id)
+            case ["download", "web", file_id, _]:
+                return await self.single_file(scrape_item, file_id)
+            case ["download", file_id, _]:
+                return await self.single_file(scrape_item, file_id)
             case _:
                 raise ValueError
 
     @error_handling_wrapper
-    async def folder(self, scrape_item: ScrapeItem, content_id: str) -> None:
+    async def single_file(self, scrape_item: ScrapeItem, file_id: str) -> None:
+        url = await self._get_redirect_url(scrape_item.url)
+        scrape_item.url = url.with_fragment(file_id)
+        assert "d" in url.parts
+        return await self.folder(scrape_item, url.name, file_id)
+
+    @error_handling_wrapper
+    async def folder(self, scrape_item: ScrapeItem, content_id: str, single_file_id: str | None = None) -> None:
         is_first_page: bool = True
 
         async for folder in self._folder_pager(content_id, scrape_item.url.query.get("password")):
@@ -138,7 +153,15 @@ class GoFileCrawler(Crawler):
                 scrape_item.url = scrape_item.url.with_query(None)
                 is_first_page = False
 
-            self._handle_children(scrape_item, folder["children"])
+            children = folder["children"]
+            if single_file_id:
+                file = children.get(single_file_id)
+                if not file:
+                    continue
+
+                children = {single_file_id: file}
+
+            self._handle_children(scrape_item, children)
 
     def _handle_children(self, scrape_item: ScrapeItem, children: dict[str, Node]) -> None:
         def get_website_url(node: Node) -> AbsoluteHttpURL:
