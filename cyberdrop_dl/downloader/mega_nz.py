@@ -308,7 +308,7 @@ def decrypt_attr(attr: bytes, key: U32IntSequence) -> AnyDict:
     if attr_str.startswith('MEGA{"'):
         start = 4
         end = attr_str.rfind("}") + 1
-        error = RuntimeError(f"Unable to decode file attibutes, raw content is: {attr_str}")
+        error = RuntimeError(f"Unable to decode file attributes, raw content is: {attr_str}")
         if end > start:
             content = attr_str[start:end]
             try:
