@@ -170,9 +170,13 @@ def _get_best_src(metadata: dict[str, Any]) -> tuple[Resolution, str]:
 
 
 def _check_video_is_available(soup: BeautifulSoup) -> None:
-    soup_text = soup.text
-    if "Access to this video is restricted" in soup_text:
-        raise ScrapeError(503)
+    content = soup.get_text()
 
-    if "This video is not available in your region" in soup_text:
-        raise ScrapeError(403)
+    for text, code in {
+        "Video has not been found": 404,
+        "This video has been deleted": 410,
+        "Access to this video is restricted": 503,
+        "This video is not available in your region": 403,
+    }.items():
+        if text in content:
+            raise ScrapeError(code)
