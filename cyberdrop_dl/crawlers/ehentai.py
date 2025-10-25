@@ -59,7 +59,7 @@ class EHentaiCrawler(Crawler):
                 date_str: str = css.select_one_get_text(soup, _SELECTORS.DATE)
                 title = self.create_title(title, gallery_id)
                 scrape_item.setup_as_album(title, album_id=gallery_id)
-                scrape_item.possible_datetime = self.parse_date(date_str)
+                scrape_item.possible_datetime = self.parse_iso_date(date_str)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM_IMAGES):
                 self.create_task(self.run(new_scrape_item))

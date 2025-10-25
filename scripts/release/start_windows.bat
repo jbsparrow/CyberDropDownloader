@@ -9,6 +9,7 @@ set "PACKAGE_VERSION=>=8.0,<9.0"
 
 if /i "%PROCESSOR_ARCHITECTURE%"=="x86" (
     echo ERROR: 32-bit Windows is not supported.
+    pause
     exit /b 1
 )
 
@@ -18,6 +19,7 @@ if errorlevel 1 (
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
     if errorlevel 1 (
         echo Error: Failed to install uv.
+        pause
         exit /b 1
     )
     uv tool update-shell
@@ -40,11 +42,15 @@ goto :RUN
 
 :INSTALL_OR_UPDATE
 echo Installing / Updating %PACKAGE_NAME%...
-uv tool install --upgrade "%PACKAGE_NAME%%PACKAGE_VERSION%"
-if errorlevel 1 exit /b 1
+pip uninstall cyberdrop-dl -qq >nul 2>&1
+uv tool install --managed-python -p ">=3.12,<3.14" --no-build --upgrade "%PACKAGE_NAME%%PACKAGE_VERSION%"
+if errorlevel 1 (
+    echo Error: Failed to install %PACKAGE_NAME%.
+    pause
+    exit /b 1
+)
 
 :RUN
-cls
 echo Starting %PACKAGE_NAME%...
-uvx --managed-python -p ">=3.12" %PACKAGE_NAME% %COMMANDLINE_ARGS%
+uvx --managed-python -p ">=3.12,<3.14" --no-build %PACKAGE_NAME% %COMMANDLINE_ARGS%
 pause

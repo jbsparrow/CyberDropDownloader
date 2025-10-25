@@ -37,6 +37,7 @@ CLOUDFLARE_HTTP_ERROR_CODES = {
 NON_STANDARD_HTTP_ERROR_CODES = {
     419: "Page Expired",
     509: "Bandwidth Limit Exceeded",
+    999: "Timeout",
 }
 
 HTTP_ERROR_CODES = {

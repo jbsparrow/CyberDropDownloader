@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Literal, Self
 import aiofiles
 from yarl import URL
 
-from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
+from cyberdrop_dl.constants import REGEX_LINKS, BlockedDomains
 from cyberdrop_dl.crawlers import CRAWLERS
 from cyberdrop_dl.crawlers._chevereto import CheveretoCrawler
 from cyberdrop_dl.crawlers.crawler import Crawler, create_crawlers
@@ -291,7 +291,10 @@ class ScrapeMapper:
             return False
         _seen_urls.add(scrape_item.url)
 
-        if is_in_domain_list(scrape_item, BLOCKED_DOMAINS):
+        if (
+            is_in_domain_list(scrape_item, BlockedDomains.partial_match)
+            or scrape_item.url.host in BlockedDomains.exact_match
+        ):
             log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return False
 

@@ -99,6 +99,7 @@ from .thisvid import ThisVidCrawler
 from .tiktok import TikTokCrawler
 from .tokyomotion import TokioMotionCrawler
 from .toonily import ToonilyCrawler
+from .transflix import TransflixCrawler
 from .twitter_images import TwimgCrawler
 from .twpornstars import TwPornstarsCrawler
 from .vbulletin import VBULLETIN_CRAWLERS

@@ -4,8 +4,8 @@ authors = [{name = "Jacob B", email = "admin@script-ware.net"}]
 dependencies = [
     "aiodns >=3.5.0",
     "aiofiles >=25.1.0",
-    "aiohttp[speedups] >=3.13.1",
     "aiohttp-client-cache ==0.13.0",
+    "aiohttp[speedups] >=3.13.1",
     "aiolimiter >=1.2.1",
     "aiosqlite==0.17.0",
     "apprise >=1.9.5",
@@ -15,12 +15,12 @@ dependencies = [
     "curl-cffi >=0.13; implementation_name == 'cpython' ",
     "dateparser >=1.2.2",
     "get-video-properties >=0.1.1",
+    "imagesize >=1.4.1",
     "inquirerpy >=0.3.4",
     "jeepney >=0.9.0; 'bsd' in sys_platform or sys_platform == 'linux'",
     "m3u8 >=6.0.0",
     "myjdapi >=1.1.10",
     "packaging >=25.0",
-    "pillow >=11.3.0",
     "propcache >=0.4.1",
     "psutil >=7.1.0",
     "pycares >=4.10.0",
@@ -38,7 +38,7 @@ license = "GPL-3.0-only"
 license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "8.4.0"
+version = "8.5.0"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
