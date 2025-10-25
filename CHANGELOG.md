@@ -22,6 +22,26 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.6.0] - 2025-10-30
+
+### Added
+
+- Support hotleaks.tv
+- Support direct URLs (GoFile)
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+- Date parsing (Transflix)
+- Prevent duplicated extensions in custom filenames
+- Handle newer encryption formats in URLs (6,7) (xHamster)
+- Parsing of filenames with brackets (Mega.nz)
+
 ## [8.5.0] - 2025-10-25
 
 ### Added
