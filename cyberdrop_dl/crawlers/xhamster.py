@@ -396,6 +396,29 @@ def _make_decoder(algo: int, seed: int) -> Callable[[], int]:
             current_step = _ensure_signed_32int(current_step + 0xA5A5A5A5)
             return current_step
 
+    elif algo == 6:
+
+        def decode_next() -> int:
+            nonlocal current_step
+
+            val = current_step * _ensure_signed_32int(0x2C9277B5)
+            current_step = _ensure_signed_32int(val + _ensure_signed_32int(0xAC564B05))
+            val = _ensure_signed_32int(current_step ^ ((current_step & 0xFFFFFFFF) >> 18))
+            shift = (current_step & 0xFFFFFFFF) >> 27 & 31
+            return _ensure_signed_32int((val & 0xFFFFFFFF) >> shift)
+
+    elif algo == 7:
+
+        def decode_next() -> int:
+            nonlocal current_step
+
+            current_step = _ensure_signed_32int(current_step + _ensure_signed_32int(0x9E3779B9))
+            val = _ensure_signed_32int(current_step ^ (current_step << 5))
+            val = _ensure_signed_32int(val * _ensure_signed_32int(0x7FEB352D))
+            val = _ensure_signed_32int(val ^ ((val & 0xFFFFFFFF) >> 15))
+            val = _ensure_signed_32int(val * _ensure_signed_32int(0x846CA68B))
+            return val
+
     else:
         raise ValueError(f"Unknown crypto algo: {algo}")
 
