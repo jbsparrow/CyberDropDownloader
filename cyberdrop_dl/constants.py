@@ -21,7 +21,7 @@ LOGS_DATE_FORMAT = "%Y_%m_%d"
 STARTUP_TIME_STR = STARTUP_TIME.strftime(LOGS_DATETIME_FORMAT)
 STARTUP_TIME_UTC_STR = STARTUP_TIME_UTC.strftime(LOGS_DATETIME_FORMAT)
 DNS_RESOLVER: type[AsyncResolver] | type[ThreadedResolver] | None = None
-MAX_REDIRECTS: Final[int] = 3
+MAX_REDIRECTS: Final[int] = 8
 
 
 # logging
