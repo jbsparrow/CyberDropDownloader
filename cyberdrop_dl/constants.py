@@ -3,7 +3,7 @@ from dataclasses import field
 from datetime import UTC, datetime
 from enum import auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from aiohttp.resolver import AsyncResolver, ThreadedResolver
 from rich.text import Text
@@ -21,6 +21,7 @@ LOGS_DATE_FORMAT = "%Y_%m_%d"
 STARTUP_TIME_STR = STARTUP_TIME.strftime(LOGS_DATETIME_FORMAT)
 STARTUP_TIME_UTC_STR = STARTUP_TIME_UTC.strftime(LOGS_DATETIME_FORMAT)
 DNS_RESOLVER: type[AsyncResolver] | type[ThreadedResolver] | None = None
+MAX_REDIRECTS: Final[int] = 8
 
 
 # logging
