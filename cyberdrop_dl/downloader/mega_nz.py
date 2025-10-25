@@ -304,15 +304,21 @@ def decrypt_attr(attr: bytes, key: U32IntSequence) -> AnyDict:
         attr_str = attr_bytes.decode("utf-8").rstrip("\0")
     except UnicodeDecodeError:
         attr_str = attr_bytes.decode("latin-1").rstrip("\0")
+
     if attr_str.startswith('MEGA{"'):
         start = 4
-        end = attr_str.find("}") + 1
-        if end >= 1:
-            return json.loads(attr_str[start:end])
-        else:
-            raise RuntimeError(f"Unable to properly decode filename, raw content is: {attr_str}")
-    else:
-        return {}
+        end = attr_str.rfind("}") + 1
+        error = RuntimeError(f"Unable to decode file attributes, raw content is: {attr_str}")
+        if end > start:
+            content = attr_str[start:end]
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError as e:
+                raise error from e
+
+        raise error
+
+    return {}
 
 
 def a32_to_bytes(array: U32IntSequence) -> bytes:
