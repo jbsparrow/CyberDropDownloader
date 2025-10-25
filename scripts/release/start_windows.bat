@@ -42,7 +42,7 @@ goto :RUN
 
 :INSTALL_OR_UPDATE
 echo Installing / Updating %PACKAGE_NAME%...
-pip unistall cyberdrop-dl -qq >nul 2>&1
+pip uninstall cyberdrop-dl -qq >nul 2>&1
 uv tool install --managed-python -p ">=3.12,<3.14" --no-build --upgrade "%PACKAGE_NAME%%PACKAGE_VERSION%"
 if errorlevel 1 (
     echo Error: Failed to install %PACKAGE_NAME%.
