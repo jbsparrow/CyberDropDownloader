@@ -36,7 +36,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install CDL
-        run: uv tool install --no-build cyberdrop-dl-patched
+        run: uv tool install -v --no-build cyberdrop-dl-patched
 
 
   test:
