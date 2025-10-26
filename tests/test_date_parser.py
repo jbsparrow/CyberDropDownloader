@@ -1,4 +1,5 @@
 import datetime
+import sys
 import warnings
 
 import pytest
@@ -29,8 +30,9 @@ def test_parse_date_with_no_year() -> None:
         assert expected == result
 
     with warnings.catch_warnings(action="error"):
-        with pytest.raises(DeprecationWarning):
-            parse()
+        if sys.version_info > (3, 13):
+            with pytest.raises(DeprecationWarning):
+                parse()
 
         dates.patch_dateparser()
         parse()
