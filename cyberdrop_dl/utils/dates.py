@@ -179,7 +179,7 @@ def _prepare_format(date_string: str, og_format: str) -> tuple[str, str]:
     return date_string, og_format
 
 
-def _patch_dateparser() -> None:
+def patch_dateparser() -> None:
     global DATEPARSER_PATCHED
     if DATEPARSER_PATCHED:
         return

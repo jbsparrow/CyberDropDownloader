@@ -24,7 +24,7 @@ from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import css, m3u8
-from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, to_timestamp
+from cyberdrop_dl.utils.dates import TimeStamp, parse_human_date, patch_dateparser, to_timestamp
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.strings import safe_format
 from cyberdrop_dl.utils.utilities import (
@@ -720,6 +720,7 @@ class Crawler(ABC):
                 elif format:
                     parsed_date = datetime.datetime.strptime(date_or_datetime, format)
                 else:
+                    patch_dateparser()
                     parsed_date = parse_human_date(date_or_datetime)
 
             if parsed_date:

@@ -32,5 +32,5 @@ def test_parse_date_with_no_year() -> None:
         with pytest.raises(DeprecationWarning):
             parse()
 
-        dates._patch_dateparser()
+        dates.patch_dateparser()
         parse()
