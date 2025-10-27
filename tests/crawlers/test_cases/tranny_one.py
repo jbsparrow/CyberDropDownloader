@@ -12,14 +12,12 @@ TEST_CASES = [
             }
         ],
     ),
-
     # Search
     (
         "https://www.tranny.one/search/ruby+wren/",
         [],
         2,
     ),
-
     # Album
     (
         "https://www.tranny.one/pics/album/2967/",
