@@ -11,4 +11,9 @@ TEST_CASES = [
             }
         ],
     ),
+    (
+        "https://www.tranny.one/search/ruby+wren/",
+        [],
+        2,
+    ),
 ]
