@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import DownloadError, ScrapeError
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -21,6 +21,8 @@ class Selectors:
     TITLE = "span.movie-title-text"
     VIDEO_THUMBS = "div.thumbs-container a.pp"
     MODEL_NAME = "h1.ps-heading-name"
+    ALBUM_TITLE = "h1.top"
+    ALBUM_THUMBS = "div.pic-list a"
 
 
 _SELECTORS = Selectors()
@@ -32,18 +34,20 @@ class CollectionType(StrEnum):
 
 TITLE_SELECTOR_MAP = {
     CollectionType.MODEL: _SELECTORS.MODEL_NAME,
-    CollectionType.ALBUM: None,
+    CollectionType.ALBUM: _SELECTORS.ALBUM_TITLE,
     CollectionType.SEARCH: None,
 }
 
 PRIMARY_URL = AbsoluteHttpURL("https://tranny.one")
+PICTURES_DOMAIN = "pics.tranny.one"
 
 
 class TrannyOneCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Video": "/view/<video_id>",
         "Search": "/search/<search_query>",
-        "Pornstars": "/pornstar/<model_id>/<model_name>"
+        "Pornstars": "/pornstar/<model_id>/<model_name>",
+        "Album" : "/pics/album/<album_id>"
     }
     DOMAIN: ClassVar[str] = "tranny.one"
     FOLDER_DOMAIN: ClassVar[str] = "Tranny.One"
@@ -57,6 +61,10 @@ class TrannyOneCrawler(Crawler):
             return await self.collection(scrape_item, CollectionType.SEARCH)
         elif "pornstars" in scrape_item.url.parts:
             return await self.collection(scrape_item, CollectionType.MODEL)
+        elif scrape_item.url.host == PICTURES_DOMAIN:
+            return await self.direct_file(scrape_item)
+        elif "album" in scrape_item.url.parts:
+            return await self.album(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
@@ -108,4 +116,15 @@ class TrannyOneCrawler(Crawler):
             if (len(videos) < MAX_VIDEO_COUNT_PER_PAGE):
                 break
 
-
+    @error_handling_wrapper
+    async def album(self, scrape_item: ScrapeItem) -> None:
+        album_title = ""
+        album_id: str = scrape_item.url.parts[-1]
+        soup = await self.request_soup(scrape_item.url)
+        for pic in css.iselect(soup, _SELECTORS.ALBUM_THUMBS):
+            if not album_title:
+                album_title = self.create_collection_title(soup, scrape_item.url, CollectionType.ALBUM)
+                scrape_item.setup_as_album(album_title, album_id=album_id)
+            pic_url = self.parse_url(css.get_attr(pic, "href"))
+            new_scrape_item = scrape_item.create_child(pic_url)
+            self.create_task(self.run(new_scrape_item))
