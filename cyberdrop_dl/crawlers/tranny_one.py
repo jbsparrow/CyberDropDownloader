@@ -49,7 +49,7 @@ class TrannyOneCrawler(Crawler):
         "Video": "/view/<video_id>",
         "Search": "/search/<search_query>",
         "Pornstars": "/pornstar/<model_id>/<model_name>",
-        "Album": "/pics/album/<album_id>"
+        "Album": "/pics/album/<album_id>",
     }
     DOMAIN: ClassVar[str] = "tranny.one"
     FOLDER_DOMAIN: ClassVar[str] = "Tranny.One"
@@ -105,7 +105,7 @@ class TrannyOneCrawler(Crawler):
         MAX_VIDEO_COUNT_PER_PAGE: int = 52
         title_created: bool = False
         for page in itertools.count(1):
-            page_url = scrape_item.url.with_query({"pageId" : page})
+            page_url = scrape_item.url.with_query({"pageId": page})
             soup = await self.request_soup(page_url)
 
             if create_title and not title_created:
