@@ -60,7 +60,7 @@ class TrannyOneCrawler(Crawler):
         elif "search" in scrape_item.url.parts:
             return await self.collection(scrape_item, CollectionType.SEARCH)
         elif "pornstars" in scrape_item.url.parts:
-            return await self.collection(scrape_item, CollectionType.MODEL)
+            return await self.model(scrape_item)
         elif scrape_item.url.host == PICTURES_DOMAIN:
             return await self.direct_file(scrape_item)
         elif "album" in scrape_item.url.parts:
@@ -95,14 +95,14 @@ class TrannyOneCrawler(Crawler):
         return collection_title
 
     @error_handling_wrapper
-    async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
+    async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType, create_title: bool = True) -> None:
         MAX_VIDEO_COUNT_PER_PAGE: int = 52
         title_created: bool = False
         for page in itertools.count(1):
             page_url = scrape_item.url.with_query({"pageId" : page})
             soup = await self.request_soup(page_url)
 
-            if not title_created:
+            if create_title and not title_created:
                 title = self.create_collection_title(soup, scrape_item.url, collection_type)
                 scrape_item.setup_as_album(title)
                 title_created = True
@@ -128,3 +128,26 @@ class TrannyOneCrawler(Crawler):
             pic_url = self.parse_url(css.get_attr(pic, "href"))
             new_scrape_item = scrape_item.create_child(pic_url)
             self.create_task(self.run(new_scrape_item))
+
+    @error_handling_wrapper
+    async def model(self, scrape_item: ScrapeItem) -> None:
+        model_id: str = scrape_item.url.parts[-2]
+        query = {
+            "area": "pornstarsViewer",
+            "ajax": 1,
+            "id": model_id,
+            "tab": "albums",
+        }
+
+        soup = await self.request_soup(scrape_item.url)
+        model_name = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME)
+        title = self.create_title(f"{model_name} [model]")
+        scrape_item.setup_as_profile(title)
+
+        soup = await self.request_soup(self.PRIMARY_URL.with_query(query))
+        for album in css.iselect(soup, _SELECTORS.VIDEO_THUMBS):
+            album_url = self.parse_url(css.get_attr(album, "href"))
+            new_scrape_item = scrape_item.create_child(album_url)
+            self.create_task(self.run(new_scrape_item))
+
+        return await self.collection(scrape_item, CollectionType.MODEL, False)
