@@ -27,10 +27,12 @@ class Selectors:
 
 _SELECTORS = Selectors()
 
+
 class CollectionType(StrEnum):
     ALBUM = "album"
     MODEL = "model"
     SEARCH = "search"
+
 
 TITLE_SELECTOR_MAP = {
     CollectionType.MODEL: _SELECTORS.MODEL_NAME,
@@ -47,7 +49,7 @@ class TrannyOneCrawler(Crawler):
         "Video": "/view/<video_id>",
         "Search": "/search/<search_query>",
         "Pornstars": "/pornstar/<model_id>/<model_name>",
-        "Album" : "/pics/album/<album_id>"
+        "Album": "/pics/album/<album_id>"
     }
     DOMAIN: ClassVar[str] = "tranny.one"
     FOLDER_DOMAIN: ClassVar[str] = "Tranny.One"
@@ -82,7 +84,9 @@ class TrannyOneCrawler(Crawler):
 
         return await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    def create_collection_title(self, soup: BeautifulSoup, url: AbsoluteHttpURL, collection_type: CollectionType) -> str:
+    def create_collection_title(
+        self, soup: BeautifulSoup, url: AbsoluteHttpURL, collection_type: CollectionType
+    ) -> str:
         collection_title: str = ""
         if collection_type == CollectionType.SEARCH:
             collection_title = url.parts[-1]
@@ -95,7 +99,9 @@ class TrannyOneCrawler(Crawler):
         return collection_title
 
     @error_handling_wrapper
-    async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType, create_title: bool = True) -> None:
+    async def collection(
+        self, scrape_item: ScrapeItem, collection_type: CollectionType, create_title: bool = True
+    ) -> None:
         MAX_VIDEO_COUNT_PER_PAGE: int = 52
         title_created: bool = False
         for page in itertools.count(1):
@@ -108,12 +114,12 @@ class TrannyOneCrawler(Crawler):
                 title_created = True
 
             videos = list(css.iselect(soup, _SELECTORS.VIDEO_THUMBS))
-            for video in  videos:
+            for video in videos:
                 video_url = self.parse_url(css.get_attr(video, "href"))
                 new_scrape_item = scrape_item.create_child(video_url)
                 self.create_task(self.run(new_scrape_item))
 
-            if (len(videos) < MAX_VIDEO_COUNT_PER_PAGE):
+            if len(videos) < MAX_VIDEO_COUNT_PER_PAGE:
                 break
 
     @error_handling_wrapper
