@@ -6,6 +6,7 @@ import ssl
 import weakref
 from base64 import b64encode
 from collections import defaultdict
+from datetime import datetime
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Literal, Self, overload
 
@@ -250,6 +251,19 @@ class ClientManager:
             return True
 
         return self.check_file_duration(media_item)
+
+    def check_allowed_date_range(self, media_item: MediaItem) -> bool:
+        """Checks if the file is published within the date range configured."""
+        if not media_item.datetime:
+            return True
+
+        ignore_options = self.manager.config_manager.settings_data.ignore_options
+        post_datetime = datetime.fromtimestamp(media_item.datetime)
+        if ignore_options.exclude_posts_before and post_datetime < ignore_options.exclude_posts_before:
+            return False
+        if ignore_options.exclude_posts_after and post_datetime > ignore_options.exclude_posts_after:
+            return False
+        return True
 
     def filter_cookies_by_word_in_domain(self, word: str) -> Iterable[tuple[str, BaseCookie[str]]]:
         """Yields pairs of `[domain, BaseCookie]` for every cookie with a domain that has `word` in it"""

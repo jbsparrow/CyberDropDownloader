@@ -164,6 +164,8 @@ class IgnoreOptions(BaseModel):
     only_hosts: ListNonEmptyStr = []
     skip_hosts: ListNonEmptyStr = []
     exclude_files_with_no_extension: bool = True
+    exclude_posts_before: datetime | None = None
+    exclude_posts_after: datetime | None = None
 
     @field_validator("filename_regex_filter")
     @classmethod
