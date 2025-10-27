@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import itertools
+from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.exceptions import DownloadError
+from cyberdrop_dl.exceptions import DownloadError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
@@ -17,9 +20,22 @@ class Selectors:
     VIDEO = "div#placeVideo div#videoContainer"
     TITLE = "span.movie-title-text"
     VIDEO_THUMBS = "div.thumbs-container a.pp"
+    MODEL_NAME = "h1.ps-heading-name"
 
 
 _SELECTORS = Selectors()
+
+class CollectionType(StrEnum):
+    ALBUM = "album"
+    MODEL = "model"
+    SEARCH = "search"
+
+TITLE_SELECTOR_MAP = {
+    CollectionType.MODEL: _SELECTORS.MODEL_NAME,
+    CollectionType.ALBUM: None,
+    CollectionType.SEARCH: None,
+}
+
 PRIMARY_URL = AbsoluteHttpURL("https://tranny.one")
 
 
@@ -27,6 +43,7 @@ class TrannyOneCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Video": "/view/<video_id>",
         "Search": "/search/<search_query>",
+        "Pornstars": "/pornstar/<model_id>/<model_name>"
     }
     DOMAIN: ClassVar[str] = "tranny.one"
     FOLDER_DOMAIN: ClassVar[str] = "Tranny.One"
@@ -37,7 +54,9 @@ class TrannyOneCrawler(Crawler):
         if "view" in scrape_item.url.parts:
             return await self.video(scrape_item)
         elif "search" in scrape_item.url.parts:
-            return await self.search(scrape_item)
+            return await self.collection(scrape_item, CollectionType.SEARCH)
+        elif "pornstars" in scrape_item.url.parts:
+            return await self.collection(scrape_item, CollectionType.MODEL)
         raise ValueError
 
     @error_handling_wrapper
@@ -55,21 +74,37 @@ class TrannyOneCrawler(Crawler):
 
         return await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    @error_handling_wrapper
-    async def search(self, scrape_item: ScrapeItem) -> None:
-        MAX_VIDEO_COUNT_PER_PAGE: int = 52
-        query = scrape_item.url.parts[-1]
-        title = self.create_title(f"Search - {query}")
-        scrape_item.setup_as_album(title)
+    def create_collection_title(self, soup: BeautifulSoup, url: AbsoluteHttpURL, collection_type: CollectionType) -> str:
+        collection_title: str = ""
+        if collection_type == CollectionType.SEARCH:
+            collection_title = url.parts[-1]
+        else:
+            title_elem = soup.select_one(TITLE_SELECTOR_MAP[collection_type])
+            if not title_elem:
+                raise ScrapeError(401)
+            collection_title: str = title_elem.get_text(strip=True)
+        collection_title = self.create_title(f"{collection_title} [{collection_type}]")
+        return collection_title
 
+    @error_handling_wrapper
+    async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
+        MAX_VIDEO_COUNT_PER_PAGE: int = 52
+        title_created: bool = False
         for page in itertools.count(1):
             page_url = scrape_item.url.with_query({"pageId" : page})
             soup = await self.request_soup(page_url)
+
+            if not title_created:
+                title = self.create_collection_title(soup, scrape_item.url, collection_type)
+                scrape_item.setup_as_album(title)
+                title_created = True
+
             videos = list(css.iselect(soup, _SELECTORS.VIDEO_THUMBS))
             for video in  videos:
                 video_url = self.parse_url(css.get_attr(video, "href"))
                 new_scrape_item = scrape_item.create_child(video_url)
                 self.create_task(self.run(new_scrape_item))
+
             if (len(videos) < MAX_VIDEO_COUNT_PER_PAGE):
                 break
 
