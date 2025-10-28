@@ -40,6 +40,7 @@ from .google_drive import GoogleDriveCrawler
 from .hianime import HiAnimeCrawler
 from .hitomi_la import HitomiLaCrawler
 from .hotleak_vip import HotLeakVipCrawler
+from .hotleaks_dot_tv import HotLeaksTVCrawler
 from .hotpic import HotPicCrawler
 from .iceyfile import IceyFileCrawler
 from .imagebam import ImageBamCrawler

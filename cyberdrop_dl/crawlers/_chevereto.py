@@ -4,7 +4,7 @@ import base64
 from typing import TYPE_CHECKING, ClassVar, final
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, copy_signature
+from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.exceptions import PasswordProtectedError
 from cyberdrop_dl.utils import css, open_graph
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, xor_decrypt
@@ -94,13 +94,6 @@ class CheveretoCrawler(Crawler, is_generic=True):
         match url.parts[1:]:
             case ["img" | "image" as part, image_slug, *_]:
                 return url.origin() / part / _id(image_slug)
-
-    @copy_signature(Crawler.request_soup)
-    async def request_soup(self, url: AbsoluteHttpURL, *args, impersonate: bool = False, **kwargs) -> BeautifulSoup:
-        # chevereto redirects are URL encoded and aiohttp always reencodes them by default, leading to an infinite redirect loop, so we use cURL
-        # We may be able to use aiohttp in v4
-        # See: https://github.com/jbsparrow/CyberDropDownloader/pull/1356#issuecomment-3349190328
-        return await super().request_soup(url, *args, impersonate=True, **kwargs)
 
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
