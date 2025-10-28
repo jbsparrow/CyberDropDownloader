@@ -440,7 +440,7 @@ class Downloader:
             timestamp_str = (
                 datetime.fromtimestamp(media_item.datetime).strftime("%Y-%m-%d %H:%M:%S")
                 if media_item.datetime
-                else "unknown date"
+                else "Unknown date"
             )
             log(f"Download skip {media_item.url} due to exclude_posts_date config ({timestamp_str})", 10)
             self.manager.progress_manager.download_progress.add_skipped()
