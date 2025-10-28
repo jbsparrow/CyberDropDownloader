@@ -38,7 +38,7 @@ license = "GPL-3.0-only"
 license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "8.5.0"
+version = "8.6.0"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
