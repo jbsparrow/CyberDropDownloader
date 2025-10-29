@@ -135,8 +135,7 @@ class TrannyOneCrawler(Crawler):
             new_scrape_item = scrape_item.create_child(pic_url)
             self.create_task(self.run(new_scrape_item))
 
-    @error_handling_wrapper
-    async def model(self, scrape_item: ScrapeItem) -> None:
+    async def download_albums(self, scrape_item):
         model_id: str = scrape_item.url.parts[-2]
         query = {
             "area": "pornstarsViewer",
@@ -145,15 +144,20 @@ class TrannyOneCrawler(Crawler):
             "tab": "albums",
         }
 
-        soup = await self.request_soup(scrape_item.url)
-        model_name = css.select_one_get_text(soup, _SELECTORS.MODEL_NAME)
-        title = self.create_title(f"{model_name} [model]")
-        scrape_item.setup_as_profile(title)
-
         soup = await self.request_soup(self.PRIMARY_URL.with_query(query))
         for album in css.iselect(soup, _SELECTORS.VIDEO_THUMBS):
             album_url = self.parse_url(css.get_attr(album, "href"))
             new_scrape_item = scrape_item.create_child(album_url)
             self.create_task(self.run(new_scrape_item))
 
+    async def get_model_name(self, scrape_item):
+        soup = await self.request_soup(scrape_item.url)
+        return css.select_one_get_text(soup, _SELECTORS.MODEL_NAME)
+
+    @error_handling_wrapper
+    async def model(self, scrape_item: ScrapeItem) -> None:
+        model_name = await self.get_model_name(scrape_item)
+        title = self.create_title(f"{model_name} [model]")
+        scrape_item.setup_as_profile(title)
+        await self.download_albums(scrape_item)
         return await self.collection(scrape_item, CollectionType.MODEL, False)
