@@ -173,14 +173,13 @@ class CheveretoCrawler(Crawler, is_generic=True):
             self.create_task(self.run(new_scrape_item))
 
     async def _unlock_password_protected_album(self, scrape_item: ScrapeItem) -> None:
-        password = scrape_item.pop_query("password")
-        if not password:
+        if not scrape_item.password:
             raise PasswordProtectedError
 
         soup = await self.request_soup(
             _sort_by_new(scrape_item.url / ""),
             method="POST",
-            data={"content-password": password},
+            data={"content-password": scrape_item.password},
         )
 
         if _is_password_protected(soup):

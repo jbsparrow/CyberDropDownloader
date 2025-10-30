@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Generator, Iterable, Mapping
 
     from cyberdrop_dl.crawlers import Crawler
-    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, AnyURL, MediaItem, ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import AbsoluteHttpURL, MediaItem, ScrapeItem
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
 
@@ -400,7 +400,7 @@ def is_absolute_http_url(url: URL) -> TypeGuard[AbsoluteHttpURL]:
     return url.absolute and url.scheme.startswith("http")
 
 
-def remove_trailing_slash(url: AnyURL) -> AnyURL:
+def remove_trailing_slash(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     if url.name or url.path == "/":
         return url
     return url.parent.with_fragment(url.fragment).with_query(url.query)
