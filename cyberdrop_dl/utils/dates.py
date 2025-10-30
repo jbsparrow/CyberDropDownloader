@@ -1,5 +1,6 @@
 import datetime
 import email.utils
+import re
 from functools import lru_cache
 from typing import Literal, NewType, TypeAlias, TypeVar
 
@@ -12,6 +13,7 @@ DateOrder: TypeAlias = Literal["DMY", "DYM", "MDY", "MYD", "YDM", "YMD"]
 ParserKind: TypeAlias = Literal["timestamp", "relative-time", "custom-formats", "absolute-time", "no-spaces-time"]
 DEFAULT_PARSERS: list[ParserKind] = ["relative-time", "custom-formats", "absolute-time", "no-spaces-time"]
 DEFAULT_DATE_ORDER = "MDY"
+DATEPARSER_PATCHED = False
 
 _S = TypeVar("_S", bound=str)
 
@@ -64,7 +66,7 @@ class DateParser(dateparser.date.DateDataParser):
                 "DATE_ORDER": date_order,
                 "PREFER_DAY_OF_MONTH": "first",
                 "PREFER_DATES_FROM": "past",
-                "REQUIRE_PARTS": ["year", "month"],
+                "REQUIRE_PARTS": ["month"],
                 "RETURN_TIME_AS_PERIOD": True,
                 "PARSERS": parsers,
             },
@@ -85,7 +87,7 @@ class DateParser(dateparser.date.DateDataParser):
         return None, None
 
     def parse_possible_incomplete_date(
-        self, date_string: str, date_formats: list[str] | str | None = None
+        self, date_string: str, date_formats: list[str] | str
     ) -> datetime.datetime | None:
         date_formats = coerce_to_list(date_formats)
         date_data = dateparser.date.parse_with_formats(date_string, date_formats, self._settings)
@@ -117,8 +119,9 @@ def parse_human_date(
     date_order: DateOrder | None = None,
 ) -> datetime.datetime | None:
     parser = get_parser(parser_kind, date_order)
-    date = parser.parse_possible_incomplete_date(date_string, date_formats)
-    return date or parser.parse_human_date(date_string, date_formats)
+    if date_formats and (parsed_date := parser.parse_possible_incomplete_date(date_string, date_formats)):
+        return parsed_date
+    return parser.parse_human_date(date_string, date_formats)
 
 
 def to_timestamp(date: datetime.datetime) -> TimeStamp:
@@ -148,6 +151,50 @@ def parse_http_date(date: str) -> int:
     """parse rfc 2822 or an "HTTP-date" format as defined by RFC 9110"""
     date_time = email.utils.parsedate_to_datetime(date)
     return to_timestamp(ensure_tz(date_time))
+
+
+def _prepare_format(date_string: str, og_format: str) -> tuple[str, str]:
+    # Adapted from std lib: https://github.com/python/cpython/blob/e34a5e33049ce845de646cf24a498766a2da3586/Lib/_strptime.py#L448
+    format = re.sub(r"([\\.^$*+?\(\){}\[\]|])", r"\\\1", og_format)
+    format = re.sub(r"\s+", r"\\s+", format)
+    format = re.sub(r"'", "['\u02bc]", format)
+    year_in_format = False
+    day_of_month_in_format = False
+
+    def repl(m: re.Match[str]) -> str:
+        format_char = m[1]
+        if format_char in ("Y", "y", "G"):
+            nonlocal year_in_format
+            year_in_format = True
+        elif format_char in "d":
+            nonlocal day_of_month_in_format
+            day_of_month_in_format = True
+
+        return ""
+
+    _ = re.sub(r"%[-_0^#]*[0-9]*([OE]?\\?.?)", repl, format)
+    if day_of_month_in_format and not year_in_format:
+        current_year = datetime.datetime.today().year
+        return f"{current_year} {date_string}", f"%Y {og_format}"
+    return date_string, og_format
+
+
+def patch_dateparser() -> None:
+    global DATEPARSER_PATCHED
+    if DATEPARSER_PATCHED:
+        return
+
+    import dateparser.parser
+    import dateparser.utils.strptime
+
+    og_strptime = dateparser.utils.strptime.strptime
+
+    def _strptime(date_string: str, format: str) -> datetime.datetime:
+        return og_strptime(*_prepare_format(date_string, format))
+
+    dateparser.utils.strptime.strptime = _strptime
+    dateparser.parser.strptime = _strptime
+    DATEPARSER_PATCHED = True
 
 
 if __name__ == "__main__":
