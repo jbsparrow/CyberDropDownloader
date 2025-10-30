@@ -314,6 +314,8 @@ ignore_options:
   --only-hosts [ONLY_HOSTS ...]
   --skip-hosts [SKIP_HOSTS ...]
   --exclude-files-with-no-extension, --no-exclude-files-with-no-extension
+  --exclude-posts-before EXCLUDE_POSTS_BEFORE
+  --exclude-posts-after EXCLUDE_POSTS_AFTER
 
 logs:
   --download-error-urls DOWNLOAD_ERROR_URLS

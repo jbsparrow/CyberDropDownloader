@@ -222,6 +222,13 @@ class InvalidYamlError(CDLBaseError):
         super().__init__(ui_failure, message=msg, origin=file)
 
 
+class RestrictedDateRangeError(CDLBaseError):
+    def __init__(self, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+        """This error will be thrown when the publication date of the media item is not allowed by config."""
+        ui_failure = "Restricted DateRange"
+        super().__init__(ui_failure, origin=origin)
+
+
 def create_error_msg(error: int | str) -> str:
     if isinstance(error, str):
         return error

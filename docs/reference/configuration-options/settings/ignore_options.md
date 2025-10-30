@@ -96,3 +96,19 @@ You can supply hosts that you'd like the program to exclusively scrape/download 
 | `list[NonEmptyStr]` | `[]`    | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs) |
 
 You can supply hosts that you'd like the program to skip, to not scrape/download from them. This setting accepts any domain, even if they are no supported.
+
+## `exclude_posts_before`
+
+| Type                 | Default | Additional Info                                                    |
+| -------------------- | ------- | ------------------------------------------------------------------ |
+| `datetime` or `null` | `null`  | The `datetime` value should be in the `YYYY-MM-DD HH:MM:SS` format |
+
+When a valid datetime value is provided, this excludes all posts published before that particular datetime.
+
+## `exclude_posts_after`
+
+| Type                 | Default | Additional Info                                                    |
+| -------------------- | ------- | ------------------------------------------------------------------ |
+| `datetime` or `null` | `null`  | The `datetime` value should be in the `YYYY-MM-DD HH:MM:SS` format |
+
+When a valid datetime value is provided, this excludes all posts published after that particular datetime.
