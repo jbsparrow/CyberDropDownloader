@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 PRIMARY_URL = AbsoluteHttpURL("https://xgroovy.com")
 PICTURES_DOMAIN = "photos.xgroovy.com"
 
+
 class Selectors:
     VIDEO = "video#main_video"
     GIF = "div.gif-video-wrapper > video"
@@ -27,13 +28,13 @@ class Selectors:
     NEXT_PAGE = "div.pagination-holder li.next > a"
 
 
-
 _SELECTORS = Selectors()
 
 
 class Format(NamedTuple):
     resolution: str
     link_str: str
+
 
 class CollectionType(StrEnum):
     CATEGORIES = "categories"
@@ -92,7 +93,14 @@ class XGroovyCrawler(Crawler):
             scrape_item, video_id, soup, self.parse_url(best_format.link_str), resolution=best_format.resolution
         )
 
-    async def download_video(self, scrape_item: ScrapeItem, file_id: str, soup: BeautifulSoup, link: AbsoluteHttpURL, resolution: str | None = None):
+    async def download_video(
+        self,
+        scrape_item: ScrapeItem,
+        file_id: str,
+        soup: BeautifulSoup,
+        link: AbsoluteHttpURL,
+        resolution: str | None = None
+    ):
         filename, ext = self.get_filename_and_ext(link.name)
         title = open_graph.get_title(soup)
         context = json.loads(css.select_one_get_text(soup, _SELECTORS.UPLOAD_DATE))
