@@ -99,7 +99,7 @@ class XGroovyCrawler(Crawler):
         file_id: str,
         soup: BeautifulSoup,
         link: AbsoluteHttpURL,
-        resolution: str | None = None
+        resolution: str | None = None,
     ):
         filename, ext = self.get_filename_and_ext(link.name)
         title = open_graph.get_title(soup)
