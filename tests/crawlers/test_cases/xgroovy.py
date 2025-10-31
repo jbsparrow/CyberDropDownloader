@@ -37,4 +37,17 @@ TEST_CASES = [
         ],
         17,
     ),
+    # Pornstars
+    (
+        "https://xgroovy.com/pornstars/hotangelsfromhell/",
+        [
+            {
+                "url": "re:https://xgroovy.com/get_file",
+                "download_folder": r"re:HotAngelsFromHell \- \[pornstars\] \(XGroovy\)",
+                "referer": "re:https://xgroovy.com/videos/",
+                "album_id": None,
+            }
+        ],
+        1,
+    ),
 ]
