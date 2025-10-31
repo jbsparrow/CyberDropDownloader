@@ -24,4 +24,17 @@ TEST_CASES = [
             }
         ],
     ),
+    # Search
+    (
+        "https://xgroovy.com/search/helena-price/",
+        [
+            {
+                "url": "re:https://xgroovy.com/get_file",
+                "download_folder": r"re:helena\-price \- \[search\] \(XGroovy\)",
+                "referer": "re:https://xgroovy.com/videos/",
+                "album_id": None,
+            }
+        ],
+        17,
+    ),
 ]
