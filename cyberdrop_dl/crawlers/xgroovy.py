@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 
 
 PRIMARY_URL = AbsoluteHttpURL("https://xgroovy.com")
+PICTURES_DOMAIN = "photos.xgroovy.com"
 
 class Selectors:
     VIDEO = "video#main_video"
@@ -33,18 +35,28 @@ class Format(NamedTuple):
     resolution: str
     link_str: str
 
+class CollectionType(StrEnum):
+    CATEGORIES = "categories"
+    CHANNELS = "channels"
+    PORNSTARS = "pornstars"
+    SEARCH = "search"
+    TAG = "tag"
+
 
 class XGroovyCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Video": ("/<category>/videos/<video_id>/...", "/videos/<video_id>/..."),
-        "Gif": ("/<category>/gifs/<gif_id>/...", "/gifs/<gif_id>/..."),
-        "Search": ("/search/...", "/<category>/search/..."),
-        "Pornstar": ("/<category>/pornstars/<pornstar_id>/...", "/pornstars/<pornstar_id>/..."),
+        "Video": ("/shemale/videos/<video_id>/...", "/videos/<video_id>/..."),
+        "Gif": ("/shemale/gifs/<gif_id>/...", "/gifs/<gif_id>/..."),
+        "Search": ("/shemale/search/...", "/search/..."),
+        "Pornstar": ("/shemale/pornstars/<pornstar_id>/...", "/pornstars/<pornstar_id>/..."),
+        "Tag": ("/shemale/tags/...", "/tags/..."),
+        "Channel": ("/shemale/channels/...", "/channels/..."),
     }
     DOMAIN: ClassVar[str] = "xgroovy"
     FOLDER_DOMAIN: ClassVar[str] = "XGroovy"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
+    _COLLECTION_TYPES = tuple(item.value for item in CollectionType)
     _RATE_LIMIT = 3, 10
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -52,10 +64,10 @@ class XGroovyCrawler(Crawler):
             return await self.video(scrape_item)
         elif "gifs" in scrape_item.url.parts:
             return await self.gif(scrape_item)
-        elif "search" in scrape_item.url.parts:
-            return await self.search(scrape_item)
-        elif "pornstars" in scrape_item.url.parts:
-            return await self.pornstar(scrape_item)
+        elif scrape_item.url.host == PICTURES_DOMAIN:
+            return await self.direct_file(scrape_item)
+        elif collection_type := next((p for p in self._COLLECTION_TYPES if p in scrape_item.url.parts), None):
+            return await self.collection(scrape_item, collection_type)
         raise ValueError
 
     @error_handling_wrapper
@@ -89,21 +101,14 @@ class XGroovyCrawler(Crawler):
         return await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
-    async def pornstar(self, scrape_item: ScrapeItem) -> None:
-        soup = await self.request_soup(scrape_item.url)
-        name = css.select_one_get_text(soup, _SELECTORS.PORNSTAR_NAME)
-        title = self.create_title(f"{name} - [pornstar]")
-        scrape_item.setup_as_album(title)
-        await self._download_items(scrape_item)
+    async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
+        title = scrape_item.url.parts[-1]
+        if collection_type == CollectionType.PORNSTARS:
+            soup = await self.request_soup(scrape_item.url)
+            title = css.select_one_get_text(soup, _SELECTORS.PORNSTAR_NAME)
 
-    @error_handling_wrapper
-    async def search(self, scrape_item: ScrapeItem) -> None:
-        query = scrape_item.url.parts[-1]
-        title = self.create_title(f"{query} - [search]")
+        title = self.create_title(f"{title} - [{collection_type}]")
         scrape_item.setup_as_album(title)
-        await self._download_items(scrape_item)
-
-    async def _download_items(self, scrape_item):
         async for soup in self.web_pager(scrape_item.url, _SELECTORS.NEXT_PAGE):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.SEARCH_VIDEOS):
                 self.create_task(self.run(new_scrape_item))
