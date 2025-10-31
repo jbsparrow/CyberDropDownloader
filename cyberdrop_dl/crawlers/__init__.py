@@ -110,6 +110,7 @@ from .wetransfer import WeTransferCrawler
 from .wordpress import WP_CRAWLERS, WordPressHTMLCrawler, WordPressMediaCrawler
 from .xbunkr import XBunkrCrawler
 from .xenforo import XF_CRAWLERS, SimpCityCrawler
+from .xgroovy import XGroovyCrawler
 from .xhamster import XhamsterCrawler
 from .xvideos import XVideosCrawler
 from .xxxbunker import XXXBunkerCrawler
