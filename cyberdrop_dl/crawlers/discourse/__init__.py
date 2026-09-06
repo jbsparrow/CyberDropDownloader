@@ -67,8 +67,8 @@ class DiscourseCrawler(MessageBoardCrawler, is_generic=True):
     async def make_request[ModelT: BaseModel](
         self, model_cls: type[ModelT], path: str, params: dict[str, Any] | None = None
     ) -> ModelT:
-        api_url = self.PRIMARY_URL.joinpath(path)
-        json_text = await self.request_text(api_url, params=params)
+        api_url = self.PRIMARY_URL.joinpath(path).with_query(params)
+        json_text = await self.request_text(api_url)
         return model_cls.model_validate_json(json_text, by_alias=True, by_name=True)
 
     @error_handling_wrapper

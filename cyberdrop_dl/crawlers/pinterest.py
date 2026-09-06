@@ -150,6 +150,7 @@ class PinterestAPI(API):
 
     async def get_resource(self, resource: str, options: dict[str, Any]) -> dict[str, Any]:
         url = self.PRIMARY_URL / f"resource/{resource}Resource/get/"
+        self.client.cookies.update_cookies({"csrftoken": self.csrf_token}, self.PRIMARY_URL)
         return await self.request_json(
             url,
             "POST",
@@ -158,7 +159,6 @@ class PinterestAPI(API):
                 "source_url": "",
             },
             headers={"X-CSRFToken": self.csrf_token},
-            cookies={"csrftoken": self.csrf_token},
         )
 
     async def pager(self, resource: str, options: dict[str, Any]) -> AsyncGenerator[list[dict[str, Any]]]:

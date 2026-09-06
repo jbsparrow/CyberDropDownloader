@@ -1,10 +1,8 @@
 import logging
-from typing import Literal
 
 from cyberdrop_dl import signature
+from cyberdrop_dl.constants import HttpMethod as HttpMethod
 from cyberdrop_dl.logs import LOG_HTTP_TRAFFIC
-
-HttpMethod = Literal["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "TRACE", "PATCH", "QUERY"]
 
 
 class TrafficLogger(logging.LoggerAdapter[logging.Logger]):

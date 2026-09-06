@@ -4,7 +4,7 @@ import contextlib
 import dataclasses
 import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, override
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.crawlers.twitter.api import FXTwitterAPI, TwitterAPI
@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.config.crawlers import TwitterConfig
     from cyberdrop_dl.crawlers.twitter.models import Broadcast, Tweet
     from cyberdrop_dl.url_objects import ScrapeItem
-    from cyberdrop_dl.utils import m3u8
 
 
 class TwitterShortURLCrawler(Crawler):
@@ -73,11 +72,11 @@ class TwimgCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(name)
         await self.handle_file(src, scrape_item, name, ext, custom_filename=filename)
 
-    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.Rendition | None = None) -> None:
+    @override
+    def _prepare_media_item(self, media_item: MediaItem) -> None:
         if media_item.referer.path == media_item.url.path and media_item.parents:
             media_item.referer = media_item.parents[0]
             media_item.headers["Referer"] = str(media_item.referer)
-        await super().handle_media_item(media_item, m3u8)
 
 
 class TwitterCrawler(Crawler):

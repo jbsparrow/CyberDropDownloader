@@ -642,7 +642,12 @@ class Crawler(HTTPMixin, HLSMixin, ABC):
 
         return downloaded
 
+    def _prepare_media_item(self, media_item: MediaItem) -> None:
+        # To override by subclasses
+        assert media_item
+
     async def handle_media_item(self, media_item: MediaItem, streams: m3u8.Rendition | MuxVideo | None = None) -> None:
+        self._prepare_media_item(media_item)
         with (
             enter_context(IGNORE_CONTENT_TYPE, True)
             if self.__dl_config__.ignore_content_type

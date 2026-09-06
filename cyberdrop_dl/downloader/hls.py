@@ -184,7 +184,7 @@ async def _merge_segments(results: Sequence[MediaItem], output: Path) -> None:
     if len(results) == 1:
         await aio.move(results[0].path, output)
     else:
-        await ffmpeg.raw_concat((item.path for item in results), output)
+        await ffmpeg.raw_concat([item.path for item in results], output)
 
 
 def _prepare_output_path(m3u8: M3U8, output: Path) -> Path:

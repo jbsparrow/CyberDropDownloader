@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import html
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, overload
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, cast, overload
 
 from cyberdrop_dl.exceptions import ScrapeError
 
@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4.element import Tag
+
+    from cyberdrop_dl.constants import HttpMethod
 
 
 class SelectorError(ScrapeError):
@@ -30,7 +32,7 @@ class CssAttributeSelector(NamedTuple):
 
 @dataclasses.dataclass(slots=True)
 class HTMLForm:
-    method: Literal["GET", "POST"]
+    method: HttpMethod
     action: str
     inputs: dict[str, str | None]
 
@@ -179,7 +181,7 @@ def parse_form(form: Tag, /) -> HTMLForm:
 
     method = attr(form, "method").upper()
     action = attr(form, "action")
-    return HTMLForm(method, action, inputs)
+    return HTMLForm(cast("HttpMethod", method), action, inputs)
 
 
 unescape = html.unescape

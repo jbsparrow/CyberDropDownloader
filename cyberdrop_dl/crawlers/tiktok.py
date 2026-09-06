@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
-from typing import TYPE_CHECKING, Any, ClassVar, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Self, override
 
 from cyberdrop_dl.clients.http import HTTPConfig
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Mapping
 
     from cyberdrop_dl.url_objects import ScrapeItem
-    from cyberdrop_dl.utils import m3u8
+
 
 _PRIMARY_URL = AbsoluteHttpURL("https://www.tiktok.com/")
 _API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
@@ -259,8 +259,7 @@ class TikTokCrawler(Crawler):
         )
         scrape_item.add_children()
 
-    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.Rendition | None = None) -> None:
+    @override
+    def _prepare_media_item(self, media_item: MediaItem) -> None:
         if media_item.ext == ".mp3":
             media_item.download_folder /= "Audios"
-
-        await super().handle_media_item(media_item, m3u8)

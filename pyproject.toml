@@ -87,13 +87,14 @@ dev = [
 ]
 
 [tool.basedpyright]
-include = ["cyberdrop_dl", "scripts", "tests"]
+include = ["cyberdrop_dl", "scripts"]
 reportAny = "information"
 reportExplicitAny = false
 reportImplicitAbstractClass = false
 reportImplicitOverride = "hint"
 reportImplicitStringConcatenation = false
 reportImportCycles = "warning"
+reportPrivateUsage = "none"
 reportUnreachable = "hint"
 reportUnusedCallResult = false
 typeCheckingMode = "recommended"

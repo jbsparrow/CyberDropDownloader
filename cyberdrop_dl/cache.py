@@ -106,7 +106,7 @@ class TTLCacheAdapter[T]:
     def __getitem__(self, key: str, /) -> T:
         return self._get_value(key)
 
-    def _get_value(self, key: str, ttl: float | Sentinel | None = MISSING) -> T:
+    def _get_value(self, key: str, ttl: float | None = MISSING) -> T:
         """Same as `self[key]`, but `ttl` (when given) overrides the one stored in the entry."""
         cache_hit = self._get(key, ttl)
         if cache_hit is MISSING:

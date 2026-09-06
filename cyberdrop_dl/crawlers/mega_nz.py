@@ -25,7 +25,6 @@ if TYPE_CHECKING:
     from mega.filesystem import FileSystem
 
     from cyberdrop_dl.url_objects import ScrapeItem
-    from cyberdrop_dl.utils import m3u8
 
 
 @HTTPConfig.default_headers(user_agent=CDL_USER_AGENT)
@@ -169,10 +168,9 @@ class MegaNzCrawler(Crawler):
             scrape_item.add_children()
 
     @override
-    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.Rendition | None = None) -> None:
+    def _prepare_media_item(self, media_item: MediaItem) -> None:
         media_item.extra_info.setdefault(self.DOMAIN, {})["key"] = self._decryption_keys.pop(media_item.url)
         media_item.extra_info["impersonate"] = False  # We need aiohttp for precise chunks reads
-        await super().handle_media_item(media_item, m3u8)
 
     async def _login(self) -> None:
         # This takes a really long time (dozens of seconds)
