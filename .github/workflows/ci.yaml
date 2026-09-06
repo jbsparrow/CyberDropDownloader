@@ -39,6 +39,10 @@ jobs:
         with:
           enable-cache: false
 
+      - name: Install dependencies
+        run: |
+          uv sync --locked --all-extras
+
       - run: uvx basedpyright cyberdrop_dl --level error
         timeout-minutes: 5
 
