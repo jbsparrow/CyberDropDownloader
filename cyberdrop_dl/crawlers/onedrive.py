@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import dataclasses
 from collections import deque
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from cyberdrop_dl.cache import disk_cached_method
@@ -18,6 +19,8 @@ from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.url_objects import ScrapeItem
+
+SHARE_URL: ContextVar[AbsoluteHttpURL] = ContextVar("SHARE_URL")
 
 
 @URLConfig(allow_empty_path=True)
@@ -51,6 +54,7 @@ class OneDriveCrawler(Crawler):
     async def share_link(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item.url):
             return
+        SHARE_URL.set(scrape_item.url)
         scrape_item.url = await self.request_redirect(scrape_item.url)
         await self.resource(scrape_item)
 
@@ -108,6 +112,7 @@ class OneDriveCrawler(Crawler):
             ext,
             custom_filename=filename,
             debrid_link=file.download_url,
+            referer=SHARE_URL.get(scrape_item.url),
         )
 
 
@@ -211,6 +216,8 @@ def normalize_resource(resp: dict[str, Any]) -> File | Folder:
 def _parse_resource(url: AbsoluteHttpURL) -> tuple[str, str, Credentials]:
     get = url.query.get
     cred = Credentials(get("authkey") or "", get("redeem") or "")
+    if not (cred.auth_key or cred.redeem):
+        raise ScrapeError.unsupported()
 
     resource_id = get("id") or ""
     resid = get("resid") or ""  # ex: ABCXYZ000!12345
