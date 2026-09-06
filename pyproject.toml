@@ -25,7 +25,7 @@ dependencies = [
     "beautifulsoup4 >=4.15.0",
     "brotli >=1.2.0; implementation_name=='cpython' and sys_platform!='ios'",
     "cffi == 2.1.1",
-    "curl-cffi >=0.16.2; implementation_name == 'cpython' ",
+    "curl-cffi >=0.16.3; implementation_name == 'cpython' ",
     "cyclopts==4.23.2",
     "idna>=3.19",
     "imagesize >= 2.0.1",
@@ -54,7 +54,7 @@ requires-python = ">=3.12"
 
 [project.optional-dependencies]
 apprise = [
-    "apprise >=1.13.0,<2.0.0",
+    "apprise >=1.13.1,<2.0.0",
     "click ==8.5.0",
     "urllib3>=2.7.0",  # Transient dep with CVE
     'pywin32>=312; platform_system == "Windows"',
