@@ -21,6 +21,27 @@ on:
 permissions: {}
 
 jobs:
+  type_check:
+    name: Type check
+    permissions:
+      contents: read
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.0
+        with:
+          enable-cache: false
+
+      - run: uvx basedpyright cyberdrop_dl --level error
+        timeout-minutes: 5
+
   test:
     name: Run pytest
     permissions:
