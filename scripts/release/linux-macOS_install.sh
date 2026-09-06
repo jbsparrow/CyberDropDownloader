@@ -29,5 +29,5 @@ else
 fi
 
 echo Installing / Updating cyberdrop-dl...
-"$UV_BIN" tool install -p "<3.14" --no-build --upgrade --force "cyberdrop-dl-patched[apprise]${PACKAGE_VERSION}"
+"$UV_BIN" tool install -p "<3.15" --no-build --upgrade --force "cyberdrop-dl-patched[apprise]${PACKAGE_VERSION}"
 "$UV_BIN" tool update-shell

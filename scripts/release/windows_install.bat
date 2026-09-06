@@ -46,7 +46,7 @@ exit /b 1
 
 :found
 echo Installing / Updating cyberdrop-dl...
-"%uv_bin%" tool install --managed-python -p "<3.14" --no-build --upgrade --force "cyberdrop-dl-patched[apprise]%PACKAGE_VERSION%"
+"%uv_bin%" tool install --managed-python -p "<3.15" --no-build --upgrade --force "cyberdrop-dl-patched[apprise]%PACKAGE_VERSION%"
 "%uv_bin%" tool update-shell
 endlocal
 pause
