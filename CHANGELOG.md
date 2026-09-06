@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `403 Forbidden` on all downloads (AdobeLightroom)
 - Parsing of embeded folder URLs (GoogleDrive)
 - `400 Bad request` for albums (PornHub)
-- Single files downloads (OneDrive)
+- Single file downloads (OneDrive)
 - URL matching (Anysex)
 - Download of nested folders (Box.com)
 
