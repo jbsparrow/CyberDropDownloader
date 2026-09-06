@@ -96,6 +96,9 @@ class OneDriveCrawler(Crawler):
         # scrape_item.url should be web URL aka share link, ex: https://1drv.ms/t/s!ABCJKL-ABCJKL?e=ABC123
         # file.url should be API URL, ex: https://api.onedrive.com/v1.0/drives/<container_id>/items/<resid>?authkey=<auth_key>
         # Auth key will be removed in database but a new one can be generated from scrape_item.url
+        if file.sha256 and await self.check_complete_by_hash(scrape_item.url, "sha256", file.sha256):
+            return
+
         filename, ext = self.get_filename_and_ext(file.name)
         scrape_item.uploaded_at = file.date
         await self.handle_file(
@@ -128,6 +131,7 @@ class Resource:
 class File(Resource):
     type: Literal["file"]
     download_url: AbsoluteHttpURL
+    sha256: str | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -185,6 +189,11 @@ class OneDriveAPI(API):
 def normalize_resource(resp: dict[str, Any]) -> File | Folder:
     dl_url = resp.get("@content.downloadUrl")
     is_folder = bool(resp.get("folder"))
+    try:
+        sha256 = resp["hashes"]["sha256Hash"]
+    except LookupError:
+        sha256 = None
+
     data = {
         "id": resp["id"],
         "drive_id": resp["parentReference"]["driveId"],
@@ -194,6 +203,7 @@ def normalize_resource(resp: dict[str, Any]) -> File | Folder:
         "date": dates.parse_iso(resp["fileSystemInfo"]["lastModifiedDateTime"]).timestamp(),
         "download_url": parse_url(dl_url) if dl_url else None,
         "children": [normalize_resource(c) for c in resp.get("children", ())],
+        "sha256": sha256,
     }
     return deserialize(Folder if is_folder else File, data)
 
