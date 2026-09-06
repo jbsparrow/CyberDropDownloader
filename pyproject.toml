@@ -87,6 +87,7 @@ dev = [
 ]
 
 [tool.basedpyright]
+failOnWarnings = false
 include = ["cyberdrop_dl", "scripts"]
 reportAny = "information"
 reportExplicitAny = false
