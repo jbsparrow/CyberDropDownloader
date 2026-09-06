@@ -22,7 +22,7 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## UNRELEASED
+## [10.8.0] - 2026-09-06
 
 ### Added
 
@@ -33,18 +33,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support mixing URLs and input files on the same run (all files must exists and all URLs/files must be positional arguments)
 - Support sub-file/sub-folder URLs (Box.com)
 - Support business URLs (Box.com)
+- Livid.com support
+- Peertube support
 
 ### Changed
 
+- The recommended python version is now 3.14
 - Allow multiple concurrent requests with Flaresolverr
 - `--skip-hosts` and `--only-hosts` now perform exact domain matching if an absolute URL is provided.
   ex: `--skip-hosts https://x.com` will skip `x.com` URLs but not `vix.com` URLs. Using `--skip-hosts x.com` will skip both
 - Hardcoded max rate limit to 3 requests/second (Pawchive)
 - Hardcoded concurrent downloads limit to 5 (Pawchive)
 
+### Deprecated
+
+- Support for `ffmpeg` versions older that v5.1 (2022-07) will be removed on a future release
+
 ### Fixed
 
 - Corrupted/mixed up video segments when downloading multiple concurrent HLS streams and `--subfolders.create` is `False`
+- Downloads always failing if `--impersonate` is used (Mega.nz)
 - `403 Forbidden` on all downloads (AdobeLightroom)
 - Parsing of embeded folder URLs (GoogleDrive)
 - `400 Bad request` for albums (PornHub)
