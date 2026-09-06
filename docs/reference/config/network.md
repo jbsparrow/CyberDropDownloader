@@ -233,13 +233,12 @@ If you use flaresolverr, this value **MUST** match with flaresolverr's user agen
 These crawlers will ignore custom user-agents and will always use `cyberdrop-dl/<version>`
 
 <!-- START_CUSTOM_UA_CRAWLERS -->
-
 - Archive.org
 - E621
 - MegaNz
+- Pawchive
 - RealDebrid
 - Transfer.it
-
 <!-- END_CUSTOM_UA_CRAWLERS -->
 
 {% endhint %}

@@ -56,7 +56,7 @@ See: <https://script-ware.gitbook.io/cyberdrop-dl/reference/config/crawlers#disa
 
 ## Supported sites
 
-List of sites supported by cyberdrop-dl-patched as of version 10.7.0
+List of sites supported by cyberdrop-dl-patched as of version 10.8.0
 
 ### 1fichier
 
@@ -171,7 +171,7 @@ List of sites supported by cyberdrop-dl-patched as of version 10.7.0
 
 **Primary URL**: [https://anysex.com](https://anysex.com)
 
-**Supported Domains**: `anysex.*`
+**Supported Domains**: `anysex.com`
 
 **Supported Paths**:
 
@@ -305,15 +305,17 @@ List of sites supported by cyberdrop-dl-patched as of version 10.7.0
 
 **Primary URL**: [https://www.box.com](https://www.box.com)
 
-**Supported Domains**: `app.box.com`
+**Supported Domains**: `.box.com`
 
 **Supported Paths**:
 
-- Embedded File or Folder:
-  - `app.box.com/embed/s?sh=<share_code>`
-  - `app.box.com/embed_widget/s?sh=<share_code>`
-- File or Folder:
-  - `app.box.com/s?sh=<share_code>`
+- Shared file/folder:
+  - `/embed/s?sh=<share_name>`
+  - `/embed_widget/s?sh=<share_name>`
+  - `/s/<share_name>`
+  - `/s/<share_name>/file/<file_id>`
+  - `/s/<share_name>/folder/<folder_id>`
+  - `/s?sh=<share_name>`
 
 ### Bunkr
 
@@ -1007,10 +1009,12 @@ List of sites supported by cyberdrop-dl-patched as of version 10.7.0
 - Docs:
   - `/document/d/<file_id>`
 - Files:
+  - `/download?id=<file_id>`
   - `/file/d/<file_id>`
 - Folders:
   - `/drive/folders/<folder_id>`
   - `/embeddedfolderview/<folder_id>`
+  - `/embeddedfolderview?id=<folder_id>`
 - Sheets:
   - `/spreadsheets/d/<file_id>`
 - Slides:
@@ -1453,6 +1457,18 @@ spreadsheets:
 - Streamer:
   - `/streamer/<streamer_id>`
 
+### Livid.com
+
+**Primary URL**: [https://livid.com](https://livid.com)
+
+**Supported Domains**: `livid.com`
+
+**Supported Paths**:
+
+- Video:
+  - `/embed/<video_id>`
+  - `/watch/<video_id>`
+
 ### Luscious
 
 **Primary URL**: [https://members.luscious.net](https://members.luscious.net)
@@ -1854,10 +1870,7 @@ spreadsheets:
 - Access Link:
   - `https://onedrive.live.com/?authkey=<KEY>&id=<ID>&cid=<CID>`
 - Share Link (anyone can access):
-  - `https://1drv.ms/b/<KEY>`
-  - `https://1drv.ms/f/<KEY>`
-  - `https://1drv.ms/t/<KEY>`
-  - `https://1drv.ms/u/<KEY>`
+  - `https://1drv.ms/<path>`
 
 ### OnePace
 
@@ -1948,6 +1961,46 @@ spreadsheets:
   - `?code=<share_code>`
   - `e.pc.cd/<short_code>`
   - `u.pc.cd/<short_code>`
+
+### Peertube
+
+**Primary URL**: [https://joinpeertube.org](https://joinpeertube.org)
+
+**Supported Domains**: `peertube.*`
+
+**Supported Paths**:
+
+- Account:
+  - `/a/<username>/videos`
+- Channel:
+  - `/c/<channel_uuid>`
+- Playlist:
+  - `/w/p/<playlist_uuid>`
+- Video:
+  - `/videos/watch/<short_uuid>`
+  - `/videos/watch/<video_uuid>`
+  - `/w/<short_uuid>`
+  - `/w/<video_uuid>`
+
+### PeerTubeGeneric
+
+**Primary URL**: [::GENERIC CRAWLER::](::GENERIC CRAWLER::)
+
+**Supported Domains**:
+
+**Supported Paths**:
+
+- Account:
+  - `/a/<username>/videos`
+- Channel:
+  - `/c/<channel_uuid>`
+- Playlist:
+  - `/w/p/<playlist_uuid>`
+- Video:
+  - `/videos/watch/<short_uuid>`
+  - `/videos/watch/<video_uuid>`
+  - `/w/<short_uuid>`
+  - `/w/<video_uuid>`
 
 ### PillowCase
 
@@ -2119,19 +2172,39 @@ spreadsheets:
 **Supported Paths**:
 
 - Album:
-  - `/album/...`
+  - `/album/<album_id>`
 - Channel:
-  - `/channel/...`
+  - `/channel/<name>`
 - Gif:
-  - `/gif/...`
+  - `/gif/<gif_id>`
 - Photo:
-  - `/photo/...`
+  - `/photo/<photo_id>`
 - Playlist:
-  - `/playlist/...`
+  - `/playlist/<playlist_id>`
 - Profile:
-  - `/model/...`
-  - `/pornstar/...`
-  - `/user/...`
+  - `/model/<name>`
+  - `/pornstar/<name>`
+  - `/users/<name>`
+- Profile albums:
+  - `/model/<name>/photos`
+  - `/pornstar/<name>/photos`
+  - `/users/<name>/photos`
+- Profile clips:
+  - `/model/<name>/clips`
+  - `/pornstar/<name>/clips`
+  - `/users/<name>/clips`
+- Profile gifs:
+  - `/model/<name>/gifs`
+  - `/pornstar/<name>/gifs`
+  - `/users/<name>/gifs`
+- Profile uploaded videos:
+  - `/model/<name>/videos/upload`
+  - `/pornstar/<name>/videos/upload`
+  - `/users/<name>/videos/upload`
+- Profile videos:
+  - `/model/<name>/videos`
+  - `/pornstar/<name>/videos`
+  - `/users/<name>/videos`
 - Video:
   - `/embed/<video_id>`
   - `/view_video.php?viewkey=<video_id>`
@@ -2484,6 +2557,22 @@ spreadsheets:
   - `/e/<video_id>`
 - Videos:
   - `/v/<video_id>`
+
+### Suvobox
+
+**Primary URL**: [https://www.suvobox.com](https://www.suvobox.com)
+
+**Supported Domains**: `suvobox.*`
+
+**Supported Paths**:
+
+- Album:
+  - `/a/<album_id>`
+- Direct File:
+  - `/d/<file_id>.<ext>`
+  - `/m/<file_id>-medium.<ext>`
+- File:
+  - `/f/<file_id>`
 
 ### T.co
 
