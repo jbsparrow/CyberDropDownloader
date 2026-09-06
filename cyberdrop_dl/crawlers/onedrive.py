@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from cyberdrop_dl.cache import disk_cached_method
 from cyberdrop_dl.crawlers.crawler import API, Crawler, SupportedDomains, SupportedPaths, URLConfig
-from cyberdrop_dl.exceptions import DownloadError, ScrapeError
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import dates, parse_url
 from cyberdrop_dl.utils.dataclass import deserialize
@@ -64,20 +64,20 @@ class OneDriveCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item.url):
             return
 
-        resorce = await self.api.resource(resource_id, drive_id, cred)
-        if resorce.type == "file":
-            await self._file(scrape_item, resorce, cred)
+        resource = await self.api.resource(resource_id, drive_id, cred)
+        if resource.type == "file":
+            await self._file(scrape_item, resource, cred)
             return
 
-        scrape_item.setup_as_album(self.create_title(resorce.name))
-        await self._walk_fs(scrape_item, resorce, cred)
+        scrape_item.setup_as_album(self.create_title(resource.name))
+        await self._walk_fs(scrape_item, resource, cred)
 
     async def _walk_fs(self, scrape_item: ScrapeItem, folder: Folder, cred: Credentials) -> None:
         subfolders: deque[tuple[tuple[str, ...], Folder]] = deque()
-        children = folder.children
         path = ()
 
         while True:
+            children = await self.api.children(folder.id, folder.drive_id, cred)
             for node in children:
                 if node.type == "folder":
                     subfolders.append(((*path, node.name), node))
@@ -91,9 +91,7 @@ class OneDriveCrawler(Crawler):
             if not subfolders:
                 return
 
-            path, next_folder = subfolders.popleft()
-            resource = await self.api.resource(next_folder.id, next_folder.drive_id, cred)
-            children = resource.children
+            path, folder = subfolders.popleft()
 
     @error_handling_wrapper
     async def _file(self, scrape_item: ScrapeItem, file: File, cred: Credentials) -> None:
@@ -129,7 +127,6 @@ class Resource:
     name: str
     date: float
     web_url: AbsoluteHttpURL
-    children: list[File | Folder]
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -182,13 +179,13 @@ class OneDriveAPI(API):
 
     async def resource(self, resource_id: str, drive_id: str, cred: Credentials) -> File | Folder:
         url = self.resolve(resource_id, drive_id, cred)
-        try:
-            resp = await self.request_json(url.with_query(expand="children", orderby="folder,name"))
-        except DownloadError as e:
-            if e.status != 422:
-                raise  # Error: Children cannot be listed from an item that is not a folder
-            resp = await self.request_json(url)
+        resp = await self.request_json(url)
         return normalize_resource(resp)
+
+    async def children(self, resource_id: str, drive_id: str, cred: Credentials) -> list[File | Folder]:
+        url = self.resolve(resource_id, drive_id, cred)
+        resp = await self.request_json(url.with_query(expand="children", orderby="folder,name"))
+        return [normalize_resource(c) for c in resp.get("children", ())]
 
 
 def normalize_resource(resp: dict[str, Any]) -> File | Folder:
@@ -207,7 +204,6 @@ def normalize_resource(resp: dict[str, Any]) -> File | Folder:
         "type": "folder" if is_folder else "file",
         "date": dates.parse_iso(resp["fileSystemInfo"]["lastModifiedDateTime"]).timestamp(),
         "download_url": parse_url(dl_url) if dl_url else None,
-        "children": [normalize_resource(c) for c in resp.get("children", ())],
         "sha256": sha256,
     }
     return deserialize(Folder if is_folder else File, data)
