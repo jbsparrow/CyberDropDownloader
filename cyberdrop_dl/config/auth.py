@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 import logging
 from typing import TYPE_CHECKING, Any, override
 
@@ -14,7 +13,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 logger = logging.getLogger(__name__)
-_HAS_APPRISE = importlib.util.find_spec("apprise") is not None
 
 
 def _censor(value: object) -> object:
@@ -61,7 +59,12 @@ class Notifications(CensoredModel):
     @override
     def model_post_init(self, context: Any, /) -> None:
         super().model_post_init(context)
-        if self.apprise and not _HAS_APPRISE:
+        if not self.apprise:
+            return
+
+        import importlib.util
+
+        if not importlib.util.find_spec("apprise"):
             logger.warning("Found apprise URLs for notifications but apprise is not installed. Ignoring")
             self.apprise = ()
 

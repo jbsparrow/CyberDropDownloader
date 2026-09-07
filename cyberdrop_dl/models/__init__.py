@@ -1,19 +1,20 @@
 """Pydantic models"""
 
+from __future__ import annotations
+
 import logging
-import time
-import warnings
-from collections.abc import Generator, Iterable
-from typing import Any, ClassVar, Final, Self, TypedDict, final, get_args, get_origin, override
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, TypedDict, final, get_args, get_origin, override
 
 from cyclopts import Parameter
-from cyclopts.annotations import resolve
 from pydantic import AnyUrl, BaseModel, Secret, SerializationInfo, TypeAdapter, model_serializer, model_validator
-from pydantic.fields import FieldInfo
+from pydantic.fields import FieldInfo  # noqa: TC002
 
 from cyberdrop_dl import env
 from cyberdrop_dl.constants import DEFAULT_PARAMETER
 from cyberdrop_dl.utils import fast_cache, operators
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,8 @@ class ConfigModel(DeferredModel, extra="forbid"):
         deprecated = self.model_fields_set.intersection(_deprecated_fields(self))
         if not deprecated:
             return
+
+        import time
 
         for field in deprecated:
             warn_id = type(self), field
@@ -241,6 +244,8 @@ class FieldMetadata:
 
     @classmethod
     def _resolve(cls, model: BaseModel) -> Generator[str]:
+        import warnings
+
         for name, field in type(model).model_fields.items():
             if cls._check(field):
                 yield name
@@ -259,6 +264,8 @@ class AdditiveArg(FieldMetadata):
     @override
     @classmethod
     def _check(cls, field: FieldInfo) -> bool:
+        from cyclopts.annotations import resolve
+
         if get_origin(field.annotation) in {set, list, tuple}:
             arg = resolve(get_args(field.annotation)[0])
             all_args = get_args(arg) or [arg]
@@ -269,6 +276,8 @@ class AdditiveArg(FieldMetadata):
 
 
 def _is_str(type_: object) -> bool:
+    from cyclopts.annotations import resolve
+
     type_ = resolve(type_)
     if type_ is str:
         return True
