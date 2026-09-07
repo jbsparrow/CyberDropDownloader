@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import builtins
 import contextlib
+import contextvars
 import dataclasses
 import shutil
 import sys
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from _typeshed import OpenBinaryMode, OpenTextMode
+
 
 _T_co = TypeVar("_T_co", covariant=True)
 
@@ -558,70 +560,41 @@ def periodic_sleep(period: int, /) -> Callable[[], Awaitable[None]]:
     return sleep
 
 
-@dataclasses.dataclass(frozen=True, slots=True, eq=False)
-class BackgroundTask:
+@contextlib.asynccontextmanager
+async def backgroud_task(
+    fn: Callable[[], Awaitable[Any]], *, period: float, name: str | None = None
+) -> AsyncGenerator[None]:
     "Run a callable very <period>"
+    if period < 0.1:
+        raise ValueError(f"{period = } is too low. Must be > 0.1")
 
-    fn: Callable[[], Awaitable[Any]]
-    period: float
-    name: str | None = None
-    cancel_msg: str = "Background task took too long"
-    cancel_timeout: float = 0.2
+    done: asyncio.Event = asyncio.Event()
 
-    _cancelled: asyncio.Event = dataclasses.field(init=False, default_factory=asyncio.Event)
-    _done: asyncio.Event = dataclasses.field(init=False, default_factory=asyncio.Event)
-    _task: asyncio.Task[None] = dataclasses.field(init=False, repr=False)
+    async def run_forever() -> None:
+        while True:
+            await fn()
+            try:
+                await asyncio.wait_for(done.wait(), period)
+            except TimeoutError:
+                continue
 
-    @property
-    def cancelled(self) -> bool:
-        return self._cancelled.is_set()
+    task = asyncio.create_task(run_forever(), name=name, context=contextvars.copy_context())
+    try:
+        yield
+    finally:
+        done.set()
+        await discard(task)
 
-    @property
-    def done(self) -> bool:
-        return self._cancelled.is_set()
 
-    def __post_init__(self) -> None:
-        assert self.period >= 0.01
-        assert self.cancel_msg
+def discard(fut: asyncio.Future[Any], /, grace_timeout: float = 0.01) -> asyncio.Future[None]:
+    async def kill() -> None:
+        if fut.done():
+            return
 
-    async def __aenter__(self) -> Self:
-        if self.done:
-            raise RuntimeError("This background task is already done. Create a new instance")
-        if self.cancelled:
-            raise RuntimeError("This background task has already been cancelled. Create a new instance")
-        object.__setattr__(self, "_task", asyncio.create_task(self._run_forever(), name=self.name))
-        return self
-
-    async def __aexit__(
-        self,
-        et: type[BaseException] | None,
-        exc: BaseException | None,
-        tb: TracebackType | None,
-    ) -> None:
-        self._cancelled.set()
         try:
-            async with asyncio.timeout(self.period + self.cancel_timeout):
-                await self._done.wait()
+            async with asyncio.timeout(grace_timeout):
+                await fut
         except TimeoutError:
-            await self._force_cancel()
+            return
 
-    async def _force_cancel(self) -> None:
-        try:
-            _ = self._task.cancel(self.cancel_msg)
-            await self._task
-        except asyncio.CancelledError:
-            pass
-
-    async def _run_forever(self) -> None:
-        try:
-            while True:
-                await self.fn()
-                try:
-                    async with asyncio.timeout(self.period):
-                        await self._cancelled.wait()
-                except TimeoutError:
-                    continue
-                else:
-                    return
-        finally:
-            self._done.set()
+    return asyncio.shield(kill())

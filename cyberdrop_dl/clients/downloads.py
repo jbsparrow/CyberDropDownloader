@@ -142,13 +142,13 @@ class DownloadClient:
             url=media_item.url,
         )
 
-    def _track_speed(self, hook: ProgressHook) -> aio.BackgroundTask:
+    def _track_speed(self, hook: ProgressHook):
         "force update task speed at least every 0.1 seconds"
 
         async def update_speed() -> None:
             hook.advance(0)
 
-        return aio.BackgroundTask(update_speed, period=0.1)
+        return aio.backgroud_task(update_speed, period=0.1)
 
     async def _append_content(self, media_item: MediaItem, hook: ProgressHook, resp: AbstractResponse[Any]) -> None:
         check_free_space = storage.create_free_space_checker(media_item)
