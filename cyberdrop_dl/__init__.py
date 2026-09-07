@@ -1,25 +1,26 @@
-import importlib.metadata
-import re
+from __future__ import annotations
+
+TYPE_CHECKING = False
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 __dist_name__ = "cyberdrop-dl-patched"
-_distribution = importlib.metadata.distribution(__dist_name__)
-__version__ = _distribution.version
-__repo_url__ = next(
-    f.removeprefix(prefix) for f in _distribution.metadata.json["project_url"] if f.startswith(prefix := "Repository, ")
-)
+__version__ = "10.8.0"
+__repo_url__ = "https://github.com/Cyberdrop-DL/cyberdrop-dl"
 
 
-def _get_version(name: str) -> str | None:
-    try:
-        return importlib.metadata.version(name)
-    except importlib.metadata.PackageNotFoundError:
-        return None
+def dependencies() -> Generator[tuple[str, str | None]]:
+    import importlib.metadata
+    import re
 
+    for req in importlib.metadata.distribution(__dist_name__).requires or []:
+        m = re.match(r"^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?", req)
+        assert m is not None
+        pkg = m.group(0)
+        try:
+            version = importlib.metadata.version(pkg)
+        except importlib.metadata.PackageNotFoundError:
+            version = None
 
-def _parse_name(pep508_requirement: str) -> str:
-    m = re.match(r"^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?", pep508_requirement)
-    assert m is not None
-    return m.group(0)
-
-
-ALL_DEPENDENCIES = {pkg: _get_version(pkg) for req in (_distribution.requires or []) if (pkg := _parse_name(req))}
+        yield pkg, version

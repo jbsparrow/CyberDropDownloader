@@ -33,19 +33,24 @@ def run_cdl(args: Sequence[str] | None = None) -> int:
     tracebacks.install_exception_hook()
 
     with setup_console_logging():
-        from pydantic import ValidationError
-
         from cyberdrop_dl.cli import app
         from cyberdrop_dl.exceptions import CDLConfigRuntimeErrorsGroup, DatabaseError
 
         try:
             app(parse_tokens(args))
-        except (ValidationError, DatabaseError) as exc:
+        except DatabaseError as exc:
             tb = tracebacks.from_exception(exc.with_traceback(None))
             app.console.print(_error_panel(tb))
         except CDLConfigRuntimeErrorsGroup as exc_group:
             tb = tracebacks.from_exception(exc_group)
             app.console.print(_error_panel(tb, title=exc_group.message or "Invalid Config"))
+        except ValueError as exc:
+            from pydantic_core import ValidationError
+
+            if not isinstance(exc, ValidationError):
+                raise
+            tb = tracebacks.from_exception(exc.with_traceback(None))
+            app.console.print(_error_panel(tb))
         else:
             return 0
 

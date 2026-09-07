@@ -8,7 +8,7 @@ import sys
 import time
 from typing import TYPE_CHECKING, Any, Self, final
 
-from cyberdrop_dl import ALL_DEPENDENCIES, __version__, aio, env, ffmpeg, stats
+from cyberdrop_dl import __version__, aio, dependencies, env, ffmpeg, stats
 from cyberdrop_dl.cache import cache_context
 from cyberdrop_dl.clients.downloads import DownloadClient
 from cyberdrop_dl.clients.http import HTTPClient
@@ -185,7 +185,7 @@ class Manager:
 def _log_dependencies() -> None:
     if not env.DEBUG_MODE:
         return
-    logger.debug({"dependencies": ALL_DEPENDENCIES})
+    logger.debug({"dependencies": dict(dependencies())})
 
 
 def _log_database(path: Path) -> None:

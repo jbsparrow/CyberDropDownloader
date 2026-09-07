@@ -6,9 +6,7 @@ from __future__ import annotations
 import asyncio
 import builtins
 import contextlib
-import contextvars
 import dataclasses
-import shutil
 import sys
 from pathlib import Path
 from stat import S_ISREG
@@ -448,13 +446,18 @@ def to_thread[**P, R](fn: Callable[P, R]) -> Callable[P, Coroutine[None, None, R
     return async_run
 
 
+@to_thread
+def move(src: Path, dst: Path) -> None:
+    import shutil
+
+    shutil.move(src, dst)
+
+
 chmod = to_thread(Path.chmod)
-copy = to_thread(shutil.copy)
 exists = to_thread(Path.exists)
 is_dir = to_thread(Path.is_dir)
 is_file = to_thread(Path.is_file)
 mkdir = to_thread(Path.mkdir)
-move = to_thread(shutil.move)
 read_bytes = to_thread(Path.read_bytes)
 read_text = to_thread(Path.read_text)
 resolve = to_thread(Path.resolve)
@@ -568,6 +571,8 @@ async def backgroud_task(
     if period < 0.1:
         raise ValueError(f"{period = } is too low. Must be > 0.1")
 
+    import contextvars
+
     done: asyncio.Event = asyncio.Event()
 
     async def run_forever() -> None:
@@ -577,6 +582,8 @@ async def backgroud_task(
                 await asyncio.wait_for(done.wait(), period)
             except TimeoutError:
                 continue
+            else:
+                return
 
     task = asyncio.create_task(run_forever(), name=name, context=contextvars.copy_context())
     try:

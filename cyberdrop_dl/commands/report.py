@@ -21,7 +21,7 @@ def _table(title: str | None, headers: Sequence[str], rows: Iterable[Row]) -> st
 
 
 def generate_report() -> str:
-    from cyberdrop_dl import ALL_DEPENDENCIES, __version__, ffmpeg
+    from cyberdrop_dl import __version__, dependencies, ffmpeg
     from cyberdrop_dl.__main__ import __file__ as entrypoint
     from cyberdrop_dl.config.appdata import AppData
     from cyberdrop_dl.utils import get_system_information
@@ -51,7 +51,7 @@ def generate_report() -> str:
             _table(
                 "Dependencies",
                 ["Package", "Version"],
-                _unpack(ALL_DEPENDENCIES.items()),
+                _unpack(dependencies()),
             ),
         ]
     )
