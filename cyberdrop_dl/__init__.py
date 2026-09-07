@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import importlib.metadata
+
 TYPE_CHECKING = False
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
 __dist_name__ = "cyberdrop-dl-patched"
-__version__ = "10.8.0"
+__version__ = importlib.metadata.version(__dist_name__)
 __repo_url__ = "https://github.com/Cyberdrop-DL/cyberdrop-dl"
 
 
 def dependencies() -> Generator[tuple[str, str | None]]:
-    import importlib.metadata
     import re
 
     for req in importlib.metadata.distribution(__dist_name__).requires or []:
