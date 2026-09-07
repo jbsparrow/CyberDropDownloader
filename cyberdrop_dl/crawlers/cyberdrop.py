@@ -73,7 +73,7 @@ class CyberdropCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item.url):
             return
 
-        info, auth = await aio.safe_gather(self.api.file_info(file_id), self.api.file_auth(file_id))
+        info, auth = await aio.gather(self.api.file_info(file_id), self.api.file_auth(file_id), fail_fast=False)
 
         name: str = info["name"]
         filename, ext = self.get_filename_and_ext(name)

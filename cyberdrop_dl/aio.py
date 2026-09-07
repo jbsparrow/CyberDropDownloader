@@ -28,6 +28,7 @@ if TYPE_CHECKING:
         Coroutine,
         Iterable,
         Iterator,
+        Mapping,
         Sequence,
     )
     from contextvars import Context
@@ -237,49 +238,100 @@ class AsyncIteratorWrapper[T]:
         return cast("T", value)
 
 
-async def gather[T](*coros: Awaitable[T]) -> list[T]:
-    """Like asyncio.gather but an exception on any coro cancels all pending coros
-
-    AKA: all or nothing"""
-
-    async def wrap(coro: Awaitable[T]) -> T:
-        return await coro
-
-    async with asyncio.TaskGroup() as tg:
-        tasks = [tg.create_task(wrap(coro)) for coro in coros]
-
-    return [t.result() for t in tasks]
+@overload
+async def gather[T1](coro1: Awaitable[T1], /, *, fail_fast: bool = True) -> tuple[T1]: ...
 
 
 @overload
-async def safe_gather[T1](coro: Awaitable[T1], /) -> tuple[T1]: ...
+async def gather[T1, T2](coro1: Awaitable[T1], coro2: Awaitable[T2], /, *, fail_fast: bool = True) -> tuple[T1, T2]: ...
+
+
 @overload
-async def safe_gather[T1, T2](coro_1: Awaitable[T1], coro_2: Awaitable[T2], /) -> tuple[T1, T2]: ...
-@overload
-async def safe_gather[T1, T2, T3](
-    coro_1: Awaitable[T1],
-    coro_2: Awaitable[T2],
-    coro_3: Awaitable[T3],
-    /,
+async def gather[T1, T2, T3](
+    coro1: Awaitable[T1], coro2: Awaitable[T2], coro3: Awaitable[T3], /, *, fail_fast: bool = True
 ) -> tuple[T1, T2, T3]: ...
 
 
-async def safe_gather[T1, T2, T3](
-    coro_1: Awaitable[T1],
-    coro_2: Awaitable[T2] | None = None,
-    coro_3: Awaitable[T3] | None = None,
+@overload
+async def gather[T1, T2, T3, T4](
+    coro1: Awaitable[T1], coro2: Awaitable[T2], coro3: Awaitable[T3], coro4: Awaitable[T4], /, *, fail_fast: bool = True
+) -> tuple[T1, T2, T3, T4]: ...
+
+
+@overload
+async def gather[T1, T2, T3, T4, T5](
+    coro1: Awaitable[T1],
+    coro2: Awaitable[T2],
+    coro3: Awaitable[T3],
+    coro4: Awaitable[T4],
+    coro5: Awaitable[T5],
     /,
-) -> Sequence[T1 | T2 | T3]:
-    """Like `asyncio.gather(*coros, return_exceptions=True)`, but all exceptions are re-raised as an ExceptionGroup
+    *,
+    fail_fast: bool = True,
+) -> tuple[T1, T2, T3, T4, T5]: ...
 
-    In the same order as they were scheduled. This makes errors deterministic"""
 
-    coros = filter(None, (coro_1, coro_2, coro_3))
+@overload
+async def gather[T1, T2, T3, T4, T5, T6](
+    coro1: Awaitable[T1],
+    coro2: Awaitable[T2],
+    coro3: Awaitable[T3],
+    coro4: Awaitable[T4],
+    coro5: Awaitable[T5],
+    coro6: Awaitable[T6],
+    /,
+    *,
+    fail_fast: bool = True,
+) -> tuple[T1, T2, T3, T4, T5, T6]: ...
+
+
+@overload
+async def gather[T](*coros: Awaitable[T], fail_fast: bool = True) -> list[T]: ...
+
+
+async def gather[T](*coros: Awaitable[T], fail_fast: bool = True) -> Sequence[T]:  # pyright: ignore[reportInconsistentOverload]
+    """Like asyncio.gather(*coros, return_exceptions=False).
+
+    if `fail_fast` is `True`, an exception on any coro immediately cancels all pending coros and is re-raised as an ExceptionGroup
+
+    if `fail_fast` is `False`, it waits for all coros to complete. It there was any exception, they are grouped and re-raised as an ExceptionGroup
+    in the same order as they were scheduled. This makes errors deterministic.
+    """
+
+    if fail_fast:
+        results, _ = await _tg_gather(coros, return_exceptions=False)
+        return results
+
     results = await asyncio.gather(*coros, return_exceptions=True)  # noqa: TID251
     errors = tuple(r for r in results if isinstance(r, BaseException))
     if errors:
         raise BaseExceptionGroup("", errors)
-    return cast("list[T1 | T2 | T3]", results)
+    return cast("list[T]", results)
+
+
+def _values_sorted_by_key[T](results: Mapping[int, T]) -> list[T]:
+    return [result for _, result in sorted(results.items())]
+
+
+async def _tg_gather[T](
+    coros: Iterable[Awaitable[T]], *, return_exceptions: bool = False
+) -> tuple[list[T], list[Exception]]:
+    results: dict[int, T] = {}
+    errors: dict[int, Exception] = {}
+
+    async def wrap(idx: int, coro: Awaitable[T]) -> None:
+        try:
+            results[idx] = await coro
+        except Exception as e:
+            if not return_exceptions:
+                raise
+            errors[idx] = e
+
+    async with asyncio.TaskGroup() as tg:
+        for idx, coro in enumerate(coros):
+            tg.create_task(wrap(idx, coro))
+
+    return _values_sorted_by_key(results), _values_sorted_by_key(errors)
 
 
 async def map[T, R](
@@ -305,12 +357,12 @@ async def afilter[T](
 ) -> filter[T]:
     ## TODO use queue for lazy iteration with queue.shutdown when dropping pythohn 3.12
 
-    async def fn(value: T) -> T | MISSING:  # pyright: ignore[reportInvalidTypeForm]
+    async def fn(value: T) -> T:
         if await predicate(value):
             return value
         return MISSING
 
-    results = await map(fn, params, task_limit=task_limit)  # pyright: ignore[reportUnknownArgumentType]
+    results = await map(fn, params, task_limit=task_limit)
     return filter(lambda x: x is not MISSING, results)
 
 
@@ -372,7 +424,7 @@ async def map_tuples[*Ts, R](
             else:
                 tg.create_task(run(idx, coro_factory(*params)))
 
-    return [result for _, result in sorted(results.items())]
+    return _values_sorted_by_key(results)
 
 
 def run[T](coro: Coroutine[Any, Any, T]) -> T:

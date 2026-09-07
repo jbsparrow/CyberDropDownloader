@@ -27,6 +27,7 @@ class GoFileCrawler(Crawler):
             "/download/<content_id>/<filename>",
             "/download/web/<content_id>/<filename>",
         ),
+        "Direct link (Premium)": ("/download/direct/<content_id>/<filename>",),
         "**NOTE**": (
             "Use `password` as a query param to download password protected folders",
             "ex: https://gofile.io/d/ABC654?password=1234",

@@ -145,9 +145,10 @@ class RealDebridAPI(API):
         return bool(self._folder_regex.search(str(url)))
 
     async def connect(self) -> None:
-        responses: tuple[list[str], list[str]] = await aio.safe_gather(
+        responses: tuple[list[str], list[str]] = await aio.gather(
             self._request("hosts/regex"),
             self._request("hosts/regexFolder"),
+            fail_fast=False,
         )
 
         file_regex = (pattern[1:-1] for pattern in responses[0])
