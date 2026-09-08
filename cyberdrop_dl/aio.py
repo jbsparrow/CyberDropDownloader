@@ -593,15 +593,24 @@ async def backgroud_task(
         await discard(task)
 
 
+def current_task() -> asyncio.Task[Any]:
+    task = asyncio.current_task()
+    assert task is not None
+    return task
+
+
 def discard(fut: asyncio.Future[Any], /, grace_timeout: float = 0.01) -> asyncio.Future[None]:
-    async def kill() -> None:
+    async def wait_or_cancel() -> None:
         if fut.done():
             return
 
         try:
             async with asyncio.timeout(grace_timeout):
                 await fut
+        except asyncio.CancelledError:
+            if not fut.done() or current_task().cancelling() > 0:
+                raise
         except TimeoutError:
             return
 
-    return asyncio.shield(kill())
+    return asyncio.shield(wait_or_cancel())
