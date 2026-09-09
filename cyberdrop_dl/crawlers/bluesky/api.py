@@ -12,10 +12,6 @@ _BLOB_ENDPOINT = AbsoluteHttpURL("https://bsky.social/xrpc/com.atproto.sync.getB
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Iterable
 
-    from cyberdrop_dl.cache import TTLCacheAdapter
-    from cyberdrop_dl.clients.http import HTTPClient, HTTPContext
-    from cyberdrop_dl.config import Config
-
 
 class BlueskyAPI(API):
     ENTRYPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://api.bsky.app/xrpc")
