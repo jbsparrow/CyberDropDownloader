@@ -58,6 +58,7 @@ class BlueskyCrawler(Crawler):
                 self._post(new_item, post)
                 scrape_item.add_children()
 
+    @error_handling_wrapper
     def _post(self, scrape_item: ScrapeItem, post: dict[str, Any]) -> None:
         record = post["record"]
         author = post["author"]
