@@ -10,6 +10,8 @@ from cyberdrop_dl.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from cyberdrop_dl.url_objects import ScrapeItem
 
 
