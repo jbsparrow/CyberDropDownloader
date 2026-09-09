@@ -6,8 +6,6 @@ from cyberdrop_dl.crawlers.crawler import API
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 
 _PAGE_SIZE = 100
-_THREAD_DEPTH = 100
-_PARENT_HEIGHT = 0
 _BLOB_ENDPOINT = AbsoluteHttpURL("https://bsky.social/xrpc/com.atproto.sync.getBlob")
 
 if TYPE_CHECKING:
