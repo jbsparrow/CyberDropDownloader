@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import deque
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import API
@@ -32,20 +33,26 @@ class BlueskyAPI(API):
         url = (self.ENTRYPOINT / "app.bsky.actor.getProfile").with_query(actor=actor_did)
         return await self.request_json(url)
 
-    async def post_thread(self, actor: str, post_id: str, depth: int = 100, parent_height: int = 0) -> list[dict[str, Any]]:
+    async def post_thread(
+        self, actor: str, post_id: str, depth: int = 100, parent_height: int = 0
+    ) -> list[dict[str, Any]]:
         actor_did = await self.resolve_handle(actor)
         url = (self.ENTRYPOINT / "app.bsky.feed.getPostThread").with_query(
             uri=f"at://{actor_did}/app.bsky.feed.post/{post_id}", depth=depth, parentHeight=parent_height
         )
         response: dict[str, Any] = await self.request_json(url)
-        posts: list[dict[str, Any]] = []
-        pending = [response["thread"]]
-        while pending:
-            post = pending.pop(0)
-            if post.get("$type") == "app.bsky.feed.defs#threadViewPost":
-                posts.append(post["post"])
-                pending.extend(post.get("replies", ()))
-        return posts
+        pending = deque()
+        pending.append(response["thread"])
+
+        def posts():
+            while pending:
+                thread = pending.popleft()
+                if thread.get("$type") != "app.bsky.feed.defs#threadViewPost":
+                    continue
+                yield (thread["post"])
+                pending.extend(thread.get("replies", ()))
+
+        return posts()
 
     def author_feed(
         self, actor: str, feed_filter: str = "posts_with_media"
