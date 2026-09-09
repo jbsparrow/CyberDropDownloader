@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections import deque
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -12,9 +13,25 @@ _BLOB_ENDPOINT = AbsoluteHttpURL("https://bsky.social/xrpc/com.atproto.sync.getB
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Iterable
 
+    from cyberdrop_dl.cache import TTLCacheAdapter
+    from cyberdrop_dl.clients.http import HTTPClient, HTTPContext
+    from cyberdrop_dl.config import Config
+
 
 class BlueskyAPI(API):
     ENTRYPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://api.bsky.app/xrpc")
+
+    def __init__(
+        self,
+        domain: str,
+        config: Config,
+        cache: TTLCacheAdapter[Any],
+        client: HTTPClient,
+        ctx: HTTPContext | None = None,
+    ) -> None:
+        super().__init__(domain, config, cache, client, ctx)
+        self._handle_cache: dict[str, str] = {}
+        self._handle_locks: dict[str, asyncio.Lock] = {}
 
     @staticmethod
     def blob_url(did: str, cid: str) -> AbsoluteHttpURL:
@@ -24,9 +41,24 @@ class BlueskyAPI(API):
     async def resolve_handle(self, actor: str) -> str:
         if actor.startswith("did:"):
             return actor
-        url = (self.ENTRYPOINT / "com.atproto.identity.resolveHandle").with_query(handle=actor)
-        response: dict[str, str] = await self.request_json(url)
-        return response["did"]
+
+        if actor in self._handle_cache:
+            return self._handle_cache[actor]
+
+        lock = self._handle_locks.setdefault(actor, asyncio.Lock())
+
+        async with lock:
+            if actor in self._handle_cache:
+                return self._handle_cache[actor]
+
+            url = (self.ENTRYPOINT / "com.atproto.identity.resolveHandle").with_query(handle=actor)
+            response: dict[str, str] = await self.request_json(url)
+            did = response["did"]
+
+            self._handle_cache[actor] = did
+            self._handle_locks.pop(actor, None)
+
+            return did
 
     async def profile(self, actor: str) -> dict[str, Any]:
         actor_did = await self.resolve_handle(actor)
