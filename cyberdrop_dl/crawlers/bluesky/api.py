@@ -34,11 +34,10 @@ class BlueskyAPI(API):
         url = (self.ENTRYPOINT / "app.bsky.actor.getProfile").with_query(actor=actor_did)
         return await self.request_json(url)
 
-    async def post_thread(self, actor: str, post_id: str) -> list[dict[str, Any]]:
+    async def post_thread(self, actor: str, post_id: str, depth: int = 100, parent_height: int = 0) -> list[dict[str, Any]]:
         actor_did = await self.resolve_handle(actor)
-        uri = f"at://{actor_did}/app.bsky.feed.post/{post_id}"
         url = (self.ENTRYPOINT / "app.bsky.feed.getPostThread").with_query(
-            uri=uri, depth=_THREAD_DEPTH, parentHeight=_PARENT_HEIGHT
+            uri=f"at://{actor_did}/app.bsky.feed.post/{post_id}", depth=depth, parentHeight=parent_height
         )
         response: dict[str, Any] = await self.request_json(url)
         posts: list[dict[str, Any]] = []
