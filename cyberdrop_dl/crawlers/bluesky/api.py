@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from cyberdrop_dl.crawlers.crawler import API
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 
-_PAGE_SIZE = 100
 _BLOB_ENDPOINT = AbsoluteHttpURL("https://bsky.social/xrpc/com.atproto.sync.getBlob")
 
 if TYPE_CHECKING:
@@ -91,7 +90,7 @@ class BlueskyAPI(API):
     ) -> AsyncGenerator[Iterable[dict[str, Any]]]:
         return self._paginate(
             "app.bsky.feed.getAuthorFeed",
-            {"actor": actor, "filter": feed_filter, "limit": _PAGE_SIZE},
+            {"actor": actor, "filter": feed_filter},
         )
 
     async def _paginate(
