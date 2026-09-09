@@ -111,7 +111,13 @@ class TwitterCrawler(Crawler):
         if after := self.config.filters.after:
             self._default_since = int(datetime.datetime.combine(after, datetime.time.min).timestamp())
 
+    @classmethod
+    @override
+    def check_host_match(cls, host: str) -> bool:
+        return host == "x.com" or not host.endswith("x.com")
+
     @property
+    @override
     def separate_posts(self) -> bool:
         return True
 

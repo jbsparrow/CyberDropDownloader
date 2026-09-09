@@ -224,6 +224,10 @@ class Crawler(HTTPMixin, HLSMixin, ABC):
     def __db_path__(url: AbsoluteHttpURL, /) -> str:
         return url.path
 
+    @classmethod
+    def check_host_match(cls, host: str) -> bool:
+        return bool(host)
+
     @final
     def __init__(self, manager: Manager, task_mng: aio.TaskManager, tui: ScrapingUI) -> None:
         self.manager: Manager = manager

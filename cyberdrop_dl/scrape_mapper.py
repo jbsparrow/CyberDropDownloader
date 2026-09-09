@@ -463,16 +463,18 @@ def _disable_crawlers_by_config(current_crawlers: dict[str, type[Crawler]], *cra
     log_spacer()
 
 
-def _best_match[T](current_map: dict[str, T], domain: str) -> T | None:
-    if found := current_map.get(domain):
+def _best_match[T: Crawler | type[Crawler]](crawlers: dict[str, T], domain: str) -> T | None:
+    if found := crawlers.get(domain):
         return found
 
+    matches = (host for host, cls in crawlers.items() if host in domain and cls.check_host_match(host))
+
     try:
-        best_match = max((host for host in current_map if host in domain), key=len)
+        best_match = max(matches, key=len)
     except (ValueError, TypeError):
         return None
     else:
-        current_map[domain] = found = current_map[best_match]
+        crawlers[domain] = found = crawlers[best_match]
         return found
 
 
