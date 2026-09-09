@@ -99,11 +99,11 @@ class BlueskyAPI(API):
         if "actor" in params:
             params["actor"] = await self.resolve_handle(params["actor"])
 
+        url = (self.ENTRYPOINT / endpoint).with_query(params).update_query(limit=100)
         while True:
-            url = (self.ENTRYPOINT / endpoint).with_query(params)
             response: dict[str, Any] = await self.request_json(url)
             yield response.get(key, response.get("posts", ()))
             cursor = response.get("cursor")
             if not cursor:
                 return
-            params["cursor"] = cursor
+            url = url.update_query(cursor=cursor)
