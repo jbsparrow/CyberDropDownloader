@@ -290,7 +290,7 @@ async def gather[T](*coros: Awaitable[T], fail_fast: bool = True) -> list[T]: ..
 
 
 async def gather[T](*coros: Awaitable[T], fail_fast: bool = True) -> Sequence[T]:  # pyright: ignore[reportInconsistentOverload]
-    """Like asyncio.gather(*coros, return_exceptions=False).
+    """Like asyncio.gather(*coros, return_exceptions=False), but all coros always finish or are cancelled
 
     if `fail_fast` is `True`, an exception on any coro immediately cancels all pending coros and is re-raised as an ExceptionGroup
 
@@ -355,7 +355,7 @@ async def afilter[T](
     *,
     task_limit: asyncio.BoundedSemaphore | int | None = None,
 ) -> filter[T]:
-    ## TODO use queue for lazy iteration with queue.shutdown when dropping pythohn 3.12
+    ## TODO use queue for lazy iteration with queue.shutdown when dropping python 3.12
 
     async def fn(value: T) -> T:
         if await predicate(value):
@@ -425,6 +425,69 @@ async def map_tuples[*Ts, R](
                 tg.create_task(run(idx, coro_factory(*params)))
 
     return _values_sorted_by_key(results)
+
+
+@contextlib.asynccontextmanager
+async def as_completed[*Ts, R](
+    coro_factory: Callable[[*Ts], Awaitable[R]],
+    params_batched: Iterable[tuple[*Ts]],
+    /,
+    *,
+    task_limit: int,
+) -> AsyncGenerator[AsyncIterator[R]]:
+
+    # TODO: use queue.shutdown in python 3.13
+
+    if task_limit < 1:
+        raise ValueError("task_limit must be positive")
+
+    queue = asyncio.Queue[R]()
+    shutdown: asyncio.Event = asyncio.Event()
+    params = iter(params_batched)
+
+    async def worker() -> None:
+        while not shutdown.is_set():
+            try:
+                args = builtins.next(params)
+            except StopIteration:
+                return
+
+            # TODO: How to handle exceptions here? log them?
+            # if this fails, the producer taskgroup explodes
+            # and the other workers are also cancelled
+            result = await coro_factory(*args)
+            if shutdown.is_set():
+                return
+            queue.put_nowait(result)
+
+    async def create_workers() -> None:
+        try:
+            async with asyncio.TaskGroup() as tg:
+                for _ in range(task_limit):
+                    tg.create_task(worker())
+        finally:
+            queue.put_nowait(MISSING)
+
+    async with asyncio.TaskGroup() as tg:
+        producer = tg.create_task(create_workers())
+        consumer = queue_consumer(queue)
+        try:
+            yield consumer
+        finally:
+            shutdown.set()
+            producer.cancel()
+            await consumer.aclose()
+
+
+async def queue_consumer[T](queue: asyncio.Queue[T], stop_sentinel: Any = MISSING) -> AsyncGenerator[T]:
+    while True:
+        result = await queue.get()
+        try:
+            if result is stop_sentinel:
+                return
+            yield result
+        finally:
+            queue.task_done()
 
 
 def run[T](coro: Coroutine[Any, Any, T]) -> T:
