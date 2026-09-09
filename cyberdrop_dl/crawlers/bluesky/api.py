@@ -20,15 +20,7 @@ if TYPE_CHECKING:
 class BlueskyAPI(API):
     ENTRYPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://api.bsky.app/xrpc")
 
-    def __init__(
-        self,
-        domain: str,
-        config: Config,
-        cache: TTLCacheAdapter[Any],
-        client: HTTPClient,
-        ctx: HTTPContext | None = None,
-    ) -> None:
-        super().__init__(domain, config, cache, client, ctx)
+    def __post_init__(self) -> None:
         self._handle_cache: dict[str, str] = {}
         self._handle_locks: dict[str, asyncio.Lock] = {}
 
