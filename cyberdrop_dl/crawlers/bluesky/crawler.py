@@ -140,12 +140,12 @@ class BlueskyCrawler(Crawler):
                 if info
                 else Resolution.parse(aspect_ratio.get("height") if aspect_ratio.get("width") else None)
             )
-            filename = self.create_custom_filename(post_id, ".mp4", resolution=resolution)
+            filename = self.create_custom_filename(post_id, ext := ".mp4", resolution=resolution)
             await self.handle_file(
                 playlist_url,
                 scrape_item,
                 post_id,
-                ".mp4",
+                ext,
                 m3u8=manifest,
                 custom_filename=filename,
             )
