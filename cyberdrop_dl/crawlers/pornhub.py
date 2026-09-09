@@ -40,7 +40,7 @@ class Selector:
 
     @final
     class Profile:
-        NAME = ".topProfileHeader h1[itemprop=name], div.title h1"
+        NAME = ".topProfileHeader h1[itemprop=name], .profileUserName [title], div.title h1"
         VIDEOS = "div.container a.linkVideoThumb"
         GIFS = "#moreData li.gifLi a"
         ALBUMS = "#moreData.photosAlbumsListing a"
