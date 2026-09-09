@@ -4,6 +4,7 @@ import asyncio
 from collections import deque
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from cyberdrop_dl import aio
 from cyberdrop_dl.crawlers.crawler import API
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 
@@ -18,7 +19,7 @@ class BlueskyAPI(API):
 
     def __post_init__(self) -> None:
         self._handle_cache: dict[str, str] = {}
-        self._handle_locks: dict[str, asyncio.Lock] = {}
+        self._handle_locks: aio.WeakAsyncLocks[str] = aio.WeakAsyncLocks()
 
     @staticmethod
     def blob_url(did: str, cid: str) -> AbsoluteHttpURL:
@@ -32,19 +33,14 @@ class BlueskyAPI(API):
         if actor in self._handle_cache:
             return self._handle_cache[actor]
 
-        lock = self._handle_locks.setdefault(actor, asyncio.Lock())
-
-        async with lock:
-            if actor in self._handle_cache:
+        async with self._handle_locks[actor]:
+            try:
                 return self._handle_cache[actor]
-
+            except LookupError:
+                pass
             url = (self.ENTRYPOINT / "com.atproto.identity.resolveHandle").with_query(handle=actor)
             response: dict[str, str] = await self.request_json(url)
-            did = response["did"]
-
-            self._handle_cache[actor] = did
-            self._handle_locks.pop(actor, None)
-
+            did = self._handle_cache[actor] = response["did"]
             return did
 
     async def profile(self, actor: str) -> dict[str, Any]:
@@ -64,15 +60,17 @@ class BlueskyAPI(API):
         thread = response["thread"]
         original_post = thread["post"]
 
-        replies: list[dict[str, Any]] = []
-        pending = deque(thread.get("replies", ()))
-        while pending:
-            node = pending.popleft()
-            if node.get("$type") == "app.bsky.feed.defs#threadViewPost":
-                replies.append(node["post"])
-                pending.extend(node.get("replies", ()))
+        pending = deque()
+        pending.extend(thread.get("replies", ()))
 
-        return original_post, replies
+        def replies():
+            while pending:
+                node = pending.popleft()
+                if node.get("$type") == "app.bsky.feed.defs#threadViewPost":
+                    yield node["post"]
+                    pending.extend(node.get("replies", ()))
+
+        return original_post, replies()
 
     def author_feed(
         self, actor: str, feed_filter: str = "posts_with_media"

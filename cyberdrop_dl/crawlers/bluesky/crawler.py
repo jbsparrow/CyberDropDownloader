@@ -53,7 +53,7 @@ class BlueskyCrawler(Crawler):
         original_post, replies = await self.api.post_thread(actor, post_id)
         self._post(scrape_item, original_post)
         for reply in replies:
-            new_item = scrape_item.create_child(self.parse_url(self._post_url(reply)))
+            new_item = scrape_item.create_child(self._post_url(reply))
             self._post(new_item, reply)
             scrape_item.add_children()
 
@@ -151,17 +151,18 @@ class BlueskyCrawler(Crawler):
             )
 
     @staticmethod
-    def _media(embed: dict[str, Any]) -> list[dict[str, Any]]:
+    def _media(embed: dict[str, Any]) -> Generator[dict[str, Any]]:
         media = embed.get("media", embed)
         if "playlist" in media:
-            return [media]
+            yield media
+            return
+        for image in media.get("images", ()):
+            yield image.get("image", image)
 
-        files = [image.get("image", image) for image in media.get("images", ())]
         if video := media.get("video"):
-            files.append(video)
-        return files
+            yield video
 
-    def _post_url(self, post: dict[str, Any]) -> str:
+    def _post_url(self, post: dict[str, Any]) -> AbsoluteHttpURL:
         author = post["author"]["handle"]
         post_id = post["uri"].rpartition("/")[2]
-        return f"{self.PRIMARY_URL}/profile/{author}/post/{post_id}"
+        return self.PRIMARY_URL / "profile" / author / "post" / post_id
