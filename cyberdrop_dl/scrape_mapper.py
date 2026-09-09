@@ -234,14 +234,19 @@ class ScrapeMapper:
 
     @contextlib.contextmanager
     def __cancel_context(self) -> Generator[None]:
-        try:
-            with self.tui():
+        cancelled: bool = False
+        with self.tui():
+            try:
                 yield
-        except asyncio.CancelledError:
-            # This is a KeyboardInterrupt cause we never cancel tasks
-            if not self._shutting_down:
-                raise
+            except asyncio.CancelledError:
+                # This is a KeyboardInterrupt cause we never cancel tasks
+                if not self._shutting_down:
+                    raise
 
+                cancelled = True
+                self.tui.status.shutdown()
+
+        if cancelled:
             logger.warning("Scraping aborted ('Ctrl + C' pressed)")
 
     async def __async_init__(self) -> None:
