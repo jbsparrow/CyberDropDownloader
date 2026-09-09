@@ -80,8 +80,8 @@ class PostMedia:
     external: ExternalMedia | None = None
     photos: list[Photo] = dataclasses.field(default_factory=list)
     videos: list[Video] = dataclasses.field(default_factory=list)
-    mosaic: list[dict[str, Any]] = dataclasses.field(default_factory=list)
-    broadcast: list[dict[str, Any]] = dataclasses.field(default_factory=list)
+    mosaic: Any = None
+    broadcast: Any = None
 
 
 class CardImage(TypedDict):

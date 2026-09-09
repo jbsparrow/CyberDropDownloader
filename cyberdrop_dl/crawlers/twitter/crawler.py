@@ -118,7 +118,7 @@ class TwitterCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         query_get = scrape_item.url.query.get
         match scrape_item.url.parts[1:]:
-            case [_, "status", status_id] | ["i", "web", "status", status_id]:
+            case [_, "status", status_id, *_] | ["i", "web", "status", status_id]:
                 fn = self.thread if self.__config__.threads else self.tweet
                 await fn(scrape_item, status_id)
             case [user, "media"]:
