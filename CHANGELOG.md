@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Pagination of some profiles stopping early (Twitter/x.com)
+- Pagination of some profiles never stopping (Twitter/x.com)
+- Some posts missing if a profile has 1k+ tweets (Twitter/x.com)
 
 ## [10.8.0] - 2026-09-06
 

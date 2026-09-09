@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, Unpack
 
+from cyberdrop_dl import env
 from cyberdrop_dl.cache import disk_cached_method
 from cyberdrop_dl.clients.http import HTTPConfig
 from cyberdrop_dl.crawlers.crawler import API
@@ -13,7 +14,7 @@ from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Generator
 
     from cyberdrop_dl.clients import HttpMethod
     from cyberdrop_dl.clients.request import RequestParams
@@ -40,7 +41,32 @@ class FXTwitterAPI(API):
         tweets = (t for t in resp["thread"] if t["type"] == "status")
         return map(Tweet.model_validate, tweets)
 
-    def search(self, query: str, feed: str = "latest") -> AsyncGenerator[map[Tweet]]:
+    @classmethod
+    def build_gql_search_query(
+        cls,
+        query: str | None = None,
+        *,
+        user_screen_name: str | None = None,
+        max_tweet_id: str | None = None,
+        include_retweets: bool = False,
+        include_text_only: bool = False,
+    ) -> str:
+        def parts() -> Generator[str]:
+            if user_screen_name:
+                yield f"from:{user_screen_name}"
+            if max_tweet_id:
+                yield f"max_id:{max_tweet_id}"
+            if include_retweets:
+                yield "include:nativeretweets"
+                yield "include:retweets"
+            if not include_text_only:
+                yield "filter:links"
+            if query:
+                yield query
+
+        return " ".join(parts())
+
+    def search(self, query: str, feed: Literal["latest", "top", "media"] = "latest") -> AsyncGenerator[map[Tweet]]:
         url = (self.ENTRYPOINT / "search").with_query(q=query, feed=feed)
         return self.pager(url)
 
@@ -51,12 +77,20 @@ class FXTwitterAPI(API):
         if since := self.since.get():
             url = url.update_query(since=since)
 
+        empty_pages: int = 0
         while True:
             resp = await self.request_json(url)
-            yield map(Tweet.model_validate, resp["results"])
+            if resp["results"]:
+                empty_pages = 0
+                yield map(Tweet.model_validate, resp["results"])
+            else:
+                empty_pages += 1
             cursor = resp["cursor"].get("bottom")
             self.cursor.set(cursor)
             if not cursor or url.query.get("cursor") == cursor:
+                break
+            if empty_pages >= env.TWITTER_MAX_EMPTY_PAGES:
+                self.log.warning("Stopping pagination on %s after %s empty responses", url, empty_pages)
                 break
             url = url.update_query(cursor=cursor)
 

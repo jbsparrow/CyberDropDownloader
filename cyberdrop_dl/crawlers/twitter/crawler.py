@@ -6,6 +6,7 @@ import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
+from cyberdrop_dl import aio
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.crawlers.twitter.api import FXTwitterAPI, TwitterAPI
 from cyberdrop_dl.exceptions import ScrapeError
@@ -14,7 +15,7 @@ from cyberdrop_dl.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterable, Generator, Iterable
+    from collections.abc import AsyncGenerator, AsyncIterable, Generator, Iterable
 
     from cyberdrop_dl.config.crawlers import TwitterConfig
     from cyberdrop_dl.crawlers.twitter.models import Broadcast, Tweet
@@ -128,7 +129,7 @@ class TwitterCrawler(Crawler):
                 fn = self.thread if self.__config__.threads else self.tweet
                 await fn(scrape_item, status_id)
             case [user, "media"]:
-                await self.user_media(scrape_item, user)
+                await self.user(scrape_item, user, include_retweets=False)
             case ["i", "broadcasts", bd_id]:
                 await self.broadcast(scrape_item, bd_id)
             case ["i", "events", event_id]:
@@ -137,7 +138,7 @@ class TwitterCrawler(Crawler):
                 feed = query_get("f") or query_get("feed")
                 await self.search(scrape_item, query, feed)
             case [user]:
-                await self.user_tweets(scrape_item, user)
+                await self.user(scrape_item, user, include_retweets=self.__config__.retweets)
             case _:
                 raise ValueError
 
@@ -176,20 +177,33 @@ class TwitterCrawler(Crawler):
             scrape_item.add_children()
 
     @error_handling_wrapper
-    async def user_media(self, scrape_item: ScrapeItem, user: str) -> None:
+    async def user(self, scrape_item: ScrapeItem, user: str, *, include_retweets: bool) -> None:
+        # A single endpoint does not provide all user tweets
+        # We need to call all endpoints and then search
         scrape_item.setup_as_profile("")
-        await self._iter_tweets(scrape_item, self.api.user.media(user))
+        filter_tweets = TweetsDeduper()
+        pages = self.api.user.media(user)
 
-    @error_handling_wrapper
-    async def user_tweets(self, scrape_item: ScrapeItem, user: str) -> None:
-        scrape_item.setup_as_profile("")
-        await self._iter_tweets(scrape_item, self.api.user.tweets(user))
+        if include_retweets:
+            pages = aio.chain(pages, self.api.user.tweets(user))
+
+        await self._iter_tweets(scrape_item, filter_tweets.pages(pages))
+        gql_query = self.api.build_gql_search_query(
+            user_screen_name=user,
+            max_tweet_id=filter_tweets.last_tweet,
+            include_retweets=include_retweets,
+            include_text_only=include_retweets,
+        )
+
+        with self.catch_errors(scrape_item.url.with_fragment("posts_search_results")):
+            self.log.info("Starting manual search query for posts of %s", user)
+            await self._iter_tweets(scrape_item, filter_tweets.pages(self.api.search(gql_query)))
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem, query: str, feed: str | None = None) -> None:
         scrape_item.setup_as_forum("")
         feed = feed if feed in {"latest", "top", "media"} else "latest"
-        await self._iter_tweets(scrape_item, self.api.search(query, feed))
+        await self._iter_tweets(scrape_item, self.api.search(query, feed))  # pyright: ignore[reportArgumentType]
 
     async def _iter_tweets(self, scrape_item: ScrapeItem, tweets_pages: AsyncIterable[Iterable[Tweet]]) -> None:
         with self._cursor_ctx(scrape_item.url):
@@ -222,6 +236,7 @@ class TwitterCrawler(Crawler):
 
     @contextlib.contextmanager
     def _cursor_ctx(self, url: AbsoluteHttpURL) -> Generator[None]:
+        # TODO: make cursor endpoint aware
         init_cursor = url.query.get("cursor")
         self.api.cursor.set(init_cursor)
         self.api.since.set(self._since(url))
@@ -263,6 +278,24 @@ class TwitterCrawler(Crawler):
             title, ext := ".mp4", file_id=bd.id, resolution=Resolution(bd.width, bd.height)
         )
         await self.handle_file(scrape_item.url, scrape_item, title, ext, m3u8=m3u8, custom_filename=filename)
+
+
+@dataclasses.dataclass(slots=True)
+class TweetsDeduper:
+    seen: set[str] = dataclasses.field(default_factory=set)
+    last_tweet: str | None = None
+
+    def __call__(self, tweets: Iterable[Tweet]) -> Generator[Tweet]:
+        for tweet in tweets:
+            if tweet.id in self.seen:
+                continue
+            self.last_tweet = tweet.id
+            self.seen.add(tweet.id)
+            yield tweet
+
+    async def pages(self, pages: AsyncIterable[Iterable[Tweet]]) -> AsyncGenerator[Iterable[Tweet]]:
+        async for tweets in pages:
+            yield self(tweets)
 
 
 @dataclasses.dataclass(slots=True)
