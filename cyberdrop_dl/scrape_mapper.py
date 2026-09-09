@@ -467,7 +467,7 @@ def _best_match[T: Crawler | type[Crawler]](crawlers: dict[str, T], domain: str)
     if found := crawlers.get(domain):
         return found
 
-    matches = (host for host, cls in crawlers.items() if host in domain and cls.check_host_match(host))
+    matches = (host for host, cls in crawlers.items() if host in domain and cls.check_host_match(domain))
 
     try:
         best_match = max(matches, key=len)

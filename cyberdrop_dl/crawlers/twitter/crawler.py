@@ -28,6 +28,11 @@ class TwitterShortURLCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://t.co")
     DOMAIN: ClassVar[str] = "t.co"
 
+    @classmethod
+    @override
+    def check_host_match(cls, host: str) -> bool:
+        return super().check_host_match(host) and host == "t.co"
+
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host != self.PRIMARY_URL.host:
             raise ValueError
@@ -115,7 +120,7 @@ class TwitterCrawler(Crawler):
     @classmethod
     @override
     def check_host_match(cls, host: str) -> bool:
-        return host == "x.com" or not host.endswith("x.com")
+        return super().check_host_match(host) and (host == "x.com" or not host.endswith("x.com"))
 
     @property
     @override
