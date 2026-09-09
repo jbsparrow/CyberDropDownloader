@@ -31,12 +31,13 @@ class BlueskyCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         parts = scrape_item.url.parts[1:]
-        if len(parts) >= 4 and parts[0] == "profile" and parts[2] == "post":
-            await self.post(scrape_item, parts[1], parts[3])
-        elif len(parts) == 2 and parts[0] == "profile":
-            await self.user(scrape_item, parts[1], "posts_and_author_threads")
-        else:
-            raise ValueError
+        match parts:
+            case ["profile", user, "post", post_id, *_]:
+                await self.post(scrape_item, user, post_id)
+            case ["profile", user]:
+                await self.user(scrape_item, user, "posts_and_author_threads")
+            case _:
+                raise ValueError
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, actor: str, post_id: str) -> None:
