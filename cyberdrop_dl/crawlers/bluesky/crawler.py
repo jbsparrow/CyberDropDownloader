@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.bluesky.api import BlueskyAPI
@@ -10,6 +11,14 @@ from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.url_objects import ScrapeItem
+
+
+@dataclass
+class MediaInfo:
+    source_url: AbsoluteHttpURL
+    cid: str
+    ext: str
+    debrid_link: AbsoluteHttpURL | None
 
 
 class BlueskyCrawler(Crawler):
@@ -93,35 +102,33 @@ class BlueskyCrawler(Crawler):
         self, scrape_item: ScrapeItem, media: dict[str, Any], record_image: dict[str, Any], did: str
     ) -> None:
         if fullsize := media.get("fullsize"):
-            source_url, cid, ext, debrid_link = self._prepare_fullsize_image(fullsize, record_image, did)
+            media_info: MediaInfo = self._prepare_fullsize_image(fullsize, record_image, did)
         else:
-            source_url, cid, ext, debrid_link = self._prepare_blob_image(media, did)
+            media_info: MediaInfo = self._prepare_blob_image(media, did)
 
         self.create_eager_task(
             self.handle_file(
-                source_url,
+                media_info.source_url,
                 scrape_item,
-                cid + ext,
-                ext,
-                custom_filename=cid + ext,
-                debrid_link=debrid_link,
+                media_info.cid + media_info.ext,
+                media_info.ext,
+                custom_filename=media_info.cid + media_info.ext,
+                debrid_link=media_info.debrid_link,
             )
         )
         scrape_item.add_children()
 
-    def _prepare_fullsize_image(
-        self, fullsize: str, record_image: dict[str, Any], did: str
-    ) -> tuple[AbsoluteHttpURL, str, str, AbsoluteHttpURL]:
+    def _prepare_fullsize_image(self, fullsize: str, record_image: dict[str, Any], did: str) -> MediaInfo:
         blob = record_image.get("image", {})
         source_url = self.parse_url(fullsize, trim=False)
         cid = blob.get("ref", {}).get("$link") or source_url.name
         _, ext = self.get_filename_and_ext(cid, mime_type=blob.get("mimeType"))
-        return source_url, cid, ext, self.api.blob_url(did, cid)
+        return MediaInfo(source_url, cid, ext, self.api.blob_url(did, cid))
 
-    def _prepare_blob_image(self, media: dict[str, Any], did: str) -> tuple[AbsoluteHttpURL, str, str, None]:
+    def _prepare_blob_image(self, media: dict[str, Any], did: str) -> MediaInfo:
         cid = media["ref"]["$link"] if "ref" in media else media["cid"]
         ext = "." + media["mimeType"].partition("/")[2]
-        return self.api.blob_url(did, cid), cid, ext, None
+        return MediaInfo(self.api.blob_url(did, cid), cid, ext, None)
 
     async def _video(self, scrape_item: ScrapeItem, playlist: str, post_id: str, media: dict[str, Any]) -> None:
         playlist_url = self.parse_url(playlist, trim=False)
