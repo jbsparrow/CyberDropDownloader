@@ -127,7 +127,7 @@ class BlueskyCrawler(Crawler):
 
     def _prepare_blob_image(self, media: dict[str, Any], did: str) -> MediaInfo:
         cid = media["ref"]["$link"] if "ref" in media else media["cid"]
-        ext = "." + media["mimeType"].partition("/")[2]
+        _, ext = self.get_filename_and_ext(cid, mime_type=media["mimeType"])
         return MediaInfo(self.api.blob_url(did, cid), cid, ext, None)
 
     async def _video(self, scrape_item: ScrapeItem, playlist: str, post_id: str, media: dict[str, Any]) -> None:
