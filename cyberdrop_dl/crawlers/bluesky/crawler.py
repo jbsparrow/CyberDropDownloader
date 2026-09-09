@@ -41,15 +41,12 @@ class BlueskyCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, actor: str, post_id: str) -> None:
-        for post in await self.api.post_thread(actor, post_id):
-            new_item = (
-                scrape_item
-                if post["uri"].endswith(f"/{post_id}")
-                else scrape_item.create_child(self.parse_url(self._post_url(post)))
-            )
-            self._post(new_item, post)
-            if new_item is not scrape_item:
-                scrape_item.add_children()
+        original_post, replies = await self.api.post_thread(actor, post_id)
+        self._post(scrape_item, original_post)
+        for reply in replies:
+            new_item = scrape_item.create_child(self.parse_url(self._post_url(reply)))
+            self._post(new_item, reply)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem, actor: str, feed_filter: str) -> None:

@@ -66,24 +66,25 @@ class BlueskyAPI(API):
 
     async def post_thread(
         self, actor: str, post_id: str, depth: int = 100, parent_height: int = 0
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         actor_did = await self.resolve_handle(actor)
         url = (self.ENTRYPOINT / "app.bsky.feed.getPostThread").with_query(
             uri=f"at://{actor_did}/app.bsky.feed.post/{post_id}", depth=depth, parentHeight=parent_height
         )
         response: dict[str, Any] = await self.request_json(url)
-        pending = deque()
-        pending.append(response["thread"])
 
-        def posts():
-            while pending:
-                thread = pending.popleft()
-                if thread.get("$type") != "app.bsky.feed.defs#threadViewPost":
-                    continue
-                yield (thread["post"])
-                pending.extend(thread.get("replies", ()))
+        thread = response["thread"]
+        original_post = thread["post"]
 
-        return posts()
+        replies: list[dict[str, Any]] = []
+        pending = deque(thread.get("replies", ()))
+        while pending:
+            node = pending.popleft()
+            if node.get("$type") == "app.bsky.feed.defs#threadViewPost":
+                replies.append(node["post"])
+                pending.extend(node.get("replies", ()))
+
+        return original_post, replies
 
     def author_feed(
         self, actor: str, feed_filter: str = "posts_with_media"
