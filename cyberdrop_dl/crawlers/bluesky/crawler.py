@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.bluesky.api import BlueskyAPI
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.url_objects import ScrapeItem
 
 
-@dataclass
+@dataclasses.dataclass
 class MediaInfo:
     source_url: AbsoluteHttpURL
     cid: str
