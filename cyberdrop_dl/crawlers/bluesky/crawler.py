@@ -17,13 +17,14 @@ if TYPE_CHECKING:
 
 
 class BlueskyCrawler(Crawler):
-    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ("bsky.app", "bsky.social", "main.bsky.dev")
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "bsky.app", "bsky.social", "main.bsky.dev"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Post": "/profile/<handle>/post/<post_id>",
         "Profile": "/profile/<handle>",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bsky.app")
     DOMAIN: ClassVar[str] = "bluesky"
+    FOLDER_DOMAIN: ClassVar[str] = "BlueSky"
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date:%Y-%m-%d} - {id}"
 
     def __post_init__(self) -> None:
