@@ -304,12 +304,12 @@ class ScrapeMapper:
             await crawler.__async_init__()
             if crawler.__url_config__.trim:
                 scrape_item.url = remove_trailing_slash(scrape_item.url)
-            self.task_mngr.scrape.create_task(crawler.run(scrape_item))
+            self.task_mngr.scrape.create_task(crawler.run(scrape_item), name=str(scrape_item.url))
             return
 
         if not self._real_debrid.disabled and self._real_debrid.api.is_supported(scrape_item.url):
             logger.info(f"Using RealDebrid for unsupported URL: {scrape_item.url}")
-            self.task_mngr.scrape.create_task(self._real_debrid.run(scrape_item))
+            self.task_mngr.scrape.create_task(self._real_debrid.run(scrape_item), name=str(scrape_item.url))
             return
 
         try:

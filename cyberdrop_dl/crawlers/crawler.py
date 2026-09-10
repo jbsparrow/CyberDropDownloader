@@ -448,7 +448,7 @@ class Crawler(HTTPMixin, HLSMixin, ABC):
 
         lookup = url.path_qs if self.__url_config__.ignore_fragment else _path_qs_frag(url)
         if lookup in self._scraped_items:
-            logger.info(f"Skipping {url} as it has already been scrapped")
+            logger.info("Skipping %s as it has already been scrapped", url)
             return
 
         self._scraped_items.add(lookup)
