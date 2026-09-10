@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from cyberdrop_dl.crawlers.bluesky.api import BlueskyAPI
+from cyberdrop_dl.crawlers.bluesky.api import BlueSkyCAPI
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.mediaprops import Resolution
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
@@ -34,7 +34,7 @@ class BlueskyCrawler(Crawler):
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date:%Y-%m-%d} - {id}"
 
     def __post_init__(self) -> None:
-        self.api: BlueskyAPI = BlueskyAPI.from_crawler(self)
+        self.api: BlueSkyCAPI = BlueSkyCAPI.from_crawler(self)
 
     @property
     def separate_posts(self) -> bool:
@@ -52,7 +52,7 @@ class BlueskyCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, actor: str, post_id: str) -> None:
-        original_post, replies = await self.api.post_thread(actor, post_id)
+        original_post, replies = await self.api.thread(actor, post_id)
         self._post(scrape_item, original_post)
         for reply in replies:
             new_item = scrape_item.create_child(self._post_url(reply))
@@ -65,7 +65,7 @@ class BlueskyCrawler(Crawler):
         async for page in self.api.author_feed(actor, feed_filter):
             for entry in page:
                 post = entry.get("post", entry)
-                new_item = scrape_item.create_child(self.parse_url(self._post_url(post)))
+                new_item = scrape_item.create_child(self._post_url(post))
                 self._post(new_item, post)
                 scrape_item.add_children()
 

@@ -1,65 +1,72 @@
+"https://endpoints.bsky.app"
+
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from cyberdrop_dl import aio
 from cyberdrop_dl.crawlers.crawler import API
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 
-_BLOB_ENDPOINT = AbsoluteHttpURL("https://bsky.social/xrpc/com.atproto.sync.getBlob")
-
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Iterable
+    from collections.abc import AsyncGenerator, Generator
 
 
-class BlueskyAPI(API):
+class BlueSkyCAPI(API):
     ENTRYPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://api.bsky.app/xrpc")
+    BLOB_ENDPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bsky.social/xrpc/com.atproto.sync.getBlob")
 
     def __post_init__(self) -> None:
-        self._handle_cache: dict[str, str] = {}
-        self._handle_locks: aio.WeakAsyncLocks[str] = aio.WeakAsyncLocks()
+        self._did_cache: dict[str, str] = {}
+        self._did_locks: aio.WeakAsyncLocks[str] = aio.WeakAsyncLocks()
 
-    @staticmethod
-    def blob_url(did: str, cid: str) -> AbsoluteHttpURL:
-        params: dict[str, Any] = {"did": did, "cid": cid}
-        return _BLOB_ENDPOINT.with_query(params)
+    @classmethod
+    def blob_url(cls, did: str, cid: str) -> AbsoluteHttpURL:
+        return cls.BLOB_ENDPOINT.with_query(did=did, cid=cid)
 
-    async def resolve_handle(self, actor: str) -> str:
-        if actor.startswith("did:"):
-            return actor
-
-        if actor in self._handle_cache:
-            return self._handle_cache[actor]
-
-        async with self._handle_locks[actor]:
-            try:
-                return self._handle_cache[actor]
-            except LookupError:
-                pass
-            url = (self.ENTRYPOINT / "com.atproto.identity.resolveHandle").with_query(handle=actor)
-            response: dict[str, str] = await self.request_json(url)
-            did = self._handle_cache[actor] = response["did"]
-            return did
-
-    async def profile(self, actor: str) -> dict[str, Any]:
-        actor_did = await self.resolve_handle(actor)
-        url = (self.ENTRYPOINT / "app.bsky.actor.getProfile").with_query(actor=actor_did)
+    async def xrpc(self, path: str, **params: Any) -> dict[str, Any]:
+        url = (self.ENTRYPOINT / path).with_query(params)
         return await self.request_json(url)
 
-    async def post_thread(
-        self, actor: str, post_id: str, depth: int = 100, parent_height: int = 0
-    ) -> tuple[dict[str, Any], Generator[dict[str, Any], None, None]]:
-        actor_did = await self.resolve_handle(actor)
-        url = (self.ENTRYPOINT / "app.bsky.feed.getPostThread").with_query(
-            uri=f"at://{actor_did}/app.bsky.feed.post/{post_id}", depth=depth, parentHeight=parent_height
-        )
-        response: dict[str, Any] = await self.request_json(url)
+    async def resolve_handle(self, handle: str) -> str:
+        if handle.startswith("did:"):
+            return handle
+        try:
+            return self._did_cache[handle]
+        except LookupError:
+            pass
 
-        thread = response["thread"]
+        async with self._did_locks[handle]:
+            try:
+                return self._did_cache[handle]
+            except LookupError:
+                pass
+
+            resp = await self.xrpc("com.atproto.identity.resolveHandle", handle=handle)
+            did = self._did_cache[handle] = resp["did"]
+            return did
+
+    async def thread(
+        self,
+        actor: str,
+        post_id: str,
+        *,
+        depth: int = 100,  # How many replies
+        parent_height: int = 0,  # How many parent replies
+    ) -> tuple[dict[str, Any], Generator[dict[str, Any], None, None]]:
+        did = await self.resolve_handle(actor)
+        resp = await self.xrpc(
+            "app.bsky.feed.getPostThread",
+            uri=f"at://{did}/app.bsky.feed.post/{post_id}",
+            depth=depth,
+            parentHeight=parent_height,
+        )
+
+        thread = resp["thread"]
         original_post = thread["post"]
 
-        pending = deque()
+        pending: deque[dict[str, Any]] = deque()
         pending.extend(thread.get("replies", ()))
 
         def replies():
@@ -72,24 +79,32 @@ class BlueskyAPI(API):
         return original_post, replies()
 
     def author_feed(
-        self, actor: str, feed_filter: str = "posts_with_media"
-    ) -> AsyncGenerator[Iterable[dict[str, Any]]]:
-        return self._paginate(
-            "app.bsky.feed.getAuthorFeed",
-            {"actor": actor, "filter": feed_filter},
-        )
+        self,
+        actor: str,
+        filter: Literal[  # noqa: A002
+            "posts_with_replies",
+            "posts_no_replies",
+            "posts_with_media",
+            "posts_and_author_threads",
+            "posts_with_video",
+        ] = "posts_with_media",
+    ) -> AsyncGenerator[list[dict[str, Any]]]:
+        return self._paginate("app.bsky.feed.getAuthorFeed", actor=actor, filter=filter)
 
     async def _paginate(
-        self, endpoint: str, params: dict[str, Any], *, key: str = "feed"
-    ) -> AsyncGenerator[Iterable[dict[str, Any]]]:
+        self,
+        path: str,
+        key: str = "feed",
+        **params: Any,
+    ) -> AsyncGenerator[list[dict[str, Any]]]:
         if "actor" in params:
             params["actor"] = await self.resolve_handle(params["actor"])
 
-        url = (self.ENTRYPOINT / endpoint).with_query(params).update_query(limit=100)
+        params.setdefault("limit", 100)
+
         while True:
-            response: dict[str, Any] = await self.request_json(url)
-            yield response.get(key, response.get("posts", ()))
-            cursor = response.get("cursor")
+            resp: dict[str, Any] = await self.xrpc(path, *params)
+            yield resp[key]
+            params["cursor"] = cursor = resp.get("cursor")
             if not cursor:
                 return
-            url = url.update_query(cursor=cursor)
