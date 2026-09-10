@@ -102,7 +102,7 @@ class BlueSkyCAPI(API):
         params.setdefault("limit", 100)
 
         while True:
-            resp: dict[str, Any] = await self.xrpc(path, *params)
+            resp: dict[str, Any] = await self.xrpc(path, **params)
             yield resp[key]
             params["cursor"] = cursor = resp.get("cursor")
             if not cursor:
