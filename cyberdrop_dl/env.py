@@ -58,7 +58,7 @@ TERMUX = {
 
 FILEDITCH_WAIT = int(_env("FILEDITCH_WAIT") or 20)
 GOFILE_SALT = _env("GOFILE_SALT")
-TWITTER_MAX_EMPTY_PAGES = int(_env("TWITTER_MAX_EMPTY_PAGES") or 1)
+TWITTER_MAX_EMPTY_PAGES = int(_env("TWITTER_MAX_EMPTY_PAGES") or 10)
 
 ALL_VARS = dict(sorted(ALL_VARS.items()))  # pyright: ignore[reportConstantRedefinition]
 ALL_VARS_RESOLVED = dict(

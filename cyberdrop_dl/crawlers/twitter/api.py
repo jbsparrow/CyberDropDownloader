@@ -2,15 +2,17 @@
 # https://github.com/FxEmbed/FxEmbed
 from __future__ import annotations
 
+import dataclasses
+import itertools
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, Unpack
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Unpack
 
 from cyberdrop_dl import env
 from cyberdrop_dl.cache import disk_cached_method
 from cyberdrop_dl.clients.http import HTTPConfig
 from cyberdrop_dl.crawlers.crawler import API
 from cyberdrop_dl.crawlers.twitter.models import Broadcast, Tweet
-from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.exceptions import DownloadError, ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 
 if TYPE_CHECKING:
@@ -23,8 +25,8 @@ if TYPE_CHECKING:
 @HTTPConfig(rate_limit=(3, 1))  # Actual limit is 1000 req/min (~ 16.7 req/s) per IP
 class FXTwitterAPI(API):
     ENTRYPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://api.fxtwitter.com/2")
-    cursor: ClassVar[ContextVar[str | None]] = ContextVar("cursor")
     since: ClassVar[ContextVar[int | None]] = ContextVar("since")
+    until: ClassVar[ContextVar[int | None]] = ContextVar("until")
 
     def __post_init__(self) -> None:
         self.user: UserEndpoint = UserEndpoint(self)
@@ -41,57 +43,67 @@ class FXTwitterAPI(API):
         tweets = (t for t in resp["thread"] if t["type"] == "status")
         return map(Tweet.model_validate, tweets)
 
-    @classmethod
-    def build_gql_search_query(
-        cls,
-        query: str | None = None,
-        *,
-        user_screen_name: str | None = None,
-        max_tweet_id: str | None = None,
-        include_retweets: bool = False,
-        include_text_only: bool = False,
-    ) -> str:
-        def parts() -> Generator[str]:
-            if user_screen_name:
-                yield f"from:{user_screen_name}"
-            if max_tweet_id:
-                yield f"max_id:{max_tweet_id}"
-            if include_retweets:
-                yield "include:nativeretweets"
-                yield "include:retweets"
-            if not include_text_only:
-                yield "filter:links"
-            if query:
-                yield query
-
-        return " ".join(parts())
-
     def search(self, query: str, feed: Literal["latest", "top", "media"] = "latest") -> AsyncGenerator[map[Tweet]]:
-        url = (self.ENTRYPOINT / "search").with_query(q=query, feed=feed)
+        url = self.prepare_search(query, feed=feed)
         return self.pager(url)
 
-    async def pager(self, url: AbsoluteHttpURL) -> AsyncGenerator[map[Tweet]]:
-        url = url.update_query(count=100)
-        if cursor := self.cursor.get():
-            url = url.update_query(cursor=cursor)
-        if since := self.since.get():
-            url = url.update_query(since=since)
+    @classmethod
+    def prepare_search(
+        cls,
+        query: str,
+        *,
+        gql_filter: TwitterGQLSearchFilter | None = None,
+        feed: Literal["latest", "top", "media"] = "latest",
+    ) -> AbsoluteHttpURL:
+        if gql_filter is not None:
+            query = " ".join(filter(None, (query, *gql_filter)))
+
+        return (cls.ENTRYPOINT / "search").with_query(q=query, feed=feed)
+
+    async def pager(self, base_url: AbsoluteHttpURL, cursor: str | None = None) -> AsyncGenerator[map[Tweet]]:
+        url = base_url.update_query(
+            {
+                name: value
+                for name, value in (
+                    ("count", 100),
+                    ("cursor", cursor),
+                    ("since", self.since.get()),
+                    ("until", self.until.get()),
+                )
+                if value
+            }
+        )
 
         empty_pages: int = 0
-        while True:
-            resp = await self.request_json(url)
+        max_empty_pages: int = env.TWITTER_MAX_EMPTY_PAGES
+
+        for page in itertools.count(1):
+            self.log.debug("Fetching page #%s (%s)", page, base_url)
+            try:
+                resp = await self.request_json(url)
+            except DownloadError as e:
+                if e.status == 404 and "search" in url.parts:
+                    raise DownloadError(403, "Search results blocked by twitter") from None
+                raise
             if resp["results"]:
-                empty_pages = 0
+                n_results = len(resp["results"])
+                if empty_pages:
+                    empty_pages = 0
+                self.log.info(
+                    "Found %s results for %s on page %s after %s empty pages", n_results, url, page, empty_pages
+                )
                 yield map(Tweet.model_validate, resp["results"])
             else:
                 empty_pages += 1
+
             cursor = resp["cursor"].get("bottom")
-            self.cursor.set(cursor)
             if not cursor or url.query.get("cursor") == cursor:
                 break
-            if empty_pages >= env.TWITTER_MAX_EMPTY_PAGES:
-                self.log.warning("Stopping pagination on %s after %s empty responses", url, empty_pages)
+
+            if empty_pages > max_empty_pages:
+                self.log.warning("Stopping pagination on %s after too many empty responses (%s)", url, empty_pages)
                 break
+
             url = url.update_query(cursor=cursor)
 
 
@@ -103,6 +115,26 @@ class UserEndpoint(API.Endpoint[FXTwitterAPI]):
     def tweets(self, user: str) -> AsyncGenerator[map[Tweet]]:
         url = self.api.ENTRYPOINT / "profile" / user / "statuses"
         return self.api.pager(url)
+
+
+@dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
+class TwitterGQLSearchFilter:
+    user: str | None = None
+    since: int | None = None
+    until: int | None = None
+    max_id: str | None = None
+    include: tuple[str, ...] = ()
+    filter: tuple[str, ...] = ()
+
+    def __iter__(self) -> Generator[str]:
+        for field in dataclasses.fields(self):
+            name, value = field.name, getattr(self, field.name)
+            if name == "user":
+                name = "from"
+            values = value if type(value) is tuple else (value,)
+            for val in values:
+                if val:
+                    yield f"{name}:{val}"
 
 
 _DEFAULT_CRED = (
@@ -153,8 +185,6 @@ class TwitterAPI(API):
 
 
 class BroadcastEndpoint(API.Endpoint[TwitterAPI]):
-    ENDED: Final = "ENDED"
-
     async def __call__(self, broadcast_id: str) -> Broadcast:
         url = (self.api.ENTRYPOINT / "broadcasts/show.json").with_query(ids=broadcast_id)
         resp = await self.api.request_json(url)
@@ -169,8 +199,9 @@ class BroadcastEndpoint(API.Endpoint[TwitterAPI]):
     def _parse(self, bd: dict[str, Any]) -> Broadcast:
         if not bd:
             raise ScrapeError(404)
-        state: str = bd.setdefault("state", self.ENDED)
-        if state != self.ENDED:
+
+        state = bd.get("state", "ENDED")
+        if state != "ENDED":
             raise ScrapeError(422, f"{state} broadcasts are not supported")
         return Broadcast.model_validate(bd)
 
