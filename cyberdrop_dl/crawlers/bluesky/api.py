@@ -25,8 +25,8 @@ class BlueSkyCAPI(API):
         self._did_locks: aio.WeakAsyncLocks[str] = aio.WeakAsyncLocks()
 
     @classmethod
-    def blob_url(cls, did: str, cid: str) -> AbsoluteHttpURL:
-        # did: desentralized ID, cid: content id (hash)
+    def get_blob(cls, did: str, cid: str) -> AbsoluteHttpURL:
+        # did: desentralized ID, cid: content ID (hash)
         return cls.BLOB_ENDPOINT.with_query(did=did, cid=cid)
 
     async def xrpc(self, path: str, **params: Any) -> dict[str, Any]:
@@ -70,14 +70,14 @@ class BlueSkyCAPI(API):
         thread = resp["thread"]
         og_post = PostView.parse(thread["post"])
 
-        pending: deque[dict[str, Any]] = deque()
-        pending.extend(_filter_blocked_replies(thread.get("replies", ())))
+        thread_replies: deque[dict[str, Any]] = deque()
+        thread_replies.extend(_filter_blocked_replies(thread.get("replies", ())))
 
         def replies() -> Generator[PostView]:
-            while pending:
-                reply = pending.popleft()
+            while thread_replies:
+                reply = thread_replies.popleft()
                 yield PostView.parse(reply["post"])
-                pending.extend(_filter_blocked_replies(reply.get("replies", ())))
+                thread_replies.extend(_filter_blocked_replies(reply.get("replies", ())))
 
         return og_post, replies()
 
@@ -86,11 +86,11 @@ class BlueSkyCAPI(API):
         actor: str,
         feed_filter: FeedFilter = "posts_with_media",
     ) -> AsyncGenerator[PostView]:
-        async for page in self._paginate("app.bsky.feed.getAuthorFeed", actor=actor, filter=feed_filter):
+        async for page in self.pager("app.bsky.feed.getAuthorFeed", actor=actor, filter=feed_filter):
             for post in page:
                 yield PostView.parse(post["post"])
 
-    async def _paginate(
+    async def pager(
         self,
         path: str,
         key: str = "feed",
@@ -102,7 +102,7 @@ class BlueSkyCAPI(API):
         params.setdefault("limit", 100)
 
         while True:
-            resp: dict[str, Any] = await self.xrpc(path, **params)
+            resp = await self.xrpc(path, **params)
             yield resp[key]
             params["cursor"] = cursor = resp.get("cursor")
             if not cursor:
