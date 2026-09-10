@@ -1,0 +1,119 @@
+"https://github.com/bluesky-social/atproto/blob/727701085829daf8e0440253346b5e70fc3810ad/lexicons/app/bsky/feed/defs.json"
+
+from __future__ import annotations
+
+import dataclasses
+from typing import TYPE_CHECKING, Any, Literal, NotRequired, Self, TypedDict
+
+from cyberdrop_dl.models import type_adapter
+
+if TYPE_CHECKING:
+    from cyberdrop_dl.mediaprops import Resolution
+
+type FeedFilter = Literal[
+    "posts_with_replies",
+    "posts_no_replies",
+    "posts_with_media",
+    "posts_and_author_threads",
+    "posts_with_video",
+]
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class ProfileViewBasic:
+    did: str
+    handle: str
+    display_name: str | None = None
+    created_at: str | None = None
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class PostView:
+    uri: str
+    cid: str
+    author: ProfileViewBasic
+    record: Record  # This is typed as unknown on their spec
+
+    @classmethod
+    def parse(cls, data: dict[str, Any]) -> Self:
+        return type_adapter(cls).validate_python(data)
+
+    @property
+    def id(self) -> str:
+        return self.uri.rpartition("/")[-1]
+
+    @property
+    def web_path(self) -> str:
+        return f"profile/{self.author.handle}/post/{self.id}"
+
+
+Href = TypedDict("Href", {"$link": str})
+Asset = TypedDict("Asset", {"$type": str})
+
+
+class Blob(Asset):
+    ref: Href
+    mimeType: str  # noqa: N815
+    size: int
+
+
+class AspectRatio(TypedDict):
+    width: int
+    height: int
+
+
+class Image(Asset):
+    type: Literal["app.bsky.embed.image"]
+    image: Blob
+    alt: str
+    aspectRatio: AspectRatio | None  # noqa: N815
+
+
+class Images(Asset):
+    type: Literal["app.bsky.embed.images"]
+    images: list[Image]
+
+
+class Gallery(Asset):
+    type: Literal["app.bsky.embed.gallery"]
+    items: list[Image]
+
+
+class Captions(TypedDict):
+    lang: str
+    file: Blob
+
+
+class Video(Asset):
+    type: Literal["app.bsky.embed.video"]
+    video: Blob
+    alt: str | None
+    aspectRatio: AspectRatio | None  # noqa: N815
+    captions: Captions | None
+
+
+class External(Asset):
+    type: Literal["app.bsky.embed.external"]
+    uri: str
+    title: str
+    description: str
+    thumb: Blob
+    created_at: str | None
+    updated_at: str | None
+
+
+type MediaAsset = Video | Image | External | Images | Gallery
+
+
+class Record(TypedDict):
+    createdAt: str
+    embed: NotRequired[dict[str, Any]]
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class Media:
+    type: Literal["video", "image"]
+    cid: str
+    name: str
+    mime: str
+    resolution: Resolution | None = None
