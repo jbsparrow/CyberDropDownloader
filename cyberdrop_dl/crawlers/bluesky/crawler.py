@@ -72,7 +72,7 @@ class BlueskyCrawler(Crawler):
             scrape_item.add_children()
 
     async def _media(self, scrape_item: ScrapeItem, media: Media, did: str) -> None:
-        src = self.api.get_blob(did, media.cid)
+        src = await self.api.get_blob(did, media.cid)
         with self.catch_errors(src):
             name, ext = self.get_filename_and_ext(media.name, mime_type=media.mime)
             await self.handle_file(

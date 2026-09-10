@@ -21,17 +21,57 @@ class BlueSkyAPI(API):
     BLOB_ENDPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bsky.social/xrpc/com.atproto.sync.getBlob")
 
     def __post_init__(self) -> None:
+        self._pds_cache: dict[str, AbsoluteHttpURL] = {}
         self._did_cache: dict[str, str] = {}
         self._did_locks: aio.WeakAsyncLocks[str] = aio.WeakAsyncLocks()
-
-    @classmethod
-    def get_blob(cls, did: str, cid: str) -> AbsoluteHttpURL:
-        # did: desentralized ID, cid: content ID (hash)
-        return cls.BLOB_ENDPOINT.with_query(did=did, cid=cid)
 
     async def xrpc(self, path: str, **params: Any) -> dict[str, Any]:
         url = (self.ENTRYPOINT / path).with_query(params)
         return await self.request_json(url)
+
+    async def get_blob(self, did: str, cid: str) -> AbsoluteHttpURL:
+        # did: desentralized ID, cid: content ID (hash)
+        pds = await self.resolve_pds(did)
+        return pds.with_path(self.BLOB_ENDPOINT.path).with_query(did=did, cid=cid)
+
+    async def resolve_pds(self, did: str) -> AbsoluteHttpURL:
+        try:
+            return self._pds_cache[did]
+        except LookupError:
+            pass
+
+        async with self._did_locks[did]:
+            try:
+                return self._pds_cache[did]
+            except LookupError:
+                pass
+
+            try:
+                pds = await self._resolve_pds(did)
+            except Exception:
+                pds = self.BLOB_ENDPOINT.origin()
+                self.log.exception("Unable to get personal data server for DID %s, falling back to %s", did, pds)
+
+            self._pds_cache[did] = pds
+            return pds
+
+    async def _resolve_pds(self, did: str) -> AbsoluteHttpURL:
+        assert did.startswith("did:")
+        _, method, path = did.split(":", 2)
+        match method:
+            case "web":
+                url = f"https://{path}/.well-known/did.json"
+            case "plc":
+                url = f"https://plc.directory/{did}"
+            case _:
+                raise ValueError("Unsupported DID method", method, did)
+
+        resp = await self.request_json(self.parse_url(url))
+        for serv in resp["service"]:
+            if serv["type"] == "AtprotoPersonalDataServer":
+                return self.parse_url(serv["serviceEndpoint"])
+
+        return self.BLOB_ENDPOINT.origin()
 
     async def resolve_handle(self, handle_or_did: str) -> str:
         if handle_or_did.startswith("did:"):
