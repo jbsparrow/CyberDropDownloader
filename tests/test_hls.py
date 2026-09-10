@@ -39,7 +39,7 @@ media-segment-00003.ts
 
 def test_parse_segments() -> None:
     segments = [Segment(uri="/m3u8/test", base_uri="https://example.com") for _ in range(8)]
-    result = list(hls._parse_segments(segments))
+    result = list(hls._create_segments(segments, len(segments)))
     assert len(result) == 8
     first = result[0]
     assert type(first) is hls.HLSSegment
@@ -66,9 +66,7 @@ def test_create_media_segments() -> None:
         name="00023.cdl_hls",
         url=AbsoluteHttpURL("https://example.com/m3u8/test/segments001.ts"),
     )
-    result = list(hls._create_media_segments(item, [segment], folder / "video_hls"))
-    assert len(result) == 1
-    seg_item = result[0]
+    seg_item = hls._create_media_segment(item, segment, folder / "video_hls")
     assert seg_item.url == segment.url
     assert seg_item.download_folder == folder / "video_hls"
     assert seg_item.filename == segment.name
@@ -116,4 +114,5 @@ def test_init_segments_should_be_include() -> None:
     m3u8 = M3U8(content)
     assert len(m3u8.segment_map) == 1
     assert len(m3u8.segments) == 5
-    assert len(hls._segments(m3u8)) == 6
+    hls._check_segments(m3u8)
+    assert m3u8.total_segments == 6

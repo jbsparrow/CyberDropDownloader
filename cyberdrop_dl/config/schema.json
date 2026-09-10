@@ -38,9 +38,7 @@
           "uniqueItems": true
         }
       },
-      "required": [
-        "url"
-      ],
+      "required": ["url"],
       "title": "AppriseURL",
       "type": "object"
     },
@@ -162,38 +160,38 @@
         "bandcamp": {
           "$ref": "#/$defs/BandcampConfig"
         },
+        "clonr": {
+          "$ref": "#/$defs/ClonrConfig"
+        },
         "clypit": {
           "$ref": "#/$defs/ClypitConfig"
         },
         "generic": {
           "$ref": "#/$defs/GenericCrawlers"
         },
+        "google_drive": {
+          "$ref": "#/$defs/GoogleDriveConfig"
+        },
+        "octave_music": {
+          "$ref": "#/$defs/OctaveMusicConfig"
+        },
         "one_pace": {
           "$ref": "#/$defs/OnePaceConfig"
+        },
+        "only_haven": {
+          "$ref": "#/$defs/KemonoConfig"
+        },
+        "pawchive": {
+          "$ref": "#/$defs/KemonoConfig"
+        },
+        "pornhub": {
+          "$ref": "#/$defs/PornHubConfig"
         },
         "tiktok": {
           "$ref": "#/$defs/TikTokConfig"
         },
         "twitter": {
           "$ref": "#/$defs/TwitterConfig"
-        },
-        "pawchive": {
-          "$ref": "#/$defs/KemonoConfig"
-        },
-        "only_haven": {
-          "$ref": "#/$defs/KemonoConfig"
-        },
-        "octave_music": {
-          "$ref": "#/$defs/OctaveMusicConfig"
-        },
-        "clonr": {
-          "$ref": "#/$defs/ClonrConfig"
-        },
-        "pornhub": {
-          "$ref": "#/$defs/PornHubConfig"
-        },
-        "google_drive": {
-          "$ref": "#/$defs/GoogleDriveConfig"
         }
       },
       "title": "Crawlers",
@@ -315,11 +313,7 @@
     "FalsyAsNone_Annotated_Literal__truststore____certifi____truststore_certifi____BeforeValidator__": {
       "anyOf": [
         {
-          "enum": [
-            "truststore",
-            "certifi",
-            "truststore+certifi"
-          ],
+          "enum": ["truststore", "certifi", "truststore+certifi"],
           "type": "string"
         },
         {
@@ -538,6 +532,14 @@
           },
           "title": "Video",
           "type": "array"
+        },
+        "peertube": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/HttpURL"
+          },
+          "title": "Peertube",
+          "type": "array"
         }
       },
       "title": "GenericCrawlers",
@@ -556,40 +558,22 @@
     "GoogleDriveFormats": {
       "additionalProperties": false,
       "properties": {
+        "docs": {
+          "default": "docx",
+          "enum": ["docx", "odt", "rtf", "txt", "epub", "pdf", "md", "zip"],
+          "title": "Docs",
+          "type": "string"
+        },
         "sheets": {
           "default": "xslx",
-          "enum": [
-            "xslx",
-            "ods",
-            "html",
-            "csv",
-            "tsv"
-          ],
+          "enum": ["xslx", "ods", "html", "csv", "tsv"],
           "title": "Sheets",
           "type": "string"
         },
         "slides": {
           "default": "pptx",
-          "enum": [
-            "pptx",
-            "odp"
-          ],
+          "enum": ["pptx", "odp"],
           "title": "Slides",
-          "type": "string"
-        },
-        "docs": {
-          "default": "docx",
-          "enum": [
-            "docx",
-            "odt",
-            "rtf",
-            "txt",
-            "epub",
-            "pdf",
-            "md",
-            "zip"
-          ],
-          "title": "Docs",
           "type": "string"
         }
       },
@@ -597,11 +581,7 @@
       "type": "object"
     },
     "HashMode": {
-      "enum": [
-        "off",
-        "in_place",
-        "post_download"
-      ],
+      "enum": ["off", "in_place", "post_download"],
       "title": "HashMode",
       "type": "string"
     },
@@ -613,17 +593,9 @@
           "default": "in_place"
         },
         "algorithms": {
-          "default": [
-            "xxh128",
-            "md5",
-            "sha256"
-          ],
+          "default": ["xxh128", "md5", "sha256"],
           "items": {
-            "enum": [
-              "xxh128",
-              "md5",
-              "sha256"
-            ],
+            "enum": ["xxh128", "md5", "sha256"],
             "type": "string"
           },
           "title": "Algorithms",
@@ -789,13 +761,7 @@
       "type": "object"
     },
     "LogLevel": {
-      "enum": [
-        "DEBUG",
-        "INFO",
-        "WARNING",
-        "ERROR",
-        "CRITICAL"
-      ],
+      "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
       "type": "string"
     },
     "LogPath": {
@@ -928,7 +894,7 @@
         },
         "user_agent": {
           "$ref": "#/$defs/NonEmptyStr",
-          "default": "Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0"
+          "default": "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0"
         },
         "impersonate": {
           "$ref": "#/$defs/FalsyAsNone_ImpersonateTarget_",
@@ -966,10 +932,7 @@
       "properties": {
         "quality": {
           "default": "mp3-320",
-          "enum": [
-            "lossless",
-            "mp3-320"
-          ],
+          "enum": ["lossless", "mp3-320"],
           "title": "Quality",
           "type": "string"
         },
@@ -1093,10 +1056,7 @@
         },
         "min_version": {
           "default": "1.2",
-          "enum": [
-            "1.2",
-            "1.3"
-          ],
+          "enum": ["1.2", "1.3"],
           "title": "Min Version",
           "type": "string"
         },
@@ -1174,14 +1134,7 @@
         },
         "image_size": {
           "default": "orig",
-          "enum": [
-            "orig",
-            "4096x4096",
-            "large",
-            "medium",
-            "small",
-            "thumb"
-          ],
+          "enum": ["orig", "4096x4096", "large", "medium", "small", "thumb"],
           "title": "Image Size",
           "type": "string"
         }
@@ -1190,12 +1143,7 @@
       "type": "object"
     },
     "UIMode": {
-      "enum": [
-        "disabled",
-        "activity",
-        "simple",
-        "fullscreen"
-      ],
+      "enum": ["disabled", "activity", "simple", "fullscreen"],
       "title": "UIMode",
       "type": "string"
     },
@@ -1511,12 +1459,7 @@
     "restrict_path": {
       "default": [],
       "items": {
-        "enum": [
-          "unix",
-          "windows",
-          "no_emoji",
-          "ascii"
-        ],
+        "enum": ["unix", "windows", "no_emoji", "ascii"],
         "type": "string"
       },
       "title": "Restrict Path",

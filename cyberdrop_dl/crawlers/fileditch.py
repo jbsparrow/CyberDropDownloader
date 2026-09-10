@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
+from cyberdrop_dl import env
 from cyberdrop_dl.clients.http import HTTPConfig
 from cyberdrop_dl.crawlers import Registry
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
-from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.exceptions import DDOSGuardError, ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css, extr_text
 from cyberdrop_dl.utils.errors import error_handling_wrapper
@@ -73,11 +74,13 @@ class FileditchCrawler(Crawler):
         await self.handle_file(src, scrape_item, filename, ext, thumbnail=thumb)
 
     async def request_download(self, url: AbsoluteHttpURL) -> tuple[AbsoluteHttpURL, str | None]:
-        resp = await self.flaresolverr_request(url, wait=20)
+        resp = await self.flaresolverr_request(url, wait=env.FILEDITCH_WAIT)
         soup = await resp.soup()
         if soup.select_one(".gone-path"):
             raise ScrapeError(410)
-        src = self.parse_url(css.select(soup, "a.btn-main[download]", "href"))
+        if soup.select("form"):
+            raise DDOSGuardError("Flaresolverr failed proof of work challenge")
+        src = self.parse_url(css.select(soup, "a.btn[download]", "href"))
         _check_url(src)
         return src, _extr_thumb(soup)
 

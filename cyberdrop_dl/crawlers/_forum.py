@@ -444,7 +444,7 @@ class HTMLMessageBoardCrawler(MessageBoardCrawler, is_abc=True):
         scrape_item.append_folders(post_title)
         stats: dict[str, int] = {}
 
-        async with self.new_task_group(scrape_item) as tg:
+        async with self.new_task_group() as tg:
             for scraper in (
                 self._attachments,
                 self._images,

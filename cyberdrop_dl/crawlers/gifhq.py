@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils import css, json_ld
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -44,9 +44,9 @@ class GifHQCrawler(Crawler):
 
         soup = await self.request_soup(scrape_item.url)
         try:
-            props = css.json_ld(soup, "VideoObject")
+            props = json_ld.find_elem(soup, "VideoObject")
         except css.SelectorError:
-            props = css.json_ld(soup, "ImageObject")
+            props = json_ld.find_elem(soup, "ImageObject")
 
         src = self.parse_url(props["contentUrl"])
         self.handle_embed(scrape_item.create_child(src))

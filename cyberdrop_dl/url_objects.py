@@ -120,6 +120,15 @@ class ScrapeItemType(IntEnum):
 logger = logging.getLogger(__name__)
 
 
+@dataclasses.dataclass(slots=True, frozen=True)
+class MuxVideo:
+    video: AbsoluteHttpURL
+    audio: AbsoluteHttpURL
+
+    def __json__(self) -> dict[str, Any]:
+        return {"video": str(self.video), "audio": str(self.audio)}
+
+
 @final
 @dataclasses.dataclass(slots=True, kw_only=True)
 class MediaItem:
@@ -201,6 +210,24 @@ class MediaItem:
             me["debrid_url"] = None
         if self.xxhash:
             me["xxhash"] = f"xxh128:{self.xxhash}"
+        return me
+
+    def as_segment(self, filename: str, url: AbsoluteHttpURL) -> MediaItem:
+        me = MediaItem(
+            url=url,
+            domain=self.domain,
+            download_folder=self.download_folder,
+            filename=filename,
+            db_path=self.db_path,
+            referer=self.url,
+            album_id=self.album_id,
+            ext=self.ext,
+            parents=self.parents,
+            uploaded_at=self.uploaded_at,
+            is_segment=True,
+        )
+        me.headers = self.headers.copy()
+        me.extra_info = self.extra_info.copy()
         return me
 
 

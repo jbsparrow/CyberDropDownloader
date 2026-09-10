@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
-import json
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, dates
+from cyberdrop_dl.utils import css, json_ld
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -30,7 +29,6 @@ class Selector:
     SET_NAME = "span[title='Set'] a"
     SET_ABBR = "span[title='Set Abbreviation']"
     SET_SERIES_CODE = "div.card-tabs span[title='Set Series Code']"
-    SET_INFO = "script:-soup-contains('datePublished')"
     NEXT_PAGE = "li[title='Next Page (Press →)'] a"
 
 
@@ -68,7 +66,7 @@ class CardSet:
     name: str
     abbr: str
     set_series_code: str | None
-    release_date: int
+    release_date: float
 
     @property
     def full_code(self) -> str:
@@ -200,20 +198,10 @@ def create_simple_card(title: str, download_url: AbsoluteHttpURL) -> SimpleCard:
 
 
 def create_set(soup: Tag) -> CardSet:
-    tag = soup.select_one(Selector.SET_SERIES_CODE)
-    # Some sets do not have series code
-    set_series_code: str | None = tag.get_text(strip=True) if tag else None
-    set_info: dict[str, list[dict[str, Any]]] = json.loads(css.select_text(soup, Selector.SET_INFO))
-    release_date: int | None = None
-    for item in set_info["@graph"]:
-        if iso_date := item.get("datePublished"):
-            release_date = int(dates.parse_iso(iso_date).timestamp())
-            break
-
-    set_abbr = css.select_text(soup, Selector.SET_ABBR)
-    set_name = css.select_text(soup, Selector.SET_NAME)
-
-    if not release_date:
-        raise ScrapeError(422)
-
-    return CardSet(set_name, set_abbr, set_series_code, release_date)
+    series = soup.select_one(Selector.SET_SERIES_CODE)
+    return CardSet(
+        name=css.select_text(soup, Selector.SET_NAME),
+        abbr=css.select_text(soup, Selector.SET_ABBR),
+        set_series_code=series.get_text(strip=True) if series else None,
+        release_date=json_ld.date_published(soup),
+    )

@@ -74,23 +74,13 @@ class HLSMixin(ABC):
         **kwargs: Unpack[RequestParams],
     ) -> tuple[m3u8.Rendition, m3u8.RenditionDetails]:
 
-        async def resolve(
-            url: AbsoluteHttpURL | None, media_type: Literal["video", "audio", "subtitle"]
-        ) -> m3u8.M3U8 | None:
+        async def resolve(media_type: Literal["video", "audio", "subtitle"]) -> m3u8.M3U8 | None:
+            url: AbsoluteHttpURL | None = getattr(rendition.urls, media_type)
             if not url:
                 return None
             return await self._request_m3u8(url, method, media_type, **kwargs)
 
-        video, audio, subs = await aio.safe_gather(
-            *(
-                resolve(url, name)
-                for name, url in zip(
-                    ("video", "audio", "subtitle"),
-                    rendition.urls,
-                    strict=True,
-                )
-            )
-        )
+        video, audio, subs = await aio.gather(resolve("video"), resolve("audio"), resolve("subtitle"))
         assert video
         return m3u8.Rendition(video, audio, subs), rendition
 

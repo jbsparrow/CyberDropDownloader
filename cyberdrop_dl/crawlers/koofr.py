@@ -63,7 +63,7 @@ class KooFrCrawler(Crawler):
     @error_handling_wrapper
     async def _walk_folder(self, scrape_item: ScrapeItem, content_id: str, path: str) -> None:
         children = await self.api.get_children(content_id, path, scrape_item.password)
-        async with self.new_task_group(scrape_item) as tg:
+        async with self.new_task_group() as tg:
             for node in children:
                 if node.type == "file":
                     tg.create_task(self._file(scrape_item, node))

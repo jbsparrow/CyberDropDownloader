@@ -7,7 +7,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.mediaprops import Resolution
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, extr_text
+from cyberdrop_dl.utils import extr_text, json_ld
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -49,10 +49,10 @@ class RedtubeCrawler(Crawler):
 
         async with self.request(scrape_item.url) as resp:
             hls_src = _extract_hls_source(await resp.text())
-            json_ld = css.json_ld(await resp.soup())
+            _, props = json_ld.find(await resp.soup())
 
-        scrape_item.uploaded_at = self.parse_iso_date(json_ld["uploadDate"])
-        name: str = json_ld["name"]
+        scrape_item.uploaded_at = self.parse_iso_date(props["uploadDate"])
+        name: str = props["name"]
 
         sources = await self.request_json(hls_src)
         _, m3u8_url = max(_parse_sources(sources))
@@ -73,7 +73,7 @@ class RedtubeCrawler(Crawler):
             ext,
             m3u8=m3u8,
             custom_filename=filename,
-            thumbnail=self.parse_url(json_ld["thumbnailUrl"]),
+            thumbnail=self.parse_url(props["thumbnailUrl"]),
         )
 
 

@@ -10,7 +10,7 @@ from cyberdrop_dl.crawlers import Registry
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import TextExtractor, css, dates, parse_url
+from cyberdrop_dl.utils import TextExtractor, css, dates, json_ld, parse_url
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -218,7 +218,7 @@ def _extract_media_from_thumbs(soup: BeautifulSoup) -> Generator[Media]:
 def _extract_media(soup: BeautifulSoup) -> Media:
     js_text = css.select_text(soup, Selector.MEDIA_INFO_JS)
     extract = TextExtractor(js_text)
-    props = css.json_ld(soup, "uploadDate")
+    _, props = json_ld.find(soup, "uploadDate")
     return Media(
         name=props["name"],
         upload_date=dates.parse_iso(props["uploadDate"]),

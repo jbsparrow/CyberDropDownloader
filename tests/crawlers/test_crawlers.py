@@ -60,7 +60,7 @@ async def test_crawler(running_manager: Manager, test_case: test_cases.CrawlerTe
                 None,
             )
             assert cls, f"{test_case.domain} is not a valid crawler domain. Test case is invalid"
-            crawler = scrape_mapper._factory[cls]
+            crawler = scrape_mapper._factory(cls)
             await crawler.__async_init__()
             item = ScrapeItem.from_url(crawler.parse_url(test_case.url))
             item.download_folder = running_manager.config.download_folder

@@ -215,14 +215,14 @@ tls:
 
 | Type          | Default                                                                  |
 | ------------- | ------------------------------------------------------------------------ |
-| `NonEmptyStr` | `Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0` |
+| `NonEmptyStr` | `Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0` |
 
 The user agent is the signature of your browser. Some sites use it to identify if the request came from a human or a robot.
 You can google "what is my user agent" to get yours.
 
 ```yaml
 network:
-  user_agent: Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0
+  user_agent: Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0
 ```
 
 {% hint style="info" %}
@@ -233,13 +233,12 @@ If you use flaresolverr, this value **MUST** match with flaresolverr's user agen
 These crawlers will ignore custom user-agents and will always use `cyberdrop-dl/<version>`
 
 <!-- START_CUSTOM_UA_CRAWLERS -->
-
 - Archive.org
 - E621
 - MegaNz
+- Pawchive
 - RealDebrid
 - Transfer.it
-
 <!-- END_CUSTOM_UA_CRAWLERS -->
 
 {% endhint %}

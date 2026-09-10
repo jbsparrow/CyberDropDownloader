@@ -10,7 +10,7 @@ from cyberdrop_dl import aio
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, extr_text
+from cyberdrop_dl.utils import css, extr_text, json_ld
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -117,7 +117,7 @@ class XVideosCrawler(Crawler):
             raise ScrapeError(404, css.text(error))
 
         title = css.page_title(soup, self.DOMAIN)
-        scrape_item.uploaded_at = self.parse_iso_date(css.json_ld(soup)["uploadDate"])
+        scrape_item.uploaded_at = json_ld.upload_date(soup)
         script = css.select_text(soup, Selectors.HLS_VIDEO_JS)
         m3u8_url = self.parse_url(extr_text(script, "setVideoHLS('", "')"))
         m3u8, info = await self.request_m3u8_playlist(m3u8_url)

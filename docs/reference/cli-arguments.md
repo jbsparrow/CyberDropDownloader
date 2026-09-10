@@ -73,9 +73,8 @@ If provided, this file _must_ exists already, but it can be empty
 ## Overview
 
 <!-- START_CLI_OVERVIEW -->
-
 ```shell
-cyberdrop-dl v10.7.0
+cyberdrop-dl v10.8.0
 Bulk asynchronous downloader for multiple file hosts
 
 Usage: cyberdrop-dl COMMAND [OPTIONS]
@@ -107,15 +106,15 @@ Wiki (docs): https://script-ware.gitbook.io/cyberdrop-dl
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-cyberdrop-dl v10.7.0
+cyberdrop-dl v10.8.0
 Bulk asynchronous downloader for multiple file hosts
 
-Usage: cyberdrop-dl download [OPTIONS] [ARGS]
+Usage: cyberdrop-dl download [OPTIONS] [ARGS...]
 
 Download URLs
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
-│ URLS  URL(s) to download                                                                         │
+│ URLS_OR_FILES  File(s)/ URL(s) to download                                                       │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Parameters ─────────────────────────────────────────────────────────────────────────────────────╮
 │ --input-file                        Text/HTML file with URL(s) to download                       │
@@ -173,6 +172,10 @@ Download URLs
 │                                      alas]                                                       │
 │                                      [default: ('mp3-320', 'mp3', 'aac-hi', 'wav', 'flac',       │
 │                                      'vorbis', 'aiff', 'alas')]                                  │
+│ --crawlers.clonr.use-source          Ignore files in clone and process the original Mega.nz URL  │
+│   --crawlers.clonr.no-use-source     [default: False]                                            │
+│ --crawlers.clonr.zip                 Download entire clone as a single ZIP file                  │
+│   --crawlers.clonr.no-zip            [default: False]                                            │
 │ --crawlers.clypit.prefer-mp3         Download audios as .mp3 files even if WAV (high quality)    │
 │   --crawlers.clypit.no-prefer-mp3    versions are available                                      │
 │                                      [default: False]                                            │
@@ -182,9 +185,54 @@ Download URLs
 │ --crawlers.generic.chevereto         [default: ()]                                               │
 │ --crawlers.generic.kvs               [default: ()]                                               │
 │ --crawlers.generic.video             [default: ()]                                               │
+│ --crawlers.generic.peertube          [default: ()]                                               │
+│ --crawlers.google-drive.default-for  Default format for documents (can be overridden per URL     │
+│   mats.docs                          with the 'format' query param)                              │
+│                                      [choices: docx, odt, rtf, txt, epub, pdf, md, zip]          │
+│                                      [default: docx]                                             │
+│ --crawlers.google-drive.default-for  Default format for spreedsheets (can be overridden per URL  │
+│   mats.sheets                        with the 'format' query param)                              │
+│                                      [choices: xslx, ods, html, csv, tsv]                        │
+│                                      [default: xslx]                                             │
+│ --crawlers.google-drive.default-for  Default format for presentations (can be overridden per URL │
+│   mats.slides                        with the 'format' query param)                              │
+│                                      [choices: pptx, odp]                                        │
+│                                      [default: pptx]                                             │
+│ --crawlers.octave-music.quality      Quality of audio file to download (lossless are .flac       │
+│                                      files)                                                      │
+│                                      [choices: lossless, mp3-320]                                │
+│                                      [default: mp3-320]                                          │
+│ --crawlers.octave-music.filename-fo  Format to generate audio file                               │
+│   rmat                               [default: {artist} - {title}{ext}]                          │
 │ --crawlers.one-pace.prefer-dub       Download episodes with english audio tracks instead of      │
 │   --crawlers.one-pace.no-prefer-dub  japanese (if available)                                     │
 │                                      [default: False]                                            │
+│ --crawlers.only-haven.file           Download the main file in a post (if any)                   │
+│   --crawlers.only-haven.no-file      [default: True]                                             │
+│ --crawlers.only-haven.attachments -  Download all attachments in a post (may or may not include  │
+│   -crawlers.only-haven.no-attachmen  `file`)                                                     │
+│   ts                                 [default: True]                                             │
+│ --crawlers.only-haven.content-urls   Download any URL found inside the description (text) of a   │
+│   --crawlers.only-haven.no-content-  post (slower)                                               │
+│   urls                               [default: True]                                             │
+│ --crawlers.only-haven.embed          Download the embedded file from third party sites (if       │
+│   --crawlers.only-haven.no-embed     any)(mega.nz, pcloud, dropbox, etc..)                       │
+│                                      [default: True]                                             │
+│ --crawlers.pawchive.file             Download the main file in a post (if any)                   │
+│   --crawlers.pawchive.no-file        [default: True]                                             │
+│ --crawlers.pawchive.attachments      Download all attachments in a post (may or may not include  │
+│   --crawlers.pawchive.no-attachment  `file`)                                                     │
+│   s                                  [default: True]                                             │
+│ --crawlers.pawchive.content-urls     Download any URL found inside the description (text) of a   │
+│   --crawlers.pawchive.no-content-ur  post (slower)                                               │
+│   ls                                 [default: True]                                             │
+│ --crawlers.pawchive.embed            Download the embedded file from third party sites (if       │
+│   --crawlers.pawchive.no-embed       any)(mega.nz, pcloud, dropbox, etc..)                       │
+│                                      [default: True]                                             │
+│ --crawlers.pornhub.profile-paths     Subpaths to scrape when an input URL is a profile's         │
+│                                      homepage                                                    │
+│                                      [default: ('photos/public', 'gifs/public', 'videos',        │
+│                                      'videos/upload')]                                           │
 │ --crawlers.tiktok.original           Download videos in original quality (slower)                │
 │   --crawlers.tiktok.no-original      [default: False]                                            │
 │ --crawlers.twitter.cards             Parse and download cards in a post (embeds from thirdparty  │
@@ -206,38 +254,6 @@ Download URLs
 │   --crawlers.twitter.no-retweets     [default: False]                                            │
 │ --crawlers.twitter.image-size        [choices: orig, 4096x4096, large, medium, small, thumb]     │
 │                                      [default: orig]                                             │
-│ --crawlers.pawchive.file             Download the main file in a post (if any)                   │
-│   --crawlers.pawchive.no-file        [default: True]                                             │
-│ --crawlers.pawchive.attachments      Download all attachments in a post (may or may not include  │
-│   --crawlers.pawchive.no-attachment  `file`)                                                     │
-│   s                                  [default: True]                                             │
-│ --crawlers.pawchive.content-urls     Download any URL found inside the description (text) of a   │
-│   --crawlers.pawchive.no-content-ur  post (slower)                                               │
-│   ls                                 [default: True]                                             │
-│ --crawlers.pawchive.embed            Download the embedded file from third party sites (if       │
-│   --crawlers.pawchive.no-embed       any)(mega.nz, pcloud, dropbox, etc..)                       │
-│                                      [default: True]                                             │
-│ --crawlers.only-haven.file           Download the main file in a post (if any)                   │
-│   --crawlers.only-haven.no-file      [default: True]                                             │
-│ --crawlers.only-haven.attachments -  Download all attachments in a post (may or may not include  │
-│   -crawlers.only-haven.no-attachmen  `file`)                                                     │
-│   ts                                 [default: True]                                             │
-│ --crawlers.only-haven.content-urls   Download any URL found inside the description (text) of a   │
-│   --crawlers.only-haven.no-content-  post (slower)                                               │
-│   urls                               [default: True]                                             │
-│ --crawlers.only-haven.embed          Download the embedded file from third party sites (if       │
-│   --crawlers.only-haven.no-embed     any)(mega.nz, pcloud, dropbox, etc..)                       │
-│                                      [default: True]                                             │
-│ --crawlers.octave-music.quality      Quality of audio file to download (lossless are .flac       │
-│                                      files)                                                      │
-│                                      [choices: lossless, mp3-320]                                │
-│                                      [default: mp3-320]                                          │
-│ --crawlers.octave-music.filename-fo  Format to generate audio file                               │
-│   rmat                               [default: {artist} - {title}{ext}]                          │
-│ --crawlers.clonr.use-source          Ignore files in clone and process the original Mega.nz URL  │
-│   --crawlers.clonr.no-use-source     [default: False]                                            │
-│ --crawlers.clonr.zip                 Download entire clone as a single ZIP file                  │
-│   --crawlers.clonr.no-zip            [default: False]                                            │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Downloads ──────────────────────────────────────────────────────────────────────────────────────╮
 │ --downloads                         Max number of files to download simultaneously               │
@@ -369,13 +385,19 @@ Download URLs
 │                            [default: 0]                                                          │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Network ────────────────────────────────────────────────────────────────────────────────────────╮
-│ --dump-responses                     Save text/HTML/JSON responses to disk (flaresolverr         │
+│ --dump-responses                     Save text/HTML/JSON responses to disk (Flaresolverr         │
 │   --no-dump-responses                responses are excluded)                                     │
 │                                      [default: False]                                            │
-│ --flaresolverr                       HTTP URL of an existing flaresolverr instance               │
+│ --flaresolverr                       HTTP URL of an existing Flaresolverr instance               │
 │ --flaresolverr-use-session           Create a custom session before making any request with      │
-│   --no-flaresolverr-use-session      flaresolverr                                                │
+│   --no-flaresolverr-use-session      Flaresolverr                                                │
 │                                      [default: True]                                             │
+│ --flaresolverr-wait                  Force Flaresolverr to wait (at least) this number of        │
+│                                      seconds before returning the results, to allow dynamic      │
+│                                      content to load                                             │
+│                                      [default: 0]                                                │
+│ --flaresolverr-concurrency           Number of concurrent requests to make with Flaresolverr     │
+│                                      [default: 1]                                                │
 │ --proxy --http-proxy                 HTTP/HTTPS proxy                                            │
 │ --rate-limit                         Max number of requests per second (only used while          │
 │                                      scraping)                                                   │
@@ -387,8 +409,8 @@ Download URLs
 │ --tls.min-version                    [choices: 1.2, 1.3]                                         │
 │                                      [default: 1.2]                                              │
 │ --ca-certs                           [default: ()]                                               │
-│ --user-agent                         [default: Mozilla/5.0 (X11; Linux x86_64; rv:150.0)         │
-│                                      Gecko/20100101 Firefox/150.0]                               │
+│ --user-agent                         [default: Mozilla/5.0 (X11; Linux x86_64; rv:153.0)         │
+│                                      Gecko/20100101 Firefox/153.0]                               │
 │ --impersonate                        Use this target as impersonation for all scrape requests    │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Sort ───────────────────────────────────────────────────────────────────────────────────────────╮
@@ -440,5 +462,4 @@ Download URLs
 Github:      https://github.com/Cyberdrop-DL/cyberdrop-dl
 Wiki (docs): https://script-ware.gitbook.io/cyberdrop-dl
 ```
-
 <!-- END_CLI_OVERVIEW -->

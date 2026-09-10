@@ -5,11 +5,12 @@ import contextlib
 import dataclasses
 import logging
 import os
-from typing import TYPE_CHECKING, ClassVar
+from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar, final
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 
-from cyberdrop_dl import aio, constants, ffmpeg, storage
+from cyberdrop_dl import aio, constants, env, ffmpeg, storage
 from cyberdrop_dl.clients.downloads import filter_by_duration, resolve_download_dir
 from cyberdrop_dl.downloader import hls
 from cyberdrop_dl.exceptions import (
@@ -21,8 +22,13 @@ from cyberdrop_dl.exceptions import (
     RestrictedFiletypeError,
     SkipDownloadError,
 )
+from cyberdrop_dl.hasher import compute_in_place_hash
+from cyberdrop_dl.progress.scraping import show_msg
+from cyberdrop_dl.signature import simple_repr
+from cyberdrop_dl.url_objects import MuxVideo
 from cyberdrop_dl.utils import dates
 from cyberdrop_dl.utils.errors import error_handling_wrapper
+from cyberdrop_dl.utils.m3u8 import Rendition
 
 if TYPE_CHECKING:
     import datetime
@@ -31,8 +37,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.clients.downloads import DownloadClient
     from cyberdrop_dl.config import Config
     from cyberdrop_dl.manager import Manager
+    from cyberdrop_dl.progress.scraping import ScrapingUI
     from cyberdrop_dl.url_objects import AbsoluteHttpURL, MediaItem
-    from cyberdrop_dl.utils.m3u8 import Rendition
 
 logger = logging.getLogger(__name__)
 
@@ -98,28 +104,33 @@ class Capacity:
             self._should_warn = True
 
 
-@dataclasses.dataclass(slots=True)
 class Downloader:
     """High level class that handles limiters, database checks, skip by config checks and retries"""
 
     SUPPORTS_RETRIES: ClassVar[bool] = True
-    manager: Manager = dataclasses.field(repr=False)
     log_prefix: str = "Download"
-    use_server_lock: bool = False
 
-    _slots: int | None = None
-    _processed_items: set[str] = dataclasses.field(init=False, default_factory=set)
-    _current_attempt_filesize: dict[str, int] = dataclasses.field(init=False, default_factory=dict)
-    _semaphore: asyncio.Semaphore = dataclasses.field(init=False)
-    _server_locks: aio.WeakAsyncLocks[str] = dataclasses.field(
-        init=False, default_factory=aio.WeakAsyncLocks, repr=False
-    )
-    capacity: Capacity = dataclasses.field(default_factory=Capacity)
-    config: Config = dataclasses.field(init=False)
+    @final
+    def __init__(self, manager: Manager, slots: int | None = None, *, use_server_lock: bool = False) -> None:
+        self.manager: Manager = manager
+        self.use_server_lock: bool = use_server_lock
+        self.capacity: Capacity = Capacity()
+        self.config: Config = self.manager.config
+        self._processed_items: set[str] = set()
+        self._current_attempt_filesize: dict[str, int] = {}
+        self._server_locks: aio.WeakAsyncLocks[str] = aio.WeakAsyncLocks()
+        self._slots: int | None = slots
+        self._semaphore: asyncio.Semaphore
+        self._set_capacity_limit(slots)
+        self.__post_init__()
 
-    def __post_init__(self) -> None:
-        self.config = self.manager.config
-        self.slots = self._slots
+    def __post_init__(self) -> None: ...
+
+    __repr__ = simple_repr("slots", "use_server_lock", "log_prefix", "capacity", "_semaphore")
+
+    @property
+    def tui(self) -> ScrapingUI:
+        return self.manager.scrape_mapper.tui
 
     @property
     def slots(self) -> int | None:
@@ -127,16 +138,15 @@ class Downloader:
 
     @slots.setter
     def slots(self, new_limit: int | None) -> None:
-        try:
-            sem = self._semaphore
-        except AttributeError:
-            pass
-        else:
-            if not (sem._waiters is None and sem._value == self._slots):
-                raise RuntimeError("Can't change download limits. Downloader is already in use")
+        if not (self._semaphore._waiters is None and self._semaphore._value == self._slots):
+            raise RuntimeError("Can't change download slots. Downloader is already in use")
+        self._set_capacity_limit(new_limit)
 
+    def _set_capacity_limit(self, slots: int | None) -> None:
+        if slots is not None and slots < 1:
+            raise ValueError("slots has to be >=1 or None (unlimited)")
         upper_limit = self.config.downloads.concurrency_per_domain
-        self._slots = min(new_limit or upper_limit, upper_limit)
+        self._slots = min(slots or upper_limit, upper_limit)
         self._semaphore = asyncio.Semaphore(self._slots)
         self.capacity.limit = min(self._slots * 10, 50)
 
@@ -155,18 +165,12 @@ class Downloader:
                     raise
 
                 logger.error(f"{self.log_prefix} failed: {media_item.url} with error: {e!s}")
-
                 logger.info(
-                    f"Retrying {self.log_prefix.lower()}: {media_item.url}, retry attempt: {media_item.attempts + 1}"
+                    "Retrying %s: %s, attempt: %s",
+                    self.log_prefix.lower(),
+                    media_item.url,
+                    media_item.attempts + 1,
                 )
-
-    async def __finalize_download(self, media_item: MediaItem) -> None:
-        await aio.chmod(media_item.path, 0o666)
-        if media_item.is_segment:
-            return
-        await _set_mtime(media_item, self.config)
-        self.manager.scrape_mapper.tui.files.stats.completed += 1
-        logger.info(f"Download finished: {media_item.url}")
 
     async def _check_skip_by_config(self, media_item: MediaItem) -> None:
         if not _is_allowed_filetype(media_item, self.config):
@@ -213,7 +217,7 @@ class Downloader:
         except SkipDownloadError as e:
             if not media_item.is_segment:
                 logger.info(f"Download skipped {media_item.url}: {e}")
-                self.manager.scrape_mapper.tui.files.stats.skipped += 1
+                self.tui.files.stats.skipped += 1
 
         except (DownloadError, ClientResponseError, InvalidContentTypeError):
             raise
@@ -238,7 +242,7 @@ class Downloader:
 
         else:
             if downloaded:
-                await self.__finalize_download(media_item)
+                await aio.chmod(media_item.path, 0o666)
             return downloaded
 
     @contextlib.asynccontextmanager
@@ -251,77 +255,134 @@ class Downloader:
         ):
             yield
 
-    async def run(self, media_item: MediaItem) -> bool:
-        if media_item.db_path in self._processed_items and not self.config.ignore_history:
-            return False
-
-        async with self.__download_context(media_item):
-            downloaded = await self._download(media_item)
-
-        if not downloaded:
-            return False
-        assert not media_item.is_segment
-        if await self.__skip_by_duration(media_item):
-            return False
-        await self.client.process_completed(media_item, media_item.domain)
-        await self.client.handle_media_item_completion(media_item, downloaded=True)
-        return True
-
     async def __skip_by_duration(self, media_item: MediaItem) -> bool:
         proceed = not await filter_by_duration(media_item, self.config)
         await self.manager.database.history.add_duration(media_item.domain, media_item)
         if not proceed:
             logger.info(f"Download skipped {media_item.url} due to runtime restrictions")
-            await aio.unlink(media_item.path)
+            await aio.unlink(media_item.path, missing_ok=True)
             await self.client.mark_incomplete(media_item, media_item.domain)
-            self.manager.scrape_mapper.tui.files.stats.skipped += 1
+            self.tui.files.stats.skipped += 1
         return not proceed
 
-    @error_handling_wrapper
-    async def download_hls(self, media_item: MediaItem, m3u8_group: Rendition) -> None:
-        if media_item.db_path in self._processed_items and not self.config.ignore_history:
-            return
-
-        assert ffmpeg.is_installed()
-        async with self.__download_context(media_item):
-            await self.__hls_download(media_item, m3u8_group)
-
-    async def __hls_download(self, media_item: MediaItem, rendition: Rendition) -> None:
+    async def _prepare_multi_stream_output(self, media_item: MediaItem) -> None:
         media_item.download_folder = resolve_download_dir(media_item.download_folder, self.config)
         media_item.path = media_item.download_folder / media_item.filename
         media_item.download_filename = media_item.path.name
         await self.manager.database.history.add_download_filename(media_item.domain, media_item)
 
-        with self.manager.scrape_mapper.tui.downloads.download_hls(
+    @error_handling_wrapper
+    async def run(self, media_item: MediaItem, streams: Rendition | MuxVideo | None = None) -> None:
+        if media_item.db_path in self._processed_items and not self.config.ignore_history:
+            return
+
+        if streams is not None:
+            assert ffmpeg.is_installed()
+
+        async with self.__download_context(media_item):
+            match streams:
+                case None:
+                    await self._file(media_item)
+                case Rendition():
+                    await self._hls(media_item, streams)
+                case MuxVideo():
+                    await self._mux(media_item, streams)
+                case _:  # pyright: ignore[reportUnnecessaryComparison]
+                    raise ValueError(f"Unsupported streams: {streams!r}")
+
+        if media_item.downloaded:
+            await self._compute_hashes(media_item)
+
+    async def _file(self, media_item: MediaItem) -> None:
+        if not await self._download(media_item):
+            return
+
+        await self.__finish_download(media_item)
+
+    async def _mux(self, media_item: MediaItem, mux: MuxVideo) -> None:
+        await self._prepare_multi_stream_output(media_item)
+        p_name = Path(media_item.filename)
+
+        def create_stream_item(name: str, url: AbsoluteHttpURL) -> MediaItem:
+            filename = p_name.with_suffix(f".{name}{constants.TempExt.PART}").name
+            seg_item = media_item.as_segment(filename, url)
+            seg_item.extra_info["MUX_STREAM"] = True
+            return seg_item
+
+        logger.info(f"{self.log_prefix} starting (multistream video): {media_item.url}\n %s", mux.__json__())
+        audio, video = create_stream_item("audio", mux.audio), create_stream_item("video", mux.video)
+        results = await aio.map(self._download, (audio, video), task_limit=None)
+        if not all(results):
+            msg = f"Download of some streams failed. {dict(zip(('audio', 'video'), results, strict=True))}"
+            raise DownloadError("Mux Download Error", msg)
+
+        streams = hls.Streams(video.path, audio.path, None)
+        await _merge_streams(media_item, streams)
+        await self.__finish_download(media_item)
+
+    async def _hls(self, media_item: MediaItem, rendition: Rendition) -> None:
+        await self._prepare_multi_stream_output(media_item)
+        with self.tui.downloads.download_hls(
             media_item.filename,
             media_item.domain,
             segments=sum(m.total_segments for m in rendition if m is not None),
             url=media_item.url,
         ):
-            await self._hls_download(media_item, rendition)
+            streams = await hls.download(media_item, rendition, self._download, self.client.http_client)
+            await _merge_streams(media_item, streams)
+            await _fixup_video(media_item)
+            await self.__finish_download(media_item)
 
-    async def _hls_download(self, media_item: MediaItem, rendition: Rendition) -> None:
-        streams = await hls.download(media_item, rendition, self._download, self.client.http_client)
-        if not streams.audio:
-            await aio.move(streams.video, media_item.path)
+    async def __finish_download(self, media_item: MediaItem) -> None:
+        assert not media_item.is_segment
+        media_item.downloaded = True
+        if await self.__skip_by_duration(media_item):
+            media_item.downloaded = False
+            return
 
-        else:
-            # TODO: add remux method to ffmpeg to create an mkv file instead of mp4
-            # Subtitles format may be incompatible with mp4 and they will be silently dropped by ffmpeg
-            # so we leave them as independent files for now
-            logger.debug(f"Merging audio and video stream from {media_item.real_url}")
-            ffmpeg_result = await ffmpeg.merge((streams.video, streams.audio), media_item.path)
+        await _set_mtime(media_item, self.config)
+        self.tui.files.stats.completed += 1
+        logger.info(f"Download finished: {media_item.url}")
+        await self.client.mark_completed(media_item, media_item.domain)
 
-            if not ffmpeg_result.success:
-                raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
+    async def _compute_hashes(self, media_item: MediaItem) -> None:
+        # TODO: move this to the scrape_mapper as a post-download task
+        if self.config.hashing.mode is not constants.HashMode.IN_PLACE:
+            return
+        try:
+            await compute_in_place_hash(self.manager.hasher, media_item)
+        except Exception:
+            logger.exception("Unable to compute hashes of '%s'", media_item.path)
+        finally:
+            self.manager.add_completed(media_item)
 
-        logger.debug(f"Running MP4 fixup ({media_item.real_url})")
-        ffmpeg_result = await ffmpeg.fixup_video(media_item.path)
-        if not ffmpeg_result.success:
-            raise DownloadError("FFmpeg Fixup Error", ffmpeg_result.stderr, media_item)
-        await self.client.process_completed(media_item, media_item.domain)
-        await self.client.handle_media_item_completion(media_item, downloaded=True)
-        await self.__finalize_download(media_item)
+
+async def _merge_streams(media_item: MediaItem, streams: hls.Streams) -> None:
+    if not streams.audio:
+        await aio.move(streams.video, media_item.path)
+        return
+
+    # TODO: add remux method to create an mkv file instead of mp4
+    # Subtitles format may be incompatible with mp4 and they will be silently dropped by ffmpeg
+    # so we leave them as independent files for now
+    with show_msg(f"Merging {media_item.path.name}"):
+        logger.debug("Merging audio and video stream for '%s' (%s)", media_item.path.name, media_item.real_url)
+        result = await ffmpeg.merge(streams.video, streams.audio, media_item.path)
+
+    if not result.success:
+        raise DownloadError("FFmpeg Concat Error", result.stderr, media_item)
+
+
+async def _fixup_video(media_item: MediaItem) -> None:
+    if not env.FFMPEG_FIX_HLS:
+        return
+
+    with show_msg(f"Optimizing {media_item.path.name}"):
+        logger.debug("Fixing MP4 container with ffmpeg: '%s' (%s)", media_item.path, media_item.real_url)
+        result = await ffmpeg.optimize(media_item.path)
+
+    if not result.success:
+        raise DownloadError("FFmpeg Fixup Error", result.stderr, media_item)
 
 
 def _is_allowed_filetype(media_item: MediaItem, config: Config) -> bool:
@@ -356,9 +417,6 @@ def _filter_by_date(item_datetime: datetime.datetime, config: Config) -> bool:
 
 
 async def _set_mtime(media_item: MediaItem, config: Config) -> None:
-    if media_item.is_segment:
-        return
-
     if not config.mtime:
         return
 

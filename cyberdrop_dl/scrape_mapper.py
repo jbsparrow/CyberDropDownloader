@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import dataclasses
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Self, override
@@ -29,7 +30,7 @@ from cyberdrop_dl.utils import remove_trailing_slash
 from cyberdrop_dl.utils._url import matches_any_host
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Iterable, Iterator
+    from collections.abc import AsyncGenerator, Generator, Iterator
 
     from cyberdrop_dl.clients.jd.client import JDownloader
     from cyberdrop_dl.config import Config
@@ -41,10 +42,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-def _filter_by_domain(url: AbsoluteHttpURL, domains: Iterable[str]) -> bool:
-    return any(domain in url.host for domain in domains)
 
 
 @dataclasses.dataclass(slots=True, eq=False)
@@ -59,6 +56,12 @@ class CrawlerFactory:
         return f"<{type(self).__name__}(instances={len(self._instances):,})>"
 
     def __getitem__[CrawlerT: Crawler](self, obj: type[CrawlerT]) -> CrawlerT:
+        instance = self.get(obj)
+        if instance is None:
+            raise KeyError(obj)
+        return instance
+
+    def __call__[CrawlerT: Crawler](self, obj: type[CrawlerT]) -> CrawlerT:
         instance = self.get(obj)
         if instance is None:
             instance = self._instances[obj] = obj(self.manager, self.task_mngr, self.tui)
@@ -149,7 +152,7 @@ class ScrapeMapper:
         self.tui.scrape.get_queue = self._scrape_queue
         self.tui.downloads.get_queue = self._download_queue
 
-    def _init_crawlers(self) -> None:
+    async def _init_crawlers(self) -> None:
         crawlers = get_crawlers_mapping()
         self.crawlers.update(crawlers)
 
@@ -162,6 +165,33 @@ class ScrapeMapper:
         logger.debug(msg)
 
         _disable_crawlers_by_config(self.crawlers, *self.manager.config.crawlers.disabled)
+        await self._register_peertube()
+
+    async def _register_peertube(self) -> None:
+        # User may have disabled peertube
+        if "peertube" not in self.crawlers:
+            return
+
+        if "pytest" in sys.modules:
+            return
+
+        from cyberdrop_dl.crawlers._peertube import PeerTubeCrawler
+
+        for url in self.manager.config.crawlers.generic.peertube:
+            if other := _best_match(self.crawlers, url.host):
+                msg = GENERIC_MAP_ERROR.format(url, PeerTubeCrawler.NAME, other.NAME)
+                logger.error(msg)
+                continue
+
+            self.crawlers[url.host] = PeerTubeCrawler
+
+        peertube = self._factory(PeerTubeCrawler)
+        for host in await peertube.get_instances():
+            crawler = self.crawlers.setdefault(host, PeerTubeCrawler)
+            if crawler.DOMAIN == PeerTubeCrawler.DOMAIN:
+                continue
+
+            logger.warning("Found PeerTube site '%s' mapped to a non PeerTube crawler: %s", host, crawler.INFO)
 
     @contextlib.asynccontextmanager
     async def __call__(self) -> AsyncGenerator[Self]:
@@ -204,20 +234,25 @@ class ScrapeMapper:
 
     @contextlib.contextmanager
     def __cancel_context(self) -> Generator[None]:
-        try:
-            with self.tui():
+        cancelled: bool = False
+        with self.tui():
+            try:
                 yield
-        except asyncio.CancelledError:
-            # This is a KeyboardInterrupt cause we never cancel tasks
-            if not self._shutting_down:
-                raise
+            except asyncio.CancelledError:
+                # This is a KeyboardInterrupt cause we never cancel tasks
+                if not self._shutting_down:
+                    raise
 
+                cancelled = True
+                self.tui.status.shutdown()
+
+        if cancelled:
             logger.warning("Scraping aborted ('Ctrl + C' pressed)")
 
     async def __async_init__(self) -> None:
         if self._ready:
             return
-        self._init_crawlers()
+        await self._init_crawlers()
         try:
             await self._jdownloader.connect(self.manager.http_client)
         except Exception:
@@ -265,16 +300,16 @@ class ScrapeMapper:
 
     async def _send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         if cls := _best_match(self.crawlers, scrape_item.url.host):
-            crawler = self._factory[cls]
+            crawler = self._factory(cls)
             await crawler.__async_init__()
             if crawler.__url_config__.trim:
                 scrape_item.url = remove_trailing_slash(scrape_item.url)
-            self.task_mngr.scrape.create_task(crawler.run(scrape_item))
+            self.task_mngr.scrape.create_task(crawler.run(scrape_item), name=str(scrape_item.url))
             return
 
         if not self._real_debrid.disabled and self._real_debrid.api.is_supported(scrape_item.url):
             logger.info(f"Using RealDebrid for unsupported URL: {scrape_item.url}")
-            self.task_mngr.scrape.create_task(self._real_debrid.run(scrape_item))
+            self.task_mngr.scrape.create_task(self._real_debrid.run(scrape_item), name=str(scrape_item.url))
             return
 
         try:
@@ -330,6 +365,13 @@ def get_crawlers_mapping() -> dict[str, type[Crawler]]:
     return crawlers_map
 
 
+GENERIC_MAP_ERROR = (
+    "Unable to assign {} to generic crawler {}. "
+    "URL conflicts with URL format of builtin crawler {}. "
+    "URL will be ignored"
+)
+
+
 def register_crawler(
     crawlers_map: dict[str, type[Crawler]],
     crawler: type[Crawler],
@@ -343,11 +385,7 @@ def register_crawler(
             if not other and (match := _best_match(crawlers_map, crawler.PRIMARY_URL.host)):
                 other = match
             if other:
-                msg = (
-                    f"Unable to assign {crawler.PRIMARY_URL} to generic crawler {crawler.NAME}. "
-                    f"URL conflicts with URL format of builtin crawler {other.NAME}. "
-                    "URL will be ignored"
-                )
+                msg = GENERIC_MAP_ERROR.format(crawler.PRIMARY_URL, crawler.NAME, other.NAME)
                 if from_user == "raise":
                     raise ValueError(msg)
                 logger.error(msg)
@@ -425,16 +463,18 @@ def _disable_crawlers_by_config(current_crawlers: dict[str, type[Crawler]], *cra
     log_spacer()
 
 
-def _best_match[T](current_map: dict[str, T], domain: str) -> T | None:
-    if found := current_map.get(domain):
+def _best_match[T: Crawler | type[Crawler]](crawlers: dict[str, T], domain: str) -> T | None:
+    if found := crawlers.get(domain):
         return found
 
+    matches = (host for host, cls in crawlers.items() if host in domain and cls.check_host_match(domain))
+
     try:
-        best_match = max((host for host in current_map if host in domain), key=len)
+        best_match = max(matches, key=len)
     except (ValueError, TypeError):
         return None
     else:
-        current_map[domain] = found = current_map[best_match]
+        crawlers[domain] = found = crawlers[best_match]
         return found
 
 

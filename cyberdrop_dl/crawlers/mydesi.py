@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.mediaprops import Resolution
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils import css, json_ld
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -51,9 +51,10 @@ class MyDesiCrawler(Crawler):
         resolution, link = max(_parse_formats(soup))
         link = self.parse_url(link)
         _, ext = self.get_filename_and_ext(link.name)
-        metadata: dict[str, str] = css.json_ld(soup)["subjectOf"]
+        metadata: dict[str, Any] = json_ld.find_attr(soup, "subjectOf")
         title = metadata["name"]
-        scrape_item.uploaded_at = self.parse_iso_date(metadata.get("uploadDate", ""))
+
+        scrape_item.uploaded_at = self.parse_iso_date(metadata["uploadDate"])
         custom_filename = self.create_custom_filename(title, ext, resolution=resolution)
         return await self.handle_file(link, scrape_item, title, ext, custom_filename=custom_filename)
 

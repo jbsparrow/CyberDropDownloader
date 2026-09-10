@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, URLConfig
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, extr_text
+from cyberdrop_dl.utils import css, extr_text, json_ld
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class FYPTTCrawler(Crawler):
             return
 
         soup = await self.request_soup(scrape_item.url)
-        article = next(f for f in css.json_ld(soup)["@graph"] if f.get("@type") == "Article")
+        article = json_ld.find_elem(soup, "Article")
         name: str = article["headline"]
 
         scrape_item.uploaded_at = self.parse_iso_date(article["datePublished"])

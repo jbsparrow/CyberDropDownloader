@@ -6,16 +6,15 @@ import logging
 import time
 from contextvars import ContextVar
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any, final
+from typing import TYPE_CHECKING, Any, ClassVar, final
 
 from aiohttp import hdrs
 
 from cyberdrop_dl import aio, constants, ffmpeg, storage
 from cyberdrop_dl.clients import etag
 from cyberdrop_dl.clients.http import JSON_CHECK, check_http_status
-from cyberdrop_dl.constants import FileExt, HashMode
+from cyberdrop_dl.constants import FileExt
 from cyberdrop_dl.exceptions import DownloadError, InvalidContentTypeError, SlowDownloadError
-from cyberdrop_dl.hasher import compute_in_place_hash
 from cyberdrop_dl.signature import simple_repr
 from cyberdrop_dl.utils import dates, enter_context
 
@@ -43,11 +42,12 @@ _SLOW_DOWNLOAD_PERIOD: int = 10  # seconds
 class DownloadClient:
     """Low level class that performs the actual HTTP download operations."""
 
+    SUPPORTS_RANGES: ClassVar[bool] = True
+
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.config = self.manager.config
         self.download_speed_threshold = self.config.downloads.slow_speed
-        self._supports_ranges: bool = True
         speed_limit = self.config.downloads.speed_limit
 
         self.speed_limiter = aio.RateLimiter(speed_limit, time_period=1)
@@ -77,7 +77,8 @@ class DownloadClient:
             media_item.partial_file = media_item.download_folder / f"{name}{constants.TempExt.PART}"
 
         resume_point = 0
-        if self._supports_ranges and media_item.partial_file and (size := await aio.get_size(media_item.partial_file)):
+        media_item.headers.pop(hdrs.RANGE, None)  # Delete ranges from previous attempts
+        if self.SUPPORTS_RANGES and media_item.partial_file and (size := await aio.get_size(media_item.partial_file)):
             resume_point = size
             media_item.headers[hdrs.RANGE] = f"bytes={size}-"
 
@@ -102,8 +103,7 @@ class DownloadClient:
                 return True
             logger.info(f"Skipping {media_item.url} as it has already been downloaded")
             self.manager.scrape_mapper.tui.files.stats.prev_completed += 1
-            await self.process_completed(media_item, domain)
-            await self.handle_media_item_completion(media_item, downloaded=False)
+            await self.mark_completed(media_item, domain)
             return False
         return None
 
@@ -131,7 +131,7 @@ class DownloadClient:
             return True
 
     def _make_hook(self, media_item: MediaItem, resume_point: int) -> ProgressHook:
-        if media_item.is_segment:
+        if media_item.is_segment and not media_item.extra_info.get("MUX_STREAM"):
             return self.manager.scrape_mapper.tui.downloads.download_hls_seg()
 
         size = (media_item.size + resume_point) if media_item.size is not None else None
@@ -142,13 +142,13 @@ class DownloadClient:
             url=media_item.url,
         )
 
-    def _track_speed(self, hook: ProgressHook) -> aio.BackgroundTask:
+    def _track_speed(self, hook: ProgressHook):
         "force update task speed at least every 0.1 seconds"
 
         async def update_speed() -> None:
             hook.advance(0)
 
-        return aio.BackgroundTask(update_speed, period=0.1)
+        return aio.backgroud_task(update_speed, period=0.1)
 
     async def _append_content(self, media_item: MediaItem, hook: ProgressHook, resp: AbstractResponse[Any]) -> None:
         check_free_space = storage.create_free_space_checker(media_item)
@@ -188,10 +188,10 @@ class DownloadClient:
     async def download_file(self, domain: str, media_item: MediaItem) -> bool:
         """Starts a file."""
         if self.config.downloads.skip_and_mark_completed and not media_item.is_segment:
-            logger.info(f"Download removed {media_item.url} due to mark completed option")
+            logger.info(f"Download skipped {media_item.url} due to `--skip-and-mark-completed` option")
             self.manager.scrape_mapper.tui.files.stats.skipped += 1
             # set completed path
-            await self.process_completed(media_item, domain)
+            await self.mark_completed(media_item, domain)
             return False
 
         downloaded = await self._download(domain, media_item)
@@ -204,30 +204,13 @@ class DownloadClient:
             return
         await self.manager.database.history.insert_incompleted(domain, media_item)
 
-    async def process_completed(self, media_item: MediaItem, domain: str) -> None:
-        await self.mark_completed(domain, media_item)
-        await self.add_file_size(domain, media_item)
-
-    async def mark_completed(self, domain: str, media_item: MediaItem) -> None:
+    async def mark_completed(self, media_item: MediaItem, domain: str) -> None:
         await self.manager.database.history.mark_complete(domain, media_item)
-
-    async def add_file_size(self, domain: str, media_item: MediaItem) -> None:
         if not media_item.path:
             media_item.path = media_item.download_folder / media_item.filename
+
         if await aio.is_file(media_item.path):
             await self.manager.database.history.add_filesize(domain, media_item)
-
-    async def handle_media_item_completion(self, media_item: MediaItem, *, downloaded: bool = False) -> None:
-        """Sends to hash client to handle hashing and marks as completed/current download."""
-        media_item.downloaded = downloaded
-        try:
-            if media_item.is_segment or self.config.hashing.mode != HashMode.IN_PLACE:
-                return
-            await compute_in_place_hash(self.manager.hasher, media_item)
-        except Exception:
-            logger.exception(f"Unable to compute hashes of: {media_item.path}")
-        finally:
-            self.manager.add_completed(media_item)
 
     async def get_final_file_info(self, media_item: MediaItem, domain: str) -> tuple[bool, bool]:  # noqa: C901, PLR0912, PLR0915
         """Complicated checker for if a file already exists, and was already downloaded."""

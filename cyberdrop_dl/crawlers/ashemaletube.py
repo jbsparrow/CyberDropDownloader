@@ -8,7 +8,7 @@ from cyberdrop_dl.clients.http import HTTPConfig
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, extr_text, m3u8
+from cyberdrop_dl.utils import css, extr_text, json_ld, m3u8
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -23,7 +23,6 @@ class Selector:
     SEARCH_VIDEOS = "div.main-content div.media-item__inner > a[data-video-preview]"
     USER_NAME = "h1.username"
     PLAYLIST_VIDEOS = "a.playlist-video-item__thumbnail"
-    VIDEO_PROPS_JS = "script:-soup-contains('uploadDate')"
     JS_PLAYER = "script:-soup-contains('var playerConfig =')"
     LOGIN_REQUIRED = "div.loginLinks:-soup-contains('To watch this video please')"
     IMAGE_ITEM = "div.imgItem"
@@ -169,9 +168,7 @@ class AShemaleTubeCrawler(Crawler):
         js_text = css.select_text(soup, Selector.JS_PLAYER)
         resolution, url, m3u8 = await self.parse_player_info(js_text)
 
-        if video_object := soup.select_one(Selector.VIDEO_PROPS_JS):
-            json_data = json.loads(css.text(video_object))
-            scrape_item.uploaded_at = self.parse_iso_date(json_data.get("uploadDate", ""))
+        scrape_item.uploaded_at = json_ld.upload_date(soup, validate={"@type": "VideoObject"})
 
         title = css.select_text(soup, "title").split("- aShemaletube.com")[0].strip()
         scrape_item.url = canonical_url

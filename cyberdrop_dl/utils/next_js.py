@@ -266,5 +266,5 @@ if __name__ == "__main__":
     soup = BeautifulSoup(file.read_text(), "html.parser")
     flight_data = extract_flight_data(soup)
     Path("flight_data.txt").write_text(flight_data)
-    data = parse(flight_data)
-    Path("flight_data_decoded.json").write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    decoded = parse(flight_data)
+    Path("flight_data_decoded.json").write_text(json.dumps(decoded, indent=2, ensure_ascii=False))

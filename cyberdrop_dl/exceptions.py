@@ -5,12 +5,11 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, final
 
-import yarl
-
 if TYPE_CHECKING:
     import datetime
     from collections.abc import Sequence
 
+    import yarl
     from yaml import YAMLError
 
 
@@ -274,6 +273,8 @@ def create_error_msg(error: int | str) -> str:
 
 
 def get_origin(origin: HasParents | Path | yarl.URL | None = None) -> Path | yarl.URL | None:
+    import yarl
+
     if origin is None:
         return None
     if type(origin) is yarl.URL:

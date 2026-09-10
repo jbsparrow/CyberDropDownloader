@@ -10,7 +10,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, DownloadConfig, SupportedPath
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.mediaprops import Resolution
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, extr_text, parse_url
+from cyberdrop_dl.utils import css, extr_text, json_ld, parse_url
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -102,7 +102,8 @@ class NoodleMagazineCrawler(Crawler):
 
 
 def _parse_video(soup: BeautifulSoup) -> Video:
-    json_ld = css.json_ld(soup)
+
+    _, props = json_ld.find(soup, "contentUrl")
 
     try:
         playlist_js = css.select_text(soup, Selector.PLAYLIST)
@@ -112,11 +113,11 @@ def _parse_video(soup: BeautifulSoup) -> Video:
     playlist = json.loads(extr_text(playlist_js, "window.playlist = ", ";\nwindow.ads"))
 
     resolution, src = max(_parse_sources(playlist["sources"]))
-    content_url = parse_url(json_ld["contentUrl"])
+    content_url = parse_url(props["contentUrl"])
 
     return Video(
-        title=json_ld["name"],
-        uploaded_at=json_ld["uploadDate"],
+        title=props["name"],
+        uploaded_at=props["uploadDate"],
         content_url=content_url,
         id=content_url.name.removesuffix(content_url.suffix),
         resolution=resolution,

@@ -371,7 +371,7 @@ class Network(ConfigGroup):
     ] = Field(default="truststore+certifi", deprecated=True)
     tls: TLS = Field(default_factory=TLS)
 
-    user_agent: NonEmptyStr = "Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0"
+    user_agent: NonEmptyStr = "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0"
     impersonate: FalsyAsNone[ImpersonateTarget] = None
     "Use this target as impersonation for all scrape requests"
 

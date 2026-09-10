@@ -1,0 +1,52 @@
+DOMAIN = "peertube"
+TEST_CASES = [
+    {
+        "url": "https://framatube.org/w/217eefeb-883d-45be-b7fc-a788ad8507d3",
+        "results": [
+            {
+                "url": "https://framatube.org/lazy-static/video-captions/217eefeb-883d-45be-b7fc-a788ad8507d3-fr.vtt",
+                "filename": "What is PeerTube (english subtitles) [217eefeb-883d-45be-b7fc-a788ad8507d3][1080p@24fps].fr.vtt",
+                "debrid_url": None,
+                "original_filename": "French",
+                "referer": "https://framatube.org/w/217eefeb-883d-45be-b7fc-a788ad8507d3#What%20is%20PeerTube%20(english%20subtitles)%20%5B217eefeb-883d-45be-b7fc-a788ad8507d3%5D%5B1080p@24fps%5D.fr.vtt",
+                "album_id": None,
+                "uploaded_at": 1527168124,
+                "download_folder": "re:Loose Files (Framatube.org)",
+                "thumbnail": None,
+            },
+            {
+                "url": "https://framatube.org/lazy-static/video-captions/217eefeb-883d-45be-b7fc-a788ad8507d3-de.vtt",
+                "filename": "What is PeerTube (english subtitles) [217eefeb-883d-45be-b7fc-a788ad8507d3][1080p@24fps].de.vtt",
+                "debrid_url": None,
+                "original_filename": "German",
+                "referer": "https://framatube.org/w/217eefeb-883d-45be-b7fc-a788ad8507d3#What%20is%20PeerTube%20(english%20subtitles)%20%5B217eefeb-883d-45be-b7fc-a788ad8507d3%5D%5B1080p@24fps%5D.de.vtt",
+                "album_id": None,
+                "uploaded_at": 1527168124,
+                "download_folder": "re:Loose Files (Framatube.org)",
+                "thumbnail": None,
+            },
+            {
+                "url": "https://framatube.org/lazy-static/video-captions/217eefeb-883d-45be-b7fc-a788ad8507d3-en.vtt",
+                "filename": "What is PeerTube (english subtitles) [217eefeb-883d-45be-b7fc-a788ad8507d3][1080p@24fps].en.vtt",
+                "debrid_url": None,
+                "original_filename": "English",
+                "referer": "https://framatube.org/w/217eefeb-883d-45be-b7fc-a788ad8507d3#What%20is%20PeerTube%20(english%20subtitles)%20%5B217eefeb-883d-45be-b7fc-a788ad8507d3%5D%5B1080p@24fps%5D.en.vtt",
+                "album_id": None,
+                "uploaded_at": 1527168124,
+                "download_folder": "re:Loose Files (Framatube.org)",
+                "thumbnail": None,
+            },
+            {
+                "url": "https://framatube.org/static/streaming-playlists/hls/217eefeb-883d-45be-b7fc-a788ad8507d3/a109ecd1-f2f5-4da7-a17e-808d5e5e9ec8-1080-fragmented.mp4",
+                "filename": "What is PeerTube (english subtitles) [217eefeb-883d-45be-b7fc-a788ad8507d3][1080p@24fps].mp4",
+                "debrid_url": None,
+                "original_filename": "What is PeerTube? (english subtitles)",
+                "referer": "https://framatube.org/w/217eefeb-883d-45be-b7fc-a788ad8507d3",
+                "album_id": None,
+                "uploaded_at": 1527168124,
+                "download_folder": "re:Loose Files (Framatube.org)",
+                "thumbnail": "https://framatube.org/lazy-static/thumbnails/8f59e65b-89a1-4105-a5bd-4183b252efcf.jpg",
+            },
+        ],
+    },
+]

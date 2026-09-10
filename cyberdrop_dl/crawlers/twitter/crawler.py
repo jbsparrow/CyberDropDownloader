@@ -4,22 +4,22 @@ import contextlib
 import dataclasses
 import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, final, override
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
-from cyberdrop_dl.crawlers.twitter.api import FXTwitterAPI, TwitterAPI
+from cyberdrop_dl.crawlers.twitter.api import FXTwitterAPI, TwitterAPI, TwitterGQLSearchFilter
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.mediaprops import Resolution
+from cyberdrop_dl.signature import simple_repr
 from cyberdrop_dl.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterable, Generator, Iterable
+    from collections.abc import AsyncGenerator, Generator, Iterable
 
     from cyberdrop_dl.config.crawlers import TwitterConfig
     from cyberdrop_dl.crawlers.twitter.models import Broadcast, Tweet
     from cyberdrop_dl.url_objects import ScrapeItem
-    from cyberdrop_dl.utils import m3u8
 
 
 class TwitterShortURLCrawler(Crawler):
@@ -27,6 +27,11 @@ class TwitterShortURLCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Redirect": "t.co/<short_code>"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://t.co")
     DOMAIN: ClassVar[str] = "t.co"
+
+    @classmethod
+    @override
+    def check_host_match(cls, host: str) -> bool:
+        return super().check_host_match(host) and host == "t.co"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host != self.PRIMARY_URL.host:
@@ -73,11 +78,11 @@ class TwimgCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(name)
         await self.handle_file(src, scrape_item, name, ext, custom_filename=filename)
 
-    async def handle_media_item(self, media_item: MediaItem, m3u8: m3u8.Rendition | None = None) -> None:
+    @override
+    def _prepare_media_item(self, media_item: MediaItem) -> None:
         if media_item.referer.path == media_item.url.path and media_item.parents:
             media_item.referer = media_item.parents[0]
             media_item.headers["Referer"] = str(media_item.referer)
-        await super().handle_media_item(media_item, m3u8)
 
 
 class TwitterCrawler(Crawler):
@@ -104,6 +109,7 @@ class TwitterCrawler(Crawler):
     DOMAIN: ClassVar[str] = "twitter"
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date:%Y-%m-%d} - {id}"
     _default_since: int | None = None
+    _default_until: int | None = None
 
     def __post_init__(self) -> None:
         self.__config__: TwitterConfig = self.config.crawlers.twitter
@@ -111,19 +117,25 @@ class TwitterCrawler(Crawler):
         self.x_api: TwitterAPI = TwitterAPI.from_crawler(self)
         if after := self.config.filters.after:
             self._default_since = int(datetime.datetime.combine(after, datetime.time.min).timestamp())
+        if before := self.config.filters.before:
+            self._default_until = int(datetime.datetime.combine(before, datetime.time.min).timestamp())
+
+    @classmethod
+    @override
+    def check_host_match(cls, host: str) -> bool:
+        return super().check_host_match(host) and (host == "x.com" or not host.endswith("x.com"))
 
     @property
+    @override
     def separate_posts(self) -> bool:
         return True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         query_get = scrape_item.url.query.get
         match scrape_item.url.parts[1:]:
-            case [_, "status", status_id] | ["i", "web", "status", status_id]:
+            case [_, "status", status_id, *_] | ["i", "web", "status", status_id]:
                 fn = self.thread if self.__config__.threads else self.tweet
                 await fn(scrape_item, status_id)
-            case [user, "media"]:
-                await self.user_media(scrape_item, user)
             case ["i", "broadcasts", bd_id]:
                 await self.broadcast(scrape_item, bd_id)
             case ["i", "events", event_id]:
@@ -131,8 +143,10 @@ class TwitterCrawler(Crawler):
             case ["search"] if query := query_get("q"):
                 feed = query_get("f") or query_get("feed")
                 await self.search(scrape_item, query, feed)
+            case [user, "media"]:
+                await self.user(scrape_item, user, media_only=True)
             case [user]:
-                await self.user_tweets(scrape_item, user)
+                await self.user(scrape_item, user, media_only=False)
             case _:
                 raise ValueError
 
@@ -171,39 +185,61 @@ class TwitterCrawler(Crawler):
             scrape_item.add_children()
 
     @error_handling_wrapper
-    async def user_media(self, scrape_item: ScrapeItem, user: str) -> None:
+    async def user(self, scrape_item: ScrapeItem, user: str, *, media_only: bool) -> None:
+        # A single endpoint does not provide all user tweets
+        # We need to call all endpoints and then search
         scrape_item.setup_as_profile("")
-        await self._iter_tweets(scrape_item, self.api.user.media(user))
+        tweets_filter = self._prepare_filter(scrape_item.url)
+        await self._iter_tweets(scrape_item, tweets_filter(self.api.user.media(user)))
+        await self._iter_tweets(scrape_item, tweets_filter(self.api.user.tweets(user)))
 
-    @error_handling_wrapper
-    async def user_tweets(self, scrape_item: ScrapeItem, user: str) -> None:
-        scrape_item.setup_as_profile("")
-        await self._iter_tweets(scrape_item, self.api.user.tweets(user))
+        feed = "media" if media_only else "top"
+        api_url = self.api.prepare_search(
+            query="",
+            feed=feed,
+            gql_filter=TwitterGQLSearchFilter(
+                user=user,
+                until=tweets_filter.until,
+                since=tweets_filter.since,
+                include=("nativeretweets", "retweets") if self.__config__.retweets else (),
+                filter=("links",) if media_only else (),
+            ),
+        )
+
+        with self.catch_errors((self.PRIMARY_URL / "search").with_query(api_url.query)):
+            self.log.info(
+                "Starting manual search for posts of %s (feed: '%s', raw_query: '%s')",
+                user,
+                feed,
+                api_url.query["q"],
+            )
+            await self._iter_tweets(scrape_item, tweets_filter(self.api.pager(api_url)))
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem, query: str, feed: str | None = None) -> None:
         scrape_item.setup_as_forum("")
         feed = feed if feed in {"latest", "top", "media"} else "latest"
-        await self._iter_tweets(scrape_item, self.api.search(query, feed))
+        tweets_filter = self._prepare_filter(scrape_item.url)
+        await self._iter_tweets(scrape_item, tweets_filter(self.api.search(query, feed)))  # pyright: ignore[reportArgumentType]
 
-    async def _iter_tweets(self, scrape_item: ScrapeItem, tweets_pages: AsyncIterable[Iterable[Tweet]]) -> None:
-        with self._cursor_ctx(scrape_item.url):
-            async for tweets in tweets_pages:
-                for tweet in tweets:
-                    if tweet.reposted_by and not self.__config__.retweets:
-                        self.log.warning(
-                            "skipping tweet %s by config options [retweet]. Original author: @%s, retweeted by: @%s",
-                            tweet.id,
-                            tweet.author["screen_name"],
-                            tweet.reposted_by["screen_name"],
-                        )
-                        continue
-                    new_item = scrape_item.create_child(self.parse_url(tweet.url))
-                    self._tweet(new_item, tweet)
-                    scrape_item.add_children()
+    async def _iter_tweets(self, scrape_item: ScrapeItem, tweets_pages: AsyncGenerator[Tweet]) -> None:
+        async with contextlib.aclosing(tweets_pages) as tweets:
+            async for tweet in tweets:
+                if not self.__config__.retweets and tweet.reposted_by and tweet.author["id"] != tweet.reposted_by["id"]:
+                    self.log.warning(
+                        "Skipping tweet %s by config options [retweet]. Original author: @%s, retweeted by: @%s",
+                        tweet.id,
+                        tweet.author["screen_name"],
+                        tweet.reposted_by["screen_name"],
+                    )
+                    continue
 
-    def _since(self, url: AbsoluteHttpURL) -> int | None:
-        for query_name in ("since", "after"):
+                new_item = scrape_item.create_child(self.parse_url(tweet.url))
+                self._tweet(new_item, tweet)
+                scrape_item.add_children()
+
+    def _ts_from_query(self, url: AbsoluteHttpURL, *keys: str) -> int | None:
+        for query_name in keys:
             if value := url.query.get(query_name):
                 try:
                     return int(value)
@@ -213,23 +249,15 @@ class TwitterCrawler(Crawler):
                     except ValueError:
                         self.log.error("Unable to parse '%s' query param from %s, ignoring...", query_name, url)
 
-        return self._default_since
-
-    @contextlib.contextmanager
-    def _cursor_ctx(self, url: AbsoluteHttpURL) -> Generator[None]:
-        init_cursor = url.query.get("cursor")
-        self.api.cursor.set(init_cursor)
-        self.api.since.set(self._since(url))
-        try:
-            yield
-        finally:
-            cursor = self.api.cursor.get()
-            if cursor and cursor != init_cursor:
-                self.log.info(
-                    "Use cursor '%s' as a query param to resume scraping from the same point. ex: %s",
-                    cursor,
-                    url.update_query(cursor=cursor),
-                )
+    def _prepare_filter(self, url: AbsoluteHttpURL) -> TweetsFilterer:
+        # TODO: make cursor endpoint aware
+        tweets_filter = TweetsFilterer(
+            since=self._ts_from_query(url, "since", "after") or self._default_since,
+            until=self._ts_from_query(url, "until", "before") or self._default_until,
+        )
+        self.api.since.set(tweets_filter.since)
+        self.api.until.set(tweets_filter.until)
+        return tweets_filter
 
     @error_handling_wrapper
     async def broadcast(self, scrape_item: ScrapeItem, broadcast_id: str, *, event: bool = False) -> None:
@@ -258,6 +286,52 @@ class TwitterCrawler(Crawler):
             title, ext := ".mp4", file_id=bd.id, resolution=Resolution(bd.width, bd.height)
         )
         await self.handle_file(scrape_item.url, scrape_item, title, ext, m3u8=m3u8, custom_filename=filename)
+
+
+@final
+class TweetsFilterer:
+    def __init__(self, *, since: int | None = None, until: int | None = None) -> None:
+        self.since = since
+        self.until = until
+        self.oldest_tweet: Tweet | None = None
+        self.seen: set[str] = set()
+        self.log = TwitterCrawler.get_logger()
+
+    __repr__ = simple_repr("since", "until", "oldest_tweet")
+
+    def should_skip(self, tweet: Tweet) -> tuple[bool, str]:
+        if tweet.id in self.seen:
+            return True, "duplicate"
+
+        self.seen.add(tweet.id)
+        if self.oldest_tweet is None or self.oldest_tweet.created_timestamp > tweet.created_timestamp:
+            self.oldest_tweet = tweet
+
+        if self.until and tweet.created_timestamp > self.until:
+            return True, "too new"
+
+        if self.since and tweet.created_timestamp < self.since:
+            return True, "too old"
+
+        return True, ""
+
+    async def __call__(self, tweet_pages: AsyncGenerator[Iterable[Tweet]]) -> AsyncGenerator[Tweet]:
+        max_old_tweets = 10
+        async with contextlib.aclosing(tweet_pages) as pages:
+            async for tweets in pages:
+                old_tweets = 0
+                for tweet in tweets:
+                    skip, reason = self.should_skip(tweet)
+                    if skip:
+                        self.log.warning("Skipping tweet %s (%s)", tweet.id, reason)
+                        if reason == "too old":
+                            old_tweets += 1
+                        continue
+                    yield tweet
+
+                if old_tweets >= max_old_tweets:
+                    self.log.debug("Aborting after too many old tweets (%s)", old_tweets)
+                    return
 
 
 @dataclasses.dataclass(slots=True)

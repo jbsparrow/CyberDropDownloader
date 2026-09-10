@@ -54,25 +54,26 @@ def _parse_tags(tags: object) -> object:
 
 
 class PostProtocol[T](Protocol):
-    id: str
-    content: str | None
-    file: T | None
-    attachments: tuple[T, ...]
-    published: AwareDatetime | None
-    added: AwareDatetime | None
-    timestamp: int | None = None
-    tags: tuple[str, ...]
-    preview_state: str | None
-    has_full: bool
-
-
-class UserPostProtocol[T](PostProtocol[T]):
-    service: str
-    user_id: str
-    title: str
-    user_name: str | None
-    user: User
-    web_path_qs: str
+    @property
+    def id(self) -> str: ...
+    @property
+    def content(self) -> str | None: ...
+    @property
+    def file(self) -> T | None: ...
+    @property
+    def attachments(self) -> tuple[T, ...]: ...
+    @property
+    def published(self) -> AwareDatetime | None: ...
+    @property
+    def added(self) -> AwareDatetime | None: ...
+    @property
+    def timestamp(self) -> int | None: ...
+    @property
+    def tags(self) -> tuple[str, ...]: ...
+    @property
+    def preview_state(self) -> str | None: ...
+    @property
+    def has_full(self) -> bool: ...
 
 
 class PostModel(DeferredModel, extra="ignore"):
@@ -94,6 +95,21 @@ class PostModel(DeferredModel, extra="ignore"):
     def model_post_init(self, *_: object) -> None:
         if date := self.published or self.added:
             self.timestamp = int(date.timestamp())
+
+
+class UserPostProtocol[T](PostProtocol[T], Protocol):
+    @property
+    def service(self) -> str: ...
+    @property
+    def user_id(self) -> str: ...
+    @property
+    def title(self) -> str: ...
+    @property
+    def user_name(self) -> str | None: ...
+    @property
+    def user(self) -> User: ...
+    @property
+    def web_path_qs(self) -> str: ...
 
 
 class UserPostModel(PostModel):

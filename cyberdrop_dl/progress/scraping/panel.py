@@ -31,6 +31,9 @@ class StatusMessage:
     _messages: dict[int, tuple[Spinner, Text]] = dataclasses.field(init=False, default_factory=dict)
     _cols: Columns = dataclasses.field(init=False, default_factory=Columns)
 
+    def shutdown(self) -> None:
+        self._cols.renderables[0] = self.description + " [yellow](shutting down...)[/yellow]"
+
     def __post_init__(self) -> None:
         self._cols.renderables.extend([self.description, Spinner("point", style="green"), "|"])
 

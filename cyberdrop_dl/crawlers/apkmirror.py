@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.clients.http import HTTPConfig
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, URLConfig
-from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css
+from cyberdrop_dl.utils import css, json_ld
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -65,8 +64,8 @@ class APKMirrorCrawler(Crawler):
 
 
 def _extract_app_name(soup: BeautifulSoup) -> str:
-    for elem in css.json_ld(soup)["@graph"]:
-        if elem.get("@type") == "BreadcrumbList":
-            return elem["itemListElement"][2]["name"]
-
-    raise ScrapeError(422, "Unable to extract application name")
+    try:
+        elem = json_ld.find_elem(soup, "BreadcrumbList")
+        return elem["itemListElement"][2]["name"]
+    except (css.SelectorError, LookupError):
+        raise css.SelectorError("Unable to extract application name") from None

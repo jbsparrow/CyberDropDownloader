@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import base64
 import contextlib
 import itertools
 import logging
-import platform
 import sys
 from typing import TYPE_CHECKING, Any, cast
 
@@ -67,6 +65,7 @@ class TextExtractor:
 
 
 def get_system_information() -> dict[str, Any]:
+    import platform
     import sqlite3
     import ssl
 
@@ -127,6 +126,8 @@ def truncated_preview(content: str, max_len: int = 100) -> str:
 
 
 def basic_auth(username: str, password: str) -> str:
+    import base64
+
     token = base64.b64encode(f"{username}:{password}".encode()).decode("ascii")
     return f"Basic {token}"
 

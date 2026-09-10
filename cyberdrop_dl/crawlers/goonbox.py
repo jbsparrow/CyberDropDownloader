@@ -103,7 +103,7 @@ class GoonBoxCrawler(Crawler):
         scrape_item.setup_as_profile(self.create_title(f"{user} [user]"))
 
         async for albums in self.api.user_albums(user, sort=scrape_item.url.query.get("sort")):
-            async with self.new_task_group(scrape_item) as tg:
+            async with self.new_task_group() as tg:
                 for album in albums:
                     url = self.PRIMARY_URL / "a" / album.encoded_id
                     new_item = scrape_item.create_child(url)

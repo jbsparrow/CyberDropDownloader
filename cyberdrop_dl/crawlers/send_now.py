@@ -36,7 +36,6 @@ class SendNowCrawler(Crawler):
                 "method_free": "",
                 "method_premium": "",
             },
-            request_params={"allow_redirects": False, "stream": True},
         ) as resp:
             debrid_link = resp.location
 

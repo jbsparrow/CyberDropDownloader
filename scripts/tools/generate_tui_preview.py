@@ -2,7 +2,7 @@ import random
 import uuid
 
 from rich.console import Console
-from rich.progress import Task
+from rich.progress import Task, TaskID
 
 from cyberdrop_dl.models.validators import to_bytesize
 from cyberdrop_dl.progress.scraping import ScrapingUI
@@ -56,7 +56,7 @@ for error, count in [
 
 ui.status._append_msg("Waiting for flaresolverr [2]")
 
-del Task.speed
+del Task.speed  # pyright: ignore[reportAttributeAccessIssue]
 ui.downloads.max_rows = 8
 for task_id, (filename, domain, size) in enumerate(
     [
@@ -70,13 +70,13 @@ for task_id, (filename, domain, size) in enumerate(
         ("chaku2m-Cf.zip", "FILESTER", to_bytesize("31.2MB")),
         ("75c25022-bb6b-4d45-850c-9966d658ae75.mp4", "BUNKR", to_bytesize("159MB")),
         ("Windward Plains - Hunting Locale [zvbmml]", "PATREON", to_bytesize("1.9GB")),
-        *((f"{uuid.uuid4()}.mp4", "BUNKR", random.random() * 10e6) for _ in range(18)),
+        *((f"{uuid.uuid4()}.mp4", "BUNKR", int(random.random() * 10e6)) for _ in range(18)),
     ]
 ):
     hook = ui.downloads.download_file(filename, domain.upper(), size)
-    task = ui.downloads._progress[task_id]
+    task = ui.downloads._progress[TaskID(task_id)]
     progress = random.random()
-    task.speed = min(random.random() * 157e5 + (10e6 * random.random()), progress * size)
+    task.speed = min(random.random() * 157e5 + (10e6 * random.random()), progress * size)  # pyright: ignore[reportAttributeAccessIssue]
     hook.advance(int(progress * size))
 
 

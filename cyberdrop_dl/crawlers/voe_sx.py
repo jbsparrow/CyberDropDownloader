@@ -46,7 +46,7 @@ _ISO639_MAP = {
 
 _HEADERS: dict[str, str] = {
     "User-Agent":  # Force firefox on linux to get high res mp4 formats as "fallbacks"
-    "Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0"
+    "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0"
 }
 
 

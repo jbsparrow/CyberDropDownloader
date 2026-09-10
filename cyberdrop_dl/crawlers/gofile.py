@@ -27,6 +27,7 @@ class GoFileCrawler(Crawler):
             "/download/<content_id>/<filename>",
             "/download/web/<content_id>/<filename>",
         ),
+        "Direct link (Premium)": ("/download/direct/<content_id>/<filename>",),
         "**NOTE**": (
             "Use `password` as a query param to download password protected folders",
             "ex: https://gofile.io/d/ABC654?password=1234",
@@ -53,9 +54,11 @@ class GoFileCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["d", content_id]:
-                return await self.folder(scrape_item, content_id)
+                await self.folder(scrape_item, content_id)
+            case ["download", "direct", file_id, _]:
+                await self.direct_file(scrape_item)
             case ["download", "web", file_id, _] | ["download", file_id, _]:
-                return await self.single_file(scrape_item, file_id)
+                await self.single_file(scrape_item, file_id)
             case _:
                 raise ValueError
 

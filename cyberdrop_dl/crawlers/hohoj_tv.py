@@ -71,7 +71,7 @@ class HohojTVCrawler(Crawler):
         url = (self.PRIMARY_URL / "lang_en" / "video").with_query(id=video_id)
         embed_url = (self.PRIMARY_URL / "embed").with_query(id=video_id)
 
-        soup, embed = await aio.safe_gather(self.request_soup(url), self.request_text(embed_url))
+        soup, embed = await aio.gather(self.request_soup(url), self.request_text(embed_url), fail_fast=False)
         player = css.select(soup, ".player-col")
 
         return Video(

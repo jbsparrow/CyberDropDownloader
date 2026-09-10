@@ -6,7 +6,7 @@ import dataclasses
 import itertools
 import json
 from enum import IntEnum
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, override
 
 from cyberdrop_dl.clients.http import HTTPConfig
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
@@ -90,6 +90,11 @@ class XhamsterCrawler(Crawler):
         if url.host not in self._seen_hosts:
             self.update_cookies({"lang": "en", "video_titles_translation": "0"}, url.origin())
             self._seen_hosts.add(url.host)
+
+    @classmethod
+    @override
+    def check_host_match(cls, host: str) -> bool:
+        return super().check_host_match(host) and "xhamsterlive" not in host
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:

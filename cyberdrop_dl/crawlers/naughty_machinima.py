@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl import aio
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, open_graph, parse_url
+from cyberdrop_dl.utils import css, json_ld, open_graph, parse_url
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -41,8 +41,7 @@ class NaughtyMachinimaCrawler(Crawler):
 
         soup = await self.request_soup(scrape_item.url)
         name = open_graph.title(soup)
-        date = css.json_ld(soup, "uploadDate")["uploadDate"]
-        scrape_item.uploaded_at = self.parse_iso_date(date)
+        scrape_item.uploaded_at = json_ld.upload_date(soup)
         res, src = max(_extract_sources(soup))
         filename = self.create_custom_filename(name, ext := ".mp4", resolution=res, file_id=video_id)
         await self.handle_file(src, scrape_item, name, ext, custom_filename=filename)

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, final
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, extr_text, json
+from cyberdrop_dl.utils import css, extr_text, json, json_ld
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -30,16 +30,6 @@ _MOBILE_HEADERS = _HEADERS | {
     "Referer": "https://m.ok.ru/",
     "Origin": "https://m.ok.ru",
 }
-
-
-@final
-class VideoProvider:
-    # This site also embeds videos from other sources as their own
-    OK_RU = "UPLOADED_ODKL"
-    OK_RU2 = "UploadedODKL"
-    YOUTUBE = "USER_YOUTUBE"
-    OG = "OPEN_GRAPH"
-    LIVESTREAM = "LIVE_TV_APP"
 
 
 @final
@@ -141,10 +131,7 @@ class OdnoklassnikiCrawler(Crawler):
         metadata: dict[str, Any] = json.loads(css.select(soup, "a[data-video]", "data-video"))
         src = self.parse_url(metadata["videoSrc"])
         name: str = metadata["videoName"]
-        scrape_item.uploaded_at = self.parse_iso_date(css.json_ld(soup, "uploadDate")["uploadDate"])
-
-        if (provider := metadata["providerName"]) not in {VideoProvider.OK_RU, VideoProvider.OK_RU2}:
-            raise ScrapeError(422, f"Unsupported provider: {provider}")
+        scrape_item.uploaded_at = json_ld.upload_date(soup)
 
         m3u8, info = await self.request_m3u8_playlist(src, headers=_MOBILE_HEADERS)
         # downloads may fail if we have cdn cookies
@@ -155,7 +142,15 @@ class OdnoklassnikiCrawler(Crawler):
             file_id=video_id,
             resolution=info.resolution,
         )
-        await self.handle_file(mobile_url, scrape_item, name, ext, custom_filename=filename, m3u8=m3u8)
+        await self.handle_file(
+            mobile_url,
+            scrape_item,
+            name,
+            ext,
+            custom_filename=filename,
+            m3u8=m3u8,
+            thumbnail=metadata.get("videoPosterSrc"),
+        )
 
 
 def _check_video_is_available(soup: BeautifulSoup) -> None:

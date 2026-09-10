@@ -10,7 +10,7 @@ from cyberdrop_dl.crawlers.crawler import API, Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.mediaprops import Resolution
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, extr_text
+from cyberdrop_dl.utils import css, extr_text, json_ld
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ class Selector:
 
     @final
     class Profile:
-        NAME = ".topProfileHeader h1[itemprop=name], div.title h1"
+        NAME = ".topProfileHeader h1[itemprop=name], .profileUserName [title], div.title h1"
         VIDEOS = "div.container a.linkVideoThumb"
         GIFS = "#moreData li.gifLi a"
         ALBUMS = "#moreData.photosAlbumsListing a"
@@ -165,7 +165,7 @@ class PornHubCrawler(Crawler):
         gif = css.select(soup, Selector.GIF)
         attrs = ("data-mp4", "data-fallback", "data-webm")
         src = next(value for attr in attrs if (value := css.attr_or_none(gif, attr)))
-        scrape_item.uploaded_at = self.parse_iso_date(_extr_upload_date(soup))
+        scrape_item.uploaded_at = json_ld.upload_date(soup)
         await self._photo(scrape_item, Photo(gif_id, self.parse_url(src)))
 
     @error_handling_wrapper
@@ -197,7 +197,7 @@ class PornHubCrawler(Crawler):
             return
 
         video = await self.api.video(video_id)
-        scrape_item.uploaded_at = self.parse_iso_date(video.uploaded)
+        scrape_item.uploaded_at = video.uploaded_at
         src = max(f for f in video.formats if f.format == "hls")
         m3u8, _ = await self.request_m3u8_playlist(self.parse_url(src.url), headers={"Referer": str(video.url)})
 
@@ -313,7 +313,7 @@ class Video:
     id: str
     title: str
     thumb: str | None
-    uploaded: str
+    uploaded_at: float
     formats: tuple[Format, ...]
     url: AbsoluteHttpURL
 
@@ -349,7 +349,7 @@ class PornHubAPI(API):
             title=flashvars["video_title"],
             thumb=flashvars.get("image_url"),
             formats=tuple(_parse_formats(flashvars["mediaDefinitions"])),
-            uploaded=_extr_upload_date(soup),
+            uploaded_at=json_ld.upload_date(soup),
             url=page_url,
         )
 
@@ -358,10 +358,6 @@ def _extr_album(soup: BeautifulSoup) -> Album:
     album = css.select(soup, Selector.Album.FROM_PHOTO)
     url: str = css.attr(album, "href")
     return Album(id=url.rpartition("/")[-1], name=css.text(album))
-
-
-def _extr_upload_date(soup: BeautifulSoup) -> str:
-    return css.json_ld(soup, "uploadDate")["uploadDate"]
 
 
 def _extr_flashvars(soup: BeautifulSoup) -> dict[str, Any]:

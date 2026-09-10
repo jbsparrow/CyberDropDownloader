@@ -4,10 +4,12 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal, final
 
-import yaml
 from cyclopts import App, Parameter
 from cyclopts.bind import normalize_tokens
-from pydantic import AfterValidator, BaseModel, Field, NonNegativeInt, PositiveInt
+from pydantic.fields import Field
+from pydantic.functional_validators import AfterValidator
+from pydantic.main import BaseModel
+from pydantic.types import NonNegativeInt, PositiveInt  # noqa: TC002
 
 from cyberdrop_dl.config.appdata import AppData
 from cyberdrop_dl.constants import DEFAULT_PARAMETER
@@ -129,6 +131,8 @@ class Config(ConfigModel, title="cyberdrop-dl config"):
         return self._sources[0] if self._sources else None
 
     def dump_yaml(self) -> str:
+        import yaml
+
         return yaml.safe_dump(self.model_dump(mode="json"), default_flow_style=False)
 
     def save_to(self, file: Path) -> None:
@@ -202,6 +206,8 @@ class Config(ConfigModel, title="cyberdrop-dl config"):
 
 
 def _load_yaml(file: Path) -> dict[str, Any]:
+    import yaml
+
     try:
         return yaml.safe_load(file.read_text()) or {}
     except yaml.YAMLError as e:

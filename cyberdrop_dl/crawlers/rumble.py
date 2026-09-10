@@ -11,7 +11,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import DownloadError, ScrapeError
 from cyberdrop_dl.mediaprops import Resolution, Subtitle
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, m3u8, parse_url
+from cyberdrop_dl.utils import css, json_ld, m3u8, parse_url
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -96,10 +96,14 @@ class RumbleCrawler(Crawler):
     async def channel(self, scrape_item: ScrapeItem, name: str) -> None:
         scrape_item.setup_as_album(self.create_title(name))
         async for soup in self._pager(scrape_item.url):
-            info = _extract_channel_info(soup)
-            videos = (v for v in info["items"] if v.get("object_type") == "video")
-            for video in videos:
-                new_item = scrape_item.create_child(self.parse_url(video["url"]))
+            from cyberdrop_dl.utils import json_ld
+
+            _, info = json_ld.find(soup, "items", "relative_url")
+            for item in info["items"]:
+                if item.get("object_type") != "video":
+                    continue
+
+                new_item = scrape_item.create_child(self.parse_url(item["url"]))
                 self.create_task(self.run(new_item, check_referer=True))
                 scrape_item.add_children()
 
@@ -120,7 +124,7 @@ class RumbleCrawler(Crawler):
             return
 
         soup = await self.request_soup(scrape_item.url)
-        embed_id = self.parse_url(css.json_ld(soup)["embedUrl"]).name
+        embed_id = self.parse_url(json_ld.find_attr(soup, "embedUrl")).name
         await self.embed(scrape_item, embed_id)
 
     @error_handling_wrapper
@@ -182,10 +186,6 @@ class RumbleCrawler(Crawler):
             hls_formats = await aio.map(resolve_m3u8, hls_formats, task_limit=10)
 
         return max((*hls_formats, *other_formats))
-
-
-def _extract_channel_info(soup: BeautifulSoup) -> dict[str, Any]:
-    return next(css.iter_json(soup, "relative_url"))
 
 
 def _parse_formats(formats: dict[str, list[dict[str, Any]] | dict[str, dict[str, Any]]]) -> Generator[Format]:

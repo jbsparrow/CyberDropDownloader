@@ -161,6 +161,7 @@ class GenericCrawlers(ConfigModel):
     chevereto: tuple[HttpURL, ...] = ()
     kvs: tuple[HttpURL, ...] = ()
     video: tuple[HttpURL, ...] = ()
+    peertube: tuple[HttpURL, ...] = ()
 
 
 class Crawlers(ConfigGroup, name=None):

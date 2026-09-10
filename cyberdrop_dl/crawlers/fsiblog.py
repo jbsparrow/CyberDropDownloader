@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths, auto_task_id
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, open_graph
+from cyberdrop_dl.utils import json_ld, open_graph
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -55,7 +55,8 @@ class FSIBlogCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         soup = await self.request_soup(scrape_item.url)
-        meta: dict[str, str] = css.json_ld(soup)["@graph"][0]
+
+        _, meta = json_ld.find(soup, "datePublished")
         name = meta["name"].rpartition("-")[0]
         scrape_item.uploaded_at = date = self.parse_iso_date(meta["datePublished"])
         title = self.create_separate_post_title(name, None, date)

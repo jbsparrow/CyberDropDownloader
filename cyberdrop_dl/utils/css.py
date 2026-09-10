@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import dataclasses
 import html
-import json
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, cast, overload
 
 from cyberdrop_dl.exceptions import ScrapeError
@@ -11,6 +10,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4.element import Tag
+
+    from cyberdrop_dl.constants import HttpMethod
 
 
 class SelectorError(ScrapeError):
@@ -31,7 +32,7 @@ class CssAttributeSelector(NamedTuple):
 
 @dataclasses.dataclass(slots=True)
 class HTMLForm:
-    method: Literal["GET", "POST"]
+    method: HttpMethod
     action: str
     inputs: dict[str, str | None]
 
@@ -127,6 +128,18 @@ def iselect(tag: Tag, selector: str, attribute: str | None = None) -> Generator[
                 yield attr
 
 
+def iselect_text(soup: Tag, /, selector: str, contains: tuple[str, ...] | str = ()) -> Generator[str]:
+    if isinstance(contains, str):
+        contains = (contains,)
+
+    for tag in iselect(soup, selector):
+        content = text(tag)
+        for key in contains:
+            if key not in content:
+                continue
+        yield content
+
+
 def _parse_srcset(srcset: str) -> str:
     # The best src is the last one (usually)
     return [src.split(" ")[0] for src in srcset.split(", ")][-1]
@@ -160,40 +173,6 @@ def page_title(soup: Tag, domain: str | None = None) -> str:
     return title
 
 
-def json_ld(soup: Tag, /, contains: str | None = None) -> JsonLD:
-    try:
-        ld_json = next(iter_json_ld(soup, contains)) or {}
-    except StopIteration:
-        details = f" (-contains:'{contains}')" if contains else ""
-        raise SelectorError(f"ld-json tag{details} not found") from None
-    if type(ld_json) is list:
-        ld_json = ld_json[0]
-
-    return cast("JsonLD", ld_json)
-
-
-def iter_json_ld(soup: Tag, /, contains: str | None = None) -> Generator[Any]:
-    return _iter_json(soup, "script[type='application/ld+json']", contains=contains)
-
-
-def iter_json(soup: Tag, /, contains: str | None = None) -> Generator[Any]:
-    return _iter_json(soup, "script[type='application/ld+json'], script[type='application/json']", contains=contains)
-
-
-def _iter_json(
-    soup: Tag,
-    /,
-    selector: str,
-    *,
-    contains: str | None = None,
-) -> Generator[Any]:
-    for tag in iselect(soup, selector):
-        content = text(tag)
-        if contains and contains not in content:
-            continue
-        yield json.loads(content)
-
-
 def parse_form(form: Tag, /) -> HTMLForm:
     inputs: dict[str, str | None] = {}
     for elem in iselect(form, "input"):
@@ -202,7 +181,7 @@ def parse_form(form: Tag, /) -> HTMLForm:
 
     method = attr(form, "method").upper()
     action = attr(form, "action")
-    return HTMLForm(method, action, inputs)
+    return HTMLForm(cast("HttpMethod", method), action, inputs)
 
 
 unescape = html.unescape

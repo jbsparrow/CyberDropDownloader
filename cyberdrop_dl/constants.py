@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 from contextvars import ContextVar
 from enum import StrEnum, auto
-from typing import TYPE_CHECKING, Literal, final
+from typing import TYPE_CHECKING, Any, Literal, final
 
 from cyclopts import Parameter
 from typing_extensions import Sentinel
@@ -19,7 +19,10 @@ LOGS_DATETIME_FORMAT = "%Y%m%d_%H%M%S"
 LOGS_DATE_FORMAT = "%Y_%m_%d"
 STARTUP_TIME_STR = datetime.datetime.now().strftime(LOGS_DATETIME_FORMAT)  # noqa: DTZ005
 CDL_USER_AGENT = f"cyberdrop-dl/{__version__}"
-MISSING = Sentinel("MISSING")
+
+
+MISSING: Any = Sentinel("MISSING")
+HttpMethod = Literal["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "TRACE", "PATCH", "QUERY"]
 
 MAIN_LOG_FILE: ContextVar[Path] = ContextVar("MAIN_LOG_FILE")
 

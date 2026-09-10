@@ -43,7 +43,7 @@ class MultPornCrawler(Crawler):
         name, date = _extract_info(soup)
         scrape_item.uploaded_at = self.parse_iso_date(date)
         scrape_item.setup_as_album(self.create_title(name))
-        async with self.new_task_group(scrape_item) as tg:
+        async with self.new_task_group() as tg:
             for img in _extract_images(soup):
                 tg.create_task(self.direct_file(scrape_item, img))
                 scrape_item.add_children()
