@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Literal, cast
 
 from cyberdrop_dl.crawlers.bluesky.api import BlueSkyCAPI
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
@@ -12,15 +12,8 @@ from cyberdrop_dl.utils.errors import error_handling_wrapper
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from cyberdrop_dl.crawlers.bluesky.types import Blob, FeedFilter, Image, MediaAsset, PostView, Video
     from cyberdrop_dl.url_objects import ScrapeItem
-
-
-@dataclasses.dataclass
-class MediaInfo:
-    source_url: AbsoluteHttpURL
-    cid: str
-    ext: str
-    debrid_link: AbsoluteHttpURL | None
 
 
 class BlueskyCrawler(Crawler):
@@ -52,119 +45,88 @@ class BlueskyCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, actor: str, post_id: str) -> None:
-        original_post, replies = await self.api.thread(actor, post_id)
-        self._post(scrape_item, original_post)
+        post, replies = await self.api.thread(actor, post_id)
+        self._post(scrape_item, post)
         for reply in replies:
-            new_item = scrape_item.create_child(self._post_url(reply))
+            new_item = scrape_item.create_child(self.PRIMARY_URL / reply.web_path)
             self._post(new_item, reply)
             scrape_item.add_children()
 
     @error_handling_wrapper
-    async def user(self, scrape_item: ScrapeItem, actor: str, feed_filter: str) -> None:
+    async def user(self, scrape_item: ScrapeItem, actor: str, feed_filter: FeedFilter) -> None:
         scrape_item.setup_as_profile("")
-        async for page in self.api.author_feed(actor, feed_filter):
-            for entry in page:
-                post = entry.get("post", entry)
-                new_item = scrape_item.create_child(self._post_url(post))
-                self._post(new_item, post)
-                scrape_item.add_children()
+        async for post in self.api.author_feed(actor, feed_filter):
+            new_item = scrape_item.create_child(self.PRIMARY_URL / post.web_path)
+            self._post(new_item, post)
+            scrape_item.add_children()
 
     @error_handling_wrapper
-    def _post(self, scrape_item: ScrapeItem, post: dict[str, Any]) -> None:
-        record = post["record"]
-        author = post["author"]
-        post_id = post["uri"].rpartition("/")[2]
-        scrape_item.setup_as_post(self.create_title(f"@{author['handle']}"))
-        scrape_item.uploaded_at = date = self.parse_iso_date(record["createdAt"])
-        scrape_item.append_folders(self.create_separate_post_title(None, post_id, date))
-        self.create_eager_task(self.write_metadata(scrape_item, f"post {post_id}", post))
+    def _post(self, scrape_item: ScrapeItem, post: PostView) -> None:
+        scrape_item.setup_as_post(self.create_title(f"@{post.author.handle}"))
+        scrape_item.uploaded_at = date = self.parse_iso_date(post.record["createdAt"])
+        scrape_item.append_folders(self.create_separate_post_title(None, post.id, date))
+        self.create_eager_task(self.write_metadata(scrape_item, f"post {post.id}", post))
 
-        embed = post.get("embed", {})
-        self._extract_videos(scrape_item, embed, post_id)
-        record_embed = record.get("embed", {})
-        record_images = record_embed.get("images", record_embed.get("media", {}).get("images", ()))
-        self._extract_images(scrape_item, embed, record_images, author["did"])
+        for media in _extract_media(post):
+            self.create_eager_task(self._media(scrape_item, media, post.author.did))
+            scrape_item.add_children()
 
-    def _extract_videos(self, scrape_item: ScrapeItem, embed: dict[str, Any], post_id: str) -> None:
-        for media in self._media(embed):
-            if playlist := media.get("playlist"):
-                self.create_eager_task(self._video(scrape_item, playlist, post_id, media))
-                scrape_item.add_children()
-
-    def _extract_images(self, scrape_item: ScrapeItem, embed: dict[str, Any], record_images: Any, did: str) -> None:
-        image_index = 0
-        for media in self._media(embed):
-            if "playlist" in media:
-                continue
-            record_image = record_images[image_index] if image_index < len(record_images) else {}
-            self._extract_image(scrape_item, media, record_image, did)
-            image_index += 1
-
-    def _extract_image(
-        self, scrape_item: ScrapeItem, media: dict[str, Any], record_image: dict[str, Any], did: str
-    ) -> None:
-        if fullsize := media.get("fullsize"):
-            media_info: MediaInfo = self._prepare_fullsize_image(fullsize, record_image, did)
-        else:
-            media_info: MediaInfo = self._prepare_blob_image(media, did)
-
-        self.create_eager_task(
-            self.handle_file(
-                media_info.source_url,
-                scrape_item,
-                media_info.cid + media_info.ext,
-                media_info.ext,
-                custom_filename=media_info.cid + media_info.ext,
-                debrid_link=media_info.debrid_link,
-            )
-        )
-        scrape_item.add_children()
-
-    def _prepare_fullsize_image(self, fullsize: str, record_image: dict[str, Any], did: str) -> MediaInfo:
-        blob = record_image.get("image", {})
-        source_url = self.parse_url(fullsize, trim=False)
-        cid = blob.get("ref", {}).get("$link") or source_url.name
-        _, ext = self.get_filename_and_ext(cid, mime_type=blob.get("mimeType"))
-        return MediaInfo(source_url, cid, ext, self.api.blob_url(did, cid))
-
-    def _prepare_blob_image(self, media: dict[str, Any], did: str) -> MediaInfo:
-        cid = media["ref"]["$link"] if "ref" in media else media["cid"]
-        _, ext = self.get_filename_and_ext(cid, mime_type=media["mimeType"])
-        return MediaInfo(self.api.blob_url(did, cid), cid, ext, None)
-
-    async def _video(self, scrape_item: ScrapeItem, playlist: str, post_id: str, media: dict[str, Any]) -> None:
-        playlist_url = self.parse_url(playlist, trim=False)
-        with self.catch_errors(playlist_url):
-            manifest, info = await self.request_m3u8(playlist_url)
-            aspect_ratio = media.get("aspectRatio", {})
-            resolution = (
-                info.resolution
-                if info
-                else Resolution.parse(aspect_ratio.get("height") if aspect_ratio.get("width") else None)
-            )
-            filename = self.create_custom_filename(post_id, ext := ".mp4", resolution=resolution)
+    async def _media(self, scrape_item: ScrapeItem, media: Media, did: str) -> None:
+        src = self.api.blob_url(did, media.cid)
+        with self.catch_errors(src):
+            name, ext = self.get_filename_and_ext(media.name, mime_type=media.mime)
             await self.handle_file(
-                playlist_url,
+                src,
                 scrape_item,
-                post_id,
+                name,
                 ext,
-                m3u8=manifest,
-                custom_filename=filename,
+                custom_filename=name,
+                metadata=media,
             )
 
-    @staticmethod
-    def _media(embed: dict[str, Any]) -> Generator[dict[str, Any]]:
-        media = embed.get("media", embed)
-        if "playlist" in media:
-            yield media
-            return
-        for image in media.get("images", ()):
-            yield image.get("image", image)
 
-        if video := media.get("video"):
-            yield video
+def _extract_media(post: PostView) -> Generator[Media]:
+    embed = post.record.get("embed")
+    if not embed:
+        return
+    embed["type"] = embed["$type"]
+    embed = cast("MediaAsset", embed)  # pyright: ignore[reportInvalidCast]
 
-    def _post_url(self, post: dict[str, Any]) -> AbsoluteHttpURL:
-        author = post["author"]["handle"]
-        post_id = post["uri"].rpartition("/")[2]
-        return self.PRIMARY_URL / "profile" / author / "post" / post_id
+    match embed["type"]:
+        case "app.bsky.embed.images":
+            for img in embed["images"]:
+                yield parse_asset(img, "image")
+        case "app.bsky.embed.gallery":
+            for item in embed["items"]:
+                yield parse_asset(item, "image" if "image" in item else "video")
+        case "app.bsky.embed.image":
+            yield parse_asset(embed, "image")
+        case "app.bsky.embed.video":
+            yield parse_asset(embed, "video")
+        case "app.bsky.embed.record" | "app.bsky.embed.recordWithMedia":
+            # TODO: handle this
+            pass
+        case _:
+            raise ValueError(embed)
+
+
+def parse_asset(asset: Image | Video, key: Literal["image", "video"]) -> Media:
+    res = Resolution(**ratio) if (ratio := asset.get("aspectRatio")) else None
+    blob: Blob = asset[key]  # pyright: ignore[reportGeneralTypeIssues]
+    cid = blob["ref"]["$link"]
+    return Media(
+        type=key,
+        cid=cid,
+        name=asset.get("alt") or cid,
+        mime=blob["mimeType"],
+        resolution=res,
+    )
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class Media:
+    type: Literal["video", "image"]
+    cid: str
+    name: str
+    mime: str
+    resolution: Resolution | None = None

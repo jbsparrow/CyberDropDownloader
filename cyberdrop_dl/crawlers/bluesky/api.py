@@ -26,28 +26,29 @@ class BlueSkyCAPI(API):
 
     @classmethod
     def blob_url(cls, did: str, cid: str) -> AbsoluteHttpURL:
+        # did: desentralized ID, cid: content id (hash)
         return cls.BLOB_ENDPOINT.with_query(did=did, cid=cid)
 
     async def xrpc(self, path: str, **params: Any) -> dict[str, Any]:
         url = (self.ENTRYPOINT / path).with_query(params)
         return await self.request_json(url)
 
-    async def resolve_handle(self, handle: str) -> str:
-        if handle.startswith("did:"):
-            return handle
+    async def resolve_handle(self, handle_or_did: str) -> str:
+        if handle_or_did.startswith("did:"):
+            return handle_or_did
         try:
-            return self._did_cache[handle]
+            return self._did_cache[handle_or_did]
         except LookupError:
             pass
 
-        async with self._did_locks[handle]:
+        async with self._did_locks[handle_or_did]:
             try:
-                return self._did_cache[handle]
+                return self._did_cache[handle_or_did]
             except LookupError:
                 pass
 
-            resp = await self.xrpc("com.atproto.identity.resolveHandle", handle=handle)
-            did = self._did_cache[handle] = resp["did"]
+            resp = await self.xrpc("com.atproto.identity.resolveHandle", handle=handle_or_did)
+            did = self._did_cache[handle_or_did] = resp["did"]
             return did
 
     async def thread(
