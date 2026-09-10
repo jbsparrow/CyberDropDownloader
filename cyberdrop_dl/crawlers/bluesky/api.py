@@ -10,7 +10,7 @@ from cyberdrop_dl.url_objects import AbsoluteHttpURL
 _BLOB_ENDPOINT = AbsoluteHttpURL("https://bsky.social/xrpc/com.atproto.sync.getBlob")
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Iterable
+    from collections.abc import AsyncGenerator, Generator, Iterable
 
 
 class BlueskyAPI(API):
@@ -49,7 +49,7 @@ class BlueskyAPI(API):
 
     async def post_thread(
         self, actor: str, post_id: str, depth: int = 100, parent_height: int = 0
-    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    ) -> tuple[dict[str, Any], Generator[dict[str, Any], None, None]]:
         actor_did = await self.resolve_handle(actor)
         url = (self.ENTRYPOINT / "app.bsky.feed.getPostThread").with_query(
             uri=f"at://{actor_did}/app.bsky.feed.post/{post_id}", depth=depth, parentHeight=parent_height
