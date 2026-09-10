@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator, Iterable
 
 
-class BlueSkyCAPI(API):
+class BlueSkyAPI(API):
     ENTRYPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://api.bsky.app/xrpc")
     BLOB_ENDPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bsky.social/xrpc/com.atproto.sync.getBlob")
 

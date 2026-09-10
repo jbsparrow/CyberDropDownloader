@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Literal, NotRequired, Self, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NotRequired, Self, TypedDict
 
 from cyberdrop_dl.models import type_adapter
+
+if TYPE_CHECKING:
+    from cyberdrop_dl.mediaprops import Resolution
 
 type FeedFilter = Literal[
     "posts_with_replies",
@@ -105,3 +108,12 @@ type MediaAsset = Video | Image | External | Images | Gallery
 class Record(TypedDict):
     createdAt: str
     embed: NotRequired[dict[str, Any]]
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class Media:
+    type: Literal["video", "image"]
+    cid: str
+    name: str
+    mime: str
+    resolution: Resolution | None = None

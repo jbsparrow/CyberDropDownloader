@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import dataclasses
 from typing import TYPE_CHECKING, ClassVar, Literal, cast
 
-from cyberdrop_dl.crawlers.bluesky.api import BlueSkyCAPI
+from cyberdrop_dl.crawlers.bluesky.api import BlueSkyAPI
+from cyberdrop_dl.crawlers.bluesky.types import Media
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.mediaprops import Resolution
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
@@ -28,15 +28,14 @@ class BlueskyCrawler(Crawler):
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date:%Y-%m-%d} - {id}"
 
     def __post_init__(self) -> None:
-        self.api: BlueSkyCAPI = BlueSkyCAPI.from_crawler(self)
+        self.api: BlueSkyAPI = BlueSkyAPI.from_crawler(self)
 
     @property
     def separate_posts(self) -> bool:
         return True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        parts = scrape_item.url.parts[1:]
-        match parts:
+        match scrape_item.url.parts[1:]:
             case ["profile", user, "post", post_id, *_]:
                 await self.post(scrape_item, user, post_id)
             case ["profile", user]:
@@ -90,6 +89,7 @@ def _extract_media(post: PostView) -> Generator[Media]:
     embed = post.record.get("embed")
     if not embed:
         return
+
     embed["type"] = embed["$type"]
     embed = cast("MediaAsset", embed)  # pyright: ignore[reportInvalidCast]
 
@@ -112,6 +112,7 @@ def _extract_media(post: PostView) -> Generator[Media]:
 
 
 def parse_asset(asset: Image | Video, key: Literal["image", "video"]) -> Media:
+    # TODO: handle video captions
     res = Resolution(**ratio) if (ratio := asset.get("aspectRatio")) else None
     blob: Blob = asset[key]  # pyright: ignore[reportGeneralTypeIssues]
     cid = blob["ref"]["$link"]
@@ -122,12 +123,3 @@ def parse_asset(asset: Image | Video, key: Literal["image", "video"]) -> Media:
         mime=blob["mimeType"],
         resolution=res,
     )
-
-
-@dataclasses.dataclass(frozen=True, slots=True)
-class Media:
-    type: Literal["video", "image"]
-    cid: str
-    name: str
-    mime: str
-    resolution: Resolution | None = None
