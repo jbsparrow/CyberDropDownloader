@@ -193,22 +193,12 @@ class TwitterCrawler(Crawler):
         await self._iter_tweets(scrape_item, tweets_filter(self.api.user.media(user)))
         await self._iter_tweets(scrape_item, tweets_filter(self.api.user.tweets(user)))
 
-        oldest = tweets_filter.oldest_tweet
-        if not oldest:
-            return
-
-        tweets_filter.until = (
-            min(tweets_filter.until, oldest.created_timestamp) if tweets_filter.until else oldest.created_timestamp
-        )
-
-        self.api.until.set(tweets_filter.until)
         feed = "media" if media_only else "top"
         api_url = self.api.prepare_search(
             query="",
             feed=feed,
             gql_filter=TwitterGQLSearchFilter(
                 user=user,
-                max_id=oldest.id,
                 until=tweets_filter.until,
                 since=tweets_filter.since,
                 include=("nativeretweets", "retweets") if self.__config__.retweets else (),
@@ -237,7 +227,7 @@ class TwitterCrawler(Crawler):
             async for tweet in tweets:
                 if not self.__config__.retweets and tweet.reposted_by and tweet.author["id"] != tweet.reposted_by["id"]:
                     self.log.warning(
-                        "skipping tweet %s by config options [retweet]. Original author: @%s, retweeted by: @%s",
+                        "Skipping tweet %s by config options [retweet]. Original author: @%s, retweeted by: @%s",
                         tweet.id,
                         tweet.author["screen_name"],
                         tweet.reposted_by["screen_name"],
