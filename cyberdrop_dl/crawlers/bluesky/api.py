@@ -1,16 +1,19 @@
-"https://endpoints.bsky.app"
+"""https://endpoints.bsky.app
+https://github.com/bluesky-social/atproto
+"""
 
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl import aio
+from cyberdrop_dl.crawlers.bluesky.types import FeedFilter, PostView
 from cyberdrop_dl.crawlers.crawler import API
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator, Generator, Iterable
 
 
 class BlueSkyCAPI(API):
@@ -54,7 +57,7 @@ class BlueSkyCAPI(API):
         *,
         depth: int = 100,  # How many replies
         parent_height: int = 0,  # How many parent replies
-    ) -> tuple[dict[str, Any], Generator[dict[str, Any], None, None]]:
+    ) -> tuple[PostView, Generator[PostView]]:
         did = await self.resolve_handle(actor)
         resp = await self.xrpc(
             "app.bsky.feed.getPostThread",
@@ -64,32 +67,27 @@ class BlueSkyCAPI(API):
         )
 
         thread = resp["thread"]
-        original_post = thread["post"]
+        og_post = PostView.parse(thread["post"])
 
         pending: deque[dict[str, Any]] = deque()
-        pending.extend(thread.get("replies", ()))
+        pending.extend(_filter_blocked_replies(thread.get("replies", ())))
 
-        def replies():
+        def replies() -> Generator[PostView]:
             while pending:
-                node = pending.popleft()
-                if node.get("$type") == "app.bsky.feed.defs#threadViewPost":
-                    yield node["post"]
-                    pending.extend(node.get("replies", ()))
+                reply = pending.popleft()
+                yield PostView.parse(reply["post"])
+                pending.extend(_filter_blocked_replies(reply.get("replies", ())))
 
-        return original_post, replies()
+        return og_post, replies()
 
-    def author_feed(
+    async def author_feed(
         self,
         actor: str,
-        filter: Literal[  # noqa: A002
-            "posts_with_replies",
-            "posts_no_replies",
-            "posts_with_media",
-            "posts_and_author_threads",
-            "posts_with_video",
-        ] = "posts_with_media",
-    ) -> AsyncGenerator[list[dict[str, Any]]]:
-        return self._paginate("app.bsky.feed.getAuthorFeed", actor=actor, filter=filter)
+        feed_filter: FeedFilter = "posts_with_media",
+    ) -> AsyncGenerator[PostView]:
+        async for page in self._paginate("app.bsky.feed.getAuthorFeed", actor=actor, filter=feed_filter):
+            for post in page:
+                yield PostView.parse(post["post"])
 
     async def _paginate(
         self,
@@ -108,3 +106,10 @@ class BlueSkyCAPI(API):
             params["cursor"] = cursor = resp.get("cursor")
             if not cursor:
                 return
+
+
+def _filter_blocked_replies(replies: Iterable[dict[str, Any]]) -> Generator[dict[str, Any]]:
+    for reply in replies:
+        if reply.get("not_found") or reply.get("blocked") or reply.get("$type") != "app.bsky.feed.defs#threadViewPost":
+            continue
+        yield reply
