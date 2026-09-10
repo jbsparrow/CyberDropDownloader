@@ -4,12 +4,13 @@ import contextlib
 import dataclasses
 import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, final, override
 
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.crawlers.twitter.api import FXTwitterAPI, TwitterAPI, TwitterGQLSearchFilter
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.mediaprops import Resolution
+from cyberdrop_dl.signature import simple_repr
 from cyberdrop_dl.url_objects import AbsoluteHttpURL, MediaItem
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
@@ -135,7 +136,6 @@ class TwitterCrawler(Crawler):
             case [_, "status", status_id, *_] | ["i", "web", "status", status_id]:
                 fn = self.thread if self.__config__.threads else self.tweet
                 await fn(scrape_item, status_id)
-
             case ["i", "broadcasts", bd_id]:
                 await self.broadcast(scrape_item, bd_id)
             case ["i", "events", event_id]:
@@ -288,42 +288,50 @@ class TwitterCrawler(Crawler):
         await self.handle_file(scrape_item.url, scrape_item, title, ext, m3u8=m3u8, custom_filename=filename)
 
 
-@dataclasses.dataclass(slots=True)
+@final
 class TweetsFilterer:
-    ABORT: ClassVar[str] = "ABORT"
-    since: int | None = None
-    until: int | None = None
+    def __init__(self, *, since: int | None = None, until: int | None = None) -> None:
+        self.since = since
+        self.until = until
+        self.oldest_tweet: Tweet | None = None
+        self.seen: set[str] = set()
+        self.log = TwitterCrawler.get_logger()
 
-    seen: set[str] = dataclasses.field(init=False, default_factory=set)
-    oldest_tweet: Tweet | None = dataclasses.field(init=False, default=None)
+    __repr__ = simple_repr("since", "until", "oldest_tweet")
 
-    def should_scrape(self, tweet: Tweet) -> bool:
+    def should_skip(self, tweet: Tweet) -> tuple[bool, str]:
         if tweet.id in self.seen:
-            return False
+            return True, "duplicate"
 
         self.seen.add(tweet.id)
         if self.oldest_tweet is None or self.oldest_tweet.created_timestamp > tweet.created_timestamp:
             self.oldest_tweet = tweet
 
         if self.until and tweet.created_timestamp > self.until:
-            return False
+            return True, "too new"
 
         if self.since and tweet.created_timestamp < self.since:
-            raise StopIteration
+            return True, "too old"
 
-        return True
+        return True, ""
 
     async def __call__(self, tweet_pages: AsyncGenerator[Iterable[Tweet]]) -> AsyncGenerator[Tweet]:
+        max_old_tweets = 10
         async with contextlib.aclosing(tweet_pages) as pages:
             async for tweets in pages:
+                old_tweets = 0
                 for tweet in tweets:
-                    try:
-                        scrape = self.should_scrape(tweet)
-                    except StopIteration:
-                        return
-                    else:
-                        if scrape:
-                            yield tweet
+                    skip, reason = self.should_skip(tweet)
+                    if skip:
+                        self.log.warning("Skipping tweet %s (%s)", tweet.id, reason)
+                        if reason == "too old":
+                            old_tweets += 1
+                        continue
+                    yield tweet
+
+                if old_tweets >= max_old_tweets:
+                    self.log.debug("Aborting after too many old tweets (%s)", old_tweets)
+                    return
 
 
 @dataclasses.dataclass(slots=True)
