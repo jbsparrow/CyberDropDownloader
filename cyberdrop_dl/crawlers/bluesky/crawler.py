@@ -82,7 +82,7 @@ class BlueskyCrawler(Crawler):
                 ext,
                 custom_filename=name,
                 metadata=media,
-                debrid_link=src
+                debrid_link=src,
             )
 
 
