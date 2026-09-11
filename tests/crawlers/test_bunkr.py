@@ -1,4 +1,5 @@
 import pytest
+from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers import bunkr
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
@@ -130,3 +131,27 @@ def test_fix_tumb(url: str, expected: str | None) -> None:
     result = bunkr._fix_thumb(AbsoluteHttpURL(url))
     thumb = AbsoluteHttpURL(expected) if expected else None
     assert result == thumb
+
+
+@pytest.mark.parametrize(
+    ("js_value", "expected"),
+    [
+        (
+            r'"https:\/\/c4ta-b.cdn.cr\/storage\/media\/Tom-\u0026-Jerry-AbCd1234.mp4"',
+            "https://c4ta-b.cdn.cr/storage/media/Tom-&-Jerry-AbCd1234.mp4",
+        ),
+        (
+            r'"https:\/\/c3pz-b.cdn.cr\/storage\/media\/My-Friend\u0027s-Video-AbCd1234.mp4"',
+            "https://c3pz-b.cdn.cr/storage/media/My-Friend's-Video-AbCd1234.mp4",
+        ),
+        (
+            r'"https:\/\/c4ta-b.cdn.cr\/storage\/media\/plain-AbCd1234.mp4"',
+            "https://c4ta-b.cdn.cr/storage/media/plain-AbCd1234.mp4",
+        ),
+        (r"'https:\/\/x.cr\/a.mp4'", "https://x.cr/a.mp4"),
+        ("123", "123"),
+    ],
+)
+def test_extract_js_vars(js_value: str, expected: str) -> None:
+    soup = BeautifulSoup(f"<script>var jsCDN = {js_value};</script>", "html.parser")
+    assert bunkr._extract_js_vars(soup)["jsCDN"] == expected

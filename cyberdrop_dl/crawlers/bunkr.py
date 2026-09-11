@@ -328,6 +328,12 @@ def _extract_js_vars(soup: BeautifulSoup) -> dict[str, str]:
 
 
 def _fix_encoding(val: str) -> str:
+    # Double-quoted page vars are JSON strings, so decode every escape, not just `\/`
+    if val.startswith('"'):
+        try:
+            return json.loads(val)
+        except ValueError:
+            pass
     return val.replace(r"\/", "/")
 
 
