@@ -73,6 +73,10 @@ class BlueskyCrawler(Crawler):
             self.create_eager_task(self._media(scrape_item, media, post.author.did))
             scrape_item.add_children()
 
+        for url in _extract_links(post.record):
+            self.handle_external_links(scrape_item.create_child(self.parse_url(url)))
+            scrape_item.add_children()
+
     async def _media(self, scrape_item: ScrapeItem, media: Media, did: str) -> None:
         src = await self.api.get_blob(did, media.cid)
         with self.catch_errors(src):
@@ -104,6 +108,13 @@ def _extract_media(record: Mapping[str, Any]) -> Generator[Media]:
             mime=blob["mimeType"],
             aspect_ratio=Resolution(**ratio) if (ratio := asset.get("aspectRatio")) else None,
         )
+
+
+def _extract_links(record: Mapping[str, Any]) -> Generator[str]:
+    for facet in record.get("facets", ()):
+        for feat in facet["features"]:
+            if feat["$type"] == "app.bsky.richtext.facet#link":
+                yield feat["uri"]
 
 
 def _normalize_blob(blob: Blob | LegacyBlob) -> Blob:

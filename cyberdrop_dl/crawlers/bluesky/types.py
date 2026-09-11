@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any, Literal, NotRequired, Self, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, Self, TypedDict
 
 from cyberdrop_dl.models import type_adapter
 
@@ -32,7 +32,7 @@ class PostView:
     uri: str
     cid: str
     author: ProfileViewBasic
-    record: Record  # This is typed as unknown on their spec
+    record: dict[str, Any]  # This is typed as unknown on their spec
 
     @classmethod
     def parse(cls, data: dict[str, Any]) -> Self:
@@ -108,11 +108,6 @@ class External(Asset):
 
 
 type MediaAsset = Video | Image | Images | Gallery | External
-
-
-class Record(TypedDict):
-    createdAt: str
-    embed: NotRequired[dict[str, Any]]
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
