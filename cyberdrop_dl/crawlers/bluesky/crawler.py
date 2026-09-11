@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.url_objects import ScrapeItem
 
 
+@Crawler.db_path_builder("path_qs")
 class BlueskyCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "bsky.app", "bsky.social", "main.bsky.dev"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
@@ -76,13 +77,12 @@ class BlueskyCrawler(Crawler):
         with self.catch_errors(src):
             name, ext = self.get_filename_and_ext(media.name, mime_type=media.mime)
             await self.handle_file(
-                scrape_item.url,
+                src,
                 scrape_item,
                 name,
                 ext,
                 custom_filename=name,
                 metadata=media,
-                debrid_link=src,
             )
 
 
