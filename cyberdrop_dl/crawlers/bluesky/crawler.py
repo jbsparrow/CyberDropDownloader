@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Literal, cast
+from typing import TYPE_CHECKING, Any, ClassVar, TypeGuard
 
 from cyberdrop_dl.crawlers.bluesky.api import BlueSkyAPI
-from cyberdrop_dl.crawlers.bluesky.types import LegacyBlob, Media
+from cyberdrop_dl.crawlers.bluesky.types import Media
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.mediaprops import Resolution
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
+from cyberdrop_dl.utils import operators, traversal
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Mapping
 
-    from cyberdrop_dl.crawlers.bluesky.types import Blob, FeedFilter, Image, MediaAsset, PostView, Video
+    from cyberdrop_dl.crawlers.bluesky.types import Blob, FeedFilter, LegacyBlob, PostView
     from cyberdrop_dl.url_objects import ScrapeItem
 
 
@@ -68,7 +69,7 @@ class BlueskyCrawler(Crawler):
         scrape_item.append_folders(self.create_separate_post_title(None, post.id, date))
         self.create_eager_task(self.write_metadata(scrape_item, f"post {post.id}", post))
 
-        for media in _extract_media(post):
+        for media in _extract_media(post.record):
             self.create_eager_task(self._media(scrape_item, media, post.author.did))
             scrape_item.add_children()
 
@@ -86,44 +87,23 @@ class BlueskyCrawler(Crawler):
             )
 
 
-def _extract_media(post: PostView) -> Generator[Media]:
-    embed = post.record.get("embed")
-    if not embed:
-        return
+def _extract_media(record: Mapping[str, Any]) -> Generator[Media]:
 
-    embed["type"] = embed["$type"]
-    embed = cast("MediaAsset", embed)  # pyright: ignore[reportInvalidCast]
+    def is_blob(_: object, data: object) -> TypeGuard[Blob | LegacyBlob]:
+        return type(data) is dict and (data.get("$type") == "blob" or data.keys() == {"cid", "mimeType"})
 
-    match embed["type"]:
-        case "app.bsky.embed.images":
-            for asset in embed["images"]:
-                yield _parse_asset(asset, "image")
-        case "app.bsky.embed.gallery":
-            for asset in embed["items"]:
-                yield _parse_asset(asset, "image" if "image" in asset else "video")
-        case "app.bsky.embed.image":
-            yield _parse_asset(embed, "image")
-        case "app.bsky.embed.video":
-            yield _parse_asset(embed, "video")
-        case "app.bsky.embed.record" | "app.bsky.embed.recordWithMedia":
-            # TODO: handle this
-            pass
-        case _:
-            raise ValueError(embed)
-
-
-def _parse_asset(asset: Image | Video, key: Literal["image", "video"]) -> Media:
-    # TODO: handle video captions
-    res = Resolution(**ratio) if (ratio := asset.get("aspectRatio")) else None
-    blob = _normalize_blob(asset[key])  # pyright: ignore[reportGeneralTypeIssues]
-    cid = blob["ref"]["$link"]
-    return Media(
-        type=key,
-        cid=cid,
-        name=asset.get("alt") or cid,
-        mime=blob["mimeType"],
-        resolution=res,
-    )
+    for path, blob in traversal.traverse(record, is_blob):
+        blob = _normalize_blob(blob)
+        asset_path = path[:-1]
+        asset = operators.nested_itemgetter(*asset_path)(record) if asset_path else record
+        cid = blob["ref"]["$link"]
+        yield Media(
+            type=asset.get("$type") or str(asset_path or "<UNKNOWN>"),
+            cid=cid,
+            name=asset.get("alt") or cid,
+            mime=blob["mimeType"],
+            aspect_ratio=Resolution(**ratio) if (ratio := asset.get("aspectRatio")) else None,
+        )
 
 
 def _normalize_blob(blob: Blob | LegacyBlob) -> Blob:

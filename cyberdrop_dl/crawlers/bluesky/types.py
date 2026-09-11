@@ -117,8 +117,8 @@ class Record(TypedDict):
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Media:
-    type: Literal["video", "image"]
+    type: str
     cid: str
     name: str
     mime: str
-    resolution: Resolution | None = None
+    aspect_ratio: Resolution | None = None

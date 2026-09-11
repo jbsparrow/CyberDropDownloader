@@ -5,11 +5,11 @@ from typing import Any, final
 
 @final
 class nested_itemgetter:  # noqa: N801
-    def __init__(self, key: str, *keys: str) -> None:
-        self.keys: tuple[str, ...] = key, *keys
+    def __init__(self, key: str | int, *keys: str | int) -> None:
+        self.keys: tuple[str | int, ...] = key, *keys
 
     def __call__(self, obj: Any) -> Any:
-        path: list[str] = []
+        path: list[str | int] = []
         for key in self.keys:
             path.append(key)
             try:
