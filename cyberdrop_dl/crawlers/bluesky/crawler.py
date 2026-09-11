@@ -76,12 +76,13 @@ class BlueskyCrawler(Crawler):
         with self.catch_errors(src):
             name, ext = self.get_filename_and_ext(media.name, mime_type=media.mime)
             await self.handle_file(
-                src,
+                scrape_item.url,
                 scrape_item,
                 name,
                 ext,
                 custom_filename=name,
                 metadata=media,
+                debrid_link=src
             )
 
 
