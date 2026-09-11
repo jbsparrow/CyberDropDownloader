@@ -4,9 +4,9 @@ TEST_CASES = [
         "url": "https://bsky.app/profile/tenzilkemesq.bsky.social/post/3mt5h4og6jc2r",
         "results": [
             {
-                "url": "re:/xrpc/com.atproto.sync.getBlob?did=did:plc:tbmq3lilsp2ukxhrha76cewi&cid=bafkreidlpgvgk5p5x5hrxwzot2lzy2gwfg2ggbujiuim5gg7adtxwiyeb4",
+                "url": "https://bsky.app/profile/tenzilkemesq.bsky.social/post/3mt5h4og6jc2r",
                 "filename": "Footage from Forza Horizon 6 of me breaking a hard 5000 xp bonus board..mp4",
-                "debrid_url": None,
+                "debrid_url": "re:/xrpc/com.atproto.sync.getBlob?did=did:plc:tbmq3lilsp2ukxhrha76cewi&cid=bafkreidlpgvgk5p5x5hrxwzot2lzy2gwfg2ggbujiuim5gg7adtxwiyeb4",
                 "original_filename": "Footage from Forza Horizon 6 of me breaking a hard 5000 xp bonus board..mp4",
                 "referer": "https://bsky.app/profile/tenzilkemesq.bsky.social/post/3mt5h4og6jc2r",
                 "album_id": None,
@@ -21,9 +21,9 @@ TEST_CASES = [
         "url": "https://bsky.app/profile/comicsguy67.bsky.social/post/3mupyd6tlyk2x",
         "results": [
             {
-                "url": "re:/xrpc/com.atproto.sync.getBlob?did=did:plc:gtcw4ogmo7pegvqlcvuay4wv&cid=bafkreib27qhwltdaykcengqzs6k4i2w33u2uuh7ibadf3c5g4eda4owmou",
+                "url": "https://bsky.app/profile/comicsguy67.bsky.social/post/3mupyd6tlyk2x",
                 "filename": "bafkreib27qhwltdaykcengqzs6k4i2w33u2uuh7ibadf3c5g4eda4owmou.jpg",
-                "debrid_url": None,
+                "debrid_url": "re:/xrpc/com.atproto.sync.getBlob?did=did:plc:gtcw4ogmo7pegvqlcvuay4wv&cid=bafkreib27qhwltdaykcengqzs6k4i2w33u2uuh7ibadf3c5g4eda4owmou",
                 "original_filename": "bafkreib27qhwltdaykcengqzs6k4i2w33u2uuh7ibadf3c5g4eda4owmou.jpg",
                 "referer": "https://bsky.app/profile/comicsguy67.bsky.social/post/3mupyd6tlyk2x",
                 "album_id": None,
