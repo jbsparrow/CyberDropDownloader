@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, Literal, cast
 
 from cyberdrop_dl.crawlers.bluesky.api import BlueSkyAPI
-from cyberdrop_dl.crawlers.bluesky.types import Media
+from cyberdrop_dl.crawlers.bluesky.types import LegacyBlob, Media
 from cyberdrop_dl.crawlers.crawler import Crawler, SupportedDomains, SupportedPaths
 from cyberdrop_dl.mediaprops import Resolution
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
@@ -96,15 +96,15 @@ def _extract_media(post: PostView) -> Generator[Media]:
 
     match embed["type"]:
         case "app.bsky.embed.images":
-            for img in embed["images"]:
-                yield parse_asset(img, "image")
+            for asset in embed["images"]:
+                yield _parse_asset(asset, "image")
         case "app.bsky.embed.gallery":
-            for item in embed["items"]:
-                yield parse_asset(item, "image" if "image" in item else "video")
+            for asset in embed["items"]:
+                yield _parse_asset(asset, "image" if "image" in asset else "video")
         case "app.bsky.embed.image":
-            yield parse_asset(embed, "image")
+            yield _parse_asset(embed, "image")
         case "app.bsky.embed.video":
-            yield parse_asset(embed, "video")
+            yield _parse_asset(embed, "video")
         case "app.bsky.embed.record" | "app.bsky.embed.recordWithMedia":
             # TODO: handle this
             pass
@@ -112,10 +112,10 @@ def _extract_media(post: PostView) -> Generator[Media]:
             raise ValueError(embed)
 
 
-def parse_asset(asset: Image | Video, key: Literal["image", "video"]) -> Media:
+def _parse_asset(asset: Image | Video, key: Literal["image", "video"]) -> Media:
     # TODO: handle video captions
     res = Resolution(**ratio) if (ratio := asset.get("aspectRatio")) else None
-    blob: Blob = asset[key]  # pyright: ignore[reportGeneralTypeIssues]
+    blob = _normalize_blob(asset[key])  # pyright: ignore[reportGeneralTypeIssues]
     cid = blob["ref"]["$link"]
     return Media(
         type=key,
@@ -124,3 +124,18 @@ def parse_asset(asset: Image | Video, key: Literal["image", "video"]) -> Media:
         mime=blob["mimeType"],
         resolution=res,
     )
+
+
+def _normalize_blob(blob: Blob | LegacyBlob) -> Blob:
+    # https://atproto.com/specs/data-model#blob-type
+    # https://atproto.com/specs/data-model#usage-and-implementation-guidelines
+    if "cid" in blob:
+        return {
+            "$type": "blob",
+            "ref": {
+                "$link": blob["cid"],
+            },
+            "mimeType": blob["mimeType"],
+            "size": -1,
+        }
+    return blob

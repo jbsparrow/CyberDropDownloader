@@ -57,6 +57,11 @@ class Blob(Asset):
     size: int
 
 
+class LegacyBlob(TypedDict):
+    cid: str
+    mimeType: str
+
+
 class AspectRatio(TypedDict):
     width: int
     height: int
@@ -64,7 +69,7 @@ class AspectRatio(TypedDict):
 
 class Image(Asset):
     type: Literal["app.bsky.embed.image"]
-    image: Blob
+    image: Blob | LegacyBlob
     alt: str
     aspectRatio: AspectRatio | None  # noqa: N815
 
@@ -76,7 +81,7 @@ class Images(Asset):
 
 class Gallery(Asset):
     type: Literal["app.bsky.embed.gallery"]
-    items: list[Image]
+    items: list[Image | Video]
 
 
 class Captions(TypedDict):
@@ -86,7 +91,7 @@ class Captions(TypedDict):
 
 class Video(Asset):
     type: Literal["app.bsky.embed.video"]
-    video: Blob
+    video: Blob | LegacyBlob
     alt: str | None
     aspectRatio: AspectRatio | None  # noqa: N815
     captions: Captions | None
@@ -97,12 +102,12 @@ class External(Asset):
     uri: str
     title: str
     description: str
-    thumb: Blob
+    thumb: Blob | LegacyBlob
     created_at: str | None
     updated_at: str | None
 
 
-type MediaAsset = Video | Image | External | Images | Gallery
+type MediaAsset = Video | Image | Images | Gallery | External
 
 
 class Record(TypedDict):
