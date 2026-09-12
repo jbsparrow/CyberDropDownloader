@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 import json
 from enum import IntEnum
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, override
 
 from cyberdrop_dl import aio
 from cyberdrop_dl.clients.http import HTTPConfig
@@ -12,11 +12,13 @@ from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.mediaprops import Resolution, Subtitle
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css, json_ld, m3u8, parse_url, traversal
+from cyberdrop_dl.utils._url import remove_query_params
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
 
+    import yarl
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.url_objects import ScrapeItem
@@ -99,13 +101,10 @@ class RumbleCrawler(Crawler):
             case _:
                 raise ValueError
 
+    @override
     @classmethod
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        match url.parts[1:]:
-            case [slug] if slug.startswith("v") and slug.endswith(".html"):
-                return url.with_query(None)
-            case _:
-                return url
+        return remove_query_params(super().transform_url(url), keep=("page",))
 
     @error_handling_wrapper
     async def channel_shorts(self, scrape_item: ScrapeItem, name: str) -> None:
@@ -116,6 +115,13 @@ class RumbleCrawler(Crawler):
                 new_item = scrape_item.create_child(short.url)
                 self.create_eager_task(self._video(new_item, short))
                 scrape_item.add_children()
+
+    @override
+    @classmethod
+    def parse_url(
+        cls, url: yarl.URL | str, /, relative_to: AbsoluteHttpURL | None = None, *, trim: bool | None = None
+    ) -> AbsoluteHttpURL:
+        return remove_query_params(super().parse_url(url, relative_to, trim=trim), keep=("page",))
 
     @error_handling_wrapper
     async def channel(self, scrape_item: ScrapeItem) -> None:
@@ -224,7 +230,7 @@ def _parse_short(short: dict[str, Any]) -> Video:
         id=short["permalink_id"],
         upload_date=short["upload_date"],
         title=css.unescape(short["title"]),
-        url=parse_url(short["url"]),
+        url=RumbleCrawler.parse_url(short["url"]),
         formats=tuple(_parse_short_formats(short["videos"])),
         subtitles=(),
         thumb=short.get("thumb"),
