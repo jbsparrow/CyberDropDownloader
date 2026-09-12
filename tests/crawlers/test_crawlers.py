@@ -51,6 +51,8 @@ async def test_crawler(running_manager: Manager, test_case: test_cases.CrawlerTe
     if test_case.skip:
         pytest.skip(reason=test_case.skip if isinstance(test_case.skip, str) else "")
 
+    running_manager.config.network.flaresolverr = AbsoluteHttpURL("http://localhost:8191")
+
     with _crawler_mock() as func:
         async with ScrapeMapper(running_manager)() as scrape_mapper:
             await running_manager.http_client.load_cookie_files([REPO_ROOT / "cookies.txt"])
