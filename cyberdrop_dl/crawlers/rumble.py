@@ -254,25 +254,28 @@ def _find_video_objs(soup: BeautifulSoup) -> Generator[dict[str, Any]]:
 
 def _extract_short(soup: BeautifulSoup, short_id: str) -> dict[str, Any]:
     for obj in _find_video_objs(soup):
-        if obj["permalink_id"] == short_id:
+        if obj.get("permalink_id") == short_id:
             return obj
 
     raise ScrapeError(422, "Unable to find short data")
 
 
-def _parse_short_formats(formats: Iterable[dict[str, Any]]) -> Generator[Format]:
-    for fmt in formats:
-        type_ = fmt["type"]
+def _filter_formats[T](fmts: Iterable[tuple[str, T]]) -> Generator[tuple[FormatType, T]]:
+    for type_, fmt in fmts:
         if type_ in {"audio", "tar", "timeline"}:
             continue
 
         try:
-            type_ = FormatType[type_.upper()]
+            f_type = FormatType[type_.upper()]
         except KeyError:
             raise ScrapeError(422, f"Video has an unknown format type: {type_}") from None
 
-        is_single_file = type_ is not FormatType.HLS
+        yield f_type, fmt
 
+
+def _parse_short_formats(formats: Iterable[dict[str, Any]]) -> Generator[Format]:
+    for type_, fmt in _filter_formats((fmt["type"], fmt) for fmt in formats):
+        is_single_file = type_ is not FormatType.HLS
         yield Format(
             resolution=Resolution.parse(fmt["resolution"]) if is_single_file else Resolution.unknown(),
             is_single_file=is_single_file,
@@ -284,17 +287,8 @@ def _parse_short_formats(formats: Iterable[dict[str, Any]]) -> Generator[Format]
 
 
 def _parse_formats(formats: dict[str, list[dict[str, Any]] | dict[str, dict[str, Any]]]) -> Generator[Format]:
-    for type_, format_options in formats.items():
-        if type_ in {"audio", "tar", "timeline"}:
-            continue
-
-        try:
-            type_ = FormatType[type_.upper()]
-        except KeyError:
-            raise ScrapeError(422, f"Video has an unknown format type: {type_}") from None
-
+    for type_, format_options in _filter_formats(formats.items()):
         pairs = ((None, f) for f in format_options) if isinstance(format_options, list) else format_options.items()
-
         is_single_file = type_ is not FormatType.HLS
 
         for height, fmt in pairs:
