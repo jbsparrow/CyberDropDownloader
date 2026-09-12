@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl import aio
 from cyberdrop_dl.clients.http import HTTPConfig
-from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
+from cyberdrop_dl.crawlers.crawler import API, Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import DownloadError, ScrapeError
 from cyberdrop_dl.mediaprops import Resolution, Subtitle
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
@@ -60,7 +60,7 @@ class Video:
     title: str
     upload_date: str
     url: AbsoluteHttpURL
-    best_format: Format
+    formats: tuple[Format, ...]
     subtitles: tuple[Subtitle, ...]
     thumb: str | None = None
 
@@ -76,6 +76,9 @@ class RumbleCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://rumble.com")
     DOMAIN: ClassVar[str] = "rumble"
+
+    def __post_init__(self) -> None:
+        self.api: RumbleAPI = RumbleAPI.from_crawler(self)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
@@ -102,8 +105,6 @@ class RumbleCrawler(Crawler):
     async def channel(self, scrape_item: ScrapeItem, name: str) -> None:
         scrape_item.setup_as_album(self.create_title(name))
         async for soup in self._pager(scrape_item.url):
-            from cyberdrop_dl.utils import json_ld
-
             _, info = json_ld.find(soup, "items", "relative_url")
             for item in info["items"]:
                 if item.get("object_type") != "video":
@@ -129,18 +130,7 @@ class RumbleCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item.url):
             return
 
-        soup = await self.request_soup(scrape_item.url)
-        short = _extract_short(soup, short_id)
-        formats = _parse_short_formats(short["videos"])
-        video = Video(
-            id=short_id,
-            upload_date=short["upload_date"],
-            title=css.unescape(short["title"]),
-            url=self.parse_url(short["url"]),
-            best_format=await self._get_best_format(formats),
-            subtitles=(),
-            thumb=short.get("thumb"),
-        )
+        video = await self.api.short(short_id)
         await self._video(scrape_item, video)
 
     @error_handling_wrapper
@@ -154,26 +144,11 @@ class RumbleCrawler(Crawler):
 
     @error_handling_wrapper
     async def embed(self, scrape_item: ScrapeItem, embed_id: str) -> None:
-        api_url = (self.PRIMARY_URL / "embedJS/u3").with_query(request="video", ver=2, v=embed_id)
-        data: dict[str, Any] = await self.request_json(api_url)
-
-        if data.get("live") == LiveStatus.CURRENTLY_LIVE:
-            raise ScrapeError(422, "livestreams are not supported")
-
-        formats = _parse_formats(data.get("ua") or {})
-        subs = _parse_subs(data.get("cc") or {})
-        video = Video(
-            id=embed_id,
-            upload_date=data["pubDate"],
-            title=css.unescape(data["title"]),
-            url=self.parse_url(data["l"]),
-            best_format=await self._get_best_format(formats),
-            subtitles=tuple(subs),
-        )
+        video = await self.api.embed(embed_id)
         await self._video(scrape_item, video)
 
     async def _video(self, scrape_item: ScrapeItem, video: Video) -> None:
-        best_format = video.best_format
+        best_format = max(await self._resolve_formats(video.formats))
         if best_format.m3u8:
             ext = ".mp4"
         else:
@@ -195,7 +170,7 @@ class RumbleCrawler(Crawler):
         )
         self.handle_subs(scrape_item, video_name, video.subtitles)
 
-    async def _get_best_format(self, formats: Iterable[Format]) -> Format:
+    async def _resolve_formats(self, formats: Iterable[Format]) -> tuple[Format, ...]:
         hls_formats: list[Format] = []
         other_formats: list[Format] = [fmt for fmt in formats if fmt.is_single_file or hls_formats.append(fmt)]
 
@@ -211,7 +186,38 @@ class RumbleCrawler(Crawler):
         if hls_formats:
             hls_formats = await aio.map(resolve_m3u8, hls_formats, task_limit=10)
 
-        return max((*hls_formats, *other_formats))
+        return (*hls_formats, *other_formats)
+
+
+class RumbleAPI(API):
+    async def embed(self, embed_id: str) -> Video:
+        api_url = (self.PRIMARY_URL / "embedJS/u3").with_query(request="video", ver=2, v=embed_id)
+        data: dict[str, Any] = await self.request_json(api_url)
+
+        if data.get("live") == LiveStatus.CURRENTLY_LIVE:
+            raise ScrapeError(422, "livestreams are not supported")
+
+        return Video(
+            id=embed_id,
+            upload_date=data["pubDate"],
+            title=css.unescape(data["title"]),
+            url=self.parse_url(data["l"]),
+            formats=tuple(_parse_formats(data.get("ua") or {})),
+            subtitles=tuple(_parse_subs(data.get("cc") or {})),
+        )
+
+    async def short(self, short_id: str) -> Video:
+        soup = await self.request_soup(self.PRIMARY_URL / "shorts" / short_id)
+        short = _extract_short(soup, short_id)
+        return Video(
+            id=short_id,
+            upload_date=short["upload_date"],
+            title=css.unescape(short["title"]),
+            url=self.parse_url(short["url"]),
+            formats=tuple(_parse_short_formats(short["videos"])),
+            subtitles=(),
+            thumb=short.get("thumb"),
+        )
 
 
 def _extract_short(soup: BeautifulSoup, short_id: str) -> dict[str, Any]:
