@@ -85,6 +85,34 @@ class FileditchCrawler(Crawler):
         return src, _extr_thumb(soup)
 
 
+@FileditchCrawler.__http_config__
+class FileditchAlbumsCrawler(Crawler):
+    # Keep this as a separate class. Site changes domains frequently
+    # Let the scrape mapper dispatch to the best matching domain
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/<album_id>",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://fileditchalbums.st")
+    DOMAIN: ClassVar[str] = "fileditchalbums"
+    FOLDER_DOMAIN: ClassVar[str] = FileditchCrawler.FOLDER_DOMAIN
+
+    async def fetch(self, scrape_item: ScrapeItem) -> None:
+        match scrape_item.url.parts[1:]:
+            case [album_id]:
+                await self.album(scrape_item, album_id)
+            case _:
+                raise ValueError
+
+    @error_handling_wrapper
+    async def album(self, scrape_item: ScrapeItem, album_id: str) -> None:
+        soup = await self.request_soup(scrape_item.url)
+        name = self.create_title(css.select_text(soup, "h1.title"))
+        scrape_item.setup_as_album(name, album_id=album_id)
+        for new_item in self.iter_children(scrape_item, soup, ".grid article.card > a.thumb[href]"):
+            self.handle_embed(new_item)
+            scrape_item.add_children()
+
+
 def _extr_thumb(soup: bs4.Tag) -> str | None:
     try:
         return extr_text(css.select(soup, ".vposter[style]", "style"), "background-image:url(", ")").strip("'")

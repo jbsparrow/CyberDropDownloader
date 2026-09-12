@@ -69,4 +69,17 @@ TEST_CASES = [
         ],
         "count": 1,
     },
+    {
+        "url": "https://fileditchalbums.st/pbxrzgde8g",
+        "description": "album",
+        "results": [
+            {
+                "url": "ANY",
+                "album_id": "pbxrzgde8g",
+                "uploaded_at": None,
+                "download_folder": "re:wehavealbumsnow (Fileditch)",
+            },
+        ],
+        "count": 8,
+    },
 ]
