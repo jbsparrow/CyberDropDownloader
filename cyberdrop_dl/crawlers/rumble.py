@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import itertools
 import json
 from enum import IntEnum
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -9,14 +8,14 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from cyberdrop_dl import aio
 from cyberdrop_dl.clients.http import HTTPConfig
 from cyberdrop_dl.crawlers.crawler import API, Crawler, SupportedPaths
-from cyberdrop_dl.exceptions import DownloadError, ScrapeError
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.mediaprops import Resolution, Subtitle
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
 from cyberdrop_dl.utils import css, json_ld, m3u8, parse_url, traversal
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Iterable
+    from collections.abc import Generator, Iterable
 
     from bs4 import BeautifulSoup
 
@@ -69,6 +68,8 @@ class Video:
 class RumbleCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Channel": "/c/<name>",
+        "Channel videos": "/c/<name>/videos",
+        "Channel shorts": "/c/<name>/shorts",
         "User": "/user/<name>",
         "Video": "<video_id>-<video-title>.html",
         "Short": "/shorts/<short_id>",
@@ -76,6 +77,7 @@ class RumbleCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://rumble.com")
     DOMAIN: ClassVar[str] = "rumble"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "nav a[href*=page]:has(svg[stroke-linecap=round])"
 
     def __post_init__(self) -> None:
         self.api: RumbleAPI = RumbleAPI.from_crawler(self)
@@ -88,8 +90,12 @@ class RumbleCrawler(Crawler):
                 await self.short(scrape_item, video_id)
             case [slug] if slug.startswith("v") and slug.endswith(".html"):
                 await self.video(scrape_item)
-            case ["c" | "user", user_name, *_]:
-                await self.channel(scrape_item, user_name)
+            case ["c" | "user", user_name, "shorts"]:
+                await self.channel_shorts(scrape_item, user_name)
+            case ["c" | "user", user_name, "videos"]:
+                await self.channel_videos(scrape_item, user_name)
+            case ["c" | "user", _user_name]:
+                await self.channel(scrape_item)
             case _:
                 raise ValueError
 
@@ -102,24 +108,28 @@ class RumbleCrawler(Crawler):
                 return url
 
     @error_handling_wrapper
-    async def channel(self, scrape_item: ScrapeItem, name: str) -> None:
+    async def channel_shorts(self, scrape_item: ScrapeItem, name: str) -> None:
         scrape_item.setup_as_album(self.create_title(name))
-        async for soup in self._pager(scrape_item.url):
-            for item in _find_video_objs(soup):
-                new_item = scrape_item.create_child(self.parse_url(item["url"]))
-                self.create_task(self.run(new_item, check_referer=True))
+        scrape_item.append_folders("shorts")
+        async for soup in self.web_pager(scrape_item.url):
+            for short in map(_parse_short, _find_video_objs(soup)):
+                new_item = scrape_item.create_child(short.url)
+                self.create_eager_task(self._video(new_item, short))
                 scrape_item.add_children()
 
-    async def _pager(self, url: AbsoluteHttpURL) -> AsyncGenerator[BeautifulSoup]:
-        init_page = int(url.query.get("page") or 1)
-        try:
-            for page in itertools.count(init_page):
-                yield await self.request_soup(url.update_query(page=page))
+    @error_handling_wrapper
+    async def channel(self, scrape_item: ScrapeItem) -> None:
+        for part in ("shorts", "videos"):
+            self.create_task(self.run(scrape_item.create_child(scrape_item.url / part)))
 
-        except DownloadError as e:
-            if e.status == 404:
-                return
-            raise
+    @error_handling_wrapper
+    async def channel_videos(self, scrape_item: ScrapeItem, name: str) -> None:
+        scrape_item.setup_as_album(self.create_title(name))
+        async for soup in self.web_pager(scrape_item.url):
+            for item in _find_video_objs(soup):
+                new_item = scrape_item.create_child(self.parse_url(item["url"]))
+                self.create_task(self.video(new_item))
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def short(self, scrape_item: ScrapeItem, short_id: str) -> None:
@@ -143,7 +153,11 @@ class RumbleCrawler(Crawler):
         video = await self.api.embed(embed_id)
         await self._video(scrape_item, video)
 
+    @error_handling_wrapper
     async def _video(self, scrape_item: ScrapeItem, video: Video) -> None:
+        if await self.check_complete_from_referer(scrape_item.url):
+            return
+
         best_format = max(await self._resolve_formats(video.formats))
         if best_format.m3u8:
             ext = ".mp4"
@@ -202,15 +216,19 @@ class RumbleAPI(API):
     async def short(self, short_id: str) -> Video:
         soup = await self.request_soup(self.PRIMARY_URL / "shorts" / short_id)
         short = _extract_short(soup, short_id)
-        return Video(
-            id=short_id,
-            upload_date=short["upload_date"],
-            title=css.unescape(short["title"]),
-            url=self.parse_url(short["url"]),
-            formats=tuple(_parse_short_formats(short["videos"])),
-            subtitles=(),
-            thumb=short.get("thumb"),
-        )
+        return _parse_short(short)
+
+
+def _parse_short(short: dict[str, Any]) -> Video:
+    return Video(
+        id=short["permalink_id"],
+        upload_date=short["upload_date"],
+        title=css.unescape(short["title"]),
+        url=parse_url(short["url"]),
+        formats=tuple(_parse_short_formats(short["videos"])),
+        subtitles=(),
+        thumb=short.get("thumb"),
+    )
 
 
 def _find_video_objs(soup: BeautifulSoup) -> Generator[dict[str, Any]]:
