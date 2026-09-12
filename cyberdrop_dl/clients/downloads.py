@@ -308,9 +308,9 @@ class DownloadClient:
         for iteration in itertools.count(1):
             filename = f"{complete_file.stem} ({iteration}){complete_file.suffix}"
             temp_complete_file = media_item.download_folder / filename
-            if not temp_complete_file.exists() and not await self.manager.database.history.check_filename_exists(
-                filename
-            ):
+            if not await aio.exists(
+                temp_complete_file
+            ) and not await self.manager.database.history.check_filename_exists(filename):
                 media_item.filename = filename
                 complete_file = media_item.download_folder / media_item.filename
                 partial_file = complete_file.with_suffix(part_suffix)
