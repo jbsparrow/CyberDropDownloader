@@ -166,11 +166,11 @@ class RumbleCrawler(Crawler):
         )
         self.handle_subs(scrape_item, video_name, video.subtitles)
 
-    async def _resolve_formats(self, formats: Iterable[Format]) -> tuple[Format, ...]:
-        hls_formats: list[Format] = []
-        other_formats: list[Format] = [fmt for fmt in formats if fmt.is_single_file or hls_formats.append(fmt)]
-
+    async def _resolve_formats(self, formats: Iterable[Format]) -> list[Format]:
         async def resolve_m3u8(fmt: Format) -> Format:
+            if fmt.is_single_file:
+                return fmt
+
             m3u8, info = await self.request_m3u8_playlist(fmt.url)
             return dataclasses.replace(
                 fmt,
@@ -179,10 +179,7 @@ class RumbleCrawler(Crawler):
                 bitrate=info.stream_info.bandwidth or 0,
             )
 
-        if hls_formats:
-            hls_formats = await aio.map(resolve_m3u8, hls_formats, task_limit=10)
-
-        return (*hls_formats, *other_formats)
+        return await aio.map(resolve_m3u8, formats, task_limit=10)
 
 
 class RumbleAPI(API):
