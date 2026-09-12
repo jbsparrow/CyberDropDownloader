@@ -116,7 +116,7 @@ class DownloadClient:
     ) -> bool:
         await _check_response(media_item, resp, resume_point)
         media_item.size = _get_content_length(resp.headers)
-        if resp.status == HTTPStatus.PARTIAL_CONTENT and media_item.size:
+        if resp.status == HTTPStatus.PARTIAL_CONTENT:
             # Content-Length of a ranged response only counts the bytes after resume_point.
             # Every check below (partial size, final size, filesize limits) needs the size of the whole file
             media_item.size += resume_point

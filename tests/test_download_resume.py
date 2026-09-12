@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 import hashlib
 from typing import TYPE_CHECKING, Self
 from unittest import mock
@@ -24,8 +23,9 @@ _PAYLOAD = bytes(range(256)) * 4_000  # 1,024,000 bytes
 _DOMAIN = "example"
 
 
-@dataclasses.dataclass(slots=True)
 class _FakeResponse(AbstractResponse[bytes]):
+    __slots__ = ()
+
     async def _read(self) -> bytes:
         return self._resp
 
@@ -94,10 +94,11 @@ async def _resumable_item(manager: Manager, tmp_path: Path, resume_point: int) -
     return item
 
 
-@pytest.mark.parametrize("resume_point", [300_000, 700_000])
+@pytest.mark.parametrize("resume_pct", [0.2, 0.4, 0.6, 0.8])
 async def test_resumed_download_keeps_partial_bytes(
-    running_manager: Manager, tmp_path: Path, resume_point: int
+    running_manager: Manager, tmp_path: Path, resume_pct: float
 ) -> None:
+    resume_point = int(len(_PAYLOAD) * resume_pct)
     item = await _resumable_item(running_manager, tmp_path, resume_point)
     client = DownloadClient(running_manager)
     resp = _FakeResponse.partial_content(resume_point)
@@ -110,11 +111,13 @@ async def test_resumed_download_keeps_partial_bytes(
 
 
 async def test_truncated_resume_is_not_marked_complete(running_manager: Manager, tmp_path: Path) -> None:
-    item = await _resumable_item(running_manager, tmp_path, 300_000)
+    resume_point = int(len(_PAYLOAD) * 0.3)
+    truncate_to = int(len(_PAYLOAD) * 0.5)
+    item = await _resumable_item(running_manager, tmp_path, resume_point)
     client = DownloadClient(running_manager)
-    resp = _FakeResponse.partial_content(300_000, truncate_to=500_000)
+    resp = _FakeResponse.partial_content(resume_point, truncate_to=truncate_to)
     with (
         mock.patch.object(DownloadClient, "_make_hook", return_value=_Hook()),
         pytest.raises(DownloadError, match="Corrupted File"),
     ):
-        await client._process_response(item, _DOMAIN, 300_000, resp)
+        await client._process_response(item, _DOMAIN, resume_point, resp)
