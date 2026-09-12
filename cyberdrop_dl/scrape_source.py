@@ -96,6 +96,7 @@ async def _parse_input_file_groups(input_file: Path) -> AsyncGenerator[tuple[str
         return
 
     block_quote = False
+    ignored_urls = 0
     current_group_name = ""
     async with aio.open(input_file, encoding="utf8") as f:
         async for line in f:
@@ -106,9 +107,22 @@ async def _parse_input_file_groups(input_file: Path) -> AsyncGenerator[tuple[str
                 yield (current_group_name, list(_regex_links(line)))
                 continue
 
-            block_quote = not block_quote if line == "#\n" else block_quote
+            if line == "#\n":  # A block quote begins or ends here
+                block_quote = not block_quote
+                ignored_urls = 0
+
             if not block_quote:
                 yield ("", list(_regex_links(line)))
+            else:
+                ignored_urls += sum(1 for _ in _regex_links(line))
+
+    if block_quote and ignored_urls:
+        logger.warning(
+            "Block comment in %s was never closed: %s URL(s) after its opening '#' line were ignored. "
+            "Add a line with only '#' where the comment should end",
+            input_file,
+            ignored_urls,
+        )
 
 
 async def load_items_from_iterable(items: Iterable[AbsoluteHttpURL | Path]) -> AsyncGenerator[ScrapeItem]:

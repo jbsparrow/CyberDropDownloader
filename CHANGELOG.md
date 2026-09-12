@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enable the `--force-original-path` option on retry commands
 - Ask the user if they want to use the original download path after choosing `retry failed downloads` (main menu)
+- Log a warning when a block comment in the input file is never closed and URLs after it are ignored
 
 ### Fixed
 

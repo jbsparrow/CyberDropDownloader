@@ -176,6 +176,27 @@ sort:
     incrementer: " ({i})"
 ```
 
+# Comments
+
+Lines that start with `#` are ignored.
+
+A line containing only `#` starts a block comment. Everything up to the next line containing only `#` is ignored, URLs included:
+
+```text
+https://example.com/file1.jpg
+#
+https://example.com/file2.jpg
+https://example.com/file3.jpg
+#
+https://example.com/file4.jpg
+```
+
+Only `file1.jpg` and `file4.jpg` would be downloaded.
+
+If a block comment is never closed, every URL after it is ignored and a warning is logged.
+
+Block comments have no effect inside a group. There, a line with only `#` is just an ordinary comment.
+
 # Group URLs
 
 It is possible to treat a list of URLs as a group, allowing them to be downloaded to a single folder.
