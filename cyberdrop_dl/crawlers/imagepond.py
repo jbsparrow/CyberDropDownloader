@@ -24,6 +24,7 @@ class Selector:
     NEXT_PAGE = "a[rel=next]"
     ARCHIVE = "[x-data='archiveViewer()']"
     DIRECT_DL = "#embed-direct"
+    EMBED = ".embed-link a[href]"
 
 
 @dataclasses.dataclass(slots=True)
@@ -58,7 +59,7 @@ class File:
         )
 
 
-@HTTPConfig(rate_limit=(1, 3))
+@HTTPConfig(rate_limit=(2, 1))
 @URLConfig(trim=False)
 class ImagePondCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[dict[str, str | tuple[str, ...]]] = {
@@ -83,14 +84,14 @@ class ImagePondCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
-            case ["i" | "img" | "image" | "video" | "videos", _]:
-                return await self.file(scrape_item)
+            case ["i" | "img" | "image" | "video", _]:
+                await self.file(scrape_item)
             case ["a", _]:
-                return await self.album(scrape_item)
-            case ["media", _] if self.is_subdomain(scrape_item.url):
-                return await self.direct_file(scrape_item)
+                await self.album(scrape_item)
+            case ["media", _, *_] if self.is_subdomain(scrape_item.url):
+                await self.direct_file(scrape_item)
             case ["user", user_name] | [user_name]:
-                return await self.user(scrape_item, user_name)
+                await self.user(scrape_item, user_name)
             case _:
                 raise ValueError
 
@@ -98,6 +99,8 @@ class ImagePondCrawler(Crawler):
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         url = super().transform_url(url)
         match url.parts[1:]:
+            case ["videos", slug]:
+                return url.origin() / "i" / slug
             case [a, b, "download", *_]:
                 return url.origin() / a / b
             case _:
@@ -109,13 +112,26 @@ class ImagePondCrawler(Crawler):
             return
 
         async with self.request(scrape_item.url) as resp:
-            if resp.url != scrape_item.url and await self.check_complete_from_referer(resp.url):
-                return
+            if resp.url != scrape_item.url:
+                with scrape_item.track_changes:
+                    scrape_item.url = resp.url
+                if await self.check_complete_from_referer(resp.url):
+                    return
 
-            scrape_item.url = resp.url
             soup = await resp.soup()
 
-        file = File.parse(soup)
+        try:
+            file = File.parse(soup)
+        except (css.SelectorError, open_graph.OpenGraphError):
+            if embed := soup.select_one(Selector.EMBED):
+                scrape_item.url = self.parse_url(css.attr(embed, "href"))
+                self.create_task(self.run(scrape_item))
+                return
+            raise
+
+        await self._file(scrape_item, file)
+
+    async def _file(self, scrape_item: ScrapeItem, file: File) -> None:
         scrape_item.uploaded_at = self.parse_date(file.uploaded_at, "%b %d, %Y")
         filename, ext = self.get_filename_and_ext(file.name, assume_ext=file.assume_ext, mime_type=file.mime)
         await self.handle_file(

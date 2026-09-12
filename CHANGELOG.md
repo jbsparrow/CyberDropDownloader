@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pagination of some profiles never stopping (Twitter/x.com)
 - Some posts missing if a profile has 1k+ tweets (Twitter/x.com)
 - Downloads failing with 404 when the file name contains "&" or "'" (Bunkr)
+- Downloads of embeded videos and direct URLs (Imagepond)
 
 ## [10.8.0] - 2026-09-06
 
