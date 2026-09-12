@@ -125,3 +125,7 @@ def ask_should_create_config(file: Path) -> bool:
 def ask_should_create_folder(folder: Path) -> bool:
     console.warning(f"Folder '{folder}' does not exists")
     return ask_confirmation("Do you want to create it?")
+
+
+def ask_should_use_retry_path() -> bool:
+    return ask_confirmation("Do you want to use the exact same download path as the original attempt?")

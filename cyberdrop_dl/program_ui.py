@@ -8,6 +8,7 @@ import aiohttp
 from rich.markdown import Markdown
 
 from cyberdrop_dl import __version__, aio, stats
+from cyberdrop_dl.constants import USE_RETRY_PATH
 from cyberdrop_dl.hasher import Hasher, hash_directory
 from cyberdrop_dl.progress import hyperlink
 from cyberdrop_dl.prompts import (
@@ -15,6 +16,7 @@ from cyberdrop_dl.prompts import (
     ask_confirmation,
     ask_dir,
     ask_should_create_config,
+    ask_should_use_retry_path,
     console,
     enter_to_continue,
 )
@@ -45,7 +47,7 @@ def run(manager: Manager, input_file: Path) -> RetrySource | Path:
     _INPUT_FILE.set(input_file)
     choices: dict[str, Callable[[Manager], RetrySource | Path | None]] = {
         "Download": lambda _: input_file,
-        "Retry failed downloads": lambda _: RetrySource.FAILED,
+        "Retry failed downloads": _retry_failed,
         "Create file hashes": _scan_and_create_hashes,
         "Sort files in download folder": _sort_files,
         "Edit URLs.txt": lambda _: _edit_urls(),
@@ -60,6 +62,11 @@ def run(manager: Manager, input_file: Path) -> RetrySource | Path:
         source = choices[answer](manager)
         if source:
             return source
+
+
+def _retry_failed(_: object) -> RetrySource:
+    USE_RETRY_PATH.set(ask_should_use_retry_path())
+    return RetrySource.FAILED
 
 
 def _scan_and_create_hashes(manager: Manager) -> None:
