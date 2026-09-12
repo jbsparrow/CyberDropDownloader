@@ -99,7 +99,7 @@ class ImagePondCrawler(Crawler):
     def transform_url(cls, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         url = super().transform_url(url)
         match url.parts[1:]:
-            case ["videos", slug]:
+            case ["videos", slug] | ["i", slug, *_]:
                 return url.origin() / "i" / slug
             case [a, b, "download", *_]:
                 return url.origin() / a / b
