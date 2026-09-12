@@ -110,7 +110,7 @@ class External(Asset):
 type MediaAsset = Video | Image | Images | Gallery | External
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
 class Media:
     type: str
     cid: str

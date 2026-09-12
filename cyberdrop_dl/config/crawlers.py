@@ -59,7 +59,7 @@ class TwitterArticlesConfig(ConfigModel):
 
 class TwitterConfig(ConfigModel):
     cards: bool = True
-    "Parse and download cards in a post (embeds from thirdparty sites)"
+    "Parse and download cards in a post (embeds from third-party sites)"
 
     threads: bool = True
     "Downloads all posts in a thread (All direct replies from OP to their own tweet)"
@@ -76,6 +76,20 @@ class TwitterConfig(ConfigModel):
     image_size: Literal["orig", "4096x4096", "large", "medium", "small", "thumb"] = "orig"
     # `orig`` is original quality but it's not always available, same as "4096x4096"
     # "large", "medium", or "small" are always available
+
+
+class BlueSkyConfig(ConfigModel):
+    external: bool = True
+    "Parse and download embeds from third-party sites"
+
+    threads: bool = True
+    "Downloads all posts in a thread (All direct replies from OP to their own post)"
+
+    content_urls: bool = True
+    "Parse and try to download any URL found inside the text of a post"
+
+    reposts: bool = False
+    "Download media from reposts in the user's timeline"
 
 
 class OctaveMusicConfig(ConfigModel):
@@ -169,6 +183,7 @@ class Crawlers(ConfigGroup, name=None):
     "Name of crawlers to disable for the current run"
 
     bandcamp: BandcampConfig = Field(default_factory=BandcampConfig)
+    bluesky: BlueSkyConfig = Field(default_factory=BlueSkyConfig)
     clonr: ClonrConfig = Field(default_factory=ClonrConfig)
     clypit: ClypitConfig = Field(default_factory=ClypitConfig)
     generic: GenericCrawlers = Field(default_factory=GenericCrawlers)

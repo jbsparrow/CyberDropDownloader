@@ -13,6 +13,7 @@ from cyberdrop_dl.utils.errors import error_handling_wrapper
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping
 
+    from cyberdrop_dl.config.crawlers import BlueSkyConfig
     from cyberdrop_dl.crawlers.bluesky.types import Blob, FeedFilter, LegacyBlob, PostView
     from cyberdrop_dl.url_objects import ScrapeItem
 
@@ -30,6 +31,7 @@ class BlueskyCrawler(Crawler):
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date:%Y-%m-%d} - {id}"
 
     def __post_init__(self) -> None:
+        self.__config__: BlueSkyConfig = self.config.crawlers.bluesky
         self.api: BlueSkyAPI = BlueSkyAPI.from_crawler(self)
 
     @property
@@ -40,8 +42,14 @@ class BlueskyCrawler(Crawler):
         match scrape_item.url.parts[1:]:
             case ["profile", user, "post", post_id, *_]:
                 await self.post(scrape_item, user, post_id)
-            case ["profile", user]:
+            case ["profile", user] | ["profile", user, "posts"]:
                 await self.user(scrape_item, user, "posts_and_author_threads")
+            case ["profile", user, "media"]:
+                await self.user(scrape_item, user, "posts_with_media")
+            case ["profile", user, "replies"]:
+                await self.user(scrape_item, user, "posts_with_replies")
+            case ["profile", user, "video"]:
+                await self.user(scrape_item, user, "posts_with_video")
             case _:
                 raise ValueError
 
@@ -49,6 +57,8 @@ class BlueskyCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem, actor: str, post_id: str) -> None:
         post, replies = await self.api.thread(actor, post_id)
         self._post(scrape_item, post)
+        if not self.__config__.threads:
+            return
         for reply in replies:
             new_item = scrape_item.create_child(self.PRIMARY_URL / reply.web_path)
             self._post(new_item, reply)
@@ -57,7 +67,17 @@ class BlueskyCrawler(Crawler):
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem, actor: str, feed_filter: FeedFilter) -> None:
         scrape_item.setup_as_profile("")
+        user_did = await self.api.resolve_handle(actor)
         async for post in self.api.author_feed(actor, feed_filter):
+            if not self.__config__.reposts and post.author.did != user_did:
+                self.log.warning(
+                    "Skipping post %s by config options [repost]. Original author: @%s, reposted by: @%s",
+                    post.id,
+                    user_did,
+                    post.author.did,
+                )
+                continue
+
             new_item = scrape_item.create_child(self.PRIMARY_URL / post.web_path)
             self._post(new_item, post)
             scrape_item.add_children()
@@ -70,10 +90,22 @@ class BlueskyCrawler(Crawler):
         self.create_eager_task(self.write_metadata(scrape_item, f"post {post.id}", post))
 
         for media in _extract_media(post.record):
+            if "external" in media.type and not self.__config__.external:
+                self.log.info(
+                    "Skipping external media (cid=%s) in post %s by config options [%s]", media.cid, post.id, media.type
+                )
+                self.tui.files.stats.skipped += 1
+                continue
+
             self.create_eager_task(self._media(scrape_item, media, post.author.did))
             scrape_item.add_children()
 
         for url in _extract_links(post.record):
+            if not self.__config__.content_urls:
+                self.log.info("Skipping %s in post %s by config options [content_urls]", url, post.id)
+                self.tui.files.stats.skipped += 1
+                continue
+
             self.handle_external_links(scrape_item.create_child(self.parse_url(url)))
             scrape_item.add_children()
 

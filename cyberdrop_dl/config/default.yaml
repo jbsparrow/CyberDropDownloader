@@ -26,6 +26,11 @@ crawlers:
       - vorbis
       - aiff
       - alas
+  bluesky:
+    content_urls: true
+    external: true
+    reposts: false
+    threads: true
   clonr:
     use_source: false
     zip: false
