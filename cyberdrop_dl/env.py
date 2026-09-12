@@ -44,7 +44,7 @@ ENABLE_DEBUG_CRAWLERS = (
 
 APPDATA_FOLDER = _env("APPDATA_FOLDER")
 WRITE_JSON_UI = int(_env("WRITE_JSON_UI") or 0) or None
-FFMPEG_FIX_HLS = _cast_bool(_env("FFMPEG_FIX_HLS"))
+FFMPEG_FIX_HLS = _cast_bool(_val if (_val := _env("FFMPEG_FIX_HLS")) is not None else True)
 EDITOR = os.getenv("EDITOR")
 CI = _cast_bool(os.getenv("CI"))
 TERMUX = {
