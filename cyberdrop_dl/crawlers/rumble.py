@@ -105,11 +105,7 @@ class RumbleCrawler(Crawler):
     async def channel(self, scrape_item: ScrapeItem, name: str) -> None:
         scrape_item.setup_as_album(self.create_title(name))
         async for soup in self._pager(scrape_item.url):
-            _, info = json_ld.find(soup, "items", "relative_url")
-            for item in info["items"]:
-                if item.get("object_type") != "video":
-                    continue
-
+            for item in _find_video_objs(soup):
                 new_item = scrape_item.create_child(self.parse_url(item["url"]))
                 self.create_task(self.run(new_item, check_referer=True))
                 scrape_item.add_children()
@@ -220,18 +216,26 @@ class RumbleAPI(API):
         )
 
 
-def _extract_short(soup: BeautifulSoup, short_id: str) -> dict[str, Any]:
+def _find_video_objs(soup: BeautifulSoup) -> Generator[dict[str, Any]]:
     for script in css.iselect_text(
-        soup, "script[type='application/json']", contains=(f"/shorts/{short_id}", "relative_url", "permalink_id")
+        soup,
+        selector="script[type='application/json'], script[type='application/ld+json']",
+        contains="object_type",
     ):
-        _, obj = traversal.find_obj(
+        for _, obj in traversal.find_objs(
             json.loads(script),
             validate={
                 "object_type": "video",
-                "permalink_id": short_id,
             },
-        )
-        return obj
+        ):
+            yield obj
+
+
+def _extract_short(soup: BeautifulSoup, short_id: str) -> dict[str, Any]:
+    for obj in _find_video_objs(soup):
+        if obj["permalink_id"] == short_id:
+            return obj
+
     raise ScrapeError(422, "Unable to find short data")
 
 
