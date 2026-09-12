@@ -123,14 +123,7 @@ class YandexDiskCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item.url):
             return None
 
-        referer = str(file.url)
-        headers = _DEFAULT_HEADERS | {
-            "Content-Type": "text/plain",
-            "X-Requested-With": "XMLHttpRequest",
-            "Origin": str(scrape_item.url.host),
-            "Referer": referer,
-            "X-Retpath-Y": referer,
-        }
+        headers = _download_url_headers(scrape_item.url, file.url)
 
         api_url = _DOWNLOAD_API_ENTRYPOINT.with_host(scrape_item.url.host)
         with self._request_context():
@@ -158,6 +151,16 @@ class YandexDiskCrawler(Crawler):
         filename = link.query.get("filename") or file.name
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(file.url, scrape_item, filename, ext, debrid_link=link)
+
+
+def _download_url_headers(url: AbsoluteHttpURL, referer: AbsoluteHttpURL) -> dict[str, str]:
+    return _DEFAULT_HEADERS | {
+        "Content-Type": "text/plain",
+        "X-Requested-With": "XMLHttpRequest",
+        "Origin": str(url.origin()),
+        "Referer": str(referer),
+        "X-Retpath-Y": str(referer),
+    }
 
 
 def _get_item_info(soup: BeautifulSoup) -> dict[str, Any]:

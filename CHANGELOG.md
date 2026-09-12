@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Downloads failing with 404 when the file name contains "&" or "'" (Bunkr)
 - Downloads of embeded videos and direct URLs (Imagepond)
 - Thumbnails downloads always failing with 404 (Cyberdrop)
+- Downloads failing with "DDoS-Guard" errors (Yandex Disk)
 
 ## [10.8.0] - 2026-09-06
 
