@@ -101,6 +101,28 @@
       "title": "BandcampConfig",
       "type": "object"
     },
+    "BlueSkyConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "external": {
+          "default": true,
+          "title": "External",
+          "type": "boolean"
+        },
+        "threads": {
+          "default": true,
+          "title": "Threads",
+          "type": "boolean"
+        },
+        "content_urls": {
+          "default": true,
+          "title": "Content Urls",
+          "type": "boolean"
+        }
+      },
+      "title": "BlueSkyConfig",
+      "type": "object"
+    },
     "ByteSizeSerilized": {
       "anyOf": [
         {
@@ -159,6 +181,9 @@
         },
         "bandcamp": {
           "$ref": "#/$defs/BandcampConfig"
+        },
+        "bluesky": {
+          "$ref": "#/$defs/BlueSkyConfig"
         },
         "clonr": {
           "$ref": "#/$defs/ClonrConfig"
