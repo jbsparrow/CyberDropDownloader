@@ -12,6 +12,7 @@ from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from cyberdrop_dl.constants import HttpMethod
     from cyberdrop_dl.url_objects import ScrapeItem
 
 
@@ -36,6 +37,7 @@ class CyberdropCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://cyberdrop.cr/")
     DOMAIN: ClassVar[str] = "cyberdrop"
     OLD_DOMAINS: ClassVar[tuple[str, ...]] = ("cyberdrop.me", "cyberdrop.to")
+    _THUMB_HTTP_METHOD: ClassVar[HttpMethod] = "GET"
 
     def __post_init__(self) -> None:
         self.api: CyberdropAPI = CyberdropAPI.from_crawler(self)
