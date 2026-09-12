@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
+import json
 from enum import IntEnum
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -11,7 +12,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, SupportedPaths
 from cyberdrop_dl.exceptions import DownloadError, ScrapeError
 from cyberdrop_dl.mediaprops import Resolution, Subtitle
 from cyberdrop_dl.url_objects import AbsoluteHttpURL
-from cyberdrop_dl.utils import css, json_ld, m3u8, parse_url
+from cyberdrop_dl.utils import css, json_ld, m3u8, parse_url, traversal
 from cyberdrop_dl.utils.errors import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -55,11 +56,13 @@ class Format:
 
 @dataclasses.dataclass(slots=True, frozen=True)
 class Video:
+    id: str
     title: str
     upload_date: str
     url: AbsoluteHttpURL
     best_format: Format
     subtitles: tuple[Subtitle, ...]
+    thumb: str | None = None
 
 
 @HTTPConfig(impersonate="firefox", rate_limit=(8, 1))
@@ -76,11 +79,13 @@ class RumbleCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         match scrape_item.url.parts[1:]:
             case ["embed", video_id] if video_id.startswith("v"):
-                return await self.embed(scrape_item, video_id)
+                await self.embed(scrape_item, video_id)
+            case ["shorts", video_id]:
+                await self.short(scrape_item, video_id)
             case [slug] if slug.startswith("v") and slug.endswith(".html"):
-                return await self.video(scrape_item)
+                await self.video(scrape_item)
             case ["c" | "user", user_name, *_]:
-                return await self.channel(scrape_item, user_name)
+                await self.channel(scrape_item, user_name)
             case _:
                 raise ValueError
 
@@ -119,6 +124,25 @@ class RumbleCrawler(Crawler):
             raise
 
     @error_handling_wrapper
+    async def short(self, scrape_item: ScrapeItem, short_id: str) -> None:
+        if await self.check_complete_from_referer(scrape_item.url):
+            return
+
+        soup = await self.request_soup(scrape_item.url)
+        short = _extract_short(soup, short_id)
+        formats = tuple(_parse_short_formats(short["videos"]))
+        video = Video(
+            id=short_id,
+            upload_date=short["upload_date"],
+            title=css.unescape(short["title"]),
+            url=self.parse_url(short["url"]),
+            best_format=await self._get_best_format(formats),
+            subtitles=(),
+            thumb=short.get("thumb"),
+        )
+        await self._video(scrape_item, video)
+
+    @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item.url):
             return
@@ -129,14 +153,32 @@ class RumbleCrawler(Crawler):
 
     @error_handling_wrapper
     async def embed(self, scrape_item: ScrapeItem, embed_id: str) -> None:
-        video = await self._get_video_info(embed_id)
+        api_url = (self.PRIMARY_URL / "embedJS/u3").with_query(request="video", ver=2, v=embed_id)
+        data: dict[str, Any] = await self.request_json(api_url)
+
+        if data.get("live") == LiveStatus.CURRENTLY_LIVE:
+            raise ScrapeError(422, "livestreams are not supported")
+
+        formats = _parse_formats(data.get("ua") or {})
+        subs = _parse_subs(data.get("cc") or {})
+        video = Video(
+            id=embed_id,
+            upload_date=data["pubDate"],
+            title=css.unescape(data["title"]),
+            url=self.parse_url(data["l"]),
+            best_format=await self._get_best_format(formats),
+            subtitles=tuple(subs),
+        )
+        await self._video(scrape_item, video)
+
+    async def _video(self, scrape_item: ScrapeItem, video: Video) -> None:
         best_format = video.best_format
         if best_format.m3u8:
             ext = ".mp4"
         else:
             _, ext = self.get_filename_and_ext(best_format.url.name)
 
-        video_name = self.create_custom_filename(video.title, ext, file_id=embed_id, resolution=best_format.resolution)
+        video_name = self.create_custom_filename(video.title, ext, file_id=video.id, resolution=best_format.resolution)
         scrape_item.uploaded_at = self.parse_iso_date(video.upload_date)
         scrape_item.url = video.url
         self.create_eager_task(
@@ -147,27 +189,10 @@ class RumbleCrawler(Crawler):
                 ext,
                 custom_filename=video_name,
                 m3u8=best_format.m3u8,
+                thumbnail=video.thumb,
             )
         )
         self.handle_subs(scrape_item, video_name, video.subtitles)
-
-    async def _get_video_info(self, embed_id: str) -> Video:
-        api_url = (self.PRIMARY_URL / "embedJS/u3").with_query(request="video", ver=2, v=embed_id)
-        video: dict[str, Any] = await self.request_json(api_url)
-
-        if video.get("live") == LiveStatus.CURRENTLY_LIVE:
-            raise ScrapeError(422, "livestreams are not supported")
-
-        formats = _parse_formats(video.get("ua") or {})
-        subs = _parse_subs(video.get("cc") or {})
-
-        return Video(
-            upload_date=video["pubDate"],
-            title=css.unescape(video["title"]),
-            url=self.parse_url(video["l"]),
-            best_format=await self._get_best_format(formats),
-            subtitles=tuple(subs),
-        )
 
     async def _get_best_format(self, formats: Iterable[Format]) -> Format:
         hls_formats: list[Format] = []
@@ -186,6 +211,40 @@ class RumbleCrawler(Crawler):
             hls_formats = await aio.map(resolve_m3u8, hls_formats, task_limit=10)
 
         return max((*hls_formats, *other_formats))
+
+
+def _extract_short(soup: BeautifulSoup, short_id: str) -> dict[str, Any]:
+    for script in css.iselect_text(
+        soup,
+        "script[type='application/json']:-soup-contains-own('object_type')",
+        contains=(f"/shorts/{short_id}", "relative_url", "permalink_id"),
+    ):
+        _, obj = traversal.find_obj(json.loads(script), validate={"object_type": "video", "permalink_id": short_id})
+        return obj
+    raise ScrapeError("Unable to find short data")
+
+
+def _parse_short_formats(formats: Iterable[dict[str, Any]]) -> Generator[Format]:
+    for fmt in formats:
+        type_ = fmt["type"]
+        if type_ in {"audio", "tar", "timeline"}:
+            continue
+
+        try:
+            type_ = FormatType[type_.upper()]
+        except KeyError:
+            raise ScrapeError(422, f"Video has an unknown format type: {type_}") from None
+
+        is_single_file = type_ is not FormatType.HLS
+
+        yield Format(
+            resolution=Resolution.parse(fmt["resolution"]) if is_single_file else Resolution.unknown(),
+            is_single_file=is_single_file,
+            bitrate=fmt.get("bitrate_kbps", 0),
+            size=0,
+            type=type_,
+            url=parse_url(fmt["url"]),
+        )
 
 
 def _parse_formats(formats: dict[str, list[dict[str, Any]] | dict[str, dict[str, Any]]]) -> Generator[Format]:
