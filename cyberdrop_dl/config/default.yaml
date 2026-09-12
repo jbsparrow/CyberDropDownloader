@@ -18,17 +18,18 @@ cookies: null
 crawlers:
   bandcamp:
     formats:
-    - mp3-320
-    - mp3
-    - aac-hi
-    - wav
-    - flac
-    - vorbis
-    - aiff
-    - alas
+      - mp3-320
+      - mp3
+      - aac-hi
+      - wav
+      - flac
+      - vorbis
+      - aiff
+      - alas
   bluesky:
     content_urls: true
     external: true
+    reposts: false
     threads: true
   clonr:
     use_source: false
@@ -50,7 +51,7 @@ crawlers:
       sheets: xslx
       slides: pptx
   octave_music:
-    filename_format: '{artist} - {title}{ext}'
+    filename_format: "{artist} - {title}{ext}"
     quality: mp3-320
   one_pace:
     prefer_dub: false
@@ -66,10 +67,10 @@ crawlers:
     file: true
   pornhub:
     profile_paths:
-    - photos/public
-    - gifs/public
-    - videos
-    - videos/upload
+      - photos/public
+      - gifs/public
+      - videos
+      - videos/upload
   tiktok:
     original: false
   twitter:
@@ -133,9 +134,9 @@ filters:
   skip_hosts: []
 hashing:
   algorithms:
-  - xxh128
-  - md5
-  - sha256
+    - xxh128
+    - md5
+    - sha256
   dedupe:
     enabled: true
     use_trash_bin: true
@@ -186,7 +187,7 @@ network:
   ssl_context: truststore+certifi
   tls:
     ca_certs: []
-    min_version: '1.2'
+    min_version: "1.2"
     verify: true
   user_agent: Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0
 notifications:
@@ -196,11 +197,11 @@ restrict_path: []
 sort:
   enabled: false
   formats:
-    audio: '{sort_dir}/{base_dir}/Audio/{filename}{ext}'
-    image: '{sort_dir}/{base_dir}/Images/{filename}{ext}'
-    incrementer: ' ({i})'
-    non_media: '{sort_dir}/{base_dir}/Other/{filename}{ext}'
-    video: '{sort_dir}/{base_dir}/Videos/{filename}{ext}'
+    audio: "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
+    image: "{sort_dir}/{base_dir}/Images/{filename}{ext}"
+    incrementer: " ({i})"
+    non_media: "{sort_dir}/{base_dir}/Other/{filename}{ext}"
+    video: "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
   input_folder: null
   output_folder: downloads/cyberdrop-dl sorted
 subfolders:
@@ -211,7 +212,7 @@ subfolders:
     thread_id: false
   separate_posts:
     enabled: false
-    format: '{default}'
+    format: "{default}"
 ui:
   mode: fullscreen
   portrait: false

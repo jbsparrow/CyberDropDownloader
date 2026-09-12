@@ -118,6 +118,11 @@
           "default": true,
           "title": "Content Urls",
           "type": "boolean"
+        },
+        "reposts": {
+          "default": false,
+          "title": "Reposts",
+          "type": "boolean"
         }
       },
       "title": "BlueSkyConfig",
