@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Enable the `--force-original-path` option on retry commands
-- Ask the user if the want to use the original download path after choosing the `retry failed downloads` option (main menu)
+- Ask the user if they want to use the original download path after choosing `retry failed downloads` (main menu)
 
 ### Fixed
 
