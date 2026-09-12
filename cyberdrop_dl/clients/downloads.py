@@ -13,7 +13,7 @@ from aiohttp import hdrs
 from cyberdrop_dl import aio, constants, ffmpeg, storage
 from cyberdrop_dl.clients import etag
 from cyberdrop_dl.clients.http import JSON_CHECK, check_http_status
-from cyberdrop_dl.constants import FileExt
+from cyberdrop_dl.constants import USE_RETRY_PATH, FileExt
 from cyberdrop_dl.exceptions import DownloadError, InvalidContentTypeError, SlowDownloadError
 from cyberdrop_dl.signature import simple_repr
 from cyberdrop_dl.utils import dates, enter_context
@@ -479,7 +479,7 @@ async def _check_response(media_item: MediaItem, resp: AbstractResponse[Any], re
 
 
 def resolve_download_dir(download_folder: Path, config: Config) -> Path:
-    if config.subfolders.create:
+    if config.subfolders.create or USE_RETRY_PATH.get():
         return download_folder
 
     while download_folder.parent != config.download_folder:

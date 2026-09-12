@@ -18,7 +18,7 @@ from cyberdrop_dl import aio, env
 from cyberdrop_dl.cache import TTLCacheAdapter
 from cyberdrop_dl.clients.downloads import IGNORE_CONTENT_TYPE
 from cyberdrop_dl.clients.http import HTTPClient, HTTPConfig, HTTPContext, HTTPMixin
-from cyberdrop_dl.constants import FileExt, HttpMethod
+from cyberdrop_dl.constants import USE_RETRY_PATH, FileExt, HttpMethod
 from cyberdrop_dl.crawlers import ALLOW_NO_EXT, SKIP_DOWNLOAD, Registry
 from cyberdrop_dl.crawlers._hls import HLSMixin
 from cyberdrop_dl.downloader.http import Downloader
@@ -1231,6 +1231,8 @@ def _should_skip_by_config(media_item: MediaItem, config: Config) -> bool:
 
 
 def _prepare_download_path(item: ScrapeItem, domain: str) -> Path:
+    if item.retry_info and USE_RETRY_PATH.get():
+        return item.retry_info.download_path
     path = item.download_folder / item.path
     if item.is_loose_file:
         path = path / f"Loose Files ({domain})"
