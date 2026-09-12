@@ -39,7 +39,7 @@ async def test_probe_url_command() -> None:
         "ffprobe",
         "-hide_banner",
         "-loglevel",
-        "error",
+        "warning",
         "-show_streams",
         "-show_format",
         "-print_format",
@@ -67,11 +67,9 @@ async def test_probe_url_w_headers() -> None:
     assert args == [
         "-tls_verify",
         "1",
+        "-headers",
+        "Authorization: Bearer token\r\nUser-Agent: test\r\n",
         "https://example.com/stream.m3u8",
-        "-headers",
-        "Authorization: Bearer token",
-        "-headers",
-        "User-Agent: test",
     ]
 
 
@@ -108,11 +106,11 @@ async def test_probe_url_proxy_headers_no_verify() -> None:
     assert args == [
         "-tls_verify",
         "0",
-        "https://example.com/stream.m3u8",
         "-headers",
-        "X-Custom: value",
+        "X-Custom: value\r\n",
         "-http_proxy",
         "http://proxy:8080",
+        "https://example.com/stream.m3u8",
     ]
 
 
