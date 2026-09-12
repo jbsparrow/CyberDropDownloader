@@ -71,6 +71,7 @@ class RumbleCrawler(Crawler):
         "Channel": "/c/<name>",
         "User": "/user/<name>",
         "Video": "<video_id>-<video-title>.html",
+        "Short": "/shorts/<short_id>",
         "Embed": "/embed/<video_id>",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://rumble.com")
