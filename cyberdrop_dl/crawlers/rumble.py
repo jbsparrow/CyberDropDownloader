@@ -221,7 +221,12 @@ class RumbleAPI(API):
 
     async def short(self, short_id: str) -> Video:
         soup = await self.request_soup(self.PRIMARY_URL / "shorts" / short_id)
-        short = _extract_short(soup, short_id)
+        for obj in _find_video_objs(soup):
+            if obj.get("permalink_id") == short_id:
+                short = obj
+                break
+        else:
+            raise ScrapeError(422, "Unable to find short data")
         return _parse_short(short)
 
 
@@ -250,14 +255,6 @@ def _find_video_objs(soup: BeautifulSoup) -> Generator[dict[str, Any]]:
             },
         ):
             yield obj
-
-
-def _extract_short(soup: BeautifulSoup, short_id: str) -> dict[str, Any]:
-    for obj in _find_video_objs(soup):
-        if obj.get("permalink_id") == short_id:
-            return obj
-
-    raise ScrapeError(422, "Unable to find short data")
 
 
 def _filter_formats[T](fmts: Iterable[tuple[str, T]]) -> Generator[tuple[FormatType, T]]:
