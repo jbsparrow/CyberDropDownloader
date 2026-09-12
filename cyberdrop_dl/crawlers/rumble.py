@@ -131,7 +131,7 @@ class RumbleCrawler(Crawler):
 
         soup = await self.request_soup(scrape_item.url)
         short = _extract_short(soup, short_id)
-        formats = tuple(_parse_short_formats(short["videos"]))
+        formats = _parse_short_formats(short["videos"])
         video = Video(
             id=short_id,
             upload_date=short["upload_date"],
@@ -216,13 +216,17 @@ class RumbleCrawler(Crawler):
 
 def _extract_short(soup: BeautifulSoup, short_id: str) -> dict[str, Any]:
     for script in css.iselect_text(
-        soup,
-        "script[type='application/json']:-soup-contains-own('object_type')",
-        contains=(f"/shorts/{short_id}", "relative_url", "permalink_id"),
+        soup, "script[type='application/json']", contains=(f"/shorts/{short_id}", "relative_url", "permalink_id")
     ):
-        _, obj = traversal.find_obj(json.loads(script), validate={"object_type": "video", "permalink_id": short_id})
+        _, obj = traversal.find_obj(
+            json.loads(script),
+            validate={
+                "object_type": "video",
+                "permalink_id": short_id,
+            },
+        )
         return obj
-    raise ScrapeError("Unable to find short data")
+    raise ScrapeError(422, "Unable to find short data")
 
 
 def _parse_short_formats(formats: Iterable[dict[str, Any]]) -> Generator[Format]:
