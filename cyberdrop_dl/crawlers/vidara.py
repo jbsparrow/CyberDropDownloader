@@ -19,7 +19,9 @@ class VidaraCrawler(Crawler):
         "vidara.so",
         "streamix.so",
         "streamix.so",
+        "vidara",
         "stmix.io",
+        "vidvara.lol",
     )
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/e/<video_id>"}
     DOMAIN: ClassVar[str] = "vidara"
