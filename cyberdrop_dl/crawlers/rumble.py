@@ -44,7 +44,7 @@ class Metadata:
     h: int = 0
 
 
-@dataclasses.dataclass(slots=True, frozen=True, order=True)
+@dataclasses.dataclass(slots=True, frozen=True, order=True, kw_only=True)
 class Format:
     resolution: Resolution
     is_single_file: bool  # for formats with the same resolution, give priority to non hls
@@ -272,10 +272,10 @@ def _filter_formats[T](fmts: Iterable[tuple[str, T]]) -> Generator[tuple[FormatT
 
 def _parse_short_formats(formats: Iterable[dict[str, Any]]) -> Generator[Format]:
     for type_, fmt in _filter_formats((fmt["type"], fmt) for fmt in formats):
-        is_single_file = type_ is not FormatType.HLS
+        is_hls = type_ is FormatType.HLS
         yield Format(
-            resolution=Resolution.parse(fmt["resolution"]) if is_single_file else Resolution.unknown(),
-            is_single_file=is_single_file,
+            resolution=Resolution.unknown() if is_hls else Resolution.parse(fmt["resolution"]),
+            is_single_file=not is_hls,
             bitrate=fmt.get("bitrate_kbps", 0),
             size=0,
             type=type_,
@@ -286,22 +286,25 @@ def _parse_short_formats(formats: Iterable[dict[str, Any]]) -> Generator[Format]
 def _parse_formats(formats: dict[str, list[dict[str, Any]] | dict[str, dict[str, Any]]]) -> Generator[Format]:
     for type_, format_options in _filter_formats(formats.items()):
         pairs = ((None, f) for f in format_options) if isinstance(format_options, list) else format_options.items()
-        is_single_file = type_ is not FormatType.HLS
-
         for height, fmt in pairs:
-            url = parse_url(fmt["url"])
             meta = Metadata(**(fmt.get("meta") or {}))
-
             if meta.w and meta.h:
-                resolution = Resolution(meta.w, meta.h)
+                res = Resolution(meta.w, meta.h)
 
             elif height and height != "auto":
-                resolution = Resolution.parse(height)
+                res = Resolution.parse(height)
 
             else:
-                resolution = Resolution.unknown()
+                res = Resolution.unknown()
 
-            yield Format(resolution, is_single_file, meta.bitrate, meta.size, type_, url)
+            yield Format(
+                resolution=res,
+                is_single_file=type_ is not FormatType.HLS,
+                bitrate=meta.bitrate,
+                size=meta.size,
+                type=type_,
+                url=parse_url(fmt["url"]),
+            )
 
 
 def _parse_subs(subs: dict[str, dict[str, str]]) -> Generator[Subtitle]:
