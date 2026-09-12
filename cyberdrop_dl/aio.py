@@ -62,8 +62,6 @@ class EagerTaskGroup(asyncio.TaskGroup):
                     return await coro
 
                 run = lazy()
-                run.__name__ = coro.__name__
-                run.__repr__ = coro.__repr__
             else:
                 run = coro
 

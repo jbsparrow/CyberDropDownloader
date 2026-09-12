@@ -4,10 +4,11 @@ import asyncio
 import contextlib
 import dataclasses
 import logging
+import signal
 import sys
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Self, override
+from typing import TYPE_CHECKING, Any, Literal, Self, override
 
 from cyberdrop_dl import aio, env, filepath, storage
 from cyberdrop_dl.constants import BLOCKED_DOMAINS
@@ -30,7 +31,7 @@ from cyberdrop_dl.utils import remove_trailing_slash
 from cyberdrop_dl.utils._url import matches_any_host
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Iterator
+    from collections.abc import AsyncGenerator, Callable, Generator, Iterator
 
     from cyberdrop_dl.clients.jd.client import JDownloader
     from cyberdrop_dl.config import Config
@@ -235,7 +236,7 @@ class ScrapeMapper:
     @contextlib.contextmanager
     def __cancel_context(self) -> Generator[None]:
         cancelled: bool = False
-        with self.tui():
+        with self.tui(), self._patch_kb_interrupt_sig():
             try:
                 yield
             except asyncio.CancelledError:
@@ -244,10 +245,33 @@ class ScrapeMapper:
                     raise
 
                 cancelled = True
-                self.tui.status.shutdown()
 
         if cancelled:
             logger.warning("Scraping aborted ('Ctrl + C' pressed)")
+
+    @contextlib.contextmanager
+    def _patch_kb_interrupt_sig(self) -> Generator[None]:
+        asyncio_runner_sig_handler = signal.getsignal(signal.SIGINT)
+        new_signal: Callable[..., Any] | None = None
+
+        if callable(asyncio_runner_sig_handler):
+
+            def override(*args, **kwargs):
+                self.tui.status.shutdown()
+                return asyncio_runner_sig_handler(*args, **kwargs)
+
+            try:
+                signal.signal(signal.SIGINT, override)
+            except ValueError:
+                pass
+            else:
+                new_signal = override
+
+        try:
+            yield
+        finally:
+            if new_signal is not None and signal.getsignal(signal.SIGINT) is new_signal:
+                signal.signal(signal.SIGINT, asyncio_runner_sig_handler)
 
     async def __async_init__(self) -> None:
         if self._ready:
@@ -278,20 +302,23 @@ class ScrapeMapper:
             return ScrapeStats("")
 
         stats, get_items = _parse_source(src, self.manager)
-        async with contextlib.aclosing(get_items) as items:
-            self.task_mngr.downloads.create_task(self._wait_until_scrape_is_done(stats))
-            max_children = _build_max_children_map(self.manager.config)
 
-            async for item in items:
-                item.max_children = max_children
-                item.download_folder = self.manager.config.download_folder
-                if self._should_scrape(item):
-                    stats.update(item)
-                    self.task_mngr.scrape.create_task(self._send_to_crawler(item))
+        async def dispatch() -> None:
+            async with contextlib.aclosing(get_items) as items:
+                self.task_mngr.downloads.create_task(self._wait_until_scrape_is_done(stats))
+                max_children = _build_max_children_map(self.manager.config)
 
-        if not stats.count:
-            logger.warning("No valid links found")
+                async for item in items:
+                    item.max_children = max_children
+                    item.download_folder = self.manager.config.download_folder
+                    if self._should_scrape(item):
+                        stats.update(item)
+                        self.task_mngr.scrape.create_task(self._send_to_crawler(item))
 
+            if not stats.count:
+                logger.warning("No valid links found")
+
+        self.task_mngr.scrape.create_task(dispatch())
         return stats
 
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
