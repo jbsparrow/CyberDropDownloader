@@ -1,6 +1,24 @@
 DOMAIN = "rumble"
 TEST_CASES = [
     {
+        "url": "https://rumble.com/shorts/v75ijpe",
+        "description": "short",
+        "results": [
+            {
+                "url": "https://hugh.cdn.rumble.cloud/video/fww1/1b/s8/2/c/v/9/X/cv9Xz.aaa.mp4",
+                "filename": "Why Bad Bunny Was a DISASTER for NFL Fans [v75ijpe][1920p].mp4",
+                "debrid_url": None,
+                "original_filename": "Why Bad Bunny Was a DISASTER for NFL Fans.mp4",
+                "referer": "https://rumble.com/shorts/v75ijpe",
+                "album_id": None,
+                "uploaded_at": 1770642606,
+                "download_folder": "re:Loose Files (Rumble)",
+                "thumbnail": "https://hugh.cdn.rumble.cloud/video/fww1/1b/s8/6/c/v/9/X/cv9Xz.adyb.jpg",
+            }
+        ],
+        "count": 1,
+    },
+    {
         "url": "https://rumble.com/vwu8gp-residente-bzrp-music-sessions-49.html?e9s=src_v1_s",
         "results": [
             {
