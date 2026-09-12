@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support premium URLs (direct links)(GoFile)
 - BlueSky support
 - FileditchAlbums support
+- Support for shorts (Rumble)
 
 ### Changed
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from typing_extensions import TypeIs
 
@@ -96,3 +96,7 @@ def matches_any_host(url: yarl.URL, hosts: Iterable[str]) -> bool:
 
 def _is_absolute_http_url(url: yarl.URL) -> TypeIs[AbsoluteHttpURL]:
     return url.absolute and url.scheme in {"http", "https"}
+
+
+def remove_query_params[T: yarl.URL](url: T, keep: tuple[str, ...]) -> T:
+    return cast("T", url.with_query([(name, value) for name, value in url.query.items() if name in keep] or None))
