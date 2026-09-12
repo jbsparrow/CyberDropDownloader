@@ -83,10 +83,13 @@ class BlueSkyConfig(ConfigModel):
     "Parse and download embeds from third-party sites"
 
     threads: bool = True
-    "Downloads all posts in a thread (All direct replies from OP to their own tweet)"
+    "Downloads all posts in a thread (All direct replies from OP to their own post)"
 
     content_urls: bool = True
-    "Parse and try to download any URL found inside the text of a tweet"
+    "Parse and try to download any URL found inside the text of a post"
+
+    reposts: bool = False
+    "Download media from reposts in the user's timeline"
 
 
 class OctaveMusicConfig(ConfigModel):

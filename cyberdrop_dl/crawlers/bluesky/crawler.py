@@ -57,6 +57,8 @@ class BlueskyCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem, actor: str, post_id: str) -> None:
         post, replies = await self.api.thread(actor, post_id)
         self._post(scrape_item, post)
+        if not self.__config__.threads:
+            return
         for reply in replies:
             new_item = scrape_item.create_child(self.PRIMARY_URL / reply.web_path)
             self._post(new_item, reply)
@@ -65,7 +67,17 @@ class BlueskyCrawler(Crawler):
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem, actor: str, feed_filter: FeedFilter) -> None:
         scrape_item.setup_as_profile("")
+        user_did = await self.api.resolve_handle(actor)
         async for post in self.api.author_feed(actor, feed_filter):
+            if not self.__config__.reposts and post.author.did != user_did:
+                self.log.warning(
+                    "Skipping post %s by config options [repost]. Original author: @%s, reposted by: @%s",
+                    post.id,
+                    user_did,
+                    post.author.did,
+                )
+                continue
+
             new_item = scrape_item.create_child(self.PRIMARY_URL / post.web_path)
             self._post(new_item, post)
             scrape_item.add_children()
