@@ -233,10 +233,11 @@ class DownloadClient:
                     skip = True
                     return proceed, skip
 
-            if not media_item.path.exists() and not media_item.partial_file.exists():
+            path_exists, partial_exists = await aio.gather(*map(aio.exists, (media_item.path, media_item.partial_file)))
+            if not path_exists and not partial_exists:
                 break
 
-            if media_item.path.exists() and media_item.path.stat().st_size == media_item.size:
+            if path_exists and await aio.get_size(media_item.path) == media_item.size:
                 logger.info(f"Found {media_item.path.name} locally, skipping download")
                 proceed = False
                 break
@@ -253,16 +254,16 @@ class DownloadClient:
                 break
 
             if media_item.filename == downloaded_filename:
-                if media_item.partial_file.exists():
+                if partial_exists:
                     logger.info(f"Found {downloaded_filename} locally, trying to resume")
                     assert media_item.size
-                    size = media_item.partial_file.stat().st_size
-                    if size >= media_item.size:
+                    size = await aio.get_size(media_item.partial_file)
+                    if size is not None and size >= media_item.size:
                         logger.info(f"Deleting partial file {media_item.partial_file}. Size is out of bound")
-                        media_item.partial_file.unlink()
+                        await aio.unlink(media_item.partial_file)
 
                     elif size == media_item.size:
-                        if media_item.path.exists():
+                        if path_exists:
                             logger.warning(
                                 f"Found conflicting complete file '{media_item.path}' locally, iterating filename"
                             )
@@ -270,19 +271,19 @@ class DownloadClient:
                                 media_item.path,
                                 media_item,
                             )
-                            media_item.partial_file.rename(new_complete_filename)
+                            await aio.move(media_item.partial_file, new_complete_filename)
                             proceed = False
 
                             media_item.path = new_complete_filename
                             media_item.partial_file = new_partial_file
                         else:
                             proceed = False
-                            media_item.partial_file.rename(media_item.path)
+                            await aio.move(media_item.partial_file, media_item.path)
                         logger.info(
                             f"Renaming found partial file '{media_item.partial_file}' to complete file {media_item.path}"
                         )
-                elif media_item.path.exists():
-                    if media_item.path.stat().st_size == media_item.size:
+                elif path_exists:
+                    if await aio.get_size(media_item.path) == media_item.size:
                         logger.info(f"Found complete file '{media_item.path}' locally, skipping download")
                         proceed = False
                     else:
