@@ -235,7 +235,7 @@ class Crawler(HTTPMixin, HLSMixin, ABC):
         self._startup_lock: asyncio.Lock = asyncio.Lock()
         self._ready: bool = False
         self._logged_in: bool = False
-        self._scraped_items: set[str] = set()
+        self.scraped_items: set[str] = set()
         self._semaphore: asyncio.Semaphore = asyncio.Semaphore(40)
         self.config: Config = manager.config
         self.client: HTTPClient = manager.http_client
@@ -447,11 +447,11 @@ class Crawler(HTTPMixin, HLSMixin, ABC):
             scrape_item.url = url = self.transform_url(scrape_item.url)
 
         lookup = url.path_qs if self.__url_config__.ignore_fragment else _path_qs_frag(url)
-        if lookup in self._scraped_items:
+        if lookup in self.scraped_items:
             logger.info("Skipping %s as it has already been scrapped", url)
             return
 
-        self._scraped_items.add(lookup)
+        self.scraped_items.add(lookup)
 
         if not self.__url_config__.allow_empty_path and url.path == "/":
             self.raise_exc(scrape_item, ScrapeError.unsupported())

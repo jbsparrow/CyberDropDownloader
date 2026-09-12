@@ -290,8 +290,12 @@ class ScrapeMapper:
         await self.task_mngr.scrape.done.wait()
         self.tui.hide_scrape_panel()
         stats.url_count.update(
-            (crawler.DOMAIN, count) for crawler in self._factory if (count := len(crawler._scraped_items))
+            (crawler.DOMAIN, count) for crawler in self._factory if (count := len(crawler.scraped_items))
         )
+        self._factory = CrawlerFactory(self.manager, self.task_mngr, self.tui)
+        self._seen_urls.clear()
+        for crawler in self._direct_http, self._real_debrid:
+            crawler.scraped_items.clear()
 
     async def run(self, src: URLsSource | RetryScrapeSource | None = None) -> ScrapeStats:
         if self._shutting_down:
