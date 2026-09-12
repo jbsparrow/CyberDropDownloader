@@ -42,8 +42,14 @@ class BlueskyCrawler(Crawler):
         match scrape_item.url.parts[1:]:
             case ["profile", user, "post", post_id, *_]:
                 await self.post(scrape_item, user, post_id)
-            case ["profile", user]:
+            case ["profile", user] | ["profile", user, "posts"]:
                 await self.user(scrape_item, user, "posts_and_author_threads")
+            case ["profile", user, "media"]:
+                await self.user(scrape_item, user, "posts_with_media")
+            case ["profile", user, "replies"]:
+                await self.user(scrape_item, user, "posts_with_replies")
+            case ["profile", user, "video"]:
+                await self.user(scrape_item, user, "posts_with_video")
             case _:
                 raise ValueError
 
