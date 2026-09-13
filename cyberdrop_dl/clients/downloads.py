@@ -116,13 +116,17 @@ class DownloadClient:
     ) -> bool:
         await _check_response(media_item, resp, resume_point)
         media_item.size = _get_content_length(resp.headers)
+        if resp.status == HTTPStatus.PARTIAL_CONTENT:
+            # Content-Length of a ranged response only counts the bytes after resume_point.
+            # Every check below (partial size, final size, filesize limits) needs the size of the whole file
+            media_item.size += resume_point
         _set_upload_date(media_item, resp.headers)
         if not media_item.path:
             downloaded = await self._predownload_skip(media_item, domain)
             if downloaded is not None:
                 return downloaded
 
-        hook = self._make_hook(media_item, resume_point)
+        hook = self._make_hook(media_item)
         if resume_point:
             hook.advance(resume_point)
 
@@ -130,11 +134,11 @@ class DownloadClient:
             await self._append_content(media_item, hook, resp)
             return True
 
-    def _make_hook(self, media_item: MediaItem, resume_point: int) -> ProgressHook:
+    def _make_hook(self, media_item: MediaItem) -> ProgressHook:
         if media_item.is_segment and not media_item.extra_info.get("MUX_STREAM"):
             return self.manager.scrape_mapper.tui.downloads.download_hls_seg()
 
-        size = (media_item.size + resume_point) if media_item.size is not None else None
+        size = media_item.size
         return self.manager.scrape_mapper.tui.downloads.download_file(
             media_item.filename,
             media_item.domain,
@@ -153,7 +157,7 @@ class DownloadClient:
     async def _append_content(self, media_item: MediaItem, hook: ProgressHook, resp: AbstractResponse[Any]) -> None:
         check_free_space = storage.create_free_space_checker(media_item)
         check_download_speed = make_speed_checker(media_item, hook, self.download_speed_threshold)
-        await check_free_space(media_item.size)
+        await check_free_space(_get_content_length(resp.headers))
         await self._pre_download_check(media_item)
 
         async with self._track_speed(hook), aio.open(media_item.partial_file, mode="ab") as f:
